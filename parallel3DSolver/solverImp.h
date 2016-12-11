@@ -145,8 +145,7 @@ void solver<T>::collectDataCyclic()
     matrixA.push_back(temp);
     matrixB.push_back(fillZeros);		// I could fill this up with A or just start it off at zeros. I reset it anyway 
   }
-  
-  return;
+
 }
 
 
@@ -203,7 +202,7 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
   MM(dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,matrixWindow/2,matrixSize/2,1,matrixTrack);
 
   //Below is the tricky one. We need to create a vector via MM(..), then subtract it from A via some sort easy method...
-  MM(dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,-1,-1,-1,-1,matrixWindow/2,matrixSize/2,2,matrixTrack);
+  MM(dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,2,matrixTrack);
 
   // Big question: LURecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the TRSM. How should the program access this and deal with it????
 
@@ -214,16 +213,17 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
       this->matrixB[dimXstart+matrixWindow/2+i][dimYstart+matrixWindow/2+j] = this->matrixA[dimXstart+matrixWindow/2+i][dimYstart+matrixWindow/2+j] - this->holdMatrix[i][j];
     }
   }
+
   LURecurse(dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,matrixWindow/2,matrixSize/2,1);  // HALT! Change the track!
 
   // These last 4 matrix multiplications are for building up our LInverse and UInverse matrices
-  MM(dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,-1,-1,-1,-1,matrixWindow/2,matrixSize/2,3,matrixTrack);
+  MM(dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,4,matrixTrack);
 
-  MM(dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,-1,-1,-1,-1,dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,3,matrixTrack);
+  MM(dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,5,matrixTrack);
 
-  MM(dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,-1,-1,-1,-1,matrixWindow/2,matrixSize/2,3,matrixTrack);
+  MM(dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,6,matrixTrack);
 
-  MM(dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,-1,-1,-1,-1,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,matrixWindow/2,matrixSize/2,3,matrixTrack);
+  MM(dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,-1,-1,-1,-1,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,matrixWindow/2,matrixSize/2,7,matrixTrack);
 }
 
 /*
@@ -295,7 +295,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
   {
     MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2] /*I may want to change this*/ ,this->rowComm);
   }
-  
+ 
   if (this->gridCoords[1] == this->gridCoords[2])    // May want to recheck this later if bugs occur.
   {
     for (int i=dimXstartB; i<dimXendB; i++)
@@ -383,7 +383,9 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
   */
 
   this->holdMatrix.clear();
-  this->holdMatrix.resize(matrixWindow*matrixWindow);
+  std::vector<T> tempBuff(matrixWindow,0.);
+  this->holdMatrix.resize(matrixWindow,tempBuff);
+  
   for (int i=dimXstartC; i<dimXendC; i++)
   {
     for (int j=dimYstartC; j<dimYendC; j++)
@@ -431,6 +433,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       }
     }
   }
+
 }
 
 /*
@@ -566,3 +569,18 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
   }
 }
 
+template<typename T>
+void solver<T>::printL()
+{
+  if (this->worldRank == 0)
+  {
+    for (int i=0; i<this->matrixL.size(); i++)
+    {
+      for (int j=0; j<this->matrixL[0].size(); j++)
+      {
+        std::cout << this->matrixL[i][j] << " ";
+      }
+      std::cout << "\n";
+    }
+  }
+}

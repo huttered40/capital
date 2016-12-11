@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
   mySolver.solve();
 
   // If this works, then I can print out the data to see if its correct
-
+  mySolver.printL();
   MPI_Finalize();
   return 0;
 }

@@ -24,6 +24,7 @@ public:
   void startUp(bool &flag);
   void collectDataCyclic();
   void solve();
+  void printL();
 
 private:
 
