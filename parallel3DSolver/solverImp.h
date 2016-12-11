@@ -509,7 +509,23 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
   /* Use BLAS to find L and U matrices */
   std::vector<int> pivotVector(matrixSize);
   LAPACKE_dgetrf(LAPACK_ROW_MAJOR,matrixSize,matrixSize,&realMatrix[0],matrixSize,&pivotVector[0]); // column major???
-  /*
+  
+/*
+  if (this->worldRank == 0)
+  {
+    for (int i=0; i<matrixSize; i++)
+    {
+      for (int j=0; j<matrixSize; j++)
+      {
+        std::cout << realMatrix[i*matrixSize+j] << " ";
+      }
+      std::cout << "\n";
+    }
+    std::cout << "\n";
+  }
+*/
+
+/*
 	Now right now, realMatrix contains both L and U. I need to now get L-Inverse and U-inverse via dtrtri
 
         only need a select part of L,U,L-I, and U-I. Pick out the data cyclically like we did initialliy
@@ -525,17 +541,30 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
       {
         matrix_L[i*matrixSize+j] = 1.;
       }
-      if (i<j)
-      {
-        matrix_U[i*matrixSize+j] = 0.;
-      }
-      else
+      else if (i<j)
       {
         matrix_L[i*matrixSize+j] = 0.;
       }
+      else
+      {
+        matrix_U[i*matrixSize+j] = 0.;
+      }
     }
   }
-
+/*
+  if (this->worldRank == 0)
+  {
+    for (int i=0; i<matrixSize; i++)
+    {
+      for (int j=0; j<matrixSize; j++)
+      {
+        std::cout << matrix_U[i*matrixSize+j];
+      }
+      std::cout << "\n";
+    }
+    std::cout << "\n";
+  }
+*/
   std::vector<T> matrixU_inverse = matrix_U;		// big copy here
   std::vector<T> matrixL_inverse = matrix_L;
   
@@ -563,22 +592,34 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
       int index = (i-dimXstart)*this->processorGridDimSize*matrixSize+(pIndex/this->processorGridDimSize)*matrixSize + (j-dimYstart)*this->processorGridDimSize+(pIndex%this->processorGridDimSize);
       this->matrixU[i][j] = matrix_U[index];
       this->matrixL[i][j] = matrix_L[index];
+      //if (this->worldRank == 0)
+      //{
+        //std::cout << this->matrixL[i][j] << " ";
+      //}
       this->matrixUInverse[i][j] = matrixU_inverse[index];
       this->matrixLInverse[i][j] = matrixL_inverse[index];
     }
+    //if (this->worldRank == 0)
+    //{
+      //std::cout << "\n";
+    //}
   }
+  //if (this->worldRank == 0)
+  //{
+    //std::cout <<" \n";
+  //}
 }
 
 template<typename T>
 void solver<T>::printL()
 {
-  if (this->worldRank == 0)
+  if (this->worldRank == 7)
   {
     for (int i=0; i<this->matrixL.size(); i++)
     {
       for (int j=0; j<this->matrixL[0].size(); j++)
       {
-        std::cout << this->matrixL[i][j] << " ";
+        std::cout << this->matrixU[i][j] << " ";
       }
       std::cout << "\n";
     }
