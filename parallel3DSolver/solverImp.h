@@ -91,7 +91,7 @@ void solver<T>::startUp(bool &flag)
   MPI_Comm_rank(this->rowComm,&this->rowCommRank);
   MPI_Comm_size(this->rowComm,&this->rowCommSize);
   // column Communicator
-  MPI_Comm_split(this->layerComm, this->gridCoords[0],this->gridCoords[1],&this->colComm);
+  MPI_Comm_split(this->layerComm, this->gridCoords[1],this->gridCoords[0],&this->colComm);
   MPI_Comm_rank(this->colComm,&this->colCommRank);
   MPI_Comm_size(this->colComm,&this->colCommSize);
   // Depth Communicator
@@ -137,7 +137,7 @@ void solver<T>::collectDataCyclic()
       }
     }
 
-    std::vector<T> fillZeros(temp.size(),temp[0]*0.);	// This may throw a compiler error
+    std::vector<T> fillZeros(temp.size(),0.);	// This may throw a compiler error
     matrixL.push_back(fillZeros);
     matrixU.push_back(fillZeros);
     matrixLInverse.push_back(fillZeros);
@@ -185,7 +185,7 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
 
   if (matrixSize == this->baseCaseSize) 	// recursive base case
   {
-    LURecurseBaseCase(dimXstart,dimXend,dimYstart,dimYend,matrixWindow,matrixSize,matrixTrack);   // big decision here...
+    LURecurseBaseCase(dimXstart,dimXend,dimYstart,dimYend,matrixWindow,matrixSize,matrixTrack);
     return;
   }
 
@@ -217,13 +217,13 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
   LURecurse(dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,matrixWindow/2,matrixSize/2,1);  // HALT! Change the track!
 
   // These last 4 matrix multiplications are for building up our LInverse and UInverse matrices
-  MM(dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,4,matrixTrack);
+  MM(dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,3,matrixTrack);
 
-  MM(dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,5,matrixTrack);
+  MM(dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,4,matrixTrack);
 
-  MM(dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,6,matrixTrack);
+  MM(dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,5,matrixTrack);
 
-  MM(dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,-1,-1,-1,-1,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,matrixWindow/2,matrixSize/2,7,matrixTrack);
+  MM(dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,matrixWindow/2,matrixSize/2,6,matrixTrack);
 }
 
 /*
@@ -334,10 +334,12 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
           case 5:
           {
             buffer2[index] = this->matrixUInverse[i][j];
+            break;
           }
           case 6:
           {
             // Tricky part
+            //std::cout << "check these values and track - " << matrixTrack << " and values -  " << this->holdMatrix[i-dimXstartB][j-dimYstartB] << std::endl;
             buffer2[index] = this->holdMatrix[i-dimXstartB][j-dimYstartB];
             break;
           }
@@ -368,6 +370,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       for (int k=0; k<matrixWindow; k++)
       {
         buffer3[i*matrixWindow+j] += (buffer1[i*matrixWindow+k]*buffer2[j+k*matrixWindow]);	// Watch the indexing on these!! Tricky!
+        std::cout << "in loop, check these values - " << buffer3[i*matrixWindow+j] << std::endl;
       }
     }
   }
@@ -423,6 +426,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
         case 5:
         {
           // tricky. Figure this out
+          std::cout << "check these values - " << buffer4[index] << std::endl;
           this->holdMatrix[i-dimXstartC][j-dimYstartC] = buffer4[index];
           break;
         }
@@ -592,12 +596,12 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
       int index = (i-dimXstart)*this->processorGridDimSize*matrixSize+(pIndex/this->processorGridDimSize)*matrixSize + (j-dimYstart)*this->processorGridDimSize+(pIndex%this->processorGridDimSize);
       this->matrixU[i][j] = matrix_U[index];
       this->matrixL[i][j] = matrix_L[index];
-      //if (this->worldRank == 0)
-      //{
-        //std::cout << this->matrixL[i][j] << " ";
-      //}
       this->matrixUInverse[i][j] = matrixU_inverse[index];
       this->matrixLInverse[i][j] = matrixL_inverse[index];
+      //if (this->worldRank == 0)
+      //{
+        //std::cout << matrixLInverse[i][j] << " ";
+      //}
     }
     //if (this->worldRank == 0)
     //{
@@ -613,13 +617,20 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
 template<typename T>
 void solver<T>::printL()
 {
-  if (this->worldRank == 7)
+  if (this->gridCoords[2] == 0)
   {
+    int mult = this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1];
+    std::cout << "mult - " << mult*(this->matrixL.size()+1) << std::endl;
+    for (int i=0; i<(mult*(this->matrixL.size()+1)); i++)
+    {
+      std::cout << "\n";
+    }
+    std::cout << "My guy - " << this->worldRank << " and (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
     for (int i=0; i<this->matrixL.size(); i++)
     {
       for (int j=0; j<this->matrixL[0].size(); j++)
       {
-        std::cout << this->matrixU[i][j] << " ";
+        std::cout << this->matrixLInverse[i][j] << " ";
       }
       std::cout << "\n";
     }
