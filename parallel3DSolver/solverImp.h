@@ -370,7 +370,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       for (int k=0; k<matrixWindow; k++)
       {
         buffer3[i*matrixWindow+j] += (buffer1[i*matrixWindow+k]*buffer2[j+k*matrixWindow]);	// Watch the indexing on these!! Tricky!
-        std::cout << "in loop, check these values - " << buffer3[i*matrixWindow+j] << std::endl;
+//        std::cout << "in loop, check these values - " << buffer3[i*matrixWindow+j] << std::endl;
       }
     }
   }
@@ -415,7 +415,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
         case 3:
         {
           // tricky. Figure this out
-          this->holdMatrix[i-dimXstartC][dimYstartC] = buffer4[index];
+          this->holdMatrix[i-dimXstartC][j-dimYstartC] = buffer4[index];
           break;
         }
         case 4:
@@ -426,13 +426,14 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
         case 5:
         {
           // tricky. Figure this out
-          std::cout << "check these values - " << buffer4[index] << std::endl;
+  //        std::cout << "check these values - " << buffer4[index] << std::endl;
           this->holdMatrix[i-dimXstartC][j-dimYstartC] = buffer4[index];
           break;
         }
         case 6:
         {
           this->matrixUInverse[i][j] = buffer4[index];
+          break;
         }
       }
     }
