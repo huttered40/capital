@@ -360,8 +360,17 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
         broadcast if non-root.
   */
 
+
+/*
+	The O(n^3) MatMult algorithm needs to be replaced with LAPACK DGEMM routine!
+*/
   // So iterate over everything that we own and calculate its partial sum that will be used in reduction
   std::vector<T> buffer3(matrixWindow*matrixWindow,0.);
+
+  cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasNoTrans,matrixWindow,matrixWindow,matrixWindow,1.,&buffer1[0],matrixWindow,&buffer2[0],matrixWindow,1.,&buffer3[0],matrixWindow);
+
+
+/*
   for (int i=0; i<matrixWindow; i++)
   {
     for (int j=0; j<matrixWindow; j++)
@@ -374,12 +383,14 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       }
     }
   }
+*/
+
 
   // Now we can reduce these values via a reduction onto a root (1st layer)
   std::vector<T> buffer4(matrixWindow*matrixWindow,0.);
-  MPI_Reduce(&buffer3[0],&buffer4[0],buffer3.size(),MPI_DOUBLE,MPI_SUM,0,this->depthComm);  // every depth subCommunicator has a 0 rank
+  MPI_Allreduce(&buffer3[0],&buffer4[0],buffer3.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);  // every depth subCommunicator has a 0 rank
 
-  MPI_Bcast(&buffer4[0],buffer4.size(),MPI_DOUBLE,0,this->depthComm);
+  //MPI_Bcast(&buffer4[0],buffer4.size(),MPI_DOUBLE,0,this->depthComm);
 
   /*
     Now I need a case statement of where to put the guy that was just broadasted...
@@ -515,20 +526,6 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
   std::vector<int> pivotVector(matrixSize);
   LAPACKE_dgetrf(LAPACK_ROW_MAJOR,matrixSize,matrixSize,&realMatrix[0],matrixSize,&pivotVector[0]); // column major???
   
-/*
-  if (this->worldRank == 0)
-  {
-    for (int i=0; i<matrixSize; i++)
-    {
-      for (int j=0; j<matrixSize; j++)
-      {
-        std::cout << realMatrix[i*matrixSize+j] << " ";
-      }
-      std::cout << "\n";
-    }
-    std::cout << "\n";
-  }
-*/
 
 /*
 	Now right now, realMatrix contains both L and U. I need to now get L-Inverse and U-inverse via dtrtri
@@ -556,20 +553,6 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
       }
     }
   }
-/*
-  if (this->worldRank == 0)
-  {
-    for (int i=0; i<matrixSize; i++)
-    {
-      for (int j=0; j<matrixSize; j++)
-      {
-        std::cout << matrix_U[i*matrixSize+j];
-      }
-      std::cout << "\n";
-    }
-    std::cout << "\n";
-  }
-*/
   std::vector<T> matrixU_inverse = matrix_U;		// big copy here
   std::vector<T> matrixL_inverse = matrix_L;
   
@@ -599,20 +582,8 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
       this->matrixL[i][j] = matrix_L[index];
       this->matrixUInverse[i][j] = matrixU_inverse[index];
       this->matrixLInverse[i][j] = matrixL_inverse[index];
-      //if (this->worldRank == 0)
-      //{
-        //std::cout << matrixLInverse[i][j] << " ";
-      //}
     }
-    //if (this->worldRank == 0)
-    //{
-      //std::cout << "\n";
-    //}
   }
-  //if (this->worldRank == 0)
-  //{
-    //std::cout <<" \n";
-  //}
 }
 
 template<typename T>
@@ -636,4 +607,26 @@ void solver<T>::printL()
       std::cout << "\n";
     }
   }
+}
+
+template<typename T>
+void solver<T>::lapackTest(int n)
+{
+  std::vector<T> data(n*n);
+  for (int i=0; i<n; i++)
+  {
+    for (int j=0; j<n; j++)
+    {
+      srand(i*n+j);
+      data[i*n+j] = (rand()%100)*1./100.;
+      if (i==j)
+      {
+        data[i*n+j] += 10.;
+      }
+    }
+  }
+
+  std::vector<int> pivotVector(n);
+  LAPACKE_dgetrf(LAPACK_ROW_MAJOR,n,n,&data[0],n,&pivotVector[0]); // column major???
+  return;
 }
