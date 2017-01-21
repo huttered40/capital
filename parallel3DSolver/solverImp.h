@@ -3,9 +3,6 @@
 template<typename T>
 solver<T>::solver(int rank, int size, int nDims, int matrixDimSize)
 {
-  /*
-	save arguments as member variables
-  */
   this->worldRank = rank;
   this->worldSize = size;
   this->nDims = nDims;						// should always be 3
@@ -14,8 +11,7 @@ solver<T>::solver(int rank, int size, int nDims, int matrixDimSize)
   /*
 	Lets precompute a list of cubes for quick lookUp of cube dimensions based on processor size
   */
-
-  for (int i=1; i<500; i++)					// I can change the bounds [1,1000] later
+  for (int i=1; i<500; i++)
   {
     this->gridSizeLookUp[i*i*i] = i; 				// quick lookup for (grid size, 2d sheet size)
   }
@@ -27,7 +23,6 @@ void solver<T>::startUp(bool &flag)
   /*
 	Look up to see if the total processor size is a cube. If not, then return.
 	We can reduce this restriction after we have it working for a perfect cubic processor grid
-  
 	If found, this->processorGridDimSize will represent the number of processors along a row or column (P^(1/3))
   */
 
@@ -37,22 +32,14 @@ void solver<T>::startUp(bool &flag)
     return;
   }
 
-  this->processorGridDimSize = this->gridSizeLookUp[this->worldSize];	// Identifies number of processors in each dimension. This will tell use how many processes are in rowComm and colComm
+  this->processorGridDimSize = this->gridSizeLookUp[this->worldSize];
 
   /*
 	this->baseCaseSize gives us a size in which to stop recursing in the LURecurse method
-	= n/P^(2/3). The math behind it is written about in my report/other papers
-  
-	HUGE NOTE: I changed this to be n/P, instead of n/P^(2/3), since we are doing it with only P^{2/3} processors
-		instead of all P.
-
-	Just watch out. We need to make sure that n/P > 0, or else weird stuff could happen
+	= n/P^(2/3). The math behind it is written about in my report and other papers
   */
-  this->baseCaseSize = this->matrixDimSize/(this->processorGridDimSize*this->processorGridDimSize); // could be changed to P^(2/3) later if problems occur
+  this->baseCaseSize = this->matrixDimSize/(this->processorGridDimSize*this->processorGridDimSize);
 
-  /*
-    For setting this->gridDims in the future, I may want to use MPI_Dims_create
-  */
   this->gridDims.resize(this->nDims,this->processorGridDimSize);
   this->gridCoords.resize(this->nDims); 
   
@@ -63,12 +50,6 @@ void solver<T>::startUp(bool &flag)
   */
   std::vector<int> boolVec(3,0);
   MPI_Cart_create(MPI_COMM_WORLD, this->nDims, &this->gridDims[0], &boolVec[0], false, &this->grid3D);
-
-  /*  
-	I don't know if I even really need this->gridRank. I'll keep it in here but I may scrap it later.
-	It may also be the source of bugs if I use this->worldRank instead of this->gridRank if I am using the Cart Communicator for something
-  */
-
   MPI_Comm_rank(this->grid3D, &this->grid3DRank);
   MPI_Comm_size(this->grid3D, &this->grid3DSize);
 
@@ -79,7 +60,6 @@ void solver<T>::startUp(bool &flag)
 
   /*
     Secret: Before I create row and column communicators, I need to split grid3D into a separate communicator for its layers.
-      This is key because it is the only way to get 
   */
 
   // 2D (xy) Layer Communicator (split by z coordinate)
@@ -97,13 +77,12 @@ void solver<T>::startUp(bool &flag)
   // Depth Communicator
   MPI_Comm_split(this->grid3D,this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1],this->gridCoords[2],&this->depthComm);
   MPI_Comm_rank(this->depthComm,&this->depthCommRank);
-  MPI_Comm_rank(this->depthComm,&this->depthCommSize);
-
+  MPI_Comm_size(this->depthComm,&this->depthCommSize);
 }
 
 
 /*
-  Lets focus only on a cyclic distribution for now. I can try to add block-cyclic or blocked distributions later.
+  Lets focus only on a cyclic distribution for now.
 */
 
 template <typename T>
@@ -114,12 +93,10 @@ void solver<T>::collectDataCyclic()
 	The same matrix should be laid on top of each.
   
 	I am using the gridCoords[i] array that I attained through my call to MPI_Cart_create.
-  	Notice how the gridCoords[2] value is forgotten, because we treat each z-layer the same. The same matrix A is embedded there.
   
         I also wanted to initialize the results matrices to 0 so that I can just build them up and not have to worry about garbage values
 
-	When writing this code to distribute the values, you have to think of who lives there. Well if we think using the Cartesian rank coordinates,
-		then we dont care what layer (in the z-direction) we are in. We care about the (x,y,?) coordinates. Sublayers exist in a block-cyclic distribution, so that in the first sublayer of the matrix, all processors are used, therefore, we cycle them from (0,1,2,0,1,2,0,1,2,....) in the x-dimension of te cube (when traveling down from the top-front-left corner) to the bottom-front-left corner. And then for each of those, there are the processors in the y-direction as well, which are representing via the nested loop.
+	When writing this code to distribute the values, you have to think of who lives there. If we think using the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care about the (x,y,?) coordinates. Sublayers exist in a block-cyclic distribution, so that in the first sublayer of the matrix, all processors are used, therefore, we cycle them from (0,1,2,0,1,2,0,1,2,....) in the x-dimension of te cube (when traveling down from the top-front-left corner) to the bottom-front-left corner. And then for each of those, there are the processors in the y-direction as well, which are representing via the nested loop.
 
 */
 
@@ -137,7 +114,7 @@ void solver<T>::collectDataCyclic()
       }
     }
 
-    std::vector<T> fillZeros(temp.size(),0.);	// This may throw a compiler error
+    std::vector<T> fillZeros(temp.size(),0.);
     matrixL.push_back(fillZeros);
     matrixU.push_back(fillZeros);
     matrixLInverse.push_back(fillZeros);
@@ -145,14 +122,12 @@ void solver<T>::collectDataCyclic()
     matrixA.push_back(temp);
     matrixB.push_back(fillZeros);		// I could fill this up with A or just start it off at zeros. I reset it anyway 
   }
-
 }
 
 
 /********************************************************************************************************************************************/
 // This divides the program. If anything above this point is incorrect, then everything below will be incorrect as well.
 /********************************************************************************************************************************************/
-
 
 
 
@@ -167,8 +142,6 @@ void solver<T>::solve()
 	Note: I changed the arguments from this->matrixDimSize, which doesnt help given the fact that we are dealing only with the 2-d vectors
 		that each process holds, to this->matrixA.size(), which does represent what we are cutting up
   
-	Note: There may be bugs in how I pass in these 5 arguments to LURecurse. Look for this if weird things occur.
-
 	Check the final argument. For safety reasons, I changed it. Be careful!
   */
 
@@ -191,39 +164,37 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
 
   /*
 	Recursive case -> Keep recursing on the top-left half
-	Then I need to solve the recursive matrix multiplications. This is non-trivial because I need to spread out the data.
-	Then I recurse again.
   */
 
-  LURecurse(dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,matrixTrack);
+  LURecurse(dimXstart,dimXend-(matrixWindow>>1),dimYstart,dimYend-(matrixWindow>>1),(matrixWindow>>1),(matrixSize>>1),matrixTrack);
   
-  MM(dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,0,matrixTrack);
+  MM(dimXstart+(matrixWindow>>1),dimXend,dimYstart,dimYend-(matrixWindow>>1),dimXstart,dimXend-(matrixWindow>>1),dimYstart,dimYend-(matrixWindow>>1),dimXstart+(matrixWindow>>1),dimXend,dimYstart,dimYend-(matrixWindow>>1),(matrixWindow>>1),(matrixSize>>1),0,matrixTrack);
   
-  MM(dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,matrixWindow/2,matrixSize/2,1,matrixTrack);
+  MM(dimXstart,dimXend-(matrixWindow>>1),dimYstart,dimYend-(matrixWindow>>1),dimXstart,dimXend-(matrixWindow>>1),dimYstart+(matrixWindow>>1),dimYend,dimXstart,dimXend-(matrixWindow>>1),dimYstart+(matrixWindow>>1),dimYend,(matrixWindow>>1),(matrixSize>>1),1,matrixTrack);
 
   //Below is the tricky one. We need to create a vector via MM(..), then subtract it from A via some sort easy method...
-  MM(dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,2,matrixTrack);
+  MM(dimXstart+(matrixWindow>>1),dimXend,dimYstart,dimYend-(matrixWindow>>1),dimXstart,dimXend-(matrixWindow>>1),dimYstart+(matrixWindow>>1),dimYend,dimXstart,dimXend-(matrixWindow>>1),dimYstart,dimYend-(matrixWindow>>1),(matrixWindow>>1),(matrixSize>>1),2,matrixTrack);
 
   // Big question: LURecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the TRSM. How should the program access this and deal with it????
 
-  for (int i=0; i<matrixWindow/2; i++)
+  for (int i=0; i<(matrixWindow>>1); i++)
   {
-    for (int j=0; j<matrixWindow/2; j++)
+    for (int j=0; j<(matrixWindow>>1); j++)
     {
-      this->matrixB[dimXstart+matrixWindow/2+i][dimYstart+matrixWindow/2+j] = this->matrixA[dimXstart+matrixWindow/2+i][dimYstart+matrixWindow/2+j] - this->holdMatrix[i][j];
+      this->matrixB[dimXstart+(matrixWindow>>1)+i][dimYstart+(matrixWindow>>1)+j] = this->matrixA[dimXstart+(matrixWindow>>1)+i][dimYstart+(matrixWindow>>1)+j] - this->holdMatrix[i][j];
     }
   }
 
-  LURecurse(dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,matrixWindow/2,matrixSize/2,1);  // HALT! Change the track!
+  LURecurse(dimXstart+(matrixWindow>>1),dimXend,dimYstart+(matrixWindow>>1),dimYend,(matrixWindow>>1),(matrixSize>>1),1);  // HALT! Change the track!
 
   // These last 4 matrix multiplications are for building up our LInverse and UInverse matrices
-  MM(dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,3,matrixTrack);
+  MM(dimXstart+(matrixWindow>>1),dimXend,dimYstart,dimYend-(matrixWindow>>1),dimXstart,dimXend-(matrixWindow>>1),dimYstart,dimYend-(matrixWindow>>1),dimXstart,dimXend-(matrixWindow>>1),dimYstart,dimYend-(matrixWindow>>1),(matrixWindow>>1),(matrixSize>>1),3,matrixTrack);
 
-  MM(dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart+matrixWindow/2,dimXend,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,4,matrixTrack);
+  MM(dimXstart+(matrixWindow>>1),dimXend,dimYstart+(matrixWindow>>1),dimYend,dimXstart,dimXend-(matrixWindow>>1),dimYstart,dimYend-(matrixWindow>>1),dimXstart+(matrixWindow>>1),dimXend,dimYstart,dimYend-(matrixWindow>>1),(matrixWindow>>1),(matrixSize>>1),4,matrixTrack);
 
-  MM(dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,dimXstart+matrixWindow/2,dimXend,dimYstart+matrixWindow/2,dimYend,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,matrixWindow/2,matrixSize/2,5,matrixTrack);
+  MM(dimXstart,dimXend-(matrixWindow>>1),dimYstart+(matrixWindow>>1),dimYend,dimXstart+(matrixWindow>>1),dimXend,dimYstart+(matrixWindow>>1),dimYend,dimXstart,dimXend-(matrixWindow>>1),dimYstart,dimYend-(matrixWindow>>1),(matrixWindow>>1),(matrixSize>>1),5,matrixTrack);
 
-  MM(dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart,dimYend-matrixWindow/2,dimXstart,dimXend-matrixWindow/2,dimYstart+matrixWindow/2,dimYend,matrixWindow/2,matrixSize/2,6,matrixTrack);
+  MM(dimXstart,dimXend-(matrixWindow>>1),dimYstart,dimYend-(matrixWindow>>1),dimXstart,dimXend-(matrixWindow>>1),dimYstart,dimYend-(matrixWindow>>1),dimXstart,dimXend-(matrixWindow>>1),dimYstart+(matrixWindow>>1),dimYend,(matrixWindow>>1),(matrixSize>>1),6,matrixTrack);
 }
 
 /*
@@ -238,9 +209,9 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
     I need two broadcasts, then a reduction, then a broadcast
   */
 
-  std::vector<T> buffer1(matrixWindow*matrixWindow);
-  std::vector<T> buffer2(matrixWindow*matrixWindow);
-  if (this->gridCoords[0] == this->gridCoords[2])     // different matches on each of the P^(1/3) layers
+  std::vector<T> buffer1(matrixWindow*matrixWindow,-24.);
+  std::vector<T> buffer2(matrixWindow*matrixWindow,0.);
+  if (this->rowCommRank == this->gridCoords[2])     // different matches on each of the P^(1/3) layers
   {
     for (int i=dimXstartA; i<dimXendA; i++)
     {
@@ -289,14 +260,21 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
         }
       }
     }
-    MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2] /*I may want to change this*/ ,this->rowComm);
+    MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->rowComm);
   }
   else
   {
-    MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2] /*I may want to change this*/ ,this->rowComm);
+    MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->rowComm);
+/*
+    for (int i=0; i<buffer1.size(); i++)
+    {
+      std::cout << "Check these buffer1 values - " << buffer1[i] << std::endl;
+    }
+*/
   }
- 
-  if (this->gridCoords[1] == this->gridCoords[2])    // May want to recheck this later if bugs occur.
+
+
+  if (this->colCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
   {
     for (int i=dimXstartB; i<dimXendB; i++)
     {
@@ -346,11 +324,17 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
         }
       }
     }
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2] /*I may want to change this*/ ,this->colComm);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
   }
   else
   {
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2] /*I may want to change this*/ ,this->colComm);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
+/*
+    for (int i=0; i<buffer2.size(); i++)
+    {
+      std::cout << "Check these buffer2 values - " << buffer2[i] << std::endl;
+    }
+*/
   }
 
   /*
@@ -367,6 +351,16 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
   // So iterate over everything that we own and calculate its partial sum that will be used in reduction
   std::vector<T> buffer3(matrixWindow*matrixWindow,0.);
 
+/*
+  if (this->worldRank == 3)
+  {
+    for (int i=0; i<buffer1.size(); i++)
+    {
+      std::cout << "check buffer1[i] - " << buffer1[i] << "\n";
+      std::cout << "check buffer2[i] - " << buffer2[i] << "\n";
+    }
+  }
+*/
   cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasNoTrans,matrixWindow,matrixWindow,matrixWindow,1.,&buffer1[0],matrixWindow,&buffer2[0],matrixWindow,1.,&buffer3[0],matrixWindow);
 
 
@@ -388,15 +382,22 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
 
   // Now we can reduce these values via a reduction onto a root (1st layer)
   std::vector<T> buffer4(matrixWindow*matrixWindow,0.);
+/*
+  if (this->worldRank == 3)
+  {
+    for (int i=0; i<buffer3.size(); i++)
+    {
+      std::cout << "Check buffer3[index] - " << buffer3[i] << std::endl;
+    }
+  }
+*/
   MPI_Allreduce(&buffer3[0],&buffer4[0],buffer3.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);  // every depth subCommunicator has a 0 rank
-
-  //MPI_Bcast(&buffer4[0],buffer4.size(),MPI_DOUBLE,0,this->depthComm);
 
   /*
     Now I need a case statement of where to put the guy that was just broadasted...
   */
 
-  this->holdMatrix.clear();
+  this->holdMatrix.clear();				// These 3 lines have the potential to cause the bug I am looking for
   std::vector<T> tempBuff(matrixWindow,0.);
   this->holdMatrix.resize(matrixWindow,tempBuff);
   
@@ -589,20 +590,14 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
 template<typename T>
 void solver<T>::printL()
 {
-  if (this->gridCoords[2] == 0)
+  // We only need to print out a single layer, due to replication of L on each layer
+  if ((this->gridCoords[2] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[0] == 1))
   {
-    int mult = this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1];
-    std::cout << "mult - " << mult*(this->matrixL.size()+1) << std::endl;
-    for (int i=0; i<(mult*(this->matrixL.size()+1)); i++)
-    {
-      std::cout << "\n";
-    }
-    std::cout << "My guy - " << this->worldRank << " and (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
     for (int i=0; i<this->matrixL.size(); i++)
     {
       for (int j=0; j<this->matrixL[0].size(); j++)
       {
-        std::cout << this->matrixLInverse[i][j] << " ";
+        std::cout << this->matrixU[i][j] << " ";
       }
       std::cout << "\n";
     }
@@ -628,5 +623,25 @@ void solver<T>::lapackTest(int n)
 
   std::vector<int> pivotVector(n);
   LAPACKE_dgetrf(LAPACK_ROW_MAJOR,n,n,&data[0],n,&pivotVector[0]); // column major???
+//  for (int i=0; i<n; i++)
+//  {
+//    data[i*n+i] = 1.;
+//  }
+  //LAPACKE_dtrtri(LAPACK_ROW_MAJOR,'L','N',n,&data[0],n); 
+  //LAPACKE_dtrtri(LAPACK_ROW_MAJOR,'L','N',matrixSize,&matrixL_inverse[0],matrixSize);
+  for (int i=0; i<n; i++)
+  {
+    for (int j=0; j<n; j++)
+    {
+      std::cout << data[i*n+j] << " ";
+    }
+    std::cout << "\n";
+  }
   return;
+}
+
+template<typename T>
+void solver<T>::solveScalapack()
+{
+  PDGETRF(&this->matrixA.size(), &this->matrixA.size(), &this->matrixA[...][...],....... lots of more stuff t keep track of);
 }

@@ -15,6 +15,9 @@
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
 #include "./../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
+// Need this to use fortran scalapack function
+extern void PDGETRF(int *m, int *n, char *A, int *iA, int *jA, int *desca, int *ipiv, int *info);
+
 template <typename T>	// I want to be able to use integers, as well as floating points
 class solver
 {
@@ -24,7 +27,9 @@ public:
   void startUp(bool &flag);
   void collectDataCyclic();
   void solve();
+  void solveScalapack();
   void printL();
+  void lapackTest(int n);
 
 private:
 

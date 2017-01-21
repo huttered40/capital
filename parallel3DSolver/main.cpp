@@ -20,10 +20,26 @@ int main(int argc, char *argv[])
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
-  solver<double> mySolver(rank,size,3,32);		// 8 might not be the best matrix size to use
+  solver<double> mySolver(rank,size,3,4096);		// 8 might not be the best matrix size to use
+
+  // Bug check here : Why isnt there a call to startUp and collectDataCyclic methods before lapackTest??
+  if (size == 1)
+  {
+    clock_t start;
+    double duration;
+    start = clock(); 	// start time
+    mySolver.lapackTest(16);
+    duration = (clock() - start) / (double)CLOCKS_PER_SEC;
+
+    cout << "Time - " << duration << endl;
+    MPI_Finalize();
+    return 0; 
+  }
+
   mySolver.startUp(tracker);
   if (tracker)
   {
+    cout << "Number of processors does not fit\n";
     MPI_Finalize();
     return 0;
   }
@@ -33,7 +49,9 @@ int main(int argc, char *argv[])
   clock_t start;
   double duration;
   start = clock(); 	// start time
-  mySolver.solve();	// run algorithm
+
+  //mySolver.solveScalapack();	// run benchmark
+  mySolver.solve();		// run algorithm
 
   duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
