@@ -113,6 +113,7 @@ void solver<T>::collectDataCyclic()
   matrixL.resize(temp);
   matrixLInverse.resize(temp);
   matrixB.resize(temp);						// I could fill this up with A or just start it off at zeros. I reset it anyway 
+
 }
 
 
@@ -165,7 +166,7 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
   //Below is the tricky one. We need to create a vector via MM(..), then subtract it from A via some sort easy method...
   MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart+shift,dimYend,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1,matrixTrack);
 
-  // Big question: LURecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the TRSM. How should the program access this and deal with it????
+  // Big question: LURecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the Schur Complement.
 
   // Note that the below code has room for optimization via some call to LAPACK, but I would have to loop over and put into a 1d array first and then
   // pack it back into my 2d array. So in general, I need to look at whether modifying the code to use 1D vectors instead of 2D vectors is worth it.
@@ -214,17 +215,19 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
     {
       case 0:
       {
-        // Triangular -> (lower,square)
+        // Triangular -> (lower,square) -> Note for further optimization. This copy loop may not be needed. I might be able to purely send in &this->matrixLInverse[0] into broadcast
         buffer1.resize(matrixWindow*(matrixWindow+1)>>1,0.);
-        int index = 0;
-        int startOffset = (dimXstartA*(dimXstartA-1)>>1);
+        int startOffset = (dimXstartA*(dimXstartA+1)>>1);		// I changed this to use a + instead of a -
+        int index1 = 0;
+        int index2 = startOffset + dimYstartA;
         for (int i=0; i<matrixWindow; i++)
         {
-          int temp = startOffset + (i+1)*dimYstartA;		// optimization I learned from HPC book
           for (int j=0; j<i+1; j++)
           {
-            buffer1[index++] = this->matrixLInverse[temp+j];
+            std::cout << "A1 index1 - " << index1 << ", buffer1 size - " << buffer1.size() << ", index2 - " << index2 << ", matrixLInverse size - " << this->matrixLInverse.size() << std::endl;
+            buffer1[index1++] = this->matrixLInverse[index2++];
           }
+          index2 += dimYstartA;
         }
         break;
       }
@@ -232,15 +235,17 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       {
         // Not triangular
         buffer1.resize(matrixWindow*matrixWindow);
-        int index = 0;
-        int startOffset = (dimXstartA*(dimXstartA-1))>>1;
+        int startOffset = (dimXstartA*(dimXstartA+1))>>1;
+        int index1 = 0;
+        int index2 = startOffset + dimYstartA;
         for (int i=0; i<matrixWindow; i++)
         {
-          int temp = startOffset+(i+1)*dimYstartA;
           for (int j=0; j<matrixWindow; j++)
           {
-            buffer1[index++] = this->matrixL[temp+j];
+            std::cout << "A2 index1 - " << index1 << ", buffer1 size - " << buffer1.size() << ", index2 - " << index2 << ", matrixL size - " << this->matrixL.size() << std::endl;
+            buffer1[index1++] = this->matrixL[index2++];
           }
+          index2 += dimYstartA;
         }
         break;
       }
@@ -248,15 +253,17 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       {
         // Not Triangular
         buffer1.resize(matrixWindow*matrixWindow);
-        int index = 0;
-        int startOffset = (dimXstartA*(dimXstartA-1))>>1;
+        int startOffset = (dimXstartA*(dimXstartA+1))>>1;
+        int index1 = 0;
+        int index2 = startOffset + dimYstartA;
         for (int i=0; i<matrixWindow; i++)
         {
-          int temp = startOffset+(i+1)*dimYstartA;
           for (int j=0; j<matrixWindow; j++)
           {
-            buffer1[index++] = this->matrixL[temp+j];
+            std::cout << "A3 index1 - " << index1 << ", buffer1 size - " << buffer1.size() << ", index2 - " << index2 << ", matrixL size - " << this->matrixL.size() << std::endl;
+            buffer1[index1++] = this->matrixL[index2++];
           }
+          index2 += dimYstartA;
         }
         break;
       }
@@ -264,16 +271,18 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       {
         // Triangular -> Lower
         // As noted above, size depends on whether or not the gridCoords lie in the lower-triangular portion of first block
-        int index = 0;
-        int startOffset = (dimXstartA*(dimXstartA-1))>>1;
         buffer1.resize((matrixWindow*(matrixWindow+1))>>1);
+        int startOffset = (dimXstartA*(dimXstartA+1))>>1;
+        int index1 = 0;
+        int index2 = startOffset + dimYstartA;
         for (int i=0; i<matrixWindow; i++)		// start can take on 2 values corresponding to the situation above: 1 or 0
         {
-          int temp = startOffset+(i+1)*dimYstartA;
           for (int j=0; j<i+1; j++)
           {
-            buffer1[index++] = this->matrixLInverse[temp+j];
+            std::cout << "A4 index1 - " << index1 << ", buffer1 size - " << buffer1.size() << ", index2 - " << index2 << ", matrixL size - " << this->matrixLInverse.size() << std::endl;
+            buffer1[index1++] = this->matrixLInverse[index2++];
           }
+          index2 += dimYstartA;
         }
         break;
       }        
@@ -320,31 +329,36 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       case 0:
       {
         //Not Triangular
-        int index = 0;
-        int startOffset = (dimXstartB*(dimXstartB-1))>>1;
-        buffer2.resize(matrixWindow*matrixWindow);	// change to bitshift later
-        for (int i=0; i<matrixWindow; i++)		// start can take on 2 values corresponding to the situation above: 1 or 0
+        buffer2.resize(matrixWindow*matrixWindow);
+        int startOffset = (dimXstartB*(dimXstartB+1))>>1;
+        int index1 = 0;
+        int index2 = startOffset + dimYstartB;
+        for (int i=0; i<matrixWindow; i++)
         {
-          int temp = startOffset+(i+1)*dimYstartB;
           for (int j=0; j<matrixWindow; j++)
           {
-            buffer2[index++] = (matrixTrack ? (-1)*this->matrixB[temp+j] : (-1)*this->matrixA[temp+j]);
+            std::cout << "B1 index1 - " << index1 << ", buffer2 size - " << buffer2.size() << ", index2 - " << index2 << ", matrixA/B size - " << this->matrixA.size() << std::endl;
+            buffer2[index1++] = (matrixTrack ? (-1)*this->matrixB[index2++] : (-1)*this->matrixA[index2++]);
           }
+          index2 += dimYstartB;
         }
         break;
       }
       case 1:
       {
         // Not Triangular, but transpose
-        int index = 0;
-        int startOffset = (dimXstartB*(dimXstartB-1))>>1;
         buffer2.resize(matrixWindow*matrixWindow);
+        int startOffset = (dimXstartB*(dimXstartB+1))>>1;
+        int index1 = 0;
         for (int i=0; i<matrixWindow; i++)
         {
-          int temp = startOffset+i;
+          int index2 = startOffset + dimYstartB + i;	       		// I think this is right. index2 must get reset each time
+          int temp = dimYstartB+1+matrixWindow;				// I think this is right
           for (int j=0; j<matrixWindow; j++)
           {
-            buffer2[index++] = this->matrixL[temp+(j+1)*dimYstartB];	// Transpose has poor spatial locality
+            std::cout << "B2 index1 - " << index1 << ", buffer2 size - " << buffer2.size() << ", index2 - " << index2 << ", matrixL size - " << this->matrixL.size() << std::endl;
+            buffer2[index1++] = this->matrixL[index2];                  // Transpose has poor spatial locality
+            index2 += temp+j;
           }
         }
         break;
@@ -353,32 +367,37 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       {
         // Triangular -> Lower
         // As noted above, size depends on whether or not the gridCoords lie in the lower-triangular portion of first block
-        int index = 0;
-        int startOffset = (dimXstartB*(dimXstartB-1))>>1;
-        buffer2.resize((matrixWindow*(matrixWindow+1)/2));	// change to bitshift later
-        for (int i=0; i<matrixWindow; i++)		// start can take on 2 values corresponding to the situation above: 1 or 0
+        buffer2.resize((matrixWindow*(matrixWindow+1))>>1);	// change to bitshift later
+        int startOffset = (dimXstartB*(dimXstartB+1))>>1;
+        int index1 = 0;
+        int index2 = startOffset + dimYstartB;
+        for (int i=0; i<matrixWindow; i++)
         {
-          int temp = startOffset+(i+1)*dimYstartB;
           for (int j=0; j<i+1; j++)
           {
-            buffer2[index++] = this->matrixLInverse[temp+j];
+            std::cout << "B3 index1 - " << index1 << ", buffer2 size - " << buffer2.size() << ", index2 - " << index2 << ", matrixLInverse size - " << this->matrixLInverse.size() << std::endl;
+            buffer2[index1++] = this->matrixLInverse[index2++];
           }
+          index2 += dimYstartB;
         }
         break;
       }
       case 3:
       {
-        // Not Triangular
-        int index = 0;
-        //int startOffset = (dimXstartB*(dimXstartB-1))>>1;
+        // Not Triangular, but this requires a special traversal because we are using this->holdMatrix
         buffer2.resize(matrixWindow*matrixWindow);
+        //int startOffset = (dimXstartB*(dimXstartB-1))>>1;
+        int index1 = 0;
+        int index2 = 0;
+        //int index2 = startOffset + dimYstartB;
         for (int i=0; i<matrixWindow; i++)
         {
-          int temp = i*matrixWindow;
           for (int j=0; j<matrixWindow; j++)
           {
-            buffer2[index++] = this->holdMatrix[temp+j];		// this vector is built special
+            std::cout << "B4 index1 - " << index1 << ", buffer2 size - " << buffer2.size() << ", index2 - " << index2 << ", holdMatrix size - " << this->holdMatrix.size() << std::endl;
+            buffer2[index1++] = this->holdMatrix[index2++];		// this vector is built special
           }
+          //index2 += dimYstartB;
         }
         break;
       }
@@ -438,15 +457,15 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
     case 0:
     {
       // Triangular Multiplicaton -> (lower,square)
-      int start = (matrixWindow*(matrixWindow-1))>>1;
       std::vector<T> updatedVector(matrixWindow*matrixWindow,0.);
-      start = 0;
       int index = 0;
-      for (int i = 0; i<matrixWindow-start; i++)
+      for (int i = 0; i<matrixWindow; i++)
       {
-        for (int j = i+start; j < matrixWindow; j++)	// I think there is wrong
+        int temp = i*matrixWindow;
+        for (int j = 0; j <= i; j++)
         {
-          updatedVector[i*matrixWindow+j] = buffer2[index++];
+          std::cout << "D1 index1 - " << index << ", buffer2 size - " << buffer2.size() << ", index2 - " << temp+j << ", updatedVector size - " << updatedVector.size() << std::endl;
+          updatedVector[temp+j] = buffer2[index++];
         }
       }
 
@@ -466,15 +485,14 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
     case 2:
     {
       // Triangular Multiplication -> (square,lower)
-      int start = matrixWindow*(matrixWindow-1)/2;
       std::vector<T> updatedVector(matrixWindow*matrixWindow,0.);
-      start = 0;
       int index = 0;
-      for (int i = start; i<matrixWindow; i++)
+      for (int i = 0; i<matrixWindow; i++)
       {
+        int temp = i*matrixWindow;
         for (int j = 0; j <= i; j++)	// this could be wrong ???
         {
-          updatedVector[i*matrixWindow+j] = buffer2[index++];
+          updatedVector[temp+j] = buffer2[index++];
         }
       }
 
@@ -485,15 +503,14 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
     case 3:
     {
       // Triangular Multiplication -> (lower,square)
-      int start = matrixWindow*(matrixWindow-1)/2;
       std::vector<T> updatedVector(matrixWindow*matrixWindow,0.);
-      start = 0;
       int index = 0;
-      for (int i = start; i<matrixWindow; i++)
+      for (int i = 0; i<matrixWindow; i++)
       {
+        int temp = i*matrixWindow;
         for (int j = 0; j <= i; j++)	// This could be wrong?
         {
-          updatedVector[i*matrixWindow+j] = buffer1[index++];
+          updatedVector[temp+j] = buffer1[index++];
         }
       }
 
@@ -504,66 +521,74 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
   }
 
   /*
-    Now I need a case statement of where to put the guy that was just broadasted...
+    Now I need a case statement of where to put the guy that was just broadasted.
   */
-
 
   this->holdMatrix.resize(matrixWindow*matrixWindow,0.);
   switch (key)
   {
     case 0:	// Beware, this is a traspose
     {
-      int index = 0;
-      int startOffset = (dimXstartC*(dimXstartC-1))>>1;
+      // Square and Transpose
+      int startOffset = (dimXstartC*(dimXstartC+1))>>1;
+      int index1 = 0;
       for (int i=0; i<matrixWindow; i++)
       {
-        int temp = startOffset+i;
+        int index2 = startOffset + dimYstartB + i;	       		// I think this is right. index2 must get reset each time
+        int temp = dimYstartB+1+matrixWindow;				// I think this is right
         for (int j=0; j<matrixWindow; j++)
         {
-          this->matrixL[temp + (j+1)*dimYstartC] = buffer4[index++];			// this could be wrong
+          std::cout << "C1 index1 - " << index1 << ", buffer4 size - " << buffer4.size() << ", index2 - " << index2 << ", matrixL size - " << this->matrixL.size() << std::endl;
+          this->matrixL[index2] = buffer4[index1++];                    // Transpose has poor spatial locality
+          index2 += temp+j;
         }
       }
       break;
     }
     case 1:
     {
-      int index = 0;
-      //int startOffset = (dimXstartC*(dimXstartC+1))>>1;
+      int index1 = 0;
       for (int i=0; i<matrixWindow; i++)
       {
-        //int temp = 
+        int temp = i*matrixWindow;
         for (int j=0; j<matrixWindow; j++)
         {
-          this->holdMatrix[i*matrixWindow+j] = buffer4[index++];
+          std::cout << "C2 index1 - " << index1 << ", buffer4 size - " << buffer4.size() << ", index2 - " << temp+j << ", holdMatrix size - " << this->holdMatrix.size() << std::endl;
+          this->holdMatrix[temp+j] = buffer4[index1++];
         }
       }
       break;
     }
     case 2:
     {
-      int index = 0;
-      int startOffset = (dimXstartC*(dimXstartC-1))>>1;
+      //int startOffset = (dimXstartC*(dimXstartC+1))>>1;
+      int index1 = 0;
+      //int index2 = startOffset + dimYstartC;
+      int index2 = 0;
       for (int i=0; i<matrixWindow; i++)
       {
-        int temp = startOffset+(i+1)*dimYstartC;;
         for (int j=0; j<matrixWindow; j++)
         {
-          this->holdMatrix[temp+j] = buffer4[index++];
+          std::cout << "C3 index1 - " << index1 << ", buffer4 size - " << buffer4.size() << ", index2 - " << index2 << ", holdMatrix size - " << this->holdMatrix.size() << std::endl;
+          this->holdMatrix[index2++] = buffer4[index1++];
         }
+        //index2 += dimYstartC;
       }
       break;
     }
     case 3:
     {
-      int index = 0;
-      int startOffset = (dimXstartC*(dimXstartC-1))>>1;
+      int startOffset = (dimXstartC*(dimXstartC+1))>>1;
+      int index1 = 0;
+      int index2 = startOffset + dimYstartC;
       for (int i=0; i<matrixWindow; i++)
       {
-        int temp = startOffset+(i+1)*dimYstartC;
         for (int j=0; j<matrixWindow; j++)
         {
-          this->matrixLInverse[temp+i] = buffer4[index++];
+          std::cout << "C4 index1 - " << index1 << ", buffer4 size - " << buffer4.size() << ", index2 - " << index2 << ", matrixLInverse size - " << this->matrixLInverse.size() << std::endl;
+          this->matrixLInverse[index2++] = buffer4[index1++];
         }
+        index2 += dimYstartC;
       }
       break;
     }
