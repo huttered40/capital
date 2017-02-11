@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
-  solver<double> mySolver(rank,size,3,16);		// 8 might not be the best matrix size to use
+  solver<double> mySolver(rank,size,3,4096);		// 8 might not be the best matrix size to use
 
   // Bug check here : Why isnt there a call to startUp and collectDataCyclic methods before lapackTest??
   if (size == 1)
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     cout << "Max algorithm runtime - " << totalMax << endl;
   }
   // If this works, then I can print out the data to see if its correct
-  mySolver.printL();
+  //mySolver.printL();
 
   MPI_Finalize();
   return 0;
