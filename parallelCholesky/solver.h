@@ -16,7 +16,9 @@
 #include "./../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
 // Need this to use fortran scalapack function
-extern void PDGETRF(int *m, int *n, char *A, int *iA, int *jA, int *desca, int *ipiv, int *info);
+extern void PDPOTRF(int *m, int *n, char *A, int *iA, int *jA, int *desca, int *ipiv, int *info);
+//extern void BLACS_...
+//extern void BLACS_...
 
 template <typename T>	// I want to be able to use integers, as well as floating points
 class solver
@@ -29,13 +31,16 @@ public:
   void solve();
   void solveScalapack();
   void printL();
-  void lapackTest(int n);
+  void lapackTest(std::vector<T> &data, std::vector<T> &dataInverse, int n);
+  void compareSolutions();
+  void printInputA();
 
 private:
 
   void LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixTrack);
   void MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int dimXstartB,int dimXendB,int dimYstartB,int dimYendB,int dimXstartC, int dimXendC, int dimYstartC, int dimYendC, int matrixWindow,int matrixSize, int key, int matrixTrack);
   void LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixTrack);
+  void fillTranspose(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int dir);
 
   std::vector<T> matrixA;  	// track 1 matrix
   std::vector<T> matrixB;		// track 2 matrix
@@ -50,6 +55,7 @@ private:
   std::vector<T> matrixL;
   std::vector<T> matrixLInverse;
   std::vector<T> holdMatrix;	// this guy needs to hold the temporary matrix and can keep resizing himself
+  std::vector<T> holdTransposeL;
 
   int matrixDimSize;	// nxn matrix, where n=matrixDimSize
   int nDims;		// nDims represents the numDims of the processor grid

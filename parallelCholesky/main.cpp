@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
-  solver<double> mySolver(rank,size,3,4096);		// 8 might not be the best matrix size to use
+  solver<double> mySolver(rank,size,3,32);		// 8 might not be the best matrix size to use
 
   // Bug check here : Why isnt there a call to startUp and collectDataCyclic methods before lapackTest??
   if (size == 1)
@@ -28,7 +28,10 @@ int main(int argc, char *argv[])
     clock_t start;
     double duration;
     start = clock(); 	// start time
-    mySolver.lapackTest(16);
+    int trySize = 16;
+    std::vector<double> data(trySize*trySize);
+    std::vector<double> dataInverse(trySize*trySize);
+    mySolver.lapackTest(data, dataInverse, trySize);
     duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
     cout << "Time - " << duration << endl;
@@ -44,6 +47,7 @@ int main(int argc, char *argv[])
     return 0;
   }
   mySolver.collectDataCyclic();
+  mySolver.printInputA();
   // So I start my timings after the data is distributed, which involved no communication
   clock_t start;
   double duration;
@@ -68,6 +72,9 @@ int main(int argc, char *argv[])
   }
   // If this works, then I can print out the data to see if its correct
   //mySolver.printL();
+
+//  mySolver.compareSolutions();
+//  mySolver.printInputA();
 
   MPI_Finalize();
   return 0;

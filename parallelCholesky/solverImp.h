@@ -66,8 +66,8 @@ void solver<T>::startUp(bool &flag)
 
   // 2D (xy) Layer Communicator (split by z coordinate)
   MPI_Comm_split(this->grid3D, this->gridCoords[2],this->grid3DRank,&this->layerComm);
-  MPI_Comm_rank(this->layerComm,&layerCommRank);
-  MPI_Comm_size(this->layerComm,&layerCommSize);
+  MPI_Comm_rank(this->layerComm,&this->layerCommRank);
+  MPI_Comm_size(this->layerComm,&this->layerCommSize);
   // Row Communicator
   MPI_Comm_split(this->layerComm, this->gridCoords[0],this->gridCoords[1],&this->rowComm);
   MPI_Comm_rank(this->rowComm,&this->rowCommRank);
@@ -100,21 +100,47 @@ void solver<T>::collectDataCyclic()
   // Instead, I will only give values for the upper-portion of A. At a later date, I can change the code to only
   // allocate a triangular portion instead of storing half as zeros.
 
+  // New comment (March 1)
+ 
+/*
+  if (this->gridCoords[2] == 0)
+  {
+    std::cout << "check - " << this->layerCommRank << "        " << this->gridCoords[0] << " " << this->gridCoords[1] << std::endl;
+  }
+*/
+
   for (int i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
   {
     this->localSize = 0;	// Its fine to keep resetting this
     for (int j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
     {
-      srand(i*this->matrixDimSize + j);			// this is very important. Needs to be the same for all processors
+
+      if (i > j)
+      {
+        srand(i*this->matrixDimSize + j);			// this is very important. Needs to be the same for all processors
+      }
+      else							// wont matter either way
+      {
+        srand(j*this->matrixDimSize + i);			// this is very important. Needs to be the same for all processors
+      }
     							// completely based on where we are in entire matrix
-      if (i < j)  // if lower-triangular, I can just give a zero
-      {
-        matrixA.push_back(0.);
-      }
-      else
-      {
-        matrixA.push_back((rand()%100)*1./100.);
-      }
+//      if (i < j)  // if upper-triangular, I can just give a zero
+//      {
+//        matrixA.push_back(0.);
+//      }
+//      else
+//      {
+      matrixA.push_back((rand()%100)*1./100.);
+//      if ((i==1) && (j==2))
+//      {
+//        std::cout << "(" << i << "," << j << ") - " << this->matrixA[matrixA.size()-1] << std::endl;
+//      }
+//      if ((i==2) && (j==1))
+//      {
+//        std::cout << "(" << i << "," << j << ") - " << this->matrixA[matrixA.size()-1] << std::endl;
+//      }
+//      }
+//      if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 0)) { std::cout << "what - " << i << "," << j << " " << this->matrixA[this->matrixA.size()-1] << std::endl; }
       if (i==j)
       {
         matrixA[matrixA.size()-1]+=10.;		// we want all diagonals to be dominant.
@@ -122,15 +148,25 @@ void solver<T>::collectDataCyclic()
       this->localSize++;
     }
   }
-  for (int i=0; i<this->localSize; i++)
+  // This next nested loop section is special because it guarantees that matrixA is symmetric.
+  // This is a slow, but safe way to do it. Can be optimizes later, but it doesnt count in the algorithm runtime
+
+/*
+  if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 0))
   {
-    for (int j=0; j<=i; j++)
+    std::cout << "About to print what processor (0,1,0) owns\n";
+    for (int i=0; i<this->localSize; i++)
     {
-      this->matrixA[j*this->localSize+i] = this->matrixA[i*this->localSize+j];
+      for (int j=0; j<this->localSize; j++)
+      {
+        std::cout << this->matrixA[i*this->localSize+j] << " ";
+      }
+      std::cout << "\n";
     }
   }
-
-  int temp = this->matrixA.size()-((this->localSize*(this->localSize-1))>>1);                   // n^2 - n(n-1)/2
+*/
+  
+  int temp = ((this->localSize*(this->localSize+1))>>1);                   // n^2 - n(n-1)/2
   this->matrixL.resize(temp);
   this->matrixLInverse.resize(temp);
 /*
@@ -188,13 +224,18 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
   int shift = matrixWindow>>1;
   LURecurse(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),matrixTrack);
   
-  MM(dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart+shift,dimYend,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0,matrixTrack);
+  // Add MPI_SendRecv in here
+  fillTranspose(dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, 0);
+
+  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0,matrixTrack);
+
+  fillTranspose(dimXstart+shift, dimXend, dimYstart, dimYend-shift, shift, 1);
+  
 
   //Below is the tricky one. We need to create a vector via MM(..), then subtract it from A via some sort easy method...
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1,matrixTrack);
+  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1,matrixTrack);
 
   // Big question: LURecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the Schur Complement.
-
   // Note that the below code has room for optimization via some call to LAPACK, but I would have to loop over and put into a 1d array first and then
   // pack it back into my 2d array. So in general, I need to look at whether modifying the code to use 1D vectors instead of 2D vectors is worth it.
 
@@ -209,7 +250,6 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
     {
       this->matrixB[temp+j] = this->matrixA[temp+j] - this->holdMatrix[save+j];
     }
-    //temp += matrixWindow;
     temp += this->localSize;		// remember that matrixB is localSize x localsize, so when we write to a square portion
 						// of it, our indices have to reflect that.
   }
@@ -239,7 +279,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
     I think there are only 2 possibilities here. Either size == matrixWindow*(matrixWindow)/2 if the first element fits
 						     or size == matrixWindow*(matrixWindow)/2 - 1 if the first element does not fit.
   */
-  std::vector<T> buffer1;
+  std::vector<T> buffer1;  // use capacity() or reserve() methods here?
   std::vector<T> buffer2;
 
   if (this->rowCommRank == this->gridCoords[2])     // different matches on each of the P^(1/3) layers
@@ -248,19 +288,23 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
     {
       case 0:
       {
-        // Triangular -> (lower,square) -> Note for further optimization.
-        //                              -> This copy loop may not be needed. I might be able to purely send in &this->matrixLInverse[0] into broadcast
-        buffer1.resize(matrixWindow*(matrixWindow+1)>>1,0.);
-        int startOffset = (dimXstartA*(dimXstartA+1)>>1);
+        // (square,lower) -> Note for further optimization.
+        // -> This copy loop may not be needed. I might be able to purely send in &this->matrixLInverse[0] into broadcast
+        buffer1.resize(matrixWindow*matrixWindow,0.);
+        int startOffset = dimXstartA*this->localSize;
         int index1 = 0;
         int index2 = startOffset + dimYstartA;
         for (int i=0; i<matrixWindow; i++)
         {
-          for (int j=0; j<=i; j++)
+          for (int j=0; j<matrixWindow; j++)
           {
-            buffer1[index1++] = this->matrixLInverse[index2++];
+            buffer1[index1++] = (matrixTrack ? this->matrixB[index2++] : this->matrixA[index2++]);
+//            if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 0))
+//            {
+//              std::cout << "what was just set - " << buffer1[index1-1] << std::endl;
+//            }
           }
-          index2 += dimYstartA;
+          index2 += (this->localSize-matrixWindow);				// see if that works
         }
         break;
       }
@@ -277,7 +321,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
           {
             buffer1[index1++] = this->matrixL[index2++];
           }
-          index2 += dimYstartA;
+          index2 += dimYstartA;						// Is this really correct?
         }
         break;
       }
@@ -328,7 +372,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
     {
       case 0:
       {
-        buffer1.resize((matrixWindow*(matrixWindow+1))>>1);
+        buffer1.resize(matrixWindow*matrixWindow);
         break;
       }
       case 1:
@@ -350,6 +394,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
 
     // Note that depending on the key, the broadcast received here will be of different sizes. Need care when unpacking it later.
     MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->rowComm);
+//    if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 1)) { for (int i=0; i<buffer1.size(); i++) { std::cout << "Inv2? - " << buffer1[i] << " of size - " << buffer1.size() << std::endl; } std::cout << "\n"; }
   }
 
   if (this->colCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
@@ -358,7 +403,8 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
     {
       case 0:
       {
-        //Not Triangular
+/*
+        // Triangular
         buffer2.resize(matrixWindow*matrixWindow);
         int startOffset = dimXstartB*this->localSize;	// Problem! startOffset needs to be based off of this->localRank, not anything else
         int index1 = 0;
@@ -368,25 +414,38 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
           for (int j=0; j<matrixWindow; j++)
           {
             buffer2[index1++] = (matrixTrack ? this->matrixB[index2+j] : this->matrixA[index2+j]);
+//            if ((this->gridCoords[0] == 1) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 1)) {std::cout << "GAY - " << index2+j << " " << buffer2[index1-1] << std::endl; }
           }
           index2 += this->localSize;
         }
+*/
+        buffer2 = this->holdTransposeL;			// Is this copy necessary?
         break;
       }
       case 1:
       {
         // Not Triangular, but transpose
         buffer2.resize(matrixWindow*matrixWindow);
+/*
         int startOffset = (dimXstartB*(dimXstartB+1))>>1;
         int index1 = 0;
         for (int i=0; i<matrixWindow; i++)
         {
           int index2 = startOffset + dimYstartB + i;
-          int temp = /*dimYstartB+*/1+matrixWindow;			// I added the +1 back in
+          int temp = //dimYstartB+//1+matrixWindow;			// I added the +1 back in
           for (int j=0; j<matrixWindow; j++)
           {
             buffer2[index1++] = this->matrixL[index2];                  // Transpose has poor spatial locality
             index2 += temp+j+dimYstartB;
+          }
+        }
+*/
+        // Simple transpose into buffer2 using this->holdTransposeL, but we can make this more efficient later via 2D tiling to reduce cache misses
+       for (int i=0; i<matrixWindow; i++)
+        {
+          for (int j=0; j<matrixWindow; j++)
+          {
+            buffer2[j*matrixWindow+i] = this->holdTransposeL[i*matrixWindow+j];
           }
         }
         break;
@@ -441,7 +500,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
         // What I can do here is receive with a buffer of size matrixWindow*(matrixWindow+1)/2 and then iterate over the last part to see what kind it is
         // i was trying to do it with gridCoords, but then I would have needed this->rowRank, stuff like that so this is a bit easier
         // Maybe I can fix this later to make it more stable
-        buffer2.resize(matrixWindow*matrixWindow);	// this is a special trick
+        buffer2.resize((matrixWindow*(matrixWindow+1))>>1);	// this is a special trick
         break;
       }
       case 1:
@@ -465,6 +524,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
     }
     // Note that depending on the key, the broadcast received here will be of different sizes. Need care when unpacking it later.
     MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
+//    if ((this->gridCoords[0] == 1) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 1)) { for (int i=0; i<buffer2.size(); i++) { std::cout << "GAY2 - " << buffer2[i] << " of size - " << buffer2.size() << std::endl; } std::cout << "\n"; }
   }
 
   /*
@@ -473,6 +533,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       properly reduce the sums. So use another temporary buffer. Only update this->matrixU or this->matrixL after the reduction if root or after the final
         broadcast if non-root.
   */
+
 
   // So iterate over everything that we own and calculate its partial sum that will be used in reduction
   // buffer3 will be used to hold the partial matrix sum result that will contribute to the reduction.
@@ -487,14 +548,53 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       int index = 0;
       for (int i = 0; i<matrixWindow; i++)
       {
-        int temp = i*matrixWindow;
-        for (int j = 0; j <= i; j++)
+        for (int j = i; j <matrixWindow; j++)
         {
-          updatedVector[temp+j] = buffer1[index++];
+          int temp = j*matrixWindow+i;
+          updatedVector[temp] = buffer2[index++]; 
         }
       }
-      cblas_dtrmm(CblasRowMajor,CblasLeft,CblasLower,CblasNoTrans,CblasNonUnit,matrixWindow,matrixWindow,1.,&updatedVector[0],matrixWindow,&buffer2[0],matrixWindow);
-      MPI_Allreduce(&buffer2[0],&buffer4[0],buffer2.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
+
+/*
+      if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 0))
+      {
+        for (int i=0; i<updatedVector.size(); i++)
+        {
+          std::cout << "check1 - " << updatedVector[i] << std::endl;
+        }
+        for (int i=0; i<buffer1.size(); i++)
+        {
+          std::cout << "check2 - " << buffer1[i] << std::endl;
+        }
+      } 
+*/
+      cblas_dtrmm(CblasRowMajor,CblasRight,CblasLower,CblasNoTrans,CblasNonUnit,matrixWindow,matrixWindow,1.,&updatedVector[0], matrixWindow, &buffer1[0], matrixWindow);
+
+/*
+      if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 0))
+      {
+        for (int i=0; i<buffer1.size(); i++)
+        {
+          std::cout << "check4 - " << buffer1[i] << std::endl;
+        }
+      } 
+*/
+      //if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 1)) { for (int i=0; i<buffer2.size(); i++) {std::cout << "check - " << tryMe[i] << " and size - " << buffer2.size() << std::endl; } std::cout << std::endl; }
+
+      MPI_Allreduce(&buffer1[0],&buffer4[0],buffer1.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
+
+/*
+      if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 0))
+      {
+        for (int i=0; i<matrixWindow; i++)
+        {
+          for (int j=0; j<matrixWindow; j++)
+          {
+            std::cout << "POOP - " << buffer4[i*matrixWindow+j] << std::endl;
+          }
+        }
+      }
+*/
       break;
     }
     case 1:
@@ -550,24 +650,29 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
   this->holdMatrix.resize(matrixWindow*matrixWindow,0.);
   switch (key)
   {
-    case 0:	// Beware, this is a traspose
+    case 0:
     {
-      // Square and Transpose
+      // Square
       int startOffset = (dimXstartC*(dimXstartC+1))>>1;
       int index1 = 0;
+      int index2 = startOffset + dimYstartC;
       for (int i=0; i<matrixWindow; i++)
       {
-        int index2 = startOffset + dimYstartC + i;
-        int temp = 1+matrixWindow;		// added the 1 back in. See if this works
         for (int j=0; j<matrixWindow; j++)
         {
-          this->matrixL[index2] = buffer4[index1++];                    // Transpose has poor spatial locality. Could fix later if need be
-          index2 += temp + j+dimYstartC;		// j captures the idea of each further row having an additional column
+/*          
+          if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 0))
+          {
+            std::cout << "buffer4[index1] - " << buffer4[index1] << " goes into matrixL[] - " << index2 << std::endl;
+          }
+*/
+          this->matrixL[index2++] = buffer4[index1++];                    // Transpose has poor spatial locality. Could fix later if need be
         }
+        index2 += (dimYstartC+i+1);
       }
       break;
     }
-    case 1:
+    case 1:						// Can this just be done with a simple copy statement??
     {
       int index1 = 0;
       for (int i=0; i<matrixWindow; i++)
@@ -580,11 +685,9 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       }
       break;
     }
-    case 2:
+    case 2:						// Can this just be done with a simple copy statement??
     {
-      //int startOffset = (dimXstartC*(dimXstartC+1))>>1;
       int index1 = 0;
-      //int index2 = startOffset + dimYstartC;
       int index2 = 0;
       for (int i=0; i<matrixWindow; i++)
       {
@@ -592,7 +695,6 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
         {
           this->holdMatrix[index2++] = buffer4[index1++];
         }
-        //index2 += dimYstartC;
       }
       break;
     }
@@ -606,13 +708,87 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
         for (int j=0; j<matrixWindow; j++)
         {
           this->matrixLInverse[index2++] = buffer4[index1++];
+//          if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 0)) {std::cout << "check index2 - " << index2-1 << " " << this->matrixLInverse[index2-1] << std::endl; }
+          
         }
-        index2 += dimYstartC;
+        index2 += (dimYstartC+i+1);		// THIS COULD BE WRONG!
       }
       break;
     }
   }
+}
 
+
+/*
+  Transpose Communication Helper Function
+*/
+template<typename T>
+void solver<T>::fillTranspose(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int dir)
+{
+  switch (dir)
+  {
+    case 0:
+    {
+      // copy L11-inverse data into holdTransposeInverse to be send/received
+      this->holdTransposeL.clear();
+      this->holdTransposeL.resize((matrixWindow*(matrixWindow+1))>>1, 0.);
+      int startOffset = ((dimXstart*(dimXstart+1))>>1);
+      int index1 = 0;
+      int index2 = startOffset + dimXstart;
+      for (int i=0; i<matrixWindow; i++)
+      {
+        for (int j=0; j<=i; j++)
+        {
+          this->holdTransposeL[index1++] = this->matrixLInverse[index2++];
+        }
+        index2 += dimYstart;
+      }
+
+      if ((this->gridCoords[0] != this->gridCoords[1]))
+      {
+        // perform MPI_SendRecv_replace
+        int destRank = -1;
+        int rankArray[3] = {this->gridCoords[1], this->gridCoords[0], this->gridCoords[2]};
+        MPI_Cart_rank(this->grid3D, &rankArray[0], &destRank);
+        MPI_Status stat;
+        MPI_Sendrecv_replace(&this->holdTransposeL[0], this->holdTransposeL.size(), MPI_DOUBLE,
+          destRank, 0, destRank, MPI_ANY_TAG, MPI_COMM_WORLD, &stat);
+        // anything else?
+      }
+      break;
+    }
+    case 1:
+    {
+      // copy L11-inverse data into holdTransposeInverse to be send/received
+      this->holdTransposeL.clear();
+      this->holdTransposeL.resize(matrixWindow*matrixWindow, 0.);
+      int startOffset = ((dimXstart*(dimXstart+1))>>1);
+      int index1 = 0;
+      int index2 = startOffset + dimXstart;
+      for (int i=0; i<matrixWindow; i++)
+      {
+        for (int j=0; j<matrixWindow; j++)
+        {
+          this->holdTransposeL[index1++] = this->matrixL[index2++];
+        }
+        index2 += dimYstart;
+      }
+
+      if ((this->gridCoords[0] != this->gridCoords[1]))
+      {
+        // perform MPI_SendRecv_replace
+        MPI_Status stat;
+        int destRank = -1;
+        int rankArray[3] = {this->gridCoords[1], this->gridCoords[0], this->gridCoords[2]};
+        MPI_Cart_rank(this->grid3D, &rankArray[0], &destRank);
+        MPI_Sendrecv_replace(&this->holdTransposeL[0], this->holdTransposeL.size(), MPI_DOUBLE,
+          destRank, 0, destRank, 0, MPI_COMM_WORLD, &stat);
+
+        // anything else?
+      }    
+      break;
+    }
+  }
 }
 
 
@@ -656,9 +832,10 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
       for (int j=0; j<=i; j++)			// Note that because A is upper-triangular (shouldnt really matter), I must
 						// access A differently than before
       {
-        sendBuffer[index1++] = this->matrixA[index2++];
+        sendBuffer[index1++] = this->matrixA[index2+j];
+        //if (this->worldRank == 0) {std::cout << "BC index - " << index2+j << std::endl; }
       }
-      index2 += (this->localSize - matrixWindow+1);					// this should be correct
+      index2 += this->localSize;
     }
   }
   else /* matrixTrack == 1 */
@@ -667,17 +844,22 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
     {
       for (int j=0; j<=i; j++)
       {
-        sendBuffer[index1++] = this->matrixB[index2++];
+        sendBuffer[index1++] = this->matrixB[index2+j];
+        //if (this->worldRank == 0) {std::cout << "BC index - " << index2+j << std::endl; }
       }
-      index2 += (this->localSize - matrixWindow+1);					// this should be correct
+      index2 += this->localSize;
     }
   }
 
   std::vector<T> recvBuffer(sendBuffer.size()*this->processorGridDimSize*this->processorGridDimSize,0);
   MPI_Allgather(&sendBuffer[0], sendBuffer.size(),MPI_DOUBLE,&recvBuffer[0],sendBuffer.size(),MPI_DOUBLE,this->layerComm);
 
+
   /*
 	After the all-gather, I need to format recvBuffer so that it works with OpenBLAS routines!
+  
+        Word of caution: How do I know the ordering of the blocks? It should be by processor rank within the communicator used, but that processor
+	  rank has no correlation to the 2D gridCoords that were used to distribute the matrix.
   */
 
 
@@ -698,9 +880,6 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
   }
 
   // Cholesky factorization
-
-  // HOLD UP. Why isnt this Cholesky returning L?
-  // I will try modifying the upper-triangular part and seeing what happens. Nothing should change
   LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',matrixSize,&sendBuffer[0],matrixSize);
 
   //recvBuffer.resize(sendBuffer.size(),0.);			// I am just re-using vectors. They change form as to what data they hold all the time
@@ -708,18 +887,14 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
   recvBuffer = sendBuffer;
 
   // I am assuming that the diagonals are ok (maybe they arent all 1s, but that should be ok right?) 
-  // Hold on. I think that i JUST FOUND my bug. recvBuffer is all zeros. It has no valid info. I think I needed to copy
-  // sendBuffer into recvBuffer first. Check on this after I fix the seg fault.
   LAPACKE_dtrtri(LAPACK_ROW_MAJOR,'L','N',matrixSize,&recvBuffer[0],matrixSize);
 
-  // Hold up. We need to discuss this. I am traversing this matrixSize x matrixSize matrix redundantly,
-    // meaning that 
   int pIndex = this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1];
   int startOffset = (dimXstart*(dimXstart+1))>>1;
   int rowCounter = 0;
   for (int i=0; i<matrixWindow; i++)
   {
-    int temp = startOffset + (i+1)*dimYstart + rowCounter++;
+    int temp = startOffset + (i+1)*dimYstart + rowCounter;
     for (int j=0; j<=i; j++)	// for matrixWindow==2, j should always go to 
     {
       // I need to use dimXstart and dimXend and dimYstart and dimYend ...
@@ -727,6 +902,7 @@ void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int
       this->matrixL[temp+j] = sendBuffer[index];
       this->matrixLInverse[temp+j] = recvBuffer[index];
     }
+    rowCounter += (i+1);
   }
 }
 
@@ -756,22 +932,31 @@ void solver<T>::printL()
 }
 
 template<typename T>
-void solver<T>::lapackTest(int n)
+void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataInverse, int n)
 {
-  std::vector<T> data(n*n);
+  //std::vector<T> data(n*n); Assume that space has been allocated for data vector on the caller side.
   for (int i=0; i<n; i++)
   {
     for (int j=0; j<n; j++)
     {
-      srand(i*n+j);
+      if (i > j)
+      {
+        srand(i*n+j);
+      }
+      else
+      {
+        srand(j*n+i);
+      }
       data[i*n+j] = (rand()%100)*1./100.;
+      //std::cout << "hoogie - " << i*n+j << " " << data[i*n+j] << std::endl;
       if (i==j)
       {
         data[i*n+j] += 10.;
       }
     }
   }
-
+  
+  std::cout << "*************************************************************************************************************\n";
   for (int i=0; i<n; i++)
   {
     for (int j=0; j<n; j++)
@@ -780,8 +965,12 @@ void solver<T>::lapackTest(int n)
     }
     std::cout << "\n";
   }
+  std::cout << "*************************************************************************************************************\n";
 
   LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',n,&data[0],n);
+  dataInverse = data;				// expensive copy
+  LAPACKE_dtrtri(LAPACK_ROW_MAJOR,'L','N',n,&dataInverse[0],n);
+/*
   for (int i=0; i<n; i++)
   {
     for (int j=0; j<n; j++)
@@ -790,11 +979,147 @@ void solver<T>::lapackTest(int n)
     }
     std::cout << "\n";
   }
+*/
   return;
 }
 
 template<typename T>
 void solver<T>::solveScalapack()
 {
-  //PDGETRF(&this->matrixA.size(), &this->matrixA.size(), &this->matrixA[...][...],....... lots of more stuff t keep track of);
+/*
+
+  // Scalapack Cholesky.
+  vector<int> desc(9);
+  int info,icontxt;
+  char order = 'R';
+  int npRow = 2;
+  int npCol = 2;		// these two can change obviously
+  int myCol = this->worldSize%npRow;
+  int myRow = this->worldSize/npRow;
+  BLACS_GET(0,0,&icontxt);
+  BLACS_GRIDINIT(&icontxt,order,npRow,npCol);
+  BLACS_GRIDINFO(icontxt,&npRow,&npCol,&myRow,&myCol);	// the last 4 arguments are apparently output arguments
+
+  // Set up the descriptor vector
+  desc[0] = 1;
+  desc[1] = iscontxt;
+  desc[2] = this->matrixDimSize;
+  desc[3] = this->matrixDimSize;
+  desc[4] = ;
+  desc[5] = ;
+  desc[6] = ;
+  desc[7] = ;
+  desc[8] = ;
+
+  // Now I guess I would distribute the input matrix over the P processors.
+
+  PDPOTRF('L',this->matrixDimSize,....,1,1,&desc[0],&info);
+
+*/
+}
+
+template<typename T>
+void solver<T>::compareSolutions()
+{
+  /*
+	We want to perform a reduction on the data on one of the P^{1/3} layers, then call lapackTest with a single
+	processor. Then we can, in the right order, compare these solutions for correctness.
+  */
+
+  if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1))
+  {
+    std::cout << "\n";
+    for (int i=0; i<this->matrixL.size(); i++)
+    {
+      std::cout << this->matrixL[i] << std::endl;
+    }
+    std::cout << "\n\n";
+  }
+
+
+
+  if (this->gridCoords[2] == 0)		// 1st layer
+  {
+    //std::vector<T> sendData(this->matrixDimSize * this->matrixDimSize);
+    std::vector<T> recvData(this->processorGridDimSize*this->processorGridDimSize*this->matrixL.size());	// only the bottom half, remember?
+    MPI_Gather(&this->matrixL[0],this->matrixL.size(), MPI_DOUBLE, &recvData[0],this->matrixL.size(), MPI_DOUBLE,
+	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
+
+    if (this->layerCommRank == 0)
+    {
+      /*
+	Now on this specific rank, we currently have all the algorithm data that we need to compare, but now we must call the sequential
+        lapackTest method in order to get what we want to compare the Gathered data against.
+      */
+      std::vector<T> lapackData(this->matrixDimSize*this->matrixDimSize);
+      std::vector<T> lapackDataInverse(this->matrixDimSize*this->matrixDimSize);
+      lapackTest(lapackData, lapackDataInverse, this->matrixDimSize);		// pass this vector in by reference and have it get filled up
+
+      // Now we can start comparing this->matrixL with data
+      // Lets just first start out by printing everything separately too the screen to make sure its correct up till here
+      
+      int index = 0;
+      std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
+      std::cout << "\n";
+      for (int i=0; i<this->matrixDimSize; i++)
+      {
+        for (int j=0; j<=i; j++)
+	{
+          int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
+	  std::cout << lapackData[index] << " " << recvData[PE*this->matrixL.size() + pCounters[PE]] << " " << index << std::endl;
+	  std::cout << lapackData[index++] - recvData[PE*this->matrixL.size() + pCounters[PE]++] << std::endl;
+        }
+        if (i%2==0)
+        {
+          pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
+        }
+        index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
+        std::cout << std::endl;
+      }
+    }
+  }
+}
+
+template<typename T>
+void solver<T>::printInputA()
+{
+  if (this->gridCoords[2] == 0)		// 1st layer
+  {
+    //std::vector<T> sendData(this->matrixDimSize * this->matrixDimSize);
+    std::vector<T> recvData(this->processorGridDimSize*this->processorGridDimSize*this->matrixA.size());	// only the bottom half, remember?
+    MPI_Gather(&this->matrixA[0],this->matrixA.size(), MPI_DOUBLE, &recvData[0],this->matrixA.size(), MPI_DOUBLE,
+	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
+
+    if (this->layerCommRank == 0)
+    {
+      /*
+	Now on this specific rank, we currently have all the algorithm data that we need to compare, but now we must call the sequential
+        lapackTest method in order to get what we want to compare the Gathered data against.
+      */
+      
+      for (int i=0; i<recvData.size(); i++)
+      {
+        std::cout << recvData[i] << " ";
+        if (i == 31)
+        { std::cout << "\n"; }
+      }
+
+      std::cout << "\n\n";
+
+      std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
+      for (int i=0; i<this->matrixDimSize; i++)
+      {
+        for (int j=0; j < this->matrixDimSize; j++)
+	{
+          int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
+          std::cout << recvData[PE*this->matrixA.size() + pCounters[PE]++] << " ";
+        }
+        if (i%2==0)
+        {
+          pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
+        }
+        std::cout << std::endl;
+      }
+    }
+  }
 }

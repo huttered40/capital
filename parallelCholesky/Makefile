@@ -1,5 +1,5 @@
 CCMPI = mpicxx
-CFLAGS = -g -Wall
+CFLAGS = -g -Wall -O0
 
 OBJS1 = solver.o
 OBJS2 = main.o
