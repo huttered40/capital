@@ -546,13 +546,17 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
       // Triangular Multiplicaton -> (lower,square)
       std::vector<T> updatedVector(matrixWindow*matrixWindow,0.);
       int index = 0;
+      int counter = 1;
       for (int i = 0; i<matrixWindow; i++)
       {
         for (int j = i; j <matrixWindow; j++)
         {
-          int temp = j*matrixWindow+i;
-          updatedVector[temp] = buffer2[index++]; 
+          int temp = i*matrixWindow+j;				// JUST CHANGED THIS!
+          updatedVector[temp] = buffer2[index]; 
+          index += counter++;
         }
+        index = (((i+2)*(i+3))>>1)-1;
+        counter = i+2;
       }
 
 /*
@@ -590,7 +594,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
         {
           for (int j=0; j<matrixWindow; j++)
           {
-            std::cout << "POOP - " << buffer4[i*matrixWindow+j] << std::endl;
+            std::cout << "check - " << buffer4[i*matrixWindow+j] << std::endl;
           }
         }
       }

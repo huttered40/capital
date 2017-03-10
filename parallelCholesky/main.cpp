@@ -73,8 +73,8 @@ int main(int argc, char *argv[])
   // If this works, then I can print out the data to see if its correct
   //mySolver.printL();
 
-//  mySolver.compareSolutions();
-//  mySolver.printInputA();
+  mySolver.compareSolutions();
+  mySolver.printInputA();
 
   MPI_Finalize();
   return 0;
