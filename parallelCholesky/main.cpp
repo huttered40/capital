@@ -20,9 +20,8 @@ int main(int argc, char *argv[])
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
-  solver<double> mySolver(rank,size,3,32);		// 8 might not be the best matrix size to use
+  solver<double> mySolver(rank,size,3,32);		// last argument is matrix dimension. We can change it to be any power of 2
 
-  // Bug check here : Why isnt there a call to startUp and collectDataCyclic methods before lapackTest??
   if (size == 1)
   {
     clock_t start;
@@ -30,8 +29,9 @@ int main(int argc, char *argv[])
     start = clock(); 	// start time
     int trySize = 16;
     std::vector<double> data(trySize*trySize);
+    std::vector<double> dataL(trySize*trySize);
     std::vector<double> dataInverse(trySize*trySize);
-    mySolver.lapackTest(data, dataInverse, trySize);
+    mySolver.lapackTest(data, dataL, dataInverse, trySize);
     duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
     cout << "Time - " << duration << endl;

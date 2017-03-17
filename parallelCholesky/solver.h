@@ -31,7 +31,7 @@ public:
   void solve();
   void solveScalapack();
   void printL();
-  void lapackTest(std::vector<T> &data, std::vector<T> &dataInverse, int n);
+  void lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataLInverse, int n);
   void compareSolutions();
   void printInputA();
 
