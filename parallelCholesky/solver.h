@@ -37,13 +37,12 @@ public:
 
 private:
 
-  void LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixTrack);
-  void MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int dimXstartB,int dimXendB,int dimYstartB,int dimYendB,int dimXstartC, int dimXendC, int dimYstartC, int dimYendC, int matrixWindow,int matrixSize, int key, int matrixTrack);
-  void LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixTrack);
+  void LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixCutSize);
+  void MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int dimXstartB,int dimXendB,int dimYstartB,int dimYendB,int dimXstartC, int dimXendC, int dimYstartC, int dimYendC, int matrixWindow,int matrixSize, int key, int matrixCutSize);
+  void LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixCutSize);
   void fillTranspose(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int dir);
 
-  std::vector<T> matrixA;  	// track 1 matrix
-  std::vector<T> matrixB;		// track 2 matrix
+  std::vector<std::vector<T> > matrixA;  	// Matrix contains all tracks of recursion. Builds recursively
 
   /*
     Each rank must own a place to put intermediate results for L and U as well build it up
