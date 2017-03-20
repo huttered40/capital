@@ -4,6 +4,9 @@
   Turn on debugging statements when necessary but flipping the 0 to 1
 */
 #define DEBUGGING 0
+#define PROCESSOR_X_ 0
+#define PROCESSOR_Y_ 0
+#define PROCESSOR_Z_ 0
 
 template<typename T>
 solver<T>::solver(int rank, int size, int nDims, int matrixDimSize)
@@ -112,56 +115,52 @@ template <typename T>
 void solver<T>::collectDataCyclic()
 {
   /*
-	When writing this code to distribute the values, you have to think of who lives there. If we think using the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care about the (x,y,?) coordinates. Sublayers exist in a block-cyclic distribution, so that in the first sublayer of the matrix, all processors are used, therefore, we cycle them from (0,1,2,0,1,2,0,1,2,....) in the x-dimension of te cube (when traveling down from the top-front-left corner) to the bottom-front-left corner. And then for each of those, there are the processors in the y-direction as well, which are representing via the nested loop.
+    If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
+    Sublayers exist in a cyclic distribution, so that in the first sublayer of the matrix, all processors are used.
+    Therefore, we cycle them from (0,1,2,0,1,2,0,1,2,....) in the x-dimension of the cube (when traveling down from the top-front-left corner) to the bottom-front-left corner.
+    Then for each of those, there are the processors in the y-direction as well, which are representing via the nested loop.
+  */
 
-*/
+  /*
+    Note that because matrix A is supposed to be symmetric, I will only give out the lower-triangular portion of A
+    Note that this would require a change in my algorithm, because I do reference uper part of A.
+    Instead, I will only give values for the upper-portion of A. At a later date, I can change the code to only
+    allocate a triangular portion instead of storing half as zeros.
+  */
 
-  // Note that because matrix A is supposed to be symmetric, I will only give out the lower-triangular portion of A
-  // Note that this would require a change in my algorithm, because I do reference uper part of A.
-  // Instead, I will only give values for the upper-portion of A. At a later date, I can change the code to only
-  // allocate a triangular portion instead of storing half as zeros.
-
-  // New comment (March 1)
- 
-/*
-  if (this->gridCoords[2] == 0)
-  {
-    std::cout << "check - " << this->layerCommRank << "        " << this->gridCoords[0] << " " << this->gridCoords[1] << std::endl;
-  }
-*/
+  #if DEBUGGING
+  std::cout << "Program is distributing the matrix data in a cyclic manner\n";
+  #endif
 
   this->matrixA.push_back(std::vector<T>());
 
   for (int i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
   {
-    this->localSize = 0;	// Its fine to keep resetting this
+    this->localSize = 0;
     for (int j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
     {
-
       if (i > j)
       {
-        srand(i*this->matrixDimSize + j);			// this is very important. Needs to be the same for all processors
+        srand(i*this->matrixDimSize + j);
       }
-      else							// wont matter either way
+      else
       {
-        srand(j*this->matrixDimSize + i);			// this is very important. Needs to be the same for all processors
+        srand(j*this->matrixDimSize + i);
       }
-    							// completely based on where we are in entire matrix
+      
       this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
       if (i==j)
       {
-        matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// we want all diagonals to be dominant.
+        matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
       }
       this->localSize++;
     }
   }
-  // This next nested loop section is special because it guarantees that matrixA is symmetric.
-  // This is a slow, but safe way to do it. Can be optimizes later, but it doesnt count in the algorithm runtime
 
-/*
-  if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 0))
+  #if DEBUGGING
+  if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
   {
-    std::cout << "About to print what processor (0,1,0) owns\n";
+    std::cout << "About to print what processor (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ") owns.\n";
     for (int i=0; i<this->localSize; i++)
     {
       for (int j=0; j<this->localSize; j++)
@@ -171,9 +170,9 @@ void solver<T>::collectDataCyclic()
       std::cout << "\n";
     }
   }
-*/
-  
-  int temp = ((this->localSize*(this->localSize+1))>>1);                   // n^2 - n(n-1)/2
+  #endif
+
+  int temp = ((this->localSize*(this->localSize+1))>>1);                   // n(n+1)/2 is the size needed to hold the triangular portion of the matrix
   this->matrixL.resize(temp,0.);
   this->matrixLInverse.resize(temp,0.);
 
@@ -187,36 +186,28 @@ void solver<T>::collectDataCyclic()
 
 
 /*
-  The solve method will initiate the solving of this LU Factorization algorithm
-  All ranks better be ready to go in order to solve this problem.
+  The solve method will initiate the solving of this Cholesky Factorization algorithm
 */
 template<typename T>
 void solver<T>::solve()
 {
-  /*
-	Note: I changed the arguments from this->matrixDimSize, which doesnt help given the fact that we are dealing only with the 2-d vectors
-		that each process holds, to this->matrixA.size(), which does represent what we are cutting up
-  
-	Check the final argument. For safety reasons, I changed it. Be careful!
-  */
+  #if DEBUGGING
+  std::cout << "Starting solver::CholeskyRecurse(" << 0 << "," << this->localSize << "," << 0 << "," << this->localSize << "," << this->localSize << "," << this->matrixDimSize << "," << this->localSize << ")\n";
+  #endif
 
-  LURecurse(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize);
+  CholeskyRecurse(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize);
 }
 
 /*
-  This function is where I can recurse within each of the P^{1/3} layers separately
-  But after that, we perform matrix multiplication with all P processors in the 3-d grid.
+  Write function description
 */
 template<typename T>
-void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixCutSize)
+void solver<T>::CholeskyRecurse(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixCutSize)
 {
 
-  /*
-    Recursive base case. I debugged this and it is correct.
-  */
   if (matrixSize == this->baseCaseSize)
   {
-    LURecurseBaseCase(dimXstart,dimXend,dimYstart,dimYend,matrixWindow,matrixSize, matrixCutSize);
+    CholeskyRecurseBaseCase(dimXstart,dimXend,dimYstart,dimYend,matrixWindow,matrixSize, matrixCutSize);
     return;
   }
 
@@ -225,7 +216,7 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
   */
 
   int shift = matrixWindow>>1;
-  LURecurse(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize);
+  CholeskyRecurse(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize);
   
   // Add MPI_SendRecv in here
   fillTranspose(dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, 0);
@@ -238,7 +229,7 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
   //Below is the tricky one. We need to create a vector via MM(..), then subtract it from A via some sort easy method...
   MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1, matrixCutSize);
 
-  // Big question: LURecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the Schur Complement.
+  // Big question: CholeskyRecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the Schur Complement.
   // Note that the below code has room for optimization via some call to LAPACK, but I would have to loop over and put into a 1d array first and then
   // pack it back into my 2d array. So in general, I need to look at whether modifying the code to use 1D vectors instead of 2D vectors is worth it.
 
@@ -264,7 +255,7 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
     start += matrixCutSize;
   }
 
-  LURecurse(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift);		// changed to shift, not matrixCutSize/2
+  CholeskyRecurse(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift);		// changed to shift, not matrixCutSize/2
 
   // These last 4 matrix multiplications are for building up our LInverse and UInverse matrices
   MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),2, matrixCutSize);
@@ -276,8 +267,7 @@ void solver<T>::LURecurse(int dimXstart, int dimXend, int dimYstart, int dimYend
 }
 
 /*
-  Recursive Matrix Multiplication -> needs arguments that makes sense.
-
+  Recursive Matrix Multiplication
   This routine requires that matrix data is duplicated across all layers of the 3D Processor Grid
 */
 template<typename T>
@@ -827,10 +817,10 @@ void solver<T>::fillTranspose(int dimXstart, int dimXend, int dimYstart, int dim
 
 
 /*
-  Base case of LURecurse
+  Base case of CholeskyRecurse
 */
 template<typename T>
-void solver<T>::LURecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixCutSize)
+void solver<T>::CholeskyRecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixCutSize)
 {
   /*
 	1) AllGather onto a single processor, which has to be chosen carefully
