@@ -1088,7 +1088,10 @@ void solver<T>::compareSolutions()
 	  {
             int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
 	    std::cout << lapackData[index] << " " << recvDataL[PE*this->matrixL.size() + pCounters[PE]] << " " << index << std::endl;
-	    std::cout << lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++] << std::endl;
+	    std::cout << lapackData[index] - recvDataL[PE*this->matrixL.size() + pCounters[PE]] << std::endl;
+            double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
+            diff = abs(diff);
+            this->matrixLNorm += (diff*diff);
           }
           if (i%2==0)
           {
@@ -1097,6 +1100,7 @@ void solver<T>::compareSolutions()
           index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
           std::cout << std::endl;
         }
+        this->matrixLNorm = sqrt(this->matrixLNorm);
       }
       {
         int index = 0;
@@ -1108,7 +1112,10 @@ void solver<T>::compareSolutions()
 	  {
             int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
 	    std::cout << data[index] << " " << recvData[PE*this->matrixA[this->matrixA.size()-1].size() + pCounters[PE]] << " " << index << std::endl;
-	    std::cout << data[index++] - recvData[PE*this->matrixA[matrixA.size()-1].size() + pCounters[PE]++] << std::endl;
+	    std::cout << data[index] - recvData[PE*this->matrixA[matrixA.size()-1].size() + pCounters[PE]] << std::endl;
+            double diff = data[index++] - recvData[PE*this->matrixA[this->matrixA.size()-1].size() + pCounters[PE]++];
+            diff = abs(diff);
+            this->matrixANorm += (diff*diff);
           }
 //          if (i%2==0)
 //          {
@@ -1117,6 +1124,7 @@ void solver<T>::compareSolutions()
           index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
           std::cout << std::endl;
         }
+        this->matrixANorm = sqrt(this->matrixANorm);
       }
       {
         int index = 0;
@@ -1128,16 +1136,24 @@ void solver<T>::compareSolutions()
 	  {
             int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
 	    std::cout << lapackDataInverse[index] << " " << recvDataLInverse[PE*this->matrixLInverse.size() + pCounters[PE]] << " " << index << std::endl;
-	    std::cout << lapackDataInverse[index++] - recvDataLInverse[PE*this->matrixLInverse.size() + pCounters[PE]++] << std::endl;
+	    std::cout << lapackDataInverse[index] - recvDataLInverse[PE*this->matrixLInverse.size() + pCounters[PE]] << std::endl;
+            double diff = lapackDataInverse[index++] - recvDataLInverse[PE*this->matrixLInverse.size() + pCounters[PE]++];
+            diff = abs(diff);
+            this->matrixLInverseNorm += (diff*diff);
           }
           if (i%2==0)
           {
-            pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
+            pCounters[1]++;		// this is a serious edge case due to the way I handled the code
           }
           index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
           std::cout << std::endl;
         }
+        this->matrixLInverseNorm = sqrt(this->matrixLInverseNorm);
       }
+      
+      std::cout << "matrix A Norm - " << this->matrixANorm << std::endl;
+      std::cout << "matrix L Norm - " << this->matrixLNorm << std::endl;
+      std::cout << "matrix L Inverse Norm - " << this->matrixLInverseNorm << std::endl;
     }
   }
 }

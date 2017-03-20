@@ -9,6 +9,7 @@
 #include <iostream>
 #include <vector>
 #include <mpi.h>
+#include <cmath>
 #include <utility>
 #include <cstdlib>
 #include <map>
@@ -75,6 +76,10 @@ private:
   int grid3DRank,layerCommRank,rowCommRank,colCommRank,depthCommRank;
   int grid3DSize,layerCommSize,rowCommSize,colCommSize,depthCommSize;
   std::map<int,int> gridSizeLookUp;
+
+  double matrixLNorm;
+  double matrixLInverseNorm;
+  double matrixANorm;
 };
 
 #include "solverImp.h"		// for template-instantiation reasons
