@@ -1,21 +1,26 @@
-//#include "solver.h" careful here
+//#include "solver.h" -> Not done here because of template issues
 
-#define DEBUGGING
+/*
+  Turn on debugging statements when necessary but flipping the 0 to 1
+*/
+#define DEBUGGING 0
 
 template<typename T>
 solver<T>::solver(int rank, int size, int nDims, int matrixDimSize)
 {
   this->worldRank = rank;
   this->worldSize = size;
-  this->nDims = nDims;						// should always be 3
+  this->nDims = nDims;
   this->matrixDimSize = matrixDimSize;
 
-  /*
-	Lets precompute a list of cubes for quick lookUp of cube dimensions based on processor size
-  */
+/*
+  Precompute a list of cubes for quick lookUp of cube dimensions based on processor size
+  Maps number of processors involved in the computation to its cubic root to avoid expensive cubic root routine
+  Table should reside in the L1 cache for quick lookUp, but only needed once
+*/
   for (int i=1; i<500; i++)
   {
-    this->gridSizeLookUp[i*i*i] = i; 				// quick lookup for (grid size, 2d sheet size)
+    this->gridSizeLookUp[i*i*i] = i;
   }
 }
 
@@ -23,22 +28,25 @@ template <typename T>
 void solver<T>::startUp(bool &flag)
 {
   /*
-	Look up to see if the total processor size is a cube. If not, then return.
+	Look up to see if the number of processors in startup phase is a cubic. If not, then return.
 	We can reduce this restriction after we have it working for a perfect cubic processor grid
-	If found, this->processorGridDimSize will represent the number of processors along a row or column (P^(1/3))
+	If found, this->processorGridDimSize will represent the number of processors along one dimension, such as along a row or column (P^(1/3))
   */
 
   if (this->gridSizeLookUp.find(this->worldSize) == gridSizeLookUp.end())
   {
+    #if DEBUGGING
+    std::cout << "Requested number of processors is not valid for a 3-Dimensional processor grid. Program is ending." << std::endl;
+    #endif
     flag = true;
     return;
   }
 
   this->processorGridDimSize = this->gridSizeLookUp[this->worldSize];
-
+  
   /*
-	this->baseCaseSize gives us a size in which to stop recursing in the LURecurse method
-	= n/P^(2/3). The math behind it is written about in my report and other papers
+    this->baseCaseSize gives us a size in which to stop recursing in the CholeskyRecurse method
+    = n/P^(2/3). The math behind it is written about in my report and other papers
   */
   this->baseCaseSize = this->matrixDimSize/(this->processorGridDimSize*this->processorGridDimSize);
 
@@ -46,22 +54,17 @@ void solver<T>::startUp(bool &flag)
   this->gridCoords.resize(this->nDims); 
   
   /*
-	Prepare to create some communicators that will be needed later
-	The Cart Communicator is mainly used to distribute the random data in a block-cyclic fashion
-	The other communicators are created for communication reasons. Will come back to this later
+    The 3D Cartesian Communicator is used to distribute the random data in a cyclic fashion
+    The other communicators are created for specific communication patterns involved in the algorithm.
   */
   std::vector<int> boolVec(3,0);
   MPI_Cart_create(MPI_COMM_WORLD, this->nDims, &this->gridDims[0], &boolVec[0], false, &this->grid3D);
   MPI_Comm_rank(this->grid3D, &this->grid3DRank);
   MPI_Comm_size(this->grid3D, &this->grid3DSize);
-
-  /*
-	Remember that this call, like the 2 above it, are collective, meaning that every rank present in the communicator must call it. So MPI_Cart_coords gives a different 3-tuple location to each rank/processor in the cartesian communicator.
-  */
   MPI_Cart_coords(this->grid3D, this->grid3DRank, this->nDims, &this->gridCoords[0]);
 
   /*
-    Secret: Before I create row and column communicators, I need to split grid3D into a separate communicator for its layers.
+    Before creating row and column sub-communicators, grid3D must be split into 2D Layer communicators.
   */
 
   // 2D (xy) Layer Communicator (split by z coordinate)
@@ -80,13 +83,31 @@ void solver<T>::startUp(bool &flag)
   MPI_Comm_split(this->grid3D,this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1],this->gridCoords[2],&this->depthComm);
   MPI_Comm_rank(this->depthComm,&this->depthCommRank);
   MPI_Comm_size(this->depthComm,&this->depthCommSize);
+  
+  #if DEBUGGING
+  std::cout << "Program at end of startUp method. Details below.\n";
+  std::cout << "Size of matrix -> " << this->matrixDimSize << std::endl;
+  std::cout << "Matrix size for base case of Recursive Cholesky Algorithm -> " << this->baseCaseSize << std::endl;
+  std::cout << "Size of MPI_COMM_WORLD -> " << this->worldSize << std::endl;
+  std::cout << "Rank of my processor in MPI_COMM_WORLD -> " << this->worldRank << std::endl;
+  std::cout << "Number of dimensions of processor grid -> " << this->nDims << std::endl;
+  std::cout << "Number of processors along one dimension of 3-Dimensional grid -> " << this->processorGridDimSize << std::endl;
+  std::cout << "Grid coordinates in 3D Processor Grid for my processor -> (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
+  std::cout << "Size of 2D Layer Communicator -> " << this->layerCommSize << std::endl;
+  std::cout << "Rank of my processor in 2D Layer Communicator -> " << this->layerCommRank << std::endl;
+  std::cout << "Size of Row Communicator -> " << this->colCommSize << std::endl;
+  std::cout << "Rank of my processor in Row Communicator -> " << this->rowCommRank << std::endl;
+  std::cout << "Size of Column Communicator -> " << this->colCommSize << std::endl;
+  std::cout << "Rank of my processor in Column Communicator -> " << this->colCommRank << std::endl;
+  std::cout << "Size of Depth Communicator Communicator -> " << this->depthCommSize << std::endl;
+  std::cout << "Rank of my processor in Depth Communicator -> " << this->depthCommRank << std::endl;
+  #endif
 }
 
 
 /*
-  Lets focus only on a cyclic distribution for now.
+  Cyclic distribution of data
 */
-
 template <typename T>
 void solver<T>::collectDataCyclic()
 {
