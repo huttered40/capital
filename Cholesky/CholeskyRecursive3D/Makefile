@@ -1,18 +1,18 @@
 CCMPI = mpicxx
 CFLAGS = -g -Wall -O0
 
-OBJS1 = solver.o
-OBJS2 = main.o
-all: solver
+OBJS1 = CholeskyRecursive3DSolver.o
+OBJS2 = CholeskyRecursive3DMain.o
+all: CholeskyRecursive3D
 
-solver: $(OBJS2)
-	$(CCMPI) $(CFLAGS) -o solver $(OBJS2) -lgfortran ./../OpenBLAS/libopenblas.a ./../scalapack-2.0.2/libscalapack.a
+CholeskyRecursive3D: $(OBJS2)
+	$(CCMPI) $(CFLAGS) -o CholeskyRecursive3D $(OBJS2) -lgfortran ./../../OpenBLAS/libopenblas.a ./../../scalapack-2.0.2/libscalapack.a
 
-main.o: main.cpp solver.h
-	$(CCMPI) $(CFLAGS) -c main.cpp
+CholeskyRecursive3DMain.o: CholeskyRecursive3DMain.cpp CholeskyRecursive3DSolver.h
+	$(CCMPI) $(CFLAGS) -c CholeskyRecursive3DMain.cpp
 
-solver.o: solver.h solverImp.h
-	$(CCMPI) $(CFLAGS) -c solver.h ./../OpenBLAS/libopenblas.a ./../scalapack-2.0.2/libscalapack.a
+CholeskyRecursive3DSolver.o: CholeskyRecursive3DSolver.h CholeskyRecursive3DSolverImp.h
+	$(CCMPI) $(CFLAGS) -c CholeskyRecursive3DSolver.h ./../../OpenBLAS/libopenblas.a ./../../scalapack-2.0.2/libscalapack.a
 
 clean:
-	-rm -f *.o main $(OBJS2)
+	-rm -f *.o CholeskyRecursive3DMain $(OBJS2)

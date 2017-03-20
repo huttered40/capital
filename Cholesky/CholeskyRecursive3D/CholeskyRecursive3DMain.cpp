@@ -5,7 +5,7 @@
 */
 
 /* Local Includes */
-#include "solver.h"
+#include "CholeskyRecursive3DSolver.h"
 
 /* System Includes */
 #include <ctime>	//clock

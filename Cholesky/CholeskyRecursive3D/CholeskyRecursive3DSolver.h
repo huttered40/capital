@@ -2,8 +2,8 @@
 	Author: Edward Hutter
 */
 
-#ifndef SOLVER_H_
-#define SOLVER_H_
+#ifndef CHOLESKY_RECURSIVE_3D_SOLVER_H_
+#define CHOLESKY_RECURSIVE_3D_SOLVER_H_
 
 // System includes
 #include <iostream>
@@ -14,7 +14,7 @@
 #include <cstdlib>
 #include <map>
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
-#include "./../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
+#include "./../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
 // Need this to use fortran scalapack function
 extern void PDPOTRF(int *m, int *n, char *A, int *iA, int *jA, int *desca, int *ipiv, int *info);
@@ -81,6 +81,6 @@ private:
   double matrixANorm;
 };
 
-#include "solverImp.h"		// for template-instantiation reasons
+#include "CholeskyRecursive3DSolverImp.h"		// for template-instantiation reasons
 
-#endif /*SOLVER_H_*/
+#endif /*CHOLESKY_RECURSIVE_3D_SOLVER_H_*/
