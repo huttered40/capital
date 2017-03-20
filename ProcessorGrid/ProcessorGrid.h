@@ -16,7 +16,7 @@ class ProcessorGrid2D : public ProcessorGrid
   ~ProcessorGrid2D();
 
   virtual MatMatMultiplication();
-  virtual MatMatMultiplication();
+  virtual MatVecMultiplication();
 };
 
 class ProcessorGrid3D : public ProcessorGrid
@@ -25,7 +25,7 @@ class ProcessorGrid3D : public ProcessorGrid
   ~ProcessorGrid3D();
 
   virtual MatMatMultiplication3D();
-  virtual MatMatMultiplication3D();
+  virtual MatVecMultiplication3D();
 };
 
 #endif /*PROCESSORGRID_H_*/
