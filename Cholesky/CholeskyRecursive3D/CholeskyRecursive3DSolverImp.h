@@ -9,7 +9,7 @@
 #define PROCESSOR_Z_ 0
 
 template<typename T>
-solver<T>::solver(int rank, int size, int nDims, int matrixDimSize)
+solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixDimSize)
 {
   this->worldRank = rank;
   this->worldSize = size;
@@ -21,9 +21,12 @@ solver<T>::solver(int rank, int size, int nDims, int matrixDimSize)
   Maps number of processors involved in the computation to its cubic root to avoid expensive cubic root routine
   Table should reside in the L1 cache for quick lookUp, but only needed once
 */
-  for (int i=1; i<500; i++)
+  for (uint32_t i=1; i<500; i++)
   {
-    this->gridSizeLookUp[i*i*i] = i;
+    uint64_t size = i;
+    size *= i;
+    size *= i;
+    this->gridSizeLookUp[size] = i;
   }
 }
 
@@ -51,7 +54,7 @@ void solver<T>::startUp(bool &flag)
     this->baseCaseSize gives us a size in which to stop recursing in the CholeskyRecurse method
     = n/P^(2/3). The math behind it is written about in my report and other papers
   */
-  this->baseCaseSize = this->matrixDimSize/(this->processorGridDimSize*this->processorGridDimSize);
+  this->baseCaseSize = this->matrixDimSize/(this->processorGridDimSize*this->processorGridDimSize);		// watch for possible overflow here later on
 
   this->gridDims.resize(this->nDims,this->processorGridDimSize);
   this->gridCoords.resize(this->nDims); 
@@ -132,25 +135,28 @@ void solver<T>::distributeDataCyclicSequential()
   std::cout << "Program is distributing the matrix data in a cyclic manner\n";
   #endif
 
-  int size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
+  uint64_t size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
   size *= size;
-  size = (this->matrixDimSize*this->matrixDimSize)/size;	// N^2 / P^{2/3} is the initial size of the data that each p owns
+  uint64_t matSize = this->matrixDimSize;
+  matSize *= matSize;
+  size = matSize/size;						// Watch for overflow, N^2 / P^{2/3} is the initial size of the data that each p owns
   //this->matrixA.push_back(std::vector<T>());
   this->matrixA.resize(1,std::vector<T>(size,0.));		// Try this. Resize vs. push_back, better for parallel version?
+  // Note: above, I am not sure if the vector can hold more than 2^32 elements. Maybe this isnt too big of a deal, but ...
 
-  int counter = 0;
-  for (int i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
+  uint64_t counter = 0;						// 64 bits needed, really?
+  for (uint32_t i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
   {
     this->localSize = 0;
-    for (int j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
+    for (uint32_t j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
     {
       if (i > j)
       {
-        srand(i*this->matrixDimSize + j);
+        srand(i*this->matrixDimSize + j);		// Assuming no overflow here
       }
       else
       {
-        srand(j*this->matrixDimSize + i);
+        srand(j*this->matrixDimSize + i);		// Assuming no overflow here
       }
       
       //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
@@ -168,9 +174,9 @@ void solver<T>::distributeDataCyclicSequential()
   if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
   {
     std::cout << "About to print what processor (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ") owns.\n";
-    for (int i=0; i<this->localSize; i++)
+    for (uint32_t i=0; i<this->localSize; i++)
     {
-      for (int j=0; j<this->localSize; j++)
+      for (uint32_t j=0; j<this->localSize; j++)
       {
         std::cout << this->matrixA[i*this->localSize+j] << " ";
       }
@@ -179,9 +185,11 @@ void solver<T>::distributeDataCyclicSequential()
   }
   #endif
 
-  int temp = ((this->localSize*(this->localSize+1))>>1);                   // n(n+1)/2 is the size needed to hold the triangular portion of the matrix
-  this->matrixL.resize(temp,0.);
-  this->matrixLInverse.resize(temp,0.);
+  uint64_t tempSize = this->localSize;                   // n(n+1)/2 is the size needed to hold the triangular portion of the matrix
+  tempSize *= (this->localSize+1);
+  tempSize >>= 1;
+  this->matrixL.resize(tempSize,0.);
+  this->matrixLInverse.resize(tempSize,0.);
 
 }
 
@@ -208,29 +216,32 @@ void solver<T>::distributeDataCyclicParallel()
   #if DEBUGGING
   std::cout << "Program is distributing the matrix data in a cyclic manner\n";
   #endif
-
-  int size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
+  
+  uint64_t size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
   size *= size;
-  size = (this->matrixDimSize*this->matrixDimSize)/size;	// N^2 / P^{2/3} is the initial size of the data that each p owns
+  uint64_t matSize = this->matrixDimSize;
+  matSize *= matSize;
+  size = matSize/size;						// Watch for overflow, N^2 / P^{2/3} is the initial size of the data that each p owns
   //this->matrixA.push_back(std::vector<T>());
   this->matrixA.resize(1,std::vector<T>(size,0.));		// Try this. Resize vs. push_back, better for parallel version?
+  // Note: above, I am not sure if the vector can hold more than 2^32 elements. Maybe this isnt too big of a deal, but ...
 
   // Only distribute the data sequentially on the first layer. Then we broadcast down the 3D processor cube using the depth communicator
   if (this->gridCoords[2] == 0)
   {
-    int counter = 0;
-    for (int i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
+    uint64_t counter = 0;
+    for (uint32_t i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
     {
       this->localSize = 0;
-      for (int j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
+      for (uint32_t j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
       {
         if (i > j)
         {
-          srand(i*this->matrixDimSize + j);
+          srand(i*this->matrixDimSize + j);			// Watch for overflow?
         }
         else
         {
-          srand(j*this->matrixDimSize + i);
+          srand(j*this->matrixDimSize + i);			// Watch for overflow?
         }
       
         //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
@@ -256,9 +267,9 @@ void solver<T>::distributeDataCyclicParallel()
   if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
   {
     std::cout << "About to print what processor (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ") owns.\n";
-    for (int i=0; i<this->localSize; i++)
+    for (uint32_t i=0; i<this->localSize; i++)
     {
-      for (int j=0; j<this->localSize; j++)
+      for (uint32_t j=0; j<this->localSize; j++)
       {
         std::cout << this->matrixA[i*this->localSize+j] << " ";
       }
@@ -268,9 +279,11 @@ void solver<T>::distributeDataCyclicParallel()
   #endif
 
   this->localSize = this->matrixDimSize/this->processorGridDimSize;	// Expensive division. Lots of compute cycles
-  int temp = ((this->localSize*(this->localSize+1))>>1);		// n(n+1)/2 is the size needed to hold the triangular portion of the matrix
-  this->matrixL.resize(temp,0.);
-  this->matrixLInverse.resize(temp,0.);
+  uint64_t tempSize = this->localSize;                   // n(n+1)/2 is the size needed to hold the triangular portion of the matrix
+  tempSize *= (this->localSize+1);
+  tempSize >>= 1;
+  this->matrixL.resize(tempSize,0.);
+  this->matrixLInverse.resize(tempSize,0.);
 
 }
 
@@ -297,7 +310,7 @@ void solver<T>::solve()
   Write function description
 */
 template<typename T>
-void solver<T>::CholeskyRecurse(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixCutSize)
+void solver<T>::CholeskyRecurse(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize)
 {
 
   if (matrixSize == this->baseCaseSize)
@@ -310,7 +323,7 @@ void solver<T>::CholeskyRecurse(int dimXstart, int dimXend, int dimYstart, int d
 	Recursive case -> Keep recursing on the top-left half
   */
 
-  int shift = matrixWindow>>1;
+  uint32_t shift = matrixWindow>>1;
   CholeskyRecurse(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize);
   
   // Add MPI_SendRecv in here
@@ -332,18 +345,27 @@ void solver<T>::CholeskyRecurse(int dimXstart, int dimXend, int dimYstart, int d
  
 
   // BELOW : an absolutely critical new addition to the code. Allows building a state recursively
-  this->matrixA.push_back(std::vector<T>(shift*shift,0.));					// New submatrix of size shift*shift
+  uint64_t tempSize = shift;
+  tempSize *= shift;
+  this->matrixA.push_back(std::vector<T>(tempSize,0.));					// New submatrix of size shift*shift
 
   // This indexing may be wrong in this new way that I am doing it.
   //int temp = (dimXstart+shift)*this->localSize + dimYstart+shift;
-  int start = shift*matrixCutSize+shift;
-  for (int i=0; i<shift; i++)
+  uint64_t start = shift;
+  start *= matrixCutSize;
+  start += shift;
+  //int start = shift*matrixCutSize+shift;
+  for (uint32_t i=0; i<shift; i++)
   {
-    int save = i*shift;
-    for (int j=0; j<shift; j++)
+    uint64_t save = i*shift;
+    for (uint32_t j=0; j<shift; j++)
     {
-      // Only need to push back to this 
-      this->matrixA[this->matrixA.size()-1][save+j] = this->matrixA[this->matrixA.size()-2][start+j] - this->holdMatrix[save+j];
+      // Only need to push back to this
+      uint64_t hold1 = save;
+      hold1 += j;
+      uint64_t hold2 = start;
+      hold2 += j;
+      this->matrixA[this->matrixA.size()-1][hold1] = this->matrixA[this->matrixA.size()-2][hold2] - this->holdMatrix[hold1];
 //      if (this->worldRank == 0) {std::cout << "RECURSE index - " << start+j << " and val - " << this->matrixA[this->matrixA.size()-1][save+j] << "\n"; }
     }
     //temp += this->localSize;
@@ -366,7 +388,7 @@ void solver<T>::CholeskyRecurse(int dimXstart, int dimXend, int dimYstart, int d
   This routine requires that matrix data is duplicated across all layers of the 3D Processor Grid
 */
 template<typename T>
-void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int dimXstartB,int dimXendB,int dimYstartB,int dimYendB,int dimXstartC, int dimXendC, int dimYstartC, int dimYendC, int matrixWindow,int matrixSize, int key, int matrixCutSize)
+void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize)
 {
   /*
     I need two broadcasts, then an AllReduce
@@ -811,7 +833,7 @@ void solver<T>::MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int d
   Transpose Communication Helper Function
 */
 template<typename T>
-void solver<T>::fillTranspose(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int dir)
+void solver<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t dir)
 {
   switch (dir)
   {
@@ -915,7 +937,7 @@ void solver<T>::fillTranspose(int dimXstart, int dimXend, int dimYstart, int dim
   Base case of CholeskyRecurse
 */
 template<typename T>
-void solver<T>::CholeskyRecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixCutSize)
+void solver<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize)
 {
   /*
 	1) AllGather onto a single processor, which has to be chosen carefully
@@ -1047,7 +1069,7 @@ void solver<T>::printL()
 }
 
 template<typename T>
-void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataInverse, int n)
+void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataInverse, uint32_t n)
 {
   //std::vector<T> data(n*n); Assume that space has been allocated for data vector on the caller side.
   for (int i=0; i<n; i++)

@@ -1,5 +1,5 @@
 CCMPI = mpicxx
-CFLAGS = -g -Wall -O0
+CFLAGS = -g -Wall -O0 -std=c++11
 
 OBJS1 = CholeskyRecursive3DSolver.o
 OBJS2 = CholeskyRecursive3DMain.o
@@ -15,4 +15,4 @@ CholeskyRecursive3DSolver.o: CholeskyRecursive3DSolver.h CholeskyRecursive3DSolv
 	$(CCMPI) $(CFLAGS) -c CholeskyRecursive3DSolver.h ./../../OpenBLAS/libopenblas.a ./../../scalapack-2.0.2/libscalapack.a
 
 clean:
-	-rm -f *.o CholeskyRecursive3DMain $(OBJS2)
+	-rm -f *.o CholeskyRecursive3D $(OBJS2)

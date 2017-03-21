@@ -12,6 +12,7 @@
 #include <cmath>
 #include <utility>
 #include <cstdlib>
+#include <cstdint>	// fixed-width integer types
 #include <map>
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
 #include "./../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
@@ -24,14 +25,14 @@ class solver
 {
 public:
 
-  solver(int rank, int size, int nDims, int matrixDimSize);
+  solver(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixDimSize);
   void startUp(bool &flag);
   void distributeDataCyclicSequential();
   void distributeDataCyclicParallel();
   void solve();
   void solveScalapack();
   void printL();
-  void lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataLInverse, int n);
+  void lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataLInverse, uint32_t n);
   void compareSolutionsSequential();
   void getResidualSequential();
   void getResidualParallel();
@@ -39,10 +40,10 @@ public:
 
 private:
 
-  void CholeskyRecurse(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixCutSize);
-  void MM(int dimXstartA,int dimXendA,int dimYstartA,int dimYendA,int dimXstartB,int dimXendB,int dimYstartB,int dimYendB,int dimXstartC, int dimXendC, int dimYstartC, int dimYendC, int matrixWindow,int matrixSize, int key, int matrixCutSize);
-  void CholeskyRecurseBaseCase(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int matrixSize, int matrixCutSize);
-  void fillTranspose(int dimXstart, int dimXend, int dimYstart, int dimYend, int matrixWindow, int dir);
+  void CholeskyRecurse(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize);
+  void MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize);
+  void CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize);
+  void fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t dir);
 
 /*
     Each data owns a cyclic subset of the matrix (n^2/P^(2/3)) in size, which is what the 3-d p-grid algorithm allows
@@ -57,24 +58,24 @@ private:
   std::vector<T> holdMatrix;					// this guy needs to hold the temporary matrix and can keep resizing himself
   std::vector<T> holdTransposeL;
 
-  int matrixDimSize;						// N x N matrix, where N = matrixDimSize
-  int nDims;							// Represents the numDims of the processor grid
-  int worldRank;						// Represents process rank in MPI_COMM_WORLD
-  int worldSize;  						// Represents number of processors involved in computation
-  int localSize;						// Represents the size length of a local 2D matrix that is held as a 1D matrix (can be calculated in other ways)
-  int processorGridDimSize;					// Represents the size of the 3D processor grid, its the cubic root of worldSize
-  int baseCaseSize;						// for quick lookUp when deciding when to stop recursing in LURecurse
+  uint32_t matrixDimSize;						// N x N matrix, where N = matrixDimSize
+  uint32_t nDims;							// Represents the numDims of the processor grid
+  uint32_t worldRank;						// Represents process rank in MPI_COMM_WORLD
+  uint32_t worldSize;  						// Represents number of processors involved in computation
+  uint32_t localSize;						// Represents the size length of a local 2D matrix that is held as a 1D matrix (can be calculated in other ways)
+  uint32_t processorGridDimSize;					// Represents the size of the 3D processor grid, its the cubic root of worldSize
+  uint32_t baseCaseSize;						// for quick lookUp when deciding when to stop recursing in LURecurse
 
-  std::vector<int> gridDims;
-  std::vector<int> gridCoords;
+  std::vector<int32_t> gridDims;
+  std::vector<int32_t> gridCoords;
 
 /*
     Sub-communicator information for 3D Grid, Row, Column, and Layer
 */
   MPI_Comm grid3D,layerComm,rowComm,colComm,depthComm;
-  int grid3DRank,layerCommRank,rowCommRank,colCommRank,depthCommRank;
-  int grid3DSize,layerCommSize,rowCommSize,colCommSize,depthCommSize;
-  std::map<int,int> gridSizeLookUp;
+  int32_t grid3DRank,layerCommRank,rowCommRank,colCommRank,depthCommRank;
+  int32_t grid3DSize,layerCommSize,rowCommSize,colCommSize,depthCommSize;
+  std::map<uint32_t,uint32_t> gridSizeLookUp;
 
 /*
     Residual information
