@@ -112,7 +112,7 @@ void solver<T>::startUp(bool &flag)
   Cyclic distribution of data
 */
 template <typename T>
-void solver<T>::collectDataCyclic()
+void solver<T>::distributeDataCyclicSequential()
 {
   /*
     If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
@@ -132,8 +132,13 @@ void solver<T>::collectDataCyclic()
   std::cout << "Program is distributing the matrix data in a cyclic manner\n";
   #endif
 
-  this->matrixA.push_back(std::vector<T>());
+  int size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
+  size *= size;
+  size = (this->matrixDimSize*this->matrixDimSize)/size;	// N^2 / P^{2/3} is the initial size of the data that each p owns
+  //this->matrixA.push_back(std::vector<T>());
+  this->matrixA.resize(1,std::vector<T>(size,0.));		// Try this. Resize vs. push_back, better for parallel version?
 
+  int counter = 0;
   for (int i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
   {
     this->localSize = 0;
@@ -148,10 +153,12 @@ void solver<T>::collectDataCyclic()
         srand(j*this->matrixDimSize + i);
       }
       
-      this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
+      //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
+      this->matrixA[this->matrixA.size()-1][counter++] = (rand()%100)*1./100;
       if (i==j)
       {
-        matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
+        //matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
+        this->matrixA[this->matrixA.size()-1][counter-1] += 10.;
       }
       this->localSize++;
     }
@@ -178,6 +185,94 @@ void solver<T>::collectDataCyclic()
 
 }
 
+/*
+  Cyclic distribution of data on one layer, then broadcasting the data to the other P^{1/3}-1 layers, similar to how Scalapack does it
+*/
+template <typename T>
+void solver<T>::distributeDataCyclicParallel()
+{
+  /*
+    If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
+    Sublayers exist in a cyclic distribution, so that in the first sublayer of the matrix, all processors are used.
+    Therefore, we cycle them from (0,1,2,0,1,2,0,1,2,....) in the x-dimension of the cube (when traveling down from the top-front-left corner) to the bottom-front-left corner.
+    Then for each of those, there are the processors in the y-direction as well, which are representing via the nested loop.
+  */
+
+  /*
+    Note that because matrix A is supposed to be symmetric, I will only give out the lower-triangular portion of A
+    Note that this would require a change in my algorithm, because I do reference uper part of A.
+    Instead, I will only give values for the upper-portion of A. At a later date, I can change the code to only
+    allocate a triangular portion instead of storing half as zeros.
+  */
+
+  #if DEBUGGING
+  std::cout << "Program is distributing the matrix data in a cyclic manner\n";
+  #endif
+
+  int size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
+  size *= size;
+  size = (this->matrixDimSize*this->matrixDimSize)/size;	// N^2 / P^{2/3} is the initial size of the data that each p owns
+  //this->matrixA.push_back(std::vector<T>());
+  this->matrixA.resize(1,std::vector<T>(size,0.));		// Try this. Resize vs. push_back, better for parallel version?
+
+  // Only distribute the data sequentially on the first layer. Then we broadcast down the 3D processor cube using the depth communicator
+  if (this->gridCoords[2] == 0)
+  {
+    int counter = 0;
+    for (int i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
+    {
+      this->localSize = 0;
+      for (int j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
+      {
+        if (i > j)
+        {
+          srand(i*this->matrixDimSize + j);
+        }
+        else
+        {
+          srand(j*this->matrixDimSize + i);
+        }
+      
+        //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
+        this->matrixA[this->matrixA.size()-1][counter++] = (rand()%100)*1./100;
+        if (i==j)
+        {
+          //matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
+          this->matrixA[this->matrixA.size()-1][counter-1] += 10.;
+        }
+        this->localSize++;
+      }
+    }
+
+    MPI_Bcast(&this->matrixA[this->matrixA.size()-1][0], size, MPI_DOUBLE, this->depthCommRank, this->depthComm);  
+  }
+  else			// All other processor not on that 1st layer
+  {
+    // I am assuming that the root has rank 0 in the depth communicator
+    MPI_Bcast(&this->matrixA[this->matrixA.size()-1][0], size, MPI_DOUBLE, 0, this->depthComm);
+  }
+
+  #if DEBUGGING
+  if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
+  {
+    std::cout << "About to print what processor (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ") owns.\n";
+    for (int i=0; i<this->localSize; i++)
+    {
+      for (int j=0; j<this->localSize; j++)
+      {
+        std::cout << this->matrixA[i*this->localSize+j] << " ";
+      }
+      std::cout << "\n";
+    }
+  }
+  #endif
+
+  this->localSize = this->matrixDimSize/this->processorGridDimSize;	// Expensive division. Lots of compute cycles
+  int temp = ((this->localSize*(this->localSize+1))>>1);		// n(n+1)/2 is the size needed to hold the triangular portion of the matrix
+  this->matrixL.resize(temp,0.);
+  this->matrixLInverse.resize(temp,0.);
+
+}
 
 /********************************************************************************************************************************************/
 // This divides the program. If anything above this point is incorrect, then everything below will be incorrect as well.
@@ -976,6 +1071,7 @@ void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vec
     }
   }
   
+  #if DEBUGGING
   std::cout << "*************************************************************************************************************\n";
   for (int i=0; i<n; i++)
   {
@@ -986,12 +1082,14 @@ void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vec
     std::cout << "\n";
   }
   std::cout << "*************************************************************************************************************\n";
+  #endif
 
   dataL = data;			// big copy
   LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',n,&dataL[0],n);
   dataInverse = dataL;				// expensive copy
   LAPACKE_dtrtri(LAPACK_ROW_MAJOR,'L','N',n,&dataInverse[0],n);
 
+  #if DEBUGGING
   std::cout << "Cholesky Solution is below *************************************************************************************************************\n";
 
   for (int i=0; i<n; i++)
@@ -1002,6 +1100,7 @@ void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vec
     }
     std::cout << "\n";
   }
+  #endif
 
   return;
 }
@@ -1042,7 +1141,7 @@ void solver<T>::solveScalapack()
 }
 
 template<typename T>
-void solver<T>::compareSolutions()
+void solver<T>::compareSolutionsSequential()
 {
   /*
 	We want to perform a reduction on the data on one of the P^{1/3} layers, then call lapackTest with a single
@@ -1167,6 +1266,112 @@ void solver<T>::compareSolutions()
       std::cout << "matrix L Inverse Norm - " << this->matrixLInverseNorm << std::endl;
     }
   }
+}
+
+template<typename T>
+void solver<T>::getResidualSequential()
+{
+  // Should be similar to getResidualSequential
+  // Only computes the residual on one layer, but all layers should be the same.
+  if (this->gridCoords[2] == 0)		// 1st layer
+  {
+    //std::vector<T> sendData(this->matrixDimSize * this->matrixDimSize);
+    std::vector<T> recvData(this->processorGridDimSize*this->processorGridDimSize*this->matrixA[this->matrixA.size()-1].size());	// only the bottom half, remember?
+    MPI_Gather(&this->matrixA[this->matrixA.size()-1][0],this->matrixA[this->matrixA.size()-1].size(), MPI_DOUBLE, &recvData[0],this->matrixA[this->matrixA.size()-1].size(), MPI_DOUBLE,
+	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
+    std::vector<T> recvDataL(this->processorGridDimSize*this->processorGridDimSize*this->matrixL.size());	// only the bottom half, remember?
+    MPI_Gather(&this->matrixL[0],this->matrixL.size(), MPI_DOUBLE, &recvDataL[0],this->matrixL.size(), MPI_DOUBLE,
+	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
+    std::vector<T> recvDataLInverse(this->processorGridDimSize*this->processorGridDimSize*this->matrixLInverse.size());	// only the bottom half, remember?
+    MPI_Gather(&this->matrixLInverse[0],this->matrixLInverse.size(), MPI_DOUBLE, &recvDataLInverse[0],this->matrixLInverse.size(), MPI_DOUBLE,
+	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
+
+    if (this->layerCommRank == 0)
+    {
+      /*
+	Now on this specific rank, we currently have all the algorithm data that we need to compare, but now we must call the sequential
+        lapackTest method in order to get what we want to compare the Gathered data against.
+      */
+      std::vector<T> data(this->matrixDimSize*this->matrixDimSize);
+      std::vector<T> lapackData(this->matrixDimSize*this->matrixDimSize);
+      std::vector<T> lapackDataInverse(this->matrixDimSize*this->matrixDimSize);
+      lapackTest(data, lapackData, lapackDataInverse, this->matrixDimSize);		// pass this vector in by reference and have it get filled up
+
+      // Now we can start comparing this->matrixL with data
+      // Lets just first start out by printing everything separately too the screen to make sure its correct up till here
+      
+      {
+        int index = 0;
+        std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
+        for (int i=0; i<this->matrixDimSize; i++)
+        {
+          for (int j=0; j<=i; j++)
+	  {
+            int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
+            double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
+            diff = abs(diff);
+            this->matrixLNorm += (diff*diff);
+          }
+          if (i%2==0)
+          {
+            pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
+          }
+          index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
+        }
+        this->matrixLNorm = sqrt(this->matrixLNorm);
+      }
+      {
+        int index = 0;
+        std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
+        for (int i=0; i<this->matrixDimSize; i++)
+        {
+          for (int j=0; j<this->matrixDimSize; j++)
+	  {
+            int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
+            double diff = data[index++] - recvData[PE*this->matrixA[this->matrixA.size()-1].size() + pCounters[PE]++];
+            diff = abs(diff);
+            this->matrixANorm += (diff*diff);
+          }
+//          if (i%2==0)
+//          {
+//            pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
+//          }
+          index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
+        }
+        this->matrixANorm = sqrt(this->matrixANorm);
+      }
+      {
+        int index = 0;
+        std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
+        for (int i=0; i<this->matrixDimSize; i++)
+        {
+          for (int j=0; j<=i; j++)
+	  {
+            int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
+            double diff = lapackDataInverse[index++] - recvDataLInverse[PE*this->matrixLInverse.size() + pCounters[PE]++];
+            diff = abs(diff);
+            this->matrixLInverseNorm += (diff*diff);
+          }
+          if (i%2==0)
+          {
+            pCounters[1]++;		// this is a serious edge case due to the way I handled the code
+          }
+          index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
+        }
+        this->matrixLInverseNorm = sqrt(this->matrixLInverseNorm);
+      }
+      
+      std::cout << "matrix A Norm - " << this->matrixANorm << std::endl;
+      std::cout << "matrix L Norm - " << this->matrixLNorm << std::endl;
+      std::cout << "matrix L Inverse Norm - " << this->matrixLInverseNorm << std::endl;
+    }
+  }
+}
+
+template <typename T>
+void solver<T>::getResidualParallel()
+{
+  // Waiting on scalapack support. No other way to this
 }
 
 template<typename T>

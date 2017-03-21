@@ -26,12 +26,15 @@ public:
 
   solver(int rank, int size, int nDims, int matrixDimSize);
   void startUp(bool &flag);
-  void collectDataCyclic();
+  void distributeDataCyclicSequential();
+  void distributeDataCyclicParallel();
   void solve();
   void solveScalapack();
   void printL();
   void lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataLInverse, int n);
-  void compareSolutions();
+  void compareSolutionsSequential();
+  void getResidualSequential();
+  void getResidualParallel();
   void printInputA();
 
 private:

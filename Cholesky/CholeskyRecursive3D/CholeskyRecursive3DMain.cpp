@@ -46,8 +46,9 @@ int main(int argc, char *argv[])
     MPI_Finalize();
     return 0;
   }
-  mySolver.collectDataCyclic();
-  mySolver.printInputA();
+  //mySolver.distributeDataCyclicSequential();
+  mySolver.distributeDataCyclicParallel();
+  
   // So I start my timings after the data is distributed, which involved no communication
   clock_t start;
   double duration;
@@ -73,8 +74,7 @@ int main(int argc, char *argv[])
   // If this works, then I can print out the data to see if its correct
   //mySolver.printL();
 
-  mySolver.compareSolutions();
-  mySolver.printInputA();
+  mySolver.getResidualSequential();
 
   MPI_Finalize();
   return 0;
