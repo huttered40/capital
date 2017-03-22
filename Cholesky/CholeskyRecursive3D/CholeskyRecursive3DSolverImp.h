@@ -1302,40 +1302,6 @@ void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vec
   return;
 }
 
-/*
-template<typename T>
-void solver<T>::solveScalapack()
-{
-
-  // Scalapack Cholesky.
-  vector<int> desc(9);
-  int info,icontxt;
-  char order = 'R';
-  int npRow = 2;
-  int npCol = 2;		// these two can change obviously
-  int myCol = this->worldSize%npRow;
-  int myRow = this->worldSize/npRow;
-  BLACS_GET(0,0,&icontxt);
-  BLACS_GRIDINIT(&icontxt,order,npRow,npCol);
-  BLACS_GRIDINFO(icontxt,&npRow,&npCol,&myRow,&myCol);	// the last 4 arguments are apparently output arguments
-
-  // Set up the descriptor vector
-  desc[0] = 1;
-  desc[1] = iscontxt;
-  desc[2] = this->matrixDimSize;
-  desc[3] = this->matrixDimSize;
-  desc[4] = ;
-  desc[5] = ;
-  desc[6] = ;
-  desc[7] = ;
-  desc[8] = ;
-
-  // Now I guess I would distribute the input matrix over the P processors.
-
-  PDPOTRF('L',this->matrixDimSize,....,1,1,&desc[0],&info);
-}
-*/
-
 template<typename T>
 void solver<T>::getResidualSequential()
 {
