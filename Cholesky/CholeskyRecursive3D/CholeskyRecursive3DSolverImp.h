@@ -152,11 +152,17 @@ void solver<T>::distributeDataCyclicSequential()
     {
       if (i > j)
       {
-        srand(i*this->matrixDimSize + j);		// Assuming no overflow here
+        uint64_t seed = i;
+        seed *= this->matrixDimSize;
+        seed += j;
+        srand(seed);				// Note that srand takes unsigned int as argument, so overflow could be bad
       }
       else
       {
-        srand(j*this->matrixDimSize + i);		// Assuming no overflow here
+        uint64_t seed = j;
+        seed *= this->matrixDimSize;
+        seed += i;
+        srand(seed);		// Assuming no overflow here
       }
       
       //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
@@ -178,7 +184,10 @@ void solver<T>::distributeDataCyclicSequential()
     {
       for (uint32_t j=0; j<this->localSize; j++)
       {
-        std::cout << this->matrixA[i*this->localSize+j] << " ";
+        uint64_t index = i;
+        index *= this->localSize;
+        index += j;
+        std::cout << this->matrixA[index] << " ";
       }
       std::cout << "\n";
     }
@@ -237,11 +246,17 @@ void solver<T>::distributeDataCyclicParallel()
       {
         if (i > j)
         {
-          srand(i*this->matrixDimSize + j);			// Watch for overflow?
+          uint64_t seed = i;
+          seed *= this->matrixDimSize;
+          seed += j;
+          srand(seed);
         }
         else
         {
-          srand(j*this->matrixDimSize + i);			// Watch for overflow?
+          uint64_t seed = j;
+          seed *= this->matrixDimSize;
+          seed += i;
+          srand(seed);
         }
       
         //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
@@ -271,7 +286,10 @@ void solver<T>::distributeDataCyclicParallel()
     {
       for (uint32_t j=0; j<this->localSize; j++)
       {
-        std::cout << this->matrixA[i*this->localSize+j] << " ";
+        uint64_t index = i;
+        index *= this->matrixDimSize;
+        index += j;
+        std::cout << this->matrixA[index] << " ";
       }
       std::cout << "\n";
     }
@@ -1046,27 +1064,35 @@ void solver<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, ui
 	So below, I need to transfer a 2-d vector into a 1-d vector
   */
 
-  std::vector<T> sendBuffer((matrixWindow*(matrixWindow+1))>>1,0.);
+  uint64_t sendBufferSize = matrixWindow;
+  sendBufferSize *= (matrixWindow+1);
+  sendBufferSize >>= 1;
+  std::vector<T> sendBuffer(sendBufferSize,0.);
 
   /* Note that for now, we are accessing matrix A as a 1d square vector, NOT a triangular vector, so startOffset is not sufficient
   int startOffset = (dimXstart*(dimXstart+1))>>1;
   */
 
-  int index1 = 0;
-  int index2 = 0;
-  for (int i=0; i<matrixWindow; i++)
+  uint64_t index1 = 0;
+  uint64_t index2 = 0;
+  for (uint32_t i=0; i<matrixWindow; i++)
   {
-    for (int j=0; j<=i; j++)			// Note that because A is upper-triangular (shouldnt really matter), I must
+    for (uint32_t j=0; j<=i; j++)			// Note that because A is upper-triangular (shouldnt really matter), I must
 						// access A differently than before
     {
-      sendBuffer[index1++] = this->matrixA[this->matrixA.size()-1][index2 + j];//this->matrixA[index2+j];
+      uint64_t temp = index2;
+      temp += j;
+      sendBuffer[index1++] = this->matrixA[this->matrixA.size()-1][temp];//this->matrixA[index2+j];
 //      if (this->worldRank == 0) {std::cout << "BC index - " << index2+j << " and val - " << sendBuffer[index1-1] << std::endl; }
     }
     //index2 += this->localSize;
     index2 += matrixCutSize;
   }
 
-  std::vector<T> recvBuffer(sendBuffer.size()*this->processorGridDimSize*this->processorGridDimSize,0);
+  uint64_t recvBufferSize = sendBuffer.size();
+  recvBufferSize *= this->processorGridDimSize;
+  recvBufferSize *= this->processorGridDimSize;
+  std::vector<T> recvBuffer(recvBufferSize,0);
   MPI_Allgather(&sendBuffer[0], sendBuffer.size(),MPI_DOUBLE,&recvBuffer[0],sendBuffer.size(),MPI_DOUBLE,this->layerComm);
 
 
@@ -1079,18 +1105,36 @@ void solver<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, ui
 
 
   // I still need to fix the below. The way an allgather returns data is in blocks
-  int count = 0;
+  uint64_t count = 0;
   sendBuffer.clear();				// This is new. Edgar says to use capacity??
-  sendBuffer.resize(matrixSize*matrixSize,0.);
-  for (int i=0; i<this->processorGridDimSize*this->processorGridDimSize; i++)  // MACRO loop over all processes' data (stored contiguously)
+  sendBufferSize = matrixSize;
+  sendBufferSize *= matrixSize;
+  sendBuffer.resize(sendBufferSize,0.);
+  uint64_t loopMax = this->processorGridDimSize;
+  loopMax *= loopMax;
+  for (uint32_t i=0; i<loopMax; i++)  // MACRO loop over all processes' data (stored contiguously)
   {
-    for (int j=0; j<matrixWindow; j++)
+    for (uint32_t j=0; j<matrixWindow; j++)
     {
-      for (int k=0; k<=j; k++)		// I changed this. It should be correct.
+      for (uint32_t k=0; k<=j; k++)		// I changed this. It should be correct.
       {
-        int index = j*this->processorGridDimSize*matrixSize+(i/this->processorGridDimSize)*matrixSize + k*this->processorGridDimSize+(i%this->processorGridDimSize);  // remember that recvBuffer is stored as P^(2/3) consecutive blocks of matrix data pertaining to each p
-        int xCheck = index/matrixSize;
-        int yCheck = index%matrixSize;
+        uint64_t index1 = j;
+        index1 *= this->processorGridDimSize;
+        index1 *= matrixSize;
+        uint64_t index2 = i;
+        index2 /= this->processorGridDimSize;					// expensive division
+        index2 *= matrixSize;
+        uint64_t index3 = k;
+        index3 *= this->processorGridDimSize;
+        index3 += (i%this->processorGridDimSize);
+        uint64_t index = index1;
+        index += index2;
+        index += index3;
+        //int index = j*this->processorGridDimSize*matrixSize+(i/this->processorGridDimSize)*matrixSize + k*this->processorGridDimSize+(i%this->processorGridDimSize);  // remember that recvBuffer is stored as P^(2/3) consecutive blocks of matrix data pertaining to each p
+        
+        uint64_t xCheck = index;
+        xCheck /= matrixSize;						// expensive division
+        uint64_t yCheck = index%matrixSize;
         if (xCheck >= yCheck)
         {
           sendBuffer[index] = recvBuffer[count++];
@@ -1114,33 +1158,60 @@ void solver<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, ui
   // I am assuming that the diagonals are ok (maybe they arent all 1s, but that should be ok right?) 
   LAPACKE_dtrtri(LAPACK_ROW_MAJOR,'L','N',matrixSize,&recvBuffer[0],matrixSize);
 
-  int pIndex = this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1];
-  int startOffset = (dimXstart*(dimXstart+1))>>1;
-  int rowCounter = 0;
-  for (int i=0; i<matrixWindow; i++)
+  uint64_t pIndex = this->gridCoords[0];
+  pIndex *= this->processorGridDimSize;
+  pIndex += this->gridCoords[1];
+  //int pIndex = this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1];
+  uint64_t startOffset = dimXstart;
+  startOffset *= (dimXstart+1);
+  startOffset >>= 1;
+  //int startOffset = (dimXstart*(dimXstart+1))>>1;
+  uint64_t rowCounter = 0;
+  for (uint32_t i=0; i<matrixWindow; i++)
   {
-    int temp = startOffset + (i+1)*dimYstart + rowCounter;
-    for (int j=0; j<=i; j++)	// for matrixWindow==2, j should always go to 
+    uint64_t temp = i+1;
+    temp *= dimYstart;
+    temp += rowCounter;
+    temp += startOffset;
+    //int temp = startOffset + (i+1)*dimYstart + rowCounter;
+    for (uint32_t j=0; j<=i; j++)	// for matrixWindow==2, j should always go to 
     {
       // I need to use dimXstart and dimXend and dimYstart and dimYend ...
-      int index = i*this->processorGridDimSize*matrixSize+(pIndex/this->processorGridDimSize)*matrixSize + j*this->processorGridDimSize+(pIndex%this->processorGridDimSize);
-      this->matrixL[temp+j] = sendBuffer[index];
-      this->matrixLInverse[temp+j] = recvBuffer[index];
+      uint64_t index1 = i;
+      index1 *= this->processorGridDimSize;
+      index1 *= matrixSize;
+      uint64_t index2 = pIndex;
+      index2 /= this->processorGridDimSize;				// expensive division
+      index2 *= matrixSize;
+      uint64_t index3 = j;
+      index3 *= this->processorGridDimSize;
+      index3 += (pIndex%this->processorGridDimSize);
+      uint64_t index = index1;
+      index += index2;
+      index += index3;
+      //int index = i*this->processorGridDimSize*matrixSize+(pIndex/this->processorGridDimSize)*matrixSize + j*this->processorGridDimSize+(pIndex%this->processorGridDimSize);
+      uint64_t index4 = temp;
+      index4 += j;
+      this->matrixL[index4] = sendBuffer[index];
+      this->matrixLInverse[index4] = recvBuffer[index];
     }
     rowCounter += (i+1);
   }
 }
 
+/*
+  I may want to get rid of this function later.
+*/
 template<typename T>
 void solver<T>::printL()
 {
   // We only need to print out a single layer, due to replication of L on each layer
   if ((this->gridCoords[2] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[0] == 0))
   {
-    int tracker = 0;
-    for (int i=0; i<this->localSize; i++)
+    uint64_t tracker = 0;
+    for (uint32_t i=0; i<this->localSize; i++)
     {
-      for (int j=0; j<this->localSize; j++)
+      for (uint32_t j=0; j<this->localSize; j++)
       {
         if (i >= j)
         {
@@ -1160,36 +1231,47 @@ template<typename T>
 void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataInverse, uint32_t n)
 {
   //std::vector<T> data(n*n); Assume that space has been allocated for data vector on the caller side.
-  for (int i=0; i<n; i++)
+  for (uint32_t i=0; i<n; i++)
   {
-    for (int j=0; j<n; j++)
+    for (uint32_t j=0; j<n; j++)
     {
       if (i > j)
       {
-        srand(i*n+j);
+        uint64_t seed = i;
+        seed *= n;
+        seed += j;
+        srand(seed);
       }
       else
       {
-        srand(j*n+i);
+        uint64_t seed = j;
+        seed *= n;
+        seed += i;
+        srand(seed);
       }
-      data[i*n+j] = (rand()%100)*1./100.;
+      uint64_t seed = i;
+      seed *= n;
+      seed += j;
+      data[seed] = (rand()%100)*1./100.;
       //std::cout << "hoogie - " << i*n+j << " " << data[i*n+j] << std::endl;
       if (i==j)
       {
-        data[i*n+j] += 10.;
+        data[seed] += 10.;
       }
     }
   }
   
   #if DEBUGGING
   std::cout << "*************************************************************************************************************\n";
-  for (int i=0; i<n; i++)
+  for (uint32_t i=0; i<n; i++)
   {
-    for (int j=0; j<n; j++)
+    for (uint32_t j=0; j<n; j++)
     {
-      std::cout << data[i*n+j] << " ";
+      uint64_t index = i;
+      index *= n;
+      index += j;
+      std::cout << dataL[index] << " ";
     }
-    std::cout << "\n";
   }
   std::cout << "*************************************************************************************************************\n";
   #endif
@@ -1202,11 +1284,14 @@ void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vec
   #if DEBUGGING
   std::cout << "Cholesky Solution is below *************************************************************************************************************\n";
 
-  for (int i=0; i<n; i++)
+  for (uint32_t i=0; i<n; i++)
   {
-    for (int j=0; j<n; j++)
+    for (uint32_t j=0; j<n; j++)
     {
-      std::cout << dataL[i*n+j] << " ";
+      uint64_t index = i;
+      index *= n;
+      index += j;
+      std::cout << dataL[index] << " ";
     }
     std::cout << "\n";
   }
