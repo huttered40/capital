@@ -1,7 +1,7 @@
 //#include "solver.h" -> Not done here because of template issues
 
 /*
-  Turn on debugging statements when necessary but flipping the 0 to 1
+  Turn on debugging statements when necessary by flipping the 0 to 1
 */
 #define DEBUGGING 0
 #define PROCESSOR_X_ 0
@@ -949,29 +949,24 @@ void solver<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dim
     {
       // copy L11-inverse data into holdTransposeInverse to be send/received
       this->holdTransposeL.clear();
-      this->holdTransposeL.resize((matrixWindow*(matrixWindow+1))>>1, 0.);
-      int startOffset = ((dimXstart*(dimXstart+1))>>1);
-      int index1 = 0;
-      int index2 = startOffset + dimXstart;
-      for (int i=0; i<matrixWindow; i++)
+      uint64_t holdTransposeLSize = matrixWindow;
+      holdTransposeLSize *= (matrixWindow+1);
+      holdTransposeLSize >>= 1;
+      this->holdTransposeL.resize(holdTransposeLSize, 0.);
+      uint64_t startOffset = dimXstart;
+      startOffset *= (dimXstart+1);
+      startOffset >>= 1;
+      //int startOffset = ((dimXstart*(dimXstart+1))>>1);
+      uint64_t index1 = 0;
+      uint64_t index2 = startOffset + dimXstart;
+      for (uint32_t i=0; i<matrixWindow; i++)
       {
-        for (int j=0; j<=i; j++)
+        for (uint32_t j=0; j<=i; j++)
         {
           this->holdTransposeL[index1++] = this->matrixLInverse[index2++];
         }
         index2 += dimYstart;
       }
-/*
-        if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 1))
-        {
-	  std::cout << "sending this shit over, size - " << this->holdTransposeL.size() << "****************************************************************************************************\n";
-          for (int i=0; i<this->holdTransposeL.size(); i++)
-          {
-            std::cout << "gay - " << this->holdTransposeL[i] << std::endl;
-          }
-          std::cout << "checkTranspose****************************************************************************************************\n";
-        }
-*/
       if ((this->gridCoords[0] != this->gridCoords[1]))
       {
         // perform MPI_SendRecv_replace
@@ -981,18 +976,6 @@ void solver<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dim
         MPI_Status stat;
         MPI_Sendrecv_replace(&this->holdTransposeL[0], this->holdTransposeL.size(), MPI_DOUBLE,
           destRank, 0, destRank, MPI_ANY_TAG, MPI_COMM_WORLD, &stat);
-        // anything else?
-/*
-        if ((this->gridCoords[0] == 1) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 1))
-        {
-	  std::cout << "checkTranspose, size - " << this->holdTransposeL.size() << "****************************************************************************************************\n";
-          for (int i=0; i<this->holdTransposeL.size(); i++)
-          {
-            std::cout << "huh - " << this->holdTransposeL[i] << std::endl;
-          }
-          std::cout << "checkTranspose****************************************************************************************************\n";
-        }
-*/
       }
       break;
     }
@@ -1000,29 +983,27 @@ void solver<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dim
     {
       // copy L11-inverse data into holdTransposeInverse to be send/received
       this->holdTransposeL.clear();
-      this->holdTransposeL.resize(matrixWindow*matrixWindow, 0.);
-      int startOffset = ((dimXstart*(dimXstart+1))>>1);
-      int index1 = 0;
-      int index2 = startOffset + dimYstart;
-      for (int i=0; i<matrixWindow; i++)
+      uint64_t holdTransposeLSize = matrixWindow;
+      holdTransposeLSize *= matrixWindow;
+      this->holdTransposeL.resize(holdTransposeLSize, 0.);
+      uint64_t startOffset = dimXstart;
+      startOffset *= (dimXstart+1);
+      startOffset >>= 1;
+      //int startOffset = ((dimXstart*(dimXstart+1))>>1);
+      uint64_t index1 = 0;
+      uint64_t index2 = startOffset + dimYstart;
+      for (uint32_t i=0; i<matrixWindow; i++)
       {
-        for (int j=0; j<matrixWindow; j++)
+        for (uint32_t j=0; j<matrixWindow; j++)
         {
           this->holdTransposeL[index1++] = this->matrixL[index2++];
         }
-        index2 += (dimYstart+i+1);
+        uint64_t temp = dimYstart;
+        temp += i;
+        temp++;
+        index2 += temp;
       }
 
-/*
-      if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 0))
-      {
-        for (int i=0; i<this->holdTransposeL.size(); i++)
-        {
-          std::cout << this->holdTransposeL[i] << " ";
-          if ((i+1)%matrixWindow == 0) {std::cout << std::endl; }
-        }
-      }
-*/
       if ((this->gridCoords[0] != this->gridCoords[1]))
       {
         // perform MPI_SendRecv_replace
@@ -1033,7 +1014,6 @@ void solver<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dim
         MPI_Sendrecv_replace(&this->holdTransposeL[0], this->holdTransposeL.size(), MPI_DOUBLE,
           destRank, 0, destRank, 0, MPI_COMM_WORLD, &stat);
 
-        // anything else?
       }    
       break;
     }
