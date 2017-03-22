@@ -7,6 +7,7 @@
 
 // System includes
 #include <iostream>
+//#include <stdio.h>
 #include <vector>
 #include <mpi.h>
 #include <cmath>
@@ -14,23 +15,26 @@
 #include <cstdlib>
 #include <cstdint>	// fixed-width integer types
 #include <map>
+#include <strings.h>
+//#include <math.h>
+#include <assert.h>
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
 #include "./../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
 // Need this to use fortran scalapack function
-extern void PDPOTRF(int *m, int *n, char *A, int *iA, int *jA, int *desca, int *ipiv, int *info);
+//extern void PDPOTRF(int *m, int *n, char *A, int *iA, int *jA, int *desca, int *ipiv, int *info);
 
 template <typename T>
 class solver
 {
 public:
 
-  solver(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixDimSize);
+  solver(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixDimSize, int argc, char **argv);
   void startUp(bool &flag);
   void distributeDataCyclicSequential();
   void distributeDataCyclicParallel();
   void solve();
-  void solveScalapack();
+  void scalapackCholesky();				// this routine is implemented in a special file, scalapackCholesky.h
   void printL();
   void lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataLInverse, uint32_t n);
   void getResidualSequential();
@@ -82,8 +86,15 @@ private:
   double matrixLNorm;
   double matrixLInverseNorm;
   double matrixANorm;
+
+/*
+  Data needed for the scalapack routines
+*/
+  int argc;
+  char **argv;
 };
 
 #include "CholeskyRecursive3DSolverImp.h"		// for template-instantiation reasons
+#include "scalapackCholesky.h"				// Try this for now, contains the scalapackCholesky() routine
 
 #endif /*CHOLESKY_RECURSIVE_3D_SOLVER_H_*/

@@ -9,12 +9,14 @@
 #define PROCESSOR_Z_ 0
 
 template<typename T>
-solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixDimSize)
+solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixDimSize, int argc, char **argv)
 {
   this->worldRank = rank;
   this->worldSize = size;
   this->nDims = nDims;
   this->matrixDimSize = matrixDimSize;
+  this->argc = argc;
+  this->argv = argv;
 
 /*
   Precompute a list of cubes for quick lookUp of cube dimensions based on processor size
@@ -1300,10 +1302,10 @@ void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vec
   return;
 }
 
+/*
 template<typename T>
 void solver<T>::solveScalapack()
 {
-/*
 
   // Scalapack Cholesky.
   vector<int> desc(9);
@@ -1331,9 +1333,8 @@ void solver<T>::solveScalapack()
   // Now I guess I would distribute the input matrix over the P processors.
 
   PDPOTRF('L',this->matrixDimSize,....,1,1,&desc[0],&info);
-
-*/
 }
+*/
 
 template<typename T>
 void solver<T>::getResidualSequential()
