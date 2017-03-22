@@ -33,7 +33,6 @@ public:
   void solveScalapack();
   void printL();
   void lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataLInverse, uint32_t n);
-  void compareSolutionsSequential();
   void getResidualSequential();
   void getResidualParallel();
   void printInputA();

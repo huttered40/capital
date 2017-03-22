@@ -1336,30 +1336,21 @@ void solver<T>::solveScalapack()
 }
 
 template<typename T>
-void solver<T>::compareSolutionsSequential()
+void solver<T>::getResidualSequential()
 {
   /*
 	We want to perform a reduction on the data on one of the P^{1/3} layers, then call lapackTest with a single
 	processor. Then we can, in the right order, compare these solutions for correctness.
   */
 
-/*
-  if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1))
-  {
-    std::cout << "\n";
-    for (int i=0; i<this->matrixL.size(); i++)
-    {
-      std::cout << this->matrixL[i] << std::endl;
-    }
-    std::cout << "\n\n";
-  }
-*/
-
 
   if (this->gridCoords[2] == 0)		// 1st layer
   {
     //std::vector<T> sendData(this->matrixDimSize * this->matrixDimSize);
-    std::vector<T> recvData(this->processorGridDimSize*this->processorGridDimSize*this->matrixA[this->matrixA.size()-1].size());	// only the bottom half, remember?
+    uint64_t recvDataSize = this->processorGridDimSize;
+    recvDataSize *= recvDataSize;
+    recvDataSize *= this->matrixA[this->matrixA.size()-1].size();
+    std::vector<T> recvData(recvDataSize);	// only the bottom half, remember?
     MPI_Gather(&this->matrixA[this->matrixA.size()-1][0],this->matrixA[this->matrixA.size()-1].size(), MPI_DOUBLE, &recvData[0],this->matrixA[this->matrixA.size()-1].size(), MPI_DOUBLE,
 	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
     std::vector<T> recvDataL(this->processorGridDimSize*this->processorGridDimSize*this->matrixL.size());	// only the bottom half, remember?
@@ -1375,26 +1366,39 @@ void solver<T>::compareSolutionsSequential()
 	Now on this specific rank, we currently have all the algorithm data that we need to compare, but now we must call the sequential
         lapackTest method in order to get what we want to compare the Gathered data against.
       */
-      std::vector<T> data(this->matrixDimSize*this->matrixDimSize);
-      std::vector<T> lapackData(this->matrixDimSize*this->matrixDimSize);
-      std::vector<T> lapackDataInverse(this->matrixDimSize*this->matrixDimSize);
+      uint64_t matSize = this->matrixDimSize;
+      matSize *= matSize;
+      std::vector<T> data(matSize);
+      std::vector<T> lapackData(matSize);
+      std::vector<T> lapackDataInverse(matSize);
       lapackTest(data, lapackData, lapackDataInverse, this->matrixDimSize);		// pass this vector in by reference and have it get filled up
 
       // Now we can start comparing this->matrixL with data
       // Lets just first start out by printing everything separately too the screen to make sure its correct up till here
       
       {
-        int index = 0;
-        std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
-        std::cout << "\n";
-        for (int i=0; i<this->matrixDimSize; i++)
+        uint64_t index = 0;
+        uint64_t pCounterSize = this->processorGridDimSize;
+        pCounterSize *= pCounterSize;
+        std::vector<int> pCounters(pCounterSize,0);		// start each off at zero
+        for (uint32_t i=0; i<this->matrixDimSize; i++)
         {
-          for (int j=0; j<=i; j++)
+          for (uint32_t j=0; j<=i; j++)
 	  {
-            int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
-	    std::cout << lapackData[index] << " " << recvDataL[PE*this->matrixL.size() + pCounters[PE]] << " " << index << std::endl;
-	    std::cout << lapackData[index] - recvDataL[PE*this->matrixL.size() + pCounters[PE]] << std::endl;
-            double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
+            uint64_t PE = this->processorGridDimSize;
+            PE *= (i%this->processorGridDimSize);
+            PE += (j%this->processorGridDimSize);
+            //int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
+            uint64_t recvDataIndex = PE;
+            recvDataIndex *= this->matrixL.size();
+            recvDataIndex += pCounters[PE];
+	    #if DEBUGGING
+            std::cout << lapackData[index] << " " << recvDataL[recvDataIndex] << " " << index << std::endl;
+	    std::cout << lapackData[index] - recvDataL[recvDataIndex] << std::endl;
+            #endif
+            pCounters[PE]++;
+            double diff = lapackData[index++] - recvDataL[recvDataIndex];
+            //double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
             diff = abs(diff);
             this->matrixLNorm += (diff*diff);
           }
@@ -1402,23 +1406,37 @@ void solver<T>::compareSolutionsSequential()
           {
             pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
           }
-          index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
+          
+          index = this->matrixDimSize;
+          index *= (i+1);			// try this. We skip the non lower triangular elements
+          #if DEBUGGING
           std::cout << std::endl;
+          #endif
         }
         this->matrixLNorm = sqrt(this->matrixLNorm);
       }
       {
-        int index = 0;
-        std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
+        uint64_t index = 0;
+        uint64_t pCounterSize = this->processorGridDimSize;
+        pCounterSize *= pCounterSize;
+        std::vector<int> pCounters(pCounterSize,0);		// start each off at zero
         std::cout << "\n";
-        for (int i=0; i<this->matrixDimSize; i++)
+        for (uint32_t i=0; i<this->matrixDimSize; i++)
         {
-          for (int j=0; j<this->matrixDimSize; j++)
+          for (uint32_t j=0; j<this->matrixDimSize; j++)
 	  {
-            int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
-	    std::cout << data[index] << " " << recvData[PE*this->matrixA[this->matrixA.size()-1].size() + pCounters[PE]] << " " << index << std::endl;
-	    std::cout << data[index] - recvData[PE*this->matrixA[matrixA.size()-1].size() + pCounters[PE]] << std::endl;
-            double diff = data[index++] - recvData[PE*this->matrixA[this->matrixA.size()-1].size() + pCounters[PE]++];
+            uint64_t PE = this->processorGridDimSize;
+            PE *= (i%this->processorGridDimSize);
+            PE += (j%this->processorGridDimSize);
+	    uint64_t recvDataIndex = PE;
+            recvDataIndex *= this->matrixA[this->matrixA.size()-1].size();
+            recvDataIndex += pCounters[PE];
+            #if DEBUGGING
+            std::cout << data[index] << " " << recvData[recvDataIndex] << " " << index << std::endl;
+	    std::cout << data[index] - recvData[recvDataIndex] << std::endl;
+            #endif
+            pCounters[PE]++;
+            double diff = data[index++] - recvData[recvDataIndex];
             diff = abs(diff);
             this->matrixANorm += (diff*diff);
           }
@@ -1426,23 +1444,36 @@ void solver<T>::compareSolutionsSequential()
 //          {
 //            pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
 //          }
-          index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
+          index = this->matrixDimSize;
+          index *= (i+1);			// try this. We skip the non lower triangular elements
+          #if DEBUGGING
           std::cout << std::endl;
+          #endif
         }
         this->matrixANorm = sqrt(this->matrixANorm);
       }
       {
-        int index = 0;
-        std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
-        std::cout << "\n";
-        for (int i=0; i<this->matrixDimSize; i++)
+        uint64_t index = 0;
+        uint64_t pCounterSize = this->processorGridDimSize;
+        pCounterSize *= pCounterSize;
+        std::vector<int> pCounters(pCounterSize,0);		// start each off at zero
+        for (uint32_t i=0; i<this->matrixDimSize; i++)
         {
-          for (int j=0; j<=i; j++)
+          for (uint32_t j=0; j<=i; j++)
 	  {
-            int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
-	    std::cout << lapackDataInverse[index] << " " << recvDataLInverse[PE*this->matrixLInverse.size() + pCounters[PE]] << " " << index << std::endl;
-	    std::cout << lapackDataInverse[index] - recvDataLInverse[PE*this->matrixLInverse.size() + pCounters[PE]] << std::endl;
-            double diff = lapackDataInverse[index++] - recvDataLInverse[PE*this->matrixLInverse.size() + pCounters[PE]++];
+            uint64_t PE = this->processorGridDimSize;
+            PE *= (i%this->processorGridDimSize);
+            PE += (j%this->processorGridDimSize);
+            //int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
+            uint64_t recvDataIndex = PE;
+            recvDataIndex *= this->matrixLInverse.size();
+            recvDataIndex += pCounters[PE];
+            #if DEBUGGING
+	    std::cout << lapackDataInverse[index] << " " << recvDataLInverse[recvDataIndex] << " " << index << std::endl;
+	    std::cout << lapackDataInverse[index] - recvDataLInverse[recvDataIndex] << std::endl;
+            #endif
+            pCounters[PE]++;
+            double diff = lapackDataInverse[index++] - recvDataLInverse[recvDataIndex];
             diff = abs(diff);
             this->matrixLInverseNorm += (diff*diff);
           }
@@ -1450,8 +1481,11 @@ void solver<T>::compareSolutionsSequential()
           {
             pCounters[1]++;		// this is a serious edge case due to the way I handled the code
           }
-          index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
+          index = this->matrixDimSize;
+          index *= (i+1);			// try this. We skip the non lower triangular elements
+          #if DEBUGGING
           std::cout << std::endl;
+          #endif
         }
         this->matrixLInverseNorm = sqrt(this->matrixLInverseNorm);
       }
@@ -1463,105 +1497,6 @@ void solver<T>::compareSolutionsSequential()
   }
 }
 
-template<typename T>
-void solver<T>::getResidualSequential()
-{
-  // Should be similar to getResidualSequential
-  // Only computes the residual on one layer, but all layers should be the same.
-  if (this->gridCoords[2] == 0)		// 1st layer
-  {
-    //std::vector<T> sendData(this->matrixDimSize * this->matrixDimSize);
-    std::vector<T> recvData(this->processorGridDimSize*this->processorGridDimSize*this->matrixA[this->matrixA.size()-1].size());	// only the bottom half, remember?
-    MPI_Gather(&this->matrixA[this->matrixA.size()-1][0],this->matrixA[this->matrixA.size()-1].size(), MPI_DOUBLE, &recvData[0],this->matrixA[this->matrixA.size()-1].size(), MPI_DOUBLE,
-	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
-    std::vector<T> recvDataL(this->processorGridDimSize*this->processorGridDimSize*this->matrixL.size());	// only the bottom half, remember?
-    MPI_Gather(&this->matrixL[0],this->matrixL.size(), MPI_DOUBLE, &recvDataL[0],this->matrixL.size(), MPI_DOUBLE,
-	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
-    std::vector<T> recvDataLInverse(this->processorGridDimSize*this->processorGridDimSize*this->matrixLInverse.size());	// only the bottom half, remember?
-    MPI_Gather(&this->matrixLInverse[0],this->matrixLInverse.size(), MPI_DOUBLE, &recvDataLInverse[0],this->matrixLInverse.size(), MPI_DOUBLE,
-	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
-
-    if (this->layerCommRank == 0)
-    {
-      /*
-	Now on this specific rank, we currently have all the algorithm data that we need to compare, but now we must call the sequential
-        lapackTest method in order to get what we want to compare the Gathered data against.
-      */
-      std::vector<T> data(this->matrixDimSize*this->matrixDimSize);
-      std::vector<T> lapackData(this->matrixDimSize*this->matrixDimSize);
-      std::vector<T> lapackDataInverse(this->matrixDimSize*this->matrixDimSize);
-      lapackTest(data, lapackData, lapackDataInverse, this->matrixDimSize);		// pass this vector in by reference and have it get filled up
-
-      // Now we can start comparing this->matrixL with data
-      // Lets just first start out by printing everything separately too the screen to make sure its correct up till here
-      
-      {
-        int index = 0;
-        std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
-        for (int i=0; i<this->matrixDimSize; i++)
-        {
-          for (int j=0; j<=i; j++)
-	  {
-            int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
-            double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
-            diff = abs(diff);
-            this->matrixLNorm += (diff*diff);
-          }
-          if (i%2==0)
-          {
-            pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
-          }
-          index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
-        }
-        this->matrixLNorm = sqrt(this->matrixLNorm);
-      }
-      {
-        int index = 0;
-        std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
-        for (int i=0; i<this->matrixDimSize; i++)
-        {
-          for (int j=0; j<this->matrixDimSize; j++)
-	  {
-            int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
-            double diff = data[index++] - recvData[PE*this->matrixA[this->matrixA.size()-1].size() + pCounters[PE]++];
-            diff = abs(diff);
-            this->matrixANorm += (diff*diff);
-          }
-//          if (i%2==0)
-//          {
-//            pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
-//          }
-          index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
-        }
-        this->matrixANorm = sqrt(this->matrixANorm);
-      }
-      {
-        int index = 0;
-        std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
-        for (int i=0; i<this->matrixDimSize; i++)
-        {
-          for (int j=0; j<=i; j++)
-	  {
-            int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
-            double diff = lapackDataInverse[index++] - recvDataLInverse[PE*this->matrixLInverse.size() + pCounters[PE]++];
-            diff = abs(diff);
-            this->matrixLInverseNorm += (diff*diff);
-          }
-          if (i%2==0)
-          {
-            pCounters[1]++;		// this is a serious edge case due to the way I handled the code
-          }
-          index = this->matrixDimSize*(i+1);			// try this. We skip the non lower triangular elements
-        }
-        this->matrixLInverseNorm = sqrt(this->matrixLInverseNorm);
-      }
-      
-      std::cout << "matrix A Norm - " << this->matrixANorm << std::endl;
-      std::cout << "matrix L Norm - " << this->matrixLNorm << std::endl;
-      std::cout << "matrix L Inverse Norm - " << this->matrixLInverseNorm << std::endl;
-    }
-  }
-}
 
 template <typename T>
 void solver<T>::getResidualParallel()
@@ -1569,6 +1504,9 @@ void solver<T>::getResidualParallel()
   // Waiting on scalapack support. No other way to this
 }
 
+/*
+  Might want to get rid of this function later on. -> no 64-bit support here because it would be too big to print out anyway
+*/
 template<typename T>
 void solver<T>::printInputA()
 {
