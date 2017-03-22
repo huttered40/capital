@@ -409,25 +409,27 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       {
         // (square,lower) -> Note for further optimization.
         // -> This copy loop may not be needed. I might be able to purely send in &this->matrixLInverse[0] into broadcast
-        buffer1.resize(matrixWindow*matrixWindow,0.);
-        //int startOffset = dimXstartA*this->localSize;
-        int startOffset = (matrixCutSize*matrixWindow);			// changed to matrixWindow
-        int index1 = 0;
-        //int index2 = startOffset + dimYstartA;
-        int index2 = startOffset;
-        for (int i=0; i<matrixWindow; i++)
+        uint64_t buffer1Size = matrixWindow;
+        buffer1Size *= matrixWindow;
+        buffer1.resize(buffer1Size,0.);
+        uint64_t startOffset = matrixCutSize;
+        startOffset *= matrixWindow;
+        uint64_t index1 = 0;
+        uint64_t index2 = startOffset;
+        for (uint32_t i=0; i<matrixWindow; i++)
         {
-          for (int j=0; j<matrixWindow; j++)
+          for (uint32_t j=0; j<matrixWindow; j++)
           {
-            buffer1[index1++] = this->matrixA[this->matrixA.size()-1][index2+j];
-/*
-            if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 0))
+            uint64_t temp = index2;
+            temp += j;
+            buffer1[index1++] = this->matrixA[this->matrixA.size()-1][temp];
+            #if DEBUGGING
+            if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
             {
-              std::cout << "index - " << index2-1 << " and val - " << buffer1[index1-1] << " and matWin - " << matrixWindow << " and matCutSize - " << matrixCutSize << std::endl;
+              std::cout << "index - " << temp << " and val - " << buffer1[index1-1] << " and matWindow - " << matrixWindow << " and matCutSize - " << matrixCutSize << std::endl;
             }
-*/
+            #endif
           }
-          //index2 += (this->localSize-matrixWindow);
           index2 += matrixCutSize;
         }
         break;
@@ -435,34 +437,54 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       case 1:
       {
         // Not triangular
-        buffer1.resize(matrixWindow*matrixWindow);
-        int startOffset = (dimXstartA*(dimXstartA+1))>>1;
-        int index1 = 0;
-        int index2 = startOffset + dimYstartA;
-        for (int i=0; i<matrixWindow; i++)
+        uint64_t buffer1Size = matrixWindow;
+        buffer1Size *= matrixWindow;
+        buffer1.resize(buffer1Size);
+        uint64_t startOffset = dimXstartA;
+        startOffset *= (dimXstartA+1);
+        startOffset >>= 1;
+        //int startOffset = (dimXstartA*(dimXstartA+1))>>1;
+        uint64_t index1 = 0;
+        uint64_t index2 = startOffset;
+        index2 += dimYstartA;
+        for (uint32_t i=0; i<matrixWindow; i++)
         {
-          for (int j=0; j<matrixWindow; j++)
+          for (uint32_t j=0; j<matrixWindow; j++)
           {
             buffer1[index1++] = this->matrixL[index2++];
           }
-          index2 += (dimYstartA+i+1);
+          uint64_t temp = dimYstartA;
+          temp += i;
+          temp++;
+          //index2 += (dimYstartA+i+1);
+          index2 += temp;
         }
         break;
       }
       case 2:		// Part of the Inverse L calculation
       {
         // Not Triangular
-        buffer1.resize(matrixWindow*matrixWindow);
-        int startOffset = (dimXstartA*(dimXstartA+1))>>1;
-        int index1 = 0;
-        int index2 = startOffset + dimYstartA;
-        for (int i=0; i<matrixWindow; i++)
+        uint64_t buffer1Size = matrixWindow;
+        buffer1Size *= matrixWindow;
+        buffer1.resize(buffer1Size);
+        uint64_t startOffset = dimXstartA;
+        startOffset *= (dimXstartA+1);
+        startOffset >>= 1;
+        //int startOffset = (dimXstartA*(dimXstartA+1))>>1;
+        uint64_t index1 = 0;
+        uint64_t index2 = startOffset;
+        index2 += dimYstartA;
+        for (uint64_t i=0; i<matrixWindow; i++)
         {
-          for (int j=0; j<matrixWindow; j++)
+          for (uint64_t j=0; j<matrixWindow; j++)
           {
             buffer1[index1++] = this->matrixL[index2++];
           }
-          index2 += (dimYstartA+i+1);
+          uint64_t temp = dimYstartA;
+          temp += i;
+          temp++;
+          index2 += temp;
+          //index2 += (dimYstartA+i+1);
         }
         break;
       }
@@ -470,20 +492,27 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       {
         // Triangular -> Lower
         // As noted above, size depends on whether or not the gridCoords lie in the lower-triangular portion of first block
-        buffer1.resize((matrixWindow*(matrixWindow+1))>>1);
-        int startOffset = (dimXstartA*(dimXstartA+1))>>1;
-        int index1 = 0;
-        int index2 = startOffset + dimYstartA;
-        for (int i=0; i<matrixWindow; i++)		// start can take on 2 values corresponding to the situation above: 1 or 0
+        uint64_t buffer1Size = matrixWindow;
+        buffer1Size *= (matrixWindow+1);
+        buffer1Size >>= 1;
+        buffer1.resize(buffer1Size);
+        uint64_t startOffset = dimXstartA;
+        startOffset *= (dimXstartA+1);
+        startOffset >>= 1;
+        //int startOffset = (dimXstartA*(dimXstartA+1))>>1;
+        uint64_t index1 = 0;
+        uint64_t index2 = startOffset;
+        index2 += dimYstartA;
+        for (uint32_t i=0; i<matrixWindow; i++)		// start can take on 2 values corresponding to the situation above: 1 or 0
         {
-          for (int j=0; j<=i; j++)
+          for (uint32_t j=0; j<=i; j++)
           {
             buffer1[index1++] = this->matrixLInverse[index2++];
           }
           index2 += dimYstartA;
         }
         break;
-      }        
+      }
     }
     
     // Note that this broadcast will broadcast different sizes of buffer1, so on the receiving end, we will need another case statement
@@ -496,22 +525,31 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
     {
       case 0:
       {
-        buffer1.resize(matrixWindow*matrixWindow);
+        uint64_t buffer1Size = matrixWindow;
+        buffer1Size *= matrixWindow;
+        buffer1.resize(buffer1Size);
         break;
       }
       case 1:
       {
-        buffer1.resize(matrixWindow*matrixWindow);
+        uint64_t buffer1Size = matrixWindow;
+        buffer1Size *= matrixWindow;
+        buffer1.resize(buffer1Size);
         break;
       }
       case 2:
       {
-        buffer1.resize(matrixWindow*matrixWindow);
+        uint64_t buffer1Size = matrixWindow;
+        buffer1Size *= matrixWindow;
+        buffer1.resize(buffer1Size);
         break;
       }
       case 3:
       {
-        buffer1.resize((matrixWindow*(matrixWindow+1))>>1);
+        uint64_t buffer1Size = matrixWindow;
+        buffer1Size *= (matrixWindow+1);
+        buffer1Size >>= 1;
+        buffer1.resize(buffer1Size);
         break;
       }
     }
@@ -549,7 +587,10 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       case 1:
       {
         // Not Triangular, but transpose
-        buffer2.resize(matrixWindow*matrixWindow);
+        // POSSIBLE OPTIMIZATION PLACE! Is this transpose necessary? Or can the LAPACK routine do this for us in a more efficient manner?
+        uint64_t buffer2Size = matrixWindow;
+        buffer2Size *= matrixWindow;
+        buffer2.resize(buffer2Size);
 /*
         int startOffset = (dimXstartB*(dimXstartB+1))>>1;
         int index1 = 0;
@@ -565,11 +606,17 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
         }
 */
         // Simple transpose into buffer2 using this->holdTransposeL, but we can make this more efficient later via 2D tiling to reduce cache misses
-       for (int i=0; i<matrixWindow; i++)
+       for (uint32_t i=0; i<matrixWindow; i++)
         {
-          for (int j=0; j<matrixWindow; j++)
+          for (uint32_t j=0; j<matrixWindow; j++)
           {
-            buffer2[j*matrixWindow+i] = this->holdTransposeL[i*matrixWindow+j];
+            uint64_t index1 = j;
+            index1 *= matrixWindow;
+            index1 += i;
+            uint64_t index2 = i;
+            index2 *= matrixWindow;
+            index2 += j;
+            buffer2[index1] = this->holdTransposeL[index2];
           }
         }
         break;
@@ -578,13 +625,20 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       {
         // Triangular -> Lower
         // As noted above, size depends on whether or not the gridCoords lie in the lower-triangular portion of first block
-        buffer2.resize((matrixWindow*(matrixWindow+1))>>1);	// change to bitshift later
-        int startOffset = (dimXstartB*(dimXstartB+1))>>1;
-        int index1 = 0;
-        int index2 = startOffset + dimYstartB;
-        for (int i=0; i<matrixWindow; i++)
+        uint64_t buffer2Size = matrixWindow;
+        buffer2Size *= (matrixWindow+1);
+        buffer2Size >>= 1;
+        buffer2.resize(buffer2Size);	// change to bitshift later
+        uint64_t startOffset = dimXstartB;
+        startOffset *= (dimXstartB+1);
+        startOffset >>= 1;
+        //int startOffset = (dimXstartB*(dimXstartB+1))>>1;
+        uint64_t index1 = 0;
+        uint64_t index2 = startOffset;
+        index2 += dimYstartB;
+        for (uint32_t i=0; i<matrixWindow; i++)
         {
-          for (int j=0; j<=i; j++)
+          for (uint32_t j=0; j<=i; j++)
           {
             buffer2[index1++] = this->matrixLInverse[index2++];
           }
@@ -595,16 +649,18 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       case 3:
       {
         // Not Triangular, but this requires a special traversal because we are using this->holdMatrix
-        buffer2.resize(matrixWindow*matrixWindow);
+        uint64_t buffer2Size = matrixWindow;
+        buffer2Size *= matrixWindow;
+        buffer2.resize(buffer2Size);
         //int startOffset = (dimXstartB*(dimXstartB-1))>>1;
-        int index1 = 0;
-        int index2 = 0;
+        uint64_t index1 = 0;
+        uint64_t index2 = 0;
         //int index2 = startOffset + dimYstartB;
-        for (int i=0; i<matrixWindow; i++)
+        for (uint32_t i=0; i<matrixWindow; i++)
         {
-          for (int j=0; j<matrixWindow; j++)
+          for (uint32_t j=0; j<matrixWindow; j++)
           {
-            buffer2[index1++] = (-1)*this->holdMatrix[index2++];	// I just changed this to use a (-1)
+            buffer2[index1++] = (-1)*this->holdMatrix[index2++];
           }
           //index2 += dimYstartB;
         }
@@ -624,12 +680,17 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
         // What I can do here is receive with a buffer of size matrixWindow*(matrixWindow+1)/2 and then iterate over the last part to see what kind it is
         // i was trying to do it with gridCoords, but then I would have needed this->rowRank, stuff like that so this is a bit easier
         // Maybe I can fix this later to make it more stable
-        buffer2.resize((matrixWindow*(matrixWindow+1))>>1);	// this is a special trick
+        uint64_t buffer2Size = matrixWindow;
+        buffer2Size *= (matrixWindow+1);
+        buffer2Size >>= 1;
+        buffer2.resize(buffer2Size);	// this is a special trick
         break;
       }
       case 1:
       {
-        buffer2.resize(matrixWindow*matrixWindow);
+        uint64_t buffer2Size = matrixWindow;
+        buffer2Size *= matrixWindow;
+        buffer2.resize(buffer2Size);
         break;
       }
       case 2:
@@ -637,12 +698,17 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
         // What I can do here is receive with a buffer of size matrixWindow*(matrixWindow+1)/2 and then iterate over the last part to see what kind it is
         // i was trying to do it with gridCoords, but then I would have needed this->rowRank, stuff like that so this is a bit easier
         // Maybe I can fix this later to make it more stable
-        buffer2.resize((matrixWindow*(matrixWindow+1))>>1);	// this is a special trick
+        uint64_t buffer2Size = matrixWindow;
+        buffer2Size *= (matrixWindow+1);
+        buffer2Size >>= 1;
+        buffer2.resize(buffer2Size);	// this is a special trick
         break;
       }
       case 3:
       {
-        buffer2.resize(matrixWindow*matrixWindow);
+        uint64_t buffer2Size = matrixWindow;
+        buffer2Size *= matrixWindow;
+        buffer2.resize(buffer2Size);
         break;
       }
     }
@@ -661,25 +727,39 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
 
   // So iterate over everything that we own and calculate its partial sum that will be used in reduction
   // buffer3 will be used to hold the partial matrix sum result that will contribute to the reduction.
-  std::vector<T> buffer4(matrixWindow*matrixWindow,0.);	// need to give this outside scope
+  uint64_t buffer4Size = matrixWindow;
+  buffer4Size *= matrixWindow;
+  std::vector<T> buffer4(buffer4Size,0.);	// need to give this outside scope
 
   switch (key)
   {
-    case 0:
+    case 0:			// LATER OPTIMIZATION : I may not need to do this triangular transpose. The LAPACK routine might be able to do it for me!
     {
       // Triangular Multiplicaton -> (lower,square)
-      std::vector<T> updatedVector(matrixWindow*matrixWindow,0.);
-      int index = 0;
-      int counter = 1;
-      for (int i = 0; i<matrixWindow; i++)
+      uint64_t updatedVectorSize = matrixWindow;
+      updatedVectorSize *= matrixWindow;
+      std::vector<T> updatedVector(updatedVectorSize,0.);
+      uint64_t index = 0;
+      uint64_t counter = 1;
+      for (uint32_t i = 0; i<matrixWindow; i++)
       {
-        for (int j = i; j <matrixWindow; j++)
+        for (uint32_t j = i; j <matrixWindow; j++)
         {
-          int temp = i*matrixWindow+j;				// JUST CHANGED THIS!
+          uint64_t temp = i;
+          temp *= matrixWindow;
+          temp += j;
+          //int temp = i*matrixWindow+j;				// JUST CHANGED THIS!
           updatedVector[temp] = buffer2[index]; 
-          index += counter++;
+          index += counter;
+          counter++;
+          //index += counter++;
         }
-        index = (((i+2)*(i+3))>>1)-1;
+        uint64_t temp = i+2;
+        temp *= (i+3);
+        temp >>= 1;
+        temp--;
+        //index = (((i+2)*(i+3))>>1)-1;
+        index = temp;
         counter = i+2;
       }
 
@@ -692,7 +772,9 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
     case 1:
     {
       // Matrix Multiplication -> (square,square)
-      std::vector<T> buffer3(matrixWindow*matrixWindow);
+      uint64_t buffer3Size = matrixWindow;
+      buffer3Size *= matrixWindow;
+      std::vector<T> buffer3(buffer3Size);
 /*
       if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 0))
       {
@@ -718,14 +800,20 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
     case 2:
     {
       // Triangular Multiplication -> (square,lower)
-      std::vector<T> updatedVector(matrixWindow*matrixWindow,0.);
-      int index = 0;
-      for (int i = 0; i<matrixWindow; i++)
+      uint64_t updatedVectorSize = matrixWindow;
+      updatedVectorSize *= matrixWindow;
+      std::vector<T> updatedVector(updatedVectorSize,0.);
+      uint64_t index = 0;
+      for (uint32_t i = 0; i<matrixWindow; i++)
       {
-        int temp = i*matrixWindow;
-        for (int j = 0; j <= i; j++)	// this could be wrong ???
+        uint64_t temp = i;
+        i *= matrixWindow;
+        //int temp = i*matrixWindow;
+        for (uint32_t j = 0; j <= i; j++)	// this could be wrong ???
         {
-          updatedVector[temp+j] = buffer2[index++];
+          uint64_t updatedVectorIndex = temp;
+          updatedVectorIndex += j;
+          updatedVector[updatedVectorIndex] = buffer2[index++];
         }
       }
       
@@ -736,14 +824,20 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
     case 3:
     {
       // Triangular Multiplication -> (lower,square)
-      std::vector<T> updatedVector(matrixWindow*matrixWindow,0.);
-      int index = 0;
-      for (int i = 0; i<matrixWindow; i++)
+      uint64_t updatedVectorSize = matrixWindow;
+      updatedVectorSize *= matrixWindow;
+      std::vector<T> updatedVector(updatedVectorSize,0.);
+      uint64_t index = 0;
+      for (uint32_t i = 0; i<matrixWindow; i++)
       {
-        int temp = i*matrixWindow;
-        for (int j = 0; j <= i; j++)	// This could be wrong?
+        uint64_t temp = i;
+        temp *= matrixWindow;
+        //int temp = i*matrixWindow;
+        for (uint32_t j = 0; j <= i; j++)	// This could be wrong?
         {
-          updatedVector[temp+j] = buffer1[index++];
+          uint64_t updatedVectorSize = temp;
+          updatedVectorSize += j;
+          updatedVector[updatedVectorSize] = buffer1[index++];
         }
       }
 
@@ -757,51 +851,58 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
     Now I need a case statement of where to put the guy that was just broadasted.
   */
 
-  this->holdMatrix.resize(matrixWindow*matrixWindow,0.);
+  uint64_t holdMatrixSize = matrixWindow;
+  holdMatrixSize *= matrixWindow;
+  this->holdMatrix.resize(holdMatrixSize,0.);
   switch (key)
   {
     case 0:
     {
       // Square
-      int startOffset = (dimXstartC*(dimXstartC+1))>>1;
-      int index1 = 0;
-      int index2 = startOffset + dimYstartC;
-      for (int i=0; i<matrixWindow; i++)
+      uint64_t startOffset = dimXstartC;
+      startOffset *= (dimXstartC+1);
+      startOffset >>= 1;
+      //int startOffset = (dimXstartC*(dimXstartC+1))>>1;
+      uint64_t index1 = 0;
+      uint64_t index2 = startOffset;
+      index2 += dimYstartC;
+      for (uint32_t i=0; i<matrixWindow; i++)
       {
-        for (int j=0; j<matrixWindow; j++)
+        for (uint32_t j=0; j<matrixWindow; j++)
         {
-/*          
-          if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 0))
-          {
-            std::cout << "buffer4[index1] - " << buffer4[index1] << " goes into matrixL[] - " << index2 << std::endl;
-          }
-*/
           this->matrixL[index2++] = buffer4[index1++];                    // Transpose has poor spatial locality. Could fix later if need be
         }
-        index2 += (dimYstartC+i+1);
+        uint64_t temp = dimYstartC;
+        temp += i;
+        temp++;
+        //index2 += (dimYstartC+i+1);
+        index2 += temp;
       }
       break;
     }
     case 1:						// Can this just be done with a simple copy statement??
     {
-      int index1 = 0;
-      for (int i=0; i<matrixWindow; i++)
+      uint64_t index1 = 0;
+      for (uint32_t i=0; i<matrixWindow; i++)
       {
-        int temp = i*matrixWindow;
-        for (int j=0; j<matrixWindow; j++)
+        uint64_t temp = i;
+        temp *= matrixWindow;
+        for (uint32_t j=0; j<matrixWindow; j++)
         {
-          this->holdMatrix[temp+j] = buffer4[index1++];
+          uint64_t holdMatrixIndex = temp;
+          holdMatrixIndex += j;
+          this->holdMatrix[holdMatrixIndex] = buffer4[index1++];
         }
       }
       break;
     }
     case 2:						// Can this just be done with a simple copy statement??
     {
-      int index1 = 0;
-      int index2 = 0;
-      for (int i=0; i<matrixWindow; i++)
+      uint64_t index1 = 0;
+      uint64_t index2 = 0;
+      for (uint32_t i=0; i<matrixWindow; i++)
       {
-        for (int j=0; j<matrixWindow; j++)
+        for (uint32_t j=0; j<matrixWindow; j++)
         {
           this->holdMatrix[index2++] = buffer4[index1++];
         }
@@ -810,18 +911,25 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
     }
     case 3:
     {
-      int startOffset = (dimXstartC*(dimXstartC+1))>>1;
-      int index1 = 0;
-      int index2 = startOffset + dimYstartC;
-      for (int i=0; i<matrixWindow; i++)
+      uint64_t startOffset = dimXstartC;
+      startOffset *= (dimXstartC+1);
+      startOffset >>= 1;
+      //int startOffset = (dimXstartC*(dimXstartC+1))>>1;
+      uint64_t index1 = 0;
+      uint64_t index2 = startOffset;
+      startOffset  += dimYstartC;
+      for (uint32_t i=0; i<matrixWindow; i++)
       {
-        for (int j=0; j<matrixWindow; j++)
+        for (uint32_t j=0; j<matrixWindow; j++)
         {
           this->matrixLInverse[index2++] = buffer4[index1++];
 //          if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 0)) {std::cout << "check index2 - " << index2-1 << " " << this->matrixLInverse[index2-1] << std::endl; }
           
         }
-        index2 += (dimYstartC+i+1);		// THIS COULD BE WRONG!
+        uint64_t temp = dimYstartC;
+        temp += i;
+        temp++;
+        index2 += temp;
       }
       break;
     }
