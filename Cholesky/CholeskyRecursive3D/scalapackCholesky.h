@@ -1,15 +1,3 @@
-/*
-#include "mpi.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <strings.h>
-#include <math.h>
-#include <assert.h>
-#include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
-#include "./../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
-//#include "./../scalapack-2.0.2/..."
-*/
-
 // Need this to use fortran scalapack function
 extern "C"
 {
@@ -79,27 +67,25 @@ void solver<T>::scalapackCholesky()
 */
 
   std::cout << "Hello\n";
-  return;
   int numPes = this->worldSize;
   int myRank = this->worldRank;
-  MPI_Request req[4];
-  MPI_Status status[4];
 
   int log_numPes = log2(numPes);
   printf("log number of numPes - %d\n",log_numPes);
 
+  return;
   if (argc < 4 || argc > 5) {
     if (myRank == 0) 
       printf("%s [log2_mat_dim] [log2_pe_mat_lda] [log2_blk_dim] [number of iterations]\n", argv[0]);
     MPI_Abort(MPI_COMM_WORLD, -1);
   }
 
-    int log_matrixDim = atoi(argv[1]);
-    int log_blockDim = atoi(argv[2]);
-    int log_sbDim = atoi(argv[3]);
-    int matrixDim = 1<<log_matrixDim;
-    int blockDim = 1<<log_blockDim;
-    int sbDim = 1<<log_sbDim;
+  int log_matrixDim = atoi(argv[1]);
+  int log_blockDim = atoi(argv[2]);
+  int log_sbDim = atoi(argv[3]);
+  int matrixDim = 1<<log_matrixDim;
+  int blockDim = 1<<log_blockDim;
+  int sbDim = 1<<log_sbDim;
 
   int num_iter;
   if (argc > 4) num_iter = atoi(argv[4]);
