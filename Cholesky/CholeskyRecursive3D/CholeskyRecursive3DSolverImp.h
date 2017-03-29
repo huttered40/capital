@@ -3,7 +3,7 @@
 /*
   Turn on debugging statements when necessary by flipping the 0 to 1
 */
-#define DEBUGGING 0
+#define DEBUGGING 1
 #define PROCESSOR_X_ 0
 #define PROCESSOR_Y_ 0
 #define PROCESSOR_Z_ 0
@@ -291,7 +291,7 @@ void solver<T>::distributeDataCyclicParallel()
         uint64_t index = i;
         index *= this->matrixDimSize;
         index += j;
-        std::cout << this->matrixA[index] << " ";
+        std::cout << this->matrixA[0][index] << " ";
       }
       std::cout << "\n";
     }
@@ -608,9 +608,14 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       {
         // Not Triangular, but transpose
         // POSSIBLE OPTIMIZATION PLACE! Is this transpose necessary? Or can the LAPACK routine do this for us in a more efficient manner?
+        
+
         uint64_t buffer2Size = matrixWindow;
         buffer2Size *= matrixWindow;
         buffer2.resize(buffer2Size);
+
+        //buffer2 = this->holdTransposeL;			// Is this a copy? Can't we do better? All we need is a pointer switch
+							// Maybe do a std::move? Because we don'tneed this->holdTransposeL anymore?
 /*
         int startOffset = (dimXstartB*(dimXstartB+1))>>1;
         int index1 = 0;
@@ -626,6 +631,9 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
         }
 */
         // Simple transpose into buffer2 using this->holdTransposeL, but we can make this more efficient later via 2D tiling to reduce cache misses
+
+// BELOW: I just commented this out to see if I can use the Lapack tranpose instead of my own inefficient one. But now I must use this->holdTransposeL
+
        for (uint32_t i=0; i<matrixWindow; i++)
         {
           for (uint32_t j=0; j<matrixWindow; j++)
@@ -639,6 +647,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
             buffer2[index1] = this->holdTransposeL[index2];
           }
         }
+
         break;
       }
       case 2:
@@ -710,7 +719,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       {
         uint64_t buffer2Size = matrixWindow;
         buffer2Size *= matrixWindow;
-        buffer2.resize(buffer2Size);
+        buffer2.resize(buffer2Size);				// resize? Maybe reserve? Not sure what is more efficient?
         break;
       }
       case 2:
@@ -795,25 +804,8 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       uint64_t buffer3Size = matrixWindow;
       buffer3Size *= matrixWindow;
       std::vector<T> buffer3(buffer3Size);
-/*
-      if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[2] == 0))
-      {
-        std::cout << "L21 - ******************************************************************************************\n";
-        for (int i=0; i<buffer1.size(); i++)
-        {
-          std::cout << buffer1[i] << " ";
-          if ((i+1)%matrixWindow == 0) {std::cout << "\n"; }
-        }
-        std::cout << "LT21 - ******************************************************************************************\n";
-        for (int i=0; i<buffer1.size(); i++)
-        {
-          std::cout << buffer2[i] << " ";
-          if ((i+1)%matrixWindow == 0) {std::cout << "\n"; }
-        }
-        std::cout << "\n\n";
-      }
-*/
       cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasNoTrans,matrixWindow,matrixWindow,matrixWindow,1.,&buffer1[0],matrixWindow,&buffer2[0],matrixWindow,1.,&buffer3[0],matrixWindow);
+//      cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasTrans,matrixWindow,matrixWindow,matrixWindow,1.,&buffer1[0],matrixWindow,&buffer2[0],matrixWindow,1.,&buffer3[0],matrixWindow);
       MPI_Allreduce(&buffer3[0],&buffer4[0],buffer3.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
       break;
     }
