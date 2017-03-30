@@ -29,7 +29,7 @@ class solver
 {
 public:
 
-  solver(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixDimSize, int argc, char **argv);
+  solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv);
   void startUp(bool &flag);
   void distributeDataCyclicSequential();
   void distributeDataCyclicParallel();

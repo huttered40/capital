@@ -9,12 +9,12 @@
 #define PROCESSOR_Z_ 0
 
 template<typename T>
-solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixDimSize, int argc, char **argv)
+solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv)
 {
   this->worldRank = rank;
   this->worldSize = size;
   this->nDims = nDims;
-  this->matrixDimSize = matrixDimSize;
+  this->matrixDimSize = atoi(argv[1]);
   this->argc = argc;
   this->argv = argv;
   this->matrixLNorm = 0.;
@@ -182,7 +182,6 @@ void solver<T>::distributeDataCyclicSequential()
       this->localSize++;
     }
   }
-
   #if DEBUGGING
   if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
   {
@@ -200,7 +199,6 @@ void solver<T>::distributeDataCyclicSequential()
     }
   }
   #endif
-
   uint64_t tempSize = this->localSize;                   // n(n+1)/2 is the size needed to hold the triangular portion of the matrix
   tempSize *= (this->localSize+1);
   tempSize >>= 1;
@@ -294,7 +292,7 @@ void solver<T>::distributeDataCyclicParallel()
       for (uint32_t j=0; j<this->localSize; j++)
       {
         uint64_t index = i;
-        index *= this->matrixDimSize;
+        index *= this->localSize;
         index += j;
         std::cout << this->matrixA[0][index] << " ";
       }
@@ -619,7 +617,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
         buffer2Size *= matrixWindow;
         buffer2.resize(buffer2Size);
 
-        //buffer2 = this->holdTransposeL;			// Is this a copy? Can't we do better? All we need is a pointer switch
+//        buffer2 = this->holdTransposeL;			// Is this a copy? Can't we do better? All we need is a pointer switch
 							// Maybe do a std::move? Because we don'tneed this->holdTransposeL anymore?
 /*
         int startOffset = (dimXstartB*(dimXstartB+1))>>1;
@@ -1395,6 +1393,9 @@ void solver<T>::getResidualSequential()
         std::cout << "\n";
         for (uint32_t i=0; i<this->matrixDimSize; i++)
         {
+          #if DEBUGGING
+          std::cout << "Row - " << i << std::endl;
+          #endif
           for (uint32_t j=0; j<this->matrixDimSize; j++)
 	  {
             uint64_t PE = this->processorGridDimSize;
@@ -1430,6 +1431,9 @@ void solver<T>::getResidualSequential()
         std::vector<int> pCounters(pCounterSize,0);		// start each off at zero
         for (uint32_t i=0; i<this->matrixDimSize; i++)
         {
+          #if DEBUGGING
+          std::cout << "Row - " << i << std::endl;
+          #endif
           for (uint32_t j=0; j<=i; j++)
 	  {
             uint64_t PE = this->processorGridDimSize;
