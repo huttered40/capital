@@ -123,99 +123,10 @@ void solver<T>::startUp(void)
 
 
 /*
-  Cyclic distribution of data
-*/
-template <typename T>
-void solver<T>::distributeDataCyclicSequential()
-{
-  /*
-    If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
-    Sublayers exist in a cyclic distribution, so that in the first sublayer of the matrix, all processors are used.
-    Therefore, we cycle them from (0,1,2,0,1,2,0,1,2,....) in the x-dimension of the cube (when traveling down from the top-front-left corner) to the bottom-front-left corner.
-    Then for each of those, there are the processors in the y-direction as well, which are representing via the nested loop.
-  */
-
-  /*
-    Note that because matrix A is supposed to be symmetric, I will only give out the lower-triangular portion of A
-    Note that this would require a change in my algorithm, because I do reference uper part of A.
-    Instead, I will only give values for the upper-portion of A. At a later date, I can change the code to only
-    allocate a triangular portion instead of storing half as zeros.
-  */
-
-  #if DEBUGGING
-  std::cout << "Program is distributing the matrix data in a cyclic manner\n";
-  #endif
-
-  uint64_t size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
-  size *= size;
-  uint64_t matSize = this->matrixDimSize;
-  matSize *= matSize;
-  size = matSize/size;						// Watch for overflow, N^2 / P^{2/3} is the initial size of the data that each p owns
-  //this->matrixA.push_back(std::vector<T>());
-  this->matrixA.resize(1,std::vector<T>(size,0.));		// Try this. Resize vs. push_back, better for parallel version?
-  // Note: above, I am not sure if the vector can hold more than 2^32 elements. Maybe this isnt too big of a deal, but ...
-
-  uint64_t counter = 0;						// 64 bits needed, really?
-  for (uint32_t i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
-  {
-    this->localSize = 0;
-    for (uint32_t j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
-    {
-      if (i > j)
-      {
-        uint64_t seed = i;
-        seed *= this->matrixDimSize;
-        seed += j;
-        srand(seed);				// Note that srand takes unsigned int as argument, so overflow could be bad
-      }
-      else
-      {
-        uint64_t seed = j;
-        seed *= this->matrixDimSize;
-        seed += i;
-        srand(seed);		// Assuming no overflow here
-      }
-      
-      //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
-      this->matrixA[this->matrixA.size()-1][counter++] = (rand()%100)*1./100;
-      if (i==j)
-      {
-        //matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
-        this->matrixA[this->matrixA.size()-1][counter-1] += 10.;
-      }
-      this->localSize++;
-    }
-  }
-  #if DEBUGGING
-  if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
-  {
-    std::cout << "About to print what processor (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ") owns.\n";
-    for (uint32_t i=0; i<this->localSize; i++)
-    {
-      for (uint32_t j=0; j<this->localSize; j++)
-      {
-        uint64_t index = i;
-        index *= this->localSize;
-        index += j;
-        std::cout << this->matrixA[index] << " ";
-      }
-      std::cout << "\n";
-    }
-  }
-  #endif
-  uint64_t tempSize = this->localSize;                   // n(n+1)/2 is the size needed to hold the triangular portion of the matrix
-  tempSize *= (this->localSize+1);
-  tempSize >>= 1;
-  this->matrixL.resize(tempSize,0.);
-  this->matrixLInverse.resize(tempSize,0.);
-
-}
-
-/*
   Cyclic distribution of data on one layer, then broadcasting the data to the other P^{1/3}-1 layers, similar to how Scalapack does it
 */
 template <typename T>
-void solver<T>::distributeDataCyclicParallel()
+void solver<T>::distributeDataCyclic(bool inParallel)
 {
   /*
     If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
@@ -232,7 +143,7 @@ void solver<T>::distributeDataCyclicParallel()
   */
 
   #if DEBUGGING
-  std::cout << "Program is distributing the matrix data in a cyclic manner\n";
+  std::cout << "Program is distributing the matrix data in a cyclic manner in solver::distributeCyclicParallel()\n";
   #endif
   
   uint64_t size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
@@ -245,7 +156,7 @@ void solver<T>::distributeDataCyclicParallel()
   // Note: above, I am not sure if the vector can hold more than 2^32 elements. Maybe this isnt too big of a deal, but ...
 
   // Only distribute the data sequentially on the first layer. Then we broadcast down the 3D processor cube using the depth communicator
-  if (this->gridCoords[2] == 0)
+  if (((inParallel) && (this->gridCoords[2] == 0)) || (!inParallel))
   {
     uint64_t counter = 0;
     for (uint32_t i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
@@ -279,12 +190,18 @@ void solver<T>::distributeDataCyclicParallel()
       }
     }
 
-    MPI_Bcast(&this->matrixA[this->matrixA.size()-1][0], size, MPI_DOUBLE, this->depthCommRank, this->depthComm);  
+    if (inParallel)
+    {
+      MPI_Bcast(&this->matrixA[this->matrixA.size()-1][0], size, MPI_DOUBLE, this->depthCommRank, this->depthComm);  
+    }
   }
   else			// All other processor not on that 1st layer
   {
-    // I am assuming that the root has rank 0 in the depth communicator
-    MPI_Bcast(&this->matrixA[this->matrixA.size()-1][0], size, MPI_DOUBLE, 0, this->depthComm);
+    if (inParallel)
+    {
+      // I am assuming that the root has rank 0 in the depth communicator
+      MPI_Bcast(&this->matrixA[this->matrixA.size()-1][0], size, MPI_DOUBLE, 0, this->depthComm);
+    }
   }
 
   #if DEBUGGING

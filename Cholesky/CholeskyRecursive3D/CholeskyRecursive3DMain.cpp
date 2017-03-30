@@ -39,7 +39,7 @@ int main(int argc, char **argv)
   }
 
   //mySolver.distributeDataCyclicSequential();
-  mySolver.distributeDataCyclicParallel();
+  mySolver.distributeDataCyclic(true);
   
   // So I start my timings after the data is distributed, which involved no communication
   clock_t start;

@@ -30,8 +30,7 @@ class solver
 public:
 
   solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv);
-  void distributeDataCyclicSequential();
-  void distributeDataCyclicParallel();
+  void distributeDataCyclic(bool isnarallel);
   void solve();
   void scalapackCholesky();				// this routine is implemented in a special file, scalapackCholesky.h
   void printL();
