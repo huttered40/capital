@@ -33,10 +33,12 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
     size *= i;
     this->gridSizeLookUp[size] = i;
   }
+
+  this->startUp();
 }
 
 template <typename T>
-void solver<T>::startUp(bool &flag)
+void solver<T>::startUp(void)
 {
   /*
 	Look up to see if the number of processors in startup phase is a cubic. If not, then return.
@@ -49,7 +51,6 @@ void solver<T>::startUp(bool &flag)
     #if DEBUGGING
     std::cout << "Requested number of processors is not valid for a 3-Dimensional processor grid. Program is ending." << std::endl;
     #endif
-    flag = true;
     return;
   }
 
@@ -97,24 +98,27 @@ void solver<T>::startUp(bool &flag)
   MPI_Comm_rank(this->depthComm,&this->depthCommRank);
   MPI_Comm_size(this->depthComm,&this->depthCommSize);
   
-  #if DEBUGGING
-  std::cout << "Program at end of startUp method. Details below.\n";
-  std::cout << "Size of matrix -> " << this->matrixDimSize << std::endl;
-  std::cout << "Matrix size for base case of Recursive Cholesky Algorithm -> " << this->baseCaseSize << std::endl;
-  std::cout << "Size of MPI_COMM_WORLD -> " << this->worldSize << std::endl;
-  std::cout << "Rank of my processor in MPI_COMM_WORLD -> " << this->worldRank << std::endl;
-  std::cout << "Number of dimensions of processor grid -> " << this->nDims << std::endl;
-  std::cout << "Number of processors along one dimension of 3-Dimensional grid -> " << this->processorGridDimSize << std::endl;
-  std::cout << "Grid coordinates in 3D Processor Grid for my processor -> (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
-  std::cout << "Size of 2D Layer Communicator -> " << this->layerCommSize << std::endl;
-  std::cout << "Rank of my processor in 2D Layer Communicator -> " << this->layerCommRank << std::endl;
-  std::cout << "Size of Row Communicator -> " << this->colCommSize << std::endl;
-  std::cout << "Rank of my processor in Row Communicator -> " << this->rowCommRank << std::endl;
-  std::cout << "Size of Column Communicator -> " << this->colCommSize << std::endl;
-  std::cout << "Rank of my processor in Column Communicator -> " << this->colCommRank << std::endl;
-  std::cout << "Size of Depth Communicator Communicator -> " << this->depthCommSize << std::endl;
-  std::cout << "Rank of my processor in Depth Communicator -> " << this->depthCommRank << std::endl;
-  #endif
+//  #if DEBUGGING
+  if (this->worldRank == 0)
+  {
+    std::cout << "Program at end of startUp method. Details below.\n";
+    std::cout << "Size of matrix ->                                                 " << this->matrixDimSize << std::endl;
+    std::cout << "Matrix size for base case of Recursive Cholesky Algorithm ->      " << this->baseCaseSize << std::endl;
+    std::cout << "Size of MPI_COMM_WORLD ->                                         " << this->worldSize << std::endl;
+    std::cout << "Rank of my processor in MPI_COMM_WORLD ->                         " << this->worldRank << std::endl;
+    std::cout << "Number of dimensions of processor grid ->                         " << this->nDims << std::endl;
+    std::cout << "Number of processors along one dimension of 3-Dimensional grid -> " << this->processorGridDimSize << std::endl;
+    std::cout << "Grid coordinates in 3D Processor Grid for my processor ->        (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
+    std::cout << "Size of 2D Layer Communicator ->                                  " << this->layerCommSize << std::endl;
+    std::cout << "Rank of my processor in 2D Layer Communicator ->                  " << this->layerCommRank << std::endl;
+    std::cout << "Size of Row Communicator ->                                       " << this->colCommSize << std::endl;
+    std::cout << "Rank of my processor in Row Communicator ->                       " << this->rowCommRank << std::endl;
+    std::cout << "Size of Column Communicator ->                                    " << this->colCommSize << std::endl;
+    std::cout << "Rank of my processor in Column Communicator ->                    " << this->colCommRank << std::endl;
+    std::cout << "Size of Depth Communicator Communicator ->                        " << this->depthCommSize << std::endl;
+    std::cout << "Rank of my processor in Depth Communicator ->                     " << this->depthCommRank << std::endl;
+  }
+//  #endif
 }
 
 
@@ -309,12 +313,6 @@ void solver<T>::distributeDataCyclicParallel()
   this->matrixLInverse.resize(tempSize,0.);
 
 }
-
-/********************************************************************************************************************************************/
-// This divides the program. If anything above this point is incorrect, then everything below will be incorrect as well.
-/********************************************************************************************************************************************/
-
-
 
 /*
   The solve method will initiate the solving of this Cholesky Factorization algorithm
@@ -604,7 +602,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
           index2 += this->localSize;
         }
 */
-        buffer2 = this->holdTransposeL;			// Is this copy necessary?
+        buffer2 = std::move(this->holdTransposeL);			// Change the copy to a move, basically just changing names without copying
         break;
       }
       case 1:
@@ -612,13 +610,12 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
         // Not Triangular, but transpose
         // POSSIBLE OPTIMIZATION PLACE! Is this transpose necessary? Or can the LAPACK routine do this for us in a more efficient manner?
         
-
+/*
         uint64_t buffer2Size = matrixWindow;
         buffer2Size *= matrixWindow;
         buffer2.resize(buffer2Size);
-
-//        buffer2 = this->holdTransposeL;			// Is this a copy? Can't we do better? All we need is a pointer switch
-							// Maybe do a std::move? Because we don'tneed this->holdTransposeL anymore?
+*/
+        buffer2 = std::move(this->holdTransposeL);			// Changed the copy to a move
 /*
         int startOffset = (dimXstartB*(dimXstartB+1))>>1;
         int index1 = 0;
@@ -637,6 +634,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
 
 // BELOW: I just commented this out to see if I can use the Lapack tranpose instead of my own inefficient one. But now I must use this->holdTransposeL
 
+/*
        for (uint32_t i=0; i<matrixWindow; i++)
         {
           for (uint32_t j=0; j<matrixWindow; j++)
@@ -650,7 +648,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
             buffer2[index1] = this->holdTransposeL[index2];
           }
         }
-
+*/
         break;
       }
       case 2:
@@ -807,7 +805,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       uint64_t buffer3Size = matrixWindow;
       buffer3Size *= matrixWindow;
       std::vector<T> buffer3(buffer3Size);
-      cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasNoTrans,matrixWindow,matrixWindow,matrixWindow,1.,&buffer1[0],matrixWindow,&buffer2[0],matrixWindow,1.,&buffer3[0],matrixWindow);
+      cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasTrans,matrixWindow,matrixWindow,matrixWindow,1.,&buffer1[0],matrixWindow,&buffer2[0],matrixWindow,1.,&buffer3[0],matrixWindow);
 //      cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasTrans,matrixWindow,matrixWindow,matrixWindow,1.,&buffer1[0],matrixWindow,&buffer2[0],matrixWindow,1.,&buffer3[0],matrixWindow);
       MPI_Allreduce(&buffer3[0],&buffer4[0],buffer3.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
       break;
@@ -1368,6 +1366,7 @@ void solver<T>::getResidualSequential()
             #endif
             pCounters[PE]++;
             double diff = lapackData[index++] - recvDataL[recvDataIndex];
+            if (diff > 1e-12) { std::cout << "Bad - " << i << "," << j << " , diff - " << diff << " lapack - " << lapackData[index-1] << " and real data - " << recvDataL[recvDataIndex] << std::endl; }
             //double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
             //diff = abs(diff);
             this->matrixLNorm += (diff*diff);
@@ -1410,6 +1409,7 @@ void solver<T>::getResidualSequential()
             #endif
             pCounters[PE]++;
             double diff = data[index++] - recvData[recvDataIndex];
+            if (diff > 1e-12) { std::cout << "Bad - " << i << "," << j << " , diff - " << diff << " lapack - " << data[index-1] << " and real data - " << recvData[recvDataIndex] << std::endl; }
             this->matrixANorm += (diff*diff);
           }
 //          if (i%2==0)
@@ -1449,6 +1449,7 @@ void solver<T>::getResidualSequential()
             #endif
             pCounters[PE]++;
             double diff = lapackDataInverse[index++] - recvDataLInverse[recvDataIndex];
+            if (diff > 1e-12) { std::cout << "Bad - " << i << "," << j << " , diff - " << diff << " lapack - " << lapackDataInverse[index-1] << " and real data - " << recvDataLInverse[recvDataIndex] << std::endl; }
             this->matrixLInverseNorm += (diff*diff);
           }
           if (i%2==0)

@@ -15,7 +15,6 @@ using namespace std;
 int main(int argc, char **argv)
 {
   int rank,size,provided;
-  bool tracker=false;
   MPI_Init_thread(&argc,&argv,MPI_THREAD_SINGLE,&provided);
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
@@ -39,13 +38,6 @@ int main(int argc, char **argv)
     return 0; 
   }
 
-  mySolver.startUp(tracker);
-  if (tracker)
-  {
-    cout << "Number of processors does not fit\n";
-    MPI_Finalize();
-    return 0;
-  }
   //mySolver.distributeDataCyclicSequential();
   mySolver.distributeDataCyclicParallel();
   
