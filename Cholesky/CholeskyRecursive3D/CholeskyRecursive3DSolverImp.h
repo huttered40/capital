@@ -273,7 +273,11 @@ void solver<T>::CholeskyRecurse(uint32_t dimXstart, uint32_t dimXend, uint32_t d
   
 
   //Below is the tricky one. We need to create a vector via MM(..), then subtract it from A via some sort easy method...
+  //syrkWrapper(dimXstart+shift, dimXend, dimYstart, dimYend-shift, 0, 0, 0, 0, dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, (matrixSize>>1), matrixCutSize);
+
+
   MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1, matrixCutSize);
+
 
   // Big question: CholeskyRecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the Schur Complement.
   // Note that the below code has room for optimization via some call to LAPACK, but I would have to loop over and put into a 1d array first and then
@@ -309,6 +313,7 @@ void solver<T>::CholeskyRecurse(uint32_t dimXstart, uint32_t dimXend, uint32_t d
     //temp += this->localSize;
     start += matrixCutSize;
   }
+
 
   CholeskyRecurse(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift);		// changed to shift, not matrixCutSize/2
 
@@ -587,9 +592,6 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       }
       case 2:
       {
-        // What I can do here is receive with a buffer of size matrixWindow*(matrixWindow+1)/2 and then iterate over the last part to see what kind it is
-        // i was trying to do it with gridCoords, but then I would have needed this->rowRank, stuff like that so this is a bit easier
-        // Maybe I can fix this later to make it more stable
         uint64_t buffer2Size = matrixWindow;
         buffer2Size *= (matrixWindow+1);
         buffer2Size >>= 1;
@@ -625,7 +627,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
 
   switch (key)
   {
-    case 0:			// LATER OPTIMIZATION : I may not need to do this triangular transpose. The LAPACK routine might be able to do it for me!
+    case 0:
     {
       // Triangular Multiplicaton -> (lower,square)
 
@@ -652,12 +654,42 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
     case 1:
     {
       // Matrix Multiplication -> (square,square)
+
       uint64_t buffer3Size = matrixWindow;
       buffer3Size *= matrixWindow;
       std::vector<T> buffer3(buffer3Size);
+
       cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasTrans,matrixWindow,matrixWindow,matrixWindow,1.,&buffer1[0],matrixWindow,&buffer2[0],matrixWindow,1.,&buffer3[0],matrixWindow);
-//      cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasTrans,matrixWindow,matrixWindow,matrixWindow,1.,&buffer1[0],matrixWindow,&buffer2[0],matrixWindow,1.,&buffer3[0],matrixWindow);
+
+      // Lets use this->holdMatrix as my matrix C and lets right to it. Then we can perform a move operation on this->holdMatrix into this->matrixA[this->matrixA.size()-1]
       MPI_Allreduce(&buffer3[0],&buffer4[0],buffer3.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
+
+
+/*      
+      uint64_t tempSize = matrixWindow;		// should be the same as shift was in CholeskyRecurse function
+      tempSize *= matrixWindow;
+      this->matrixA.push_back(std::vector<T>(tempSize),0.);
+
+      // Now I need a copy loop to grab the Lower-right quarter square from the current matrixA (sort of a waste of time. Think of ways to reduce this?)
+      std::vector<T> holdSyrkData(matrixWindow*matrixWindow);
+      uint64_t index1 = 0;
+      uint64_t index2 = matrixWindow;
+      index2 *= matrixCutSize;
+      index2 += matrixWindow;
+      for (uint32_t i=0; i<matrixWindow; i++)
+      {
+        for (uint32_t j=0; j<matrixWindow; j++)
+        {
+          uint64_t hold2 = index2;
+          hold2 += j;
+          holdSyrkData[index1++] = this->matrixA[this->matrixA.size()-2][hold2];
+        }
+        index2 += matrixCutSize;
+      }
+
+      cblas_ssyrk(CBlasRowMajor, CBlasLower, CBlasUpper, matrixWindow, matrixWindow, -1., );
+      MPI_Allreduce(&holdMatrix[0],&this->matrixA[this->matrixA.size()-1][0],this->holdMatrix.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
+*/
       break;
     }
     case 2:
@@ -743,6 +775,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       }
       break;
     }
+
     case 1:						// Can this just be done with a simple copy statement??
     {
       uint64_t index1 = 0;
@@ -759,6 +792,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       }
       break;
     }
+
     case 2:						// Can this just be done with a simple copy statement??
     {
       uint64_t index1 = 0;
