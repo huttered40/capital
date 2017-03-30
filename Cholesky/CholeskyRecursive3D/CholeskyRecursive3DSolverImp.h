@@ -3,7 +3,7 @@
 /*
   Turn on debugging statements when necessary by flipping the 0 to 1
 */
-#define DEBUGGING 1
+#define DEBUGGING 0
 #define PROCESSOR_X_ 0
 #define PROCESSOR_Y_ 0
 #define PROCESSOR_Z_ 0
@@ -17,6 +17,9 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixD
   this->matrixDimSize = matrixDimSize;
   this->argc = argc;
   this->argv = argv;
+  this->matrixLNorm = 0.;
+  this->matrixANorm = 0.;
+  this->matrixLInverseNorm = 0.;
 
 /*
   Precompute a list of cubes for quick lookUp of cube dimensions based on processor size
@@ -56,8 +59,10 @@ void solver<T>::startUp(bool &flag)
     this->baseCaseSize gives us a size in which to stop recursing in the CholeskyRecurse method
     = n/P^(2/3). The math behind it is written about in my report and other papers
   */
-  this->baseCaseSize = this->matrixDimSize/(this->processorGridDimSize*this->processorGridDimSize);		// watch for possible overflow here later on
-
+  this->baseCaseSize = this->matrixDimSize;
+  uint64_t tempGrid = this->processorGridDimSize;
+  tempGrid *= this->processorGridDimSize;		// watch for possible overflow here later on
+  this->baseCaseSize /= tempGrid;
   this->gridDims.resize(this->nDims,this->processorGridDimSize);
   this->gridCoords.resize(this->nDims); 
   
@@ -819,7 +824,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       for (uint32_t i = 0; i<matrixWindow; i++)
       {
         uint64_t temp = i;
-        i *= matrixWindow;
+        temp *= matrixWindow;
         //int temp = i*matrixWindow;
         for (uint32_t j = 0; j <= i; j++)	// this could be wrong ???
         {
@@ -929,7 +934,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
       //int startOffset = (dimXstartC*(dimXstartC+1))>>1;
       uint64_t index1 = 0;
       uint64_t index2 = startOffset;
-      startOffset  += dimYstartC;
+      index2 += dimYstartC;
       for (uint32_t i=0; i<matrixWindow; i++)
       {
         for (uint32_t j=0; j<matrixWindow; j++)
@@ -1302,6 +1307,10 @@ void solver<T>::getResidualSequential()
 	processor. Then we can, in the right order, compare these solutions for correctness.
   */
 
+  // Initialize
+  this->matrixLNorm = 0.;
+  this->matrixANorm = 0.;
+  this->matrixLInverseNorm = 0.;
 
   if (this->gridCoords[2] == 0)		// 1st layer
   {
@@ -1325,6 +1334,7 @@ void solver<T>::getResidualSequential()
 	Now on this specific rank, we currently have all the algorithm data that we need to compare, but now we must call the sequential
         lapackTest method in order to get what we want to compare the Gathered data against.
       */
+
       uint64_t matSize = this->matrixDimSize;
       matSize *= matSize;
       std::vector<T> data(matSize);
@@ -1342,6 +1352,9 @@ void solver<T>::getResidualSequential()
         std::vector<int> pCounters(pCounterSize,0);		// start each off at zero
         for (uint32_t i=0; i<this->matrixDimSize; i++)
         {
+          #if DEBUGGING
+          std::cout << "Row - " << i << std::endl;
+          #endif
           for (uint32_t j=0; j<=i; j++)
 	  {
             uint64_t PE = this->processorGridDimSize;
@@ -1358,7 +1371,7 @@ void solver<T>::getResidualSequential()
             pCounters[PE]++;
             double diff = lapackData[index++] - recvDataL[recvDataIndex];
             //double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
-            diff = abs(diff);
+            //diff = abs(diff);
             this->matrixLNorm += (diff*diff);
           }
           if (i%2==0)
@@ -1396,7 +1409,6 @@ void solver<T>::getResidualSequential()
             #endif
             pCounters[PE]++;
             double diff = data[index++] - recvData[recvDataIndex];
-            diff = abs(diff);
             this->matrixANorm += (diff*diff);
           }
 //          if (i%2==0)
@@ -1433,7 +1445,6 @@ void solver<T>::getResidualSequential()
             #endif
             pCounters[PE]++;
             double diff = lapackDataInverse[index++] - recvDataLInverse[recvDataIndex];
-            diff = abs(diff);
             this->matrixLInverseNorm += (diff*diff);
           }
           if (i%2==0)
