@@ -586,69 +586,14 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
     {
       case 0:
       {
-/*
         // Triangular
-        buffer2.resize(matrixWindow*matrixWindow);
-        int startOffset = dimXstartB*this->localSize;	// Problem! startOffset needs to be based off of this->localRank, not anything else
-        int index1 = 0;
-        int index2 = startOffset + dimYstartB;
-        for (int i=0; i<matrixWindow; i++)
-        {
-          for (int j=0; j<matrixWindow; j++)
-          {
-            buffer2[index1++] = (matrixTrack ? this->matrixB[index2+j] : this->matrixA[index2+j]);
-//            if ((this->gridCoords[0] == 1) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 1)) {std::cout << "GAY - " << index2+j << " " << buffer2[index1-1] << std::endl; }
-          }
-          index2 += this->localSize;
-        }
-*/
         buffer2 = std::move(this->holdTransposeL);			// Change the copy to a move, basically just changing names without copying
         break;
       }
       case 1:
       {
         // Not Triangular, but transpose
-        // POSSIBLE OPTIMIZATION PLACE! Is this transpose necessary? Or can the LAPACK routine do this for us in a more efficient manner?
-        
-/*
-        uint64_t buffer2Size = matrixWindow;
-        buffer2Size *= matrixWindow;
-        buffer2.resize(buffer2Size);
-*/
         buffer2 = std::move(this->holdTransposeL);			// Changed the copy to a move
-/*
-        int startOffset = (dimXstartB*(dimXstartB+1))>>1;
-        int index1 = 0;
-        for (int i=0; i<matrixWindow; i++)
-        {
-          int index2 = startOffset + dimYstartB + i;
-          int temp = //dimYstartB+//1+matrixWindow;			// I added the +1 back in
-          for (int j=0; j<matrixWindow; j++)
-          {
-            buffer2[index1++] = this->matrixL[index2];                  // Transpose has poor spatial locality
-            index2 += temp+j+dimYstartB;
-          }
-        }
-*/
-        // Simple transpose into buffer2 using this->holdTransposeL, but we can make this more efficient later via 2D tiling to reduce cache misses
-
-// BELOW: I just commented this out to see if I can use the Lapack tranpose instead of my own inefficient one. But now I must use this->holdTransposeL
-
-/*
-       for (uint32_t i=0; i<matrixWindow; i++)
-        {
-          for (uint32_t j=0; j<matrixWindow; j++)
-          {
-            uint64_t index1 = j;
-            index1 *= matrixWindow;
-            index1 += i;
-            uint64_t index2 = i;
-            index2 *= matrixWindow;
-            index2 += j;
-            buffer2[index1] = this->holdTransposeL[index2];
-          }
-        }
-*/
         break;
       }
       case 2:
@@ -766,35 +711,23 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
     case 0:			// LATER OPTIMIZATION : I may not need to do this triangular transpose. The LAPACK routine might be able to do it for me!
     {
       // Triangular Multiplicaton -> (lower,square)
+
       uint64_t updatedVectorSize = matrixWindow;
       updatedVectorSize *= matrixWindow;
       std::vector<T> updatedVector(updatedVectorSize,0.);
       uint64_t index = 0;
-      uint64_t counter = 1;
       for (uint32_t i = 0; i<matrixWindow; i++)
       {
-        for (uint32_t j = i; j <matrixWindow; j++)
+        uint64_t temp = i;
+        temp *= matrixWindow;
+        for (uint32_t j = 0; j<=i; j++)
         {
-          uint64_t temp = i;
-          temp *= matrixWindow;
-          temp += j;
-          //int temp = i*matrixWindow+j;				// JUST CHANGED THIS!
-          updatedVector[temp] = buffer2[index]; 
-          index += counter;
-          counter++;
-          //index += counter++;
+          uint64_t updatedVectorIndex = temp+j;
+          updatedVector[updatedVectorIndex] = buffer2[index]; 
+          index++;
         }
-        uint64_t temp = i+2;
-        temp *= (i+3);
-        temp >>= 1;
-        temp--;
-        //index = (((i+2)*(i+3))>>1)-1;
-        index = temp;
-        counter = i+2;
       }
-
-      cblas_dtrmm(CblasRowMajor,CblasRight,CblasUpper,CblasNoTrans,CblasNonUnit,matrixWindow,matrixWindow,1.,&updatedVector[0], matrixWindow, &buffer1[0], matrixWindow);
-
+      cblas_dtrmm(CblasRowMajor,CblasRight,CblasLower,CblasTrans,CblasNonUnit,matrixWindow,matrixWindow,1.,&updatedVector[0], matrixWindow, &buffer1[0], matrixWindow);
       MPI_Allreduce(&buffer1[0],&buffer4[0],buffer1.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
 
       break;
