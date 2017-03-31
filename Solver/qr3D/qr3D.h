@@ -2,8 +2,8 @@
 	Author: Edward Hutter
 */
 
-#ifndef CHOLESKY_RECURSIVE_3D_SOLVER_H_
-#define CHOLESKY_RECURSIVE_3D_SOLVER_H_
+#ifndef QR_3D_H_
+#define QR_3D_H_
 
 // System includes
 #include <iostream>
@@ -93,7 +93,6 @@ private:
   char **argv;
 };
 
-#include "CholeskyRecursive3DSolverImp.h"		// for template-instantiation reasons
-#include "scalapackCholesky.h"				// Try this for now, contains the scalapackCholesky() routine
-
-#endif /*CHOLESKY_RECURSIVE_3D_SOLVER_H_*/
+#include "qr3DImp.h"		// for template-instantiation reasons
+#include "scalapackSolver.h"
+#endif /*QR_3D_H_*/
