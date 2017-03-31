@@ -4,6 +4,7 @@
   Turn on debugging statements when necessary by flipping the 0 to 1
 */
 #define DEBUGGING 0
+#define HELPOUTPUT 1
 #define PROCESSOR_X_ 0
 #define PROCESSOR_Y_ 0
 #define PROCESSOR_Z_ 0
@@ -14,8 +15,9 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
   this->worldRank = rank;
   this->worldSize = size;
   this->nDims = nDims;
-  this->matrixDimSize = atoi(argv[1]);
-  this->isQR = atoi(argv[2]);		// 0 for Cholesky, 1 for QR
+  this->matrixDimSizeRow = atoi(argv[1]);
+  this->matrixDimSizeCol = atoi(argv[2]);
+  this->isQR = atoi(argv[3]);		// 0 for Cholesky, 1 for QR
   this->argc = argc;
   this->argv = argv;
   this->matrixLNorm = 0.;
@@ -42,11 +44,12 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
   }
   else
   {
+    this->matrixDimSize = this->matrixDimSizeRow;			// helpful for existing Cholesky code
     this->constructGridCholesky();
     this->distributeDataCyclicCholesky(true);
   }
 
-//  #if DEBUGGING
+  #if HELPOUTPUT
   if (this->worldRank == 0)
   {
     if (this->isQR)
@@ -73,7 +76,7 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
     std::cout << "Size of Depth Communicator Communicator ->                        " << this->depthCommSize << std::endl;
     std::cout << "Rank of my processor in Depth Communicator ->                     " << this->depthCommRank << std::endl;
   }
-//  #endif
+  #endif
 }
 
 template <typename T>
@@ -81,6 +84,8 @@ void solver<T>::constructGridQR(void)
 {
   // The grid we will start with for the QR will be different than a pure 3D Cube as is for a pure Cholesky
   // Still should set some data members needed for the Cholesky like this->baseCaseSize and maybe some others
+  // Need to create lots of communicators. Some for the QR, and others for the Cholesky. Might be able to incorporate those into the existing
+	// member variables used for Cholesky
 }
 
 template <typename T>
@@ -215,7 +220,7 @@ void solver<T>::distributeDataCyclicCholesky(bool inParallel)
         if (i==j)
         {
           //matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
-          this->matrixA[this->matrixA.size()-1][counter-1] += 10.;
+          this->matrixA[this->matrixA.size()-1][counter-1] += this->matrixDimSize;
         }
         this->localSize++;
       }
@@ -1175,7 +1180,7 @@ void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vec
       //std::cout << "hoogie - " << i*n+j << " " << data[i*n+j] << std::endl;
       if (i==j)
       {
-        data[seed] += 10.;
+        data[seed] += this->matrixDimSize;
       }
     }
   }

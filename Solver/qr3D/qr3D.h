@@ -63,8 +63,10 @@ private:
   std::vector<T> holdMatrix;					// this guy needs to hold the temporary matrix and can keep resizing himself
   std::vector<T> holdTransposeL;
 
-  uint32_t matrixDimSize;						// N x N matrix, where N = matrixDimSize
-  uint32_t nDims;							// Represents the numDims of the processor grid
+  uint32_t matrixDimSizeRow;					// For a N x k matrix, this will be N
+  uint32_t matrixDimSizeCol;					// For a N x k matrix, this will be k
+  uint32_t matrixDimSize;					// N x N matrix, where N = matrixDimSize, so if isQR == 0, I can set matrixDimSize = matrixDimSizeRoe
+  uint32_t nDims;						// Represents the numDims of the processor grid
   uint32_t worldRank;						// Represents process rank in MPI_COMM_WORLD
   uint32_t worldSize;  						// Represents number of processors involved in computation
   uint32_t localSize;						// Represents the size length of a local 2D matrix that is held as a 1D matrix (can be calculated in other ways)
