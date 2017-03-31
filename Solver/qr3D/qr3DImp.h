@@ -15,6 +15,7 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
   this->worldSize = size;
   this->nDims = nDims;
   this->matrixDimSize = atoi(argv[1]);
+  this->isQR = atoi(argv[2]);		// 0 for Cholesky, 1 for QR
   this->argc = argc;
   this->argv = argv;
   this->matrixLNorm = 0.;
@@ -34,11 +35,56 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
     this->gridSizeLookUp[size] = i;
   }
 
-  this->startUp();
+  if (this->isQR)
+  {
+    this->constructGridQR();
+    this->distributeDataCyclicQR(true);
+  }
+  else
+  {
+    this->constructGridCholesky();
+    this->distributeDataCyclicCholesky(true);
+  }
+
+//  #if DEBUGGING
+  if (this->worldRank == 0)
+  {
+    if (this->isQR)
+    {
+      std::cout << "Program - QR\n"; 
+    }
+    else
+    {
+      std::cout << "Program - Cholesky\n"; 
+    }
+    std::cout << "Size of matrix ->                                                 " << this->matrixDimSize << std::endl;
+    std::cout << "Matrix size for base case of Recursive Cholesky Algorithm ->      " << this->baseCaseSize << std::endl;
+    std::cout << "Size of MPI_COMM_WORLD ->                                         " << this->worldSize << std::endl;
+    std::cout << "Rank of my processor in MPI_COMM_WORLD ->                         " << this->worldRank << std::endl;
+    std::cout << "Number of dimensions of processor grid ->                         " << this->nDims << std::endl;
+    std::cout << "Number of processors along one dimension of 3-Dimensional grid -> " << this->processorGridDimSize << std::endl;
+    std::cout << "Grid coordinates in 3D Processor Grid for my processor ->        (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
+    std::cout << "Size of 2D Layer Communicator ->                                  " << this->layerCommSize << std::endl;
+    std::cout << "Rank of my processor in 2D Layer Communicator ->                  " << this->layerCommRank << std::endl;
+    std::cout << "Size of Row Communicator ->                                       " << this->colCommSize << std::endl;
+    std::cout << "Rank of my processor in Row Communicator ->                       " << this->rowCommRank << std::endl;
+    std::cout << "Size of Column Communicator ->                                    " << this->colCommSize << std::endl;
+    std::cout << "Rank of my processor in Column Communicator ->                    " << this->colCommRank << std::endl;
+    std::cout << "Size of Depth Communicator Communicator ->                        " << this->depthCommSize << std::endl;
+    std::cout << "Rank of my processor in Depth Communicator ->                     " << this->depthCommRank << std::endl;
+  }
+//  #endif
 }
 
 template <typename T>
-void solver<T>::startUp(void)
+void solver<T>::constructGridQR(void)
+{
+  // The grid we will start with for the QR will be different than a pure 3D Cube as is for a pure Cholesky
+  // Still should set some data members needed for the Cholesky like this->baseCaseSize and maybe some others
+}
+
+template <typename T>
+void solver<T>::constructGridCholesky(void)
 {
   /*
 	Look up to see if the number of processors in startup phase is a cubic. If not, then return.
@@ -98,35 +144,20 @@ void solver<T>::startUp(void)
   MPI_Comm_rank(this->depthComm,&this->depthCommRank);
   MPI_Comm_size(this->depthComm,&this->depthCommSize);
   
-//  #if DEBUGGING
-  if (this->worldRank == 0)
-  {
-    std::cout << "Program at end of startUp method. Details below.\n";
-    std::cout << "Size of matrix ->                                                 " << this->matrixDimSize << std::endl;
-    std::cout << "Matrix size for base case of Recursive Cholesky Algorithm ->      " << this->baseCaseSize << std::endl;
-    std::cout << "Size of MPI_COMM_WORLD ->                                         " << this->worldSize << std::endl;
-    std::cout << "Rank of my processor in MPI_COMM_WORLD ->                         " << this->worldRank << std::endl;
-    std::cout << "Number of dimensions of processor grid ->                         " << this->nDims << std::endl;
-    std::cout << "Number of processors along one dimension of 3-Dimensional grid -> " << this->processorGridDimSize << std::endl;
-    std::cout << "Grid coordinates in 3D Processor Grid for my processor ->        (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
-    std::cout << "Size of 2D Layer Communicator ->                                  " << this->layerCommSize << std::endl;
-    std::cout << "Rank of my processor in 2D Layer Communicator ->                  " << this->layerCommRank << std::endl;
-    std::cout << "Size of Row Communicator ->                                       " << this->colCommSize << std::endl;
-    std::cout << "Rank of my processor in Row Communicator ->                       " << this->rowCommRank << std::endl;
-    std::cout << "Size of Column Communicator ->                                    " << this->colCommSize << std::endl;
-    std::cout << "Rank of my processor in Column Communicator ->                    " << this->colCommRank << std::endl;
-    std::cout << "Size of Depth Communicator Communicator ->                        " << this->depthCommSize << std::endl;
-    std::cout << "Rank of my processor in Depth Communicator ->                     " << this->depthCommRank << std::endl;
-  }
-//  #endif
 }
 
+
+template <typename T>
+void solver<T>::distributeDataCyclicQR(bool inParallel)
+{
+  // Need to implement this cyclically based on the size of the processor Grid that I choose
+}
 
 /*
   Cyclic distribution of data on one layer, then broadcasting the data to the other P^{1/3}-1 layers, similar to how Scalapack does it
 */
 template <typename T>
-void solver<T>::distributeDataCyclic(bool inParallel)
+void solver<T>::distributeDataCyclicCholesky(bool inParallel)
 {
   /*
     If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
@@ -237,18 +268,27 @@ void solver<T>::distributeDataCyclic(bool inParallel)
 template<typename T>
 void solver<T>::solve()
 {
-  #if DEBUGGING
-  std::cout << "Starting solver::CholeskyRecurse(" << 0 << "," << this->localSize << "," << 0 << "," << this->localSize << "," << this->localSize << "," << this->matrixDimSize << "," << this->localSize << ")\n";
-  #endif
+  if (this->isQR)
+  {
+    QREngine();
+  }
+  else
+  {
+    CholeskyEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize);
+  }
+}
 
-  CholeskyRecurse(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize);
+template<typename T>
+void solver<T>::QREngine()
+{
+  // Need to write this, it will call the CholeskyEngine with the right arguments and the correct data structures filled in and ready to go
 }
 
 /*
   Write function description
 */
 template<typename T>
-void solver<T>::CholeskyRecurse(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize)
+void solver<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize)
 {
 
   if (matrixSize == this->baseCaseSize)
@@ -262,7 +302,7 @@ void solver<T>::CholeskyRecurse(uint32_t dimXstart, uint32_t dimXend, uint32_t d
   */
 
   uint32_t shift = matrixWindow>>1;
-  CholeskyRecurse(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize);
+  CholeskyEngine(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize);
   
   // Add MPI_SendRecv in here
   fillTranspose(dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, 0);
@@ -315,7 +355,7 @@ void solver<T>::CholeskyRecurse(uint32_t dimXstart, uint32_t dimXend, uint32_t d
   }
 
 
-  CholeskyRecurse(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift);		// changed to shift, not matrixCutSize/2
+  CholeskyEngine(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift);		// changed to shift, not matrixCutSize/2
 
   // These last 4 matrix multiplications are for building up our LInverse and UInverse matrices
   MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),2, matrixCutSize);

@@ -38,9 +38,6 @@ int main(int argc, char **argv)
     return 0; 
   }
 
-  //mySolver.distributeDataCyclicSequential();
-  mySolver.distributeDataCyclic(true);
-  
   // So I start my timings after the data is distributed, which involved no communication
   clock_t start;
   double duration;

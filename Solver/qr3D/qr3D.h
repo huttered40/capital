@@ -30,7 +30,6 @@ class solver
 public:
 
   solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv);
-  void distributeDataCyclic(bool isnarallel);
   void solve();
   void scalapackCholesky();				// this routine is implemented in a special file, scalapackCholesky.h
   void printL();
@@ -41,8 +40,12 @@ public:
 
 private:
 
-  void startUp();
-  void CholeskyRecurse(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize);
+  void constructGridCholesky();
+  void constructGridQR();
+  void distributeDataCyclicCholesky(bool inParallel);
+  void distributeDataCyclicQR(bool inParallel);
+  void QREngine();
+  void CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize);
   void MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize);
   void CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize);
   void fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t dir);
@@ -91,6 +94,8 @@ private:
 */
   int argc;
   char **argv;
+  bool isQR;		// 0 for Cholesky, 1 for QR
+
 };
 
 #include "qr3DImp.h"		// for template-instantiation reasons
