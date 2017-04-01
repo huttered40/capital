@@ -205,18 +205,18 @@ void solver<T>::distributeDataCyclicCholesky(bool inParallel)
           uint64_t seed = i;
           seed *= this->matrixDimSize;
           seed += j;
-          srand(seed);
+          srand48(seed);
         }
         else
         {
           uint64_t seed = j;
           seed *= this->matrixDimSize;
           seed += i;
-          srand(seed);
+          srand48(seed);
         }
       
         //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
-        this->matrixA[this->matrixA.size()-1][counter++] = (rand()%100)*1./100;
+        this->matrixA[this->matrixA.size()-1][counter++] = drand48();
         if (i==j)
         {
           //matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
@@ -1164,19 +1164,19 @@ void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vec
         uint64_t seed = i;
         seed *= n;
         seed += j;
-        srand(seed);
+        srand48(seed);
       }
       else
       {
         uint64_t seed = j;
         seed *= n;
         seed += i;
-        srand(seed);
+        srand48(seed);
       }
       uint64_t seed = i;
       seed *= n;
       seed += j;
-      data[seed] = (rand()%100)*1./100.;
+      data[seed] = drand48();
       //std::cout << "hoogie - " << i*n+j << " " << data[i*n+j] << std::endl;
       if (i==j)
       {
