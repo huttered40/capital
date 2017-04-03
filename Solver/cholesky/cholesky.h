@@ -2,8 +2,8 @@
 	Author: Edward Hutter
 */
 
-#ifndef QR_3D_H_
-#define QR_3D_H_
+#ifndef CHOLESKY_H_
+#define CHOLESKY_H_
 
 // System includes
 #include <iostream>
@@ -20,9 +20,6 @@
 #include <assert.h>
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
 #include "./../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
-
-// Need this to use fortran scalapack function
-//extern void PDPOTRF(int *m, int *n, char *A, int *iA, int *jA, int *desca, int *ipiv, int *info);
 
 template <typename T>
 class solver
@@ -41,10 +38,7 @@ public:
 private:
 
   void constructGridCholesky();
-  void constructGridQR();
   void distributeDataCyclicCholesky(bool inParallel);
-  void distributeDataCyclicQR(bool inParallel);
-  void QREngine();
   void CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize);
   void MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize);
   void CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize);
@@ -57,32 +51,27 @@ private:
 */
 
   std::vector<std::vector<T> > matrixA;  			// Matrix contains all tracks of recursion. Builds recursively
-
   std::vector<T> matrixL;
   std::vector<T> matrixLInverse;
   std::vector<T> holdMatrix;					// this guy needs to hold the temporary matrix and can keep resizing himself
   std::vector<T> holdTransposeL;
+  uint32_t matrixDimSize;					// N x N matrix, where N = matrixDimSize
+  uint32_t localSize;						// Represents length of local 2D matrix that is held as a 1D matrix
+  uint32_t baseCaseSize;					// Decides when to stop recursing in CholeskyRecurse method
 
-  uint32_t matrixDimSizeRow;					// For a N x k matrix, this will be N
-  uint32_t matrixDimSizeCol;					// For a N x k matrix, this will be k
-  uint32_t matrixDimSize;					// N x N matrix, where N = matrixDimSize, so if isQR == 0, I can set matrixDimSize = matrixDimSizeRoe
+/*
+    Processor Grid, Communicator, and Sub-communicator information for 3D Grid, Row, Column, and Layer
+*/
   uint32_t nDims;						// Represents the numDims of the processor grid
   uint32_t worldRank;						// Represents process rank in MPI_COMM_WORLD
   uint32_t worldSize;  						// Represents number of processors involved in computation
-  uint32_t localSize;						// Represents the size length of a local 2D matrix that is held as a 1D matrix (can be calculated in other ways)
-  uint32_t processorGridDimSize;					// Represents the size of the 3D processor grid, its the cubic root of worldSize
-  uint32_t baseCaseSize;						// for quick lookUp when deciding when to stop recursing in LURecurse
-
-  std::vector<int32_t> gridDims;
-  std::vector<int32_t> gridCoords;
-
-/*
-    Sub-communicator information for 3D Grid, Row, Column, and Layer
-*/
+  uint32_t processorGridDimSize;				// Represents the size of the 3D processor grid, its the cubic root of worldSize
   MPI_Comm grid3D,layerComm,rowComm,colComm,depthComm;
   int32_t grid3DRank,layerCommRank,rowCommRank,colCommRank,depthCommRank;
   int32_t grid3DSize,layerCommSize,rowCommSize,colCommSize,depthCommSize;
-  std::map<uint32_t,uint32_t> gridSizeLookUp;
+  std::vector<int32_t> gridDims;
+  std::vector<int32_t> gridCoords;
+  std::map<uint32_t,uint32_t> gridSizeLookUp;			// Might be able to remove this later.
 
 /*
     Residual information
@@ -92,14 +81,13 @@ private:
   double matrixANorm;
 
 /*
-  Data needed for the scalapack routines
+  Member variables to hold input specifications
 */
   int argc;
   char **argv;
-  bool isQR;		// 0 for Cholesky, 1 for QR
 
 };
 
-#include "qrImp.h"		// for template-instantiation reasons
-#include "scalapackQR.h"
-#endif /*QR_3D_H_*/
+#include "choleskyImp.h"		// for template-instantiation reasons
+#include "scalapackCholesky.h"
+#endif /*CHOLESKY_H_*/

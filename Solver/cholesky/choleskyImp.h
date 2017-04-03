@@ -14,10 +14,8 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
 {
   this->worldRank = rank;
   this->worldSize = size;
-  this->nDims = nDims;
-  this->matrixDimSizeRow = atoi(argv[1]);
-  this->matrixDimSizeCol = atoi(argv[2]);
-  this->isQR = atoi(argv[3]);		// 0 for Cholesky, 1 for QR
+  this->nDims = nDims;			// Might want to make this a parameter of argv later, especially with QR and tuning parameter c
+  this->matrixDimSize = atoi(argv[1]);
   this->argc = argc;
   this->argv = argv;
   this->matrixLNorm = 0.;
@@ -37,29 +35,13 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
     this->gridSizeLookUp[size] = i;
   }
 
-  if (this->isQR)
-  {
-    this->constructGridQR();
-    this->distributeDataCyclicQR(true);
-  }
-  else
-  {
-    this->matrixDimSize = this->matrixDimSizeRow;			// helpful for existing Cholesky code
-    this->constructGridCholesky();
-    this->distributeDataCyclicCholesky(true);
-  }
+  this->constructGridCholesky();
+  this->distributeDataCyclicCholesky(true);
 
   #if INFO_OUTPUT
   if (this->worldRank == 0)
   {
-    if (this->isQR)
-    {
-      std::cout << "Program - QR\n"; 
-    }
-    else
-    {
-      std::cout << "Program - Cholesky\n"; 
-    }
+    std::cout << "Program - Cholesky\n"; 
     std::cout << "Size of matrix ->                                                 " << this->matrixDimSize << std::endl;
     std::cout << "Matrix size for base case of Recursive Cholesky Algorithm ->      " << this->baseCaseSize << std::endl;
     std::cout << "Size of MPI_COMM_WORLD ->                                         " << this->worldSize << std::endl;
@@ -77,15 +59,6 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
     std::cout << "Rank of my processor in Depth Communicator ->                     " << this->depthCommRank << std::endl;
   }
   #endif
-}
-
-template <typename T>
-void solver<T>::constructGridQR(void)
-{
-  // The grid we will start with for the QR will be different than a pure 3D Cube as is for a pure Cholesky
-  // Still should set some data members needed for the Cholesky like this->baseCaseSize and maybe some others
-  // Need to create lots of communicators. Some for the QR, and others for the Cholesky. Might be able to incorporate those into the existing
-	// member variables used for Cholesky
 }
 
 template <typename T>
@@ -149,13 +122,6 @@ void solver<T>::constructGridCholesky(void)
   MPI_Comm_rank(this->depthComm,&this->depthCommRank);
   MPI_Comm_size(this->depthComm,&this->depthCommSize);
   
-}
-
-
-template <typename T>
-void solver<T>::distributeDataCyclicQR(bool inParallel)
-{
-  // Need to implement this cyclically based on the size of the processor Grid that I choose
 }
 
 /*
@@ -273,20 +239,7 @@ void solver<T>::distributeDataCyclicCholesky(bool inParallel)
 template<typename T>
 void solver<T>::solve()
 {
-  if (this->isQR)
-  {
-    QREngine();
-  }
-  else
-  {
-    CholeskyEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize);
-  }
-}
-
-template<typename T>
-void solver<T>::QREngine()
-{
-  // Need to write this, it will call the CholeskyEngine with the right arguments and the correct data structures filled in and ready to go
+  CholeskyEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize);
 }
 
 /*
