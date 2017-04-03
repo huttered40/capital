@@ -5,7 +5,7 @@
 */
 
 /* Local Includes */
-#include "qr.h"
+#include "cholesky.h"
 
 /* System Includes */
 #include <ctime>	//clock
@@ -19,8 +19,9 @@ int main(int argc, char **argv)
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
-  solver<double> mySolver(rank,size,3, argc, argv);		// last argument is matrix dimension. We can change it to be any power of 2
+  cholesky<double> mySolver(rank,size,3, argc, argv);		// last argument is matrix dimension. We can change it to be any power of 2
 
+/*
   if (size == 1)
   {
     clock_t start;
@@ -37,14 +38,22 @@ int main(int argc, char **argv)
     MPI_Finalize();
     return 0; 
   }
+*/
 
   // So I start my timings after the data is distributed, which involved no communication
   clock_t start;
   double duration;
-  start = clock(); 	// start time
 
-  //mySolver.solveScalapack();	// run benchmark
-  mySolver.solve();		// run algorithm
+  uint64_t matSize = atoi(argv[1]);
+  uint64_t matSizeL = matSize;
+  matSizeL *= (matSize+1);
+  matSizeL >>= 1;
+  std::vector<double> matA(matSize*matSize);
+  std::vector<double> matL(matSizeL);
+  std::vector<double> matLInverse(matSizeL); 
+
+  start = clock(); 							// start timer
+  mySolver.choleskySolve(matA, matL, matLInverse,false);		// run algorithm
 
   duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
@@ -64,7 +73,8 @@ int main(int argc, char **argv)
   //mySolver.printL();
 
   //mySolver.scalapackCholesky();			// dummy function for now. Doesnt do anything
-  mySolver.getResidualSequential();
+  // for now, comment this out, then of course comment it back in and pass in matA, matL, matLInverse to check for correctness
+  mySolver.getResidualSequential(matA, matL, matLInverse);
 
   MPI_Finalize();
   return 0;

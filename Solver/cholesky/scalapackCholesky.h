@@ -56,7 +56,7 @@ static void cpdgetrf(char ch,     int n,
 */
 
 template<typename T>
-void solver<T>::scalapackCholesky()
+void cholesky<T>::choleskyScalapack()
 {
 /*
   int myRank, numPes;

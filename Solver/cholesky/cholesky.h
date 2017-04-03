@@ -22,23 +22,24 @@
 #include "./../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
 template <typename T>
-class solver
+class cholesky
 {
 public:
 
-  solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv);
-  void solve();
-  void scalapackCholesky();				// this routine is implemented in a special file, scalapackCholesky.h
+  cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv);
+  
+  void choleskySolve(std::vector<T> &matrixA, std::vector<T> &matrixL, std::vector<T> &matrixLI, bool isData);
+  void choleskyScalapack();				// this routine is implemented in a special file, scalapackCholesky.h
   void printL();
   void lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataLInverse, uint32_t n);
-  void getResidualSequential();
+  void getResidualSequential(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI);
   void getResidualParallel();
-  void printInputA();
+  void printInputA();				// can change this to print(..) or something and pass in a pointer in order to print entire matrix
 
 private:
 
   void constructGridCholesky();
-  void distributeDataCyclicCholesky(bool inParallel);
+  void distributeDataCyclic(bool inParallel);
   void CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize);
   void MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize);
   void CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize);
