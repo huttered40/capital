@@ -1,11 +1,11 @@
 /*
 
-	Program to start the Recursive 3D LU Factorization Solver
+	Program to factorize matrix A into a product of matrices Q and R (A=QR) over a tunable processor grid
 	Author: Edward Hutter
 */
 
 /* Local Includes */
-#include "qr3D.h"
+#include "qr.h"
 
 /* System Includes */
 #include <ctime>	//clock
@@ -19,33 +19,26 @@ int main(int argc, char **argv)
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
-  solver<double> mySolver(rank,size,3, argc, argv);		// last argument is matrix dimension. We can change it to be any power of 2
-
-  if (size == 1)
-  {
-    clock_t start;
-    double duration;
-    start = clock(); 	// start time
-    int trySize = 16;
-    std::vector<double> data(trySize*trySize);
-    std::vector<double> dataL(trySize*trySize);
-    std::vector<double> dataInverse(trySize*trySize);
-    mySolver.lapackTest(data, dataL, dataInverse, trySize);
-    duration = (clock() - start) / (double)CLOCKS_PER_SEC;
-
-    cout << "Time - " << duration << endl;
-    MPI_Finalize();
-    return 0; 
-  }
+  qr<double> mySolver(rank,size,argc, argv);
 
   // So I start my timings after the data is distributed, which involved no communication
   clock_t start;
   double duration;
-  start = clock(); 	// start time
 
-  //mySolver.solveScalapack();	// run benchmark
-  mySolver.solve();		// run algorithm
+  uint32_t N = atoi(argv[1]);
+  uint32_t k = atoi(argv[2]);
+  uint32_t processorGridDimTune = atoi(argv[3]);	// This is the tunable p-grid parameter. For now, its c=1
+  uint32_t processorGridDimReact = size/(processorGridDimTune*processorGridDimTune);	// use 64-bit trick later
+  uint32_t pGridRowPartition = N/processorGridDimReact;
+  uint64_t matASize = pGridRowPartition*k;
+  uint64_t matQSize = matASize;
+  uint64_t matRSize = k*k;				// In the c==1 case, every processor will own their own entire R (kxk)
+  std::vector<double> matA(matASize);
+  std::vector<double> matQ(matQSize);
+  std::vector<double> matR(matRSize); 
 
+  start = clock(); 							// start timer
+  mySolver.qrSolve(matA, matQ, matR, false);		// run algorithm
   duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
   // I want the average of each process's runtime, so I can use a reduction
@@ -64,7 +57,8 @@ int main(int argc, char **argv)
   //mySolver.printL();
 
   //mySolver.scalapackCholesky();			// dummy function for now. Doesnt do anything
-  mySolver.getResidualSequential();
+  // for now, comment this out, then of course comment it back in and pass in matA, matL, matLInverse to check for correctness
+  mySolver.getResidualLayer(matA, matQ, matR);
 
   MPI_Finalize();
   return 0;

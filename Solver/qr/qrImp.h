@@ -4,25 +4,26 @@
   Turn on debugging statements when necessary by flipping the 0 to 1
 */
 #define DEBUGGING 0
-#define HELPOUTPUT 1
+#define INFO_OUTPUT 1
 #define PROCESSOR_X_ 0
 #define PROCESSOR_Y_ 0
 #define PROCESSOR_Z_ 0
 
 template<typename T>
-solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv)
+qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv)
 {
   this->worldRank = rank;
   this->worldSize = size;
-  this->nDims = nDims;
-  this->matrixDimSizeRow = atoi(argv[1]);
-  this->matrixDimSizeCol = atoi(argv[2]);
-  this->isQR = atoi(argv[3]);		// 0 for Cholesky, 1 for QR
+  this->nDims = nDims;			// Might want to make this a parameter of argv later, especially with QR and tuning parameter c
+  this->matrixSizeRow = atoi(argv[1]);
+  this->matrixSizeCol = atoi(argv[2]);
+  this->processorGridDimTune = atoi(argv[3]);
+  this->processorGridDimReact = this->worldSize/(this->processorGridDimTune*this->processorGridDimTune);	// 64-bit trick here?
   this->argc = argc;
   this->argv = argv;
-  this->matrixLNorm = 0.;
   this->matrixANorm = 0.;
-  this->matrixLInverseNorm = 0.;
+  this->matrixQorm = 0.;
+  this->matrixRNorm = 0.;
 
 /*
   Precompute a list of cubes for quick lookUp of cube dimensions based on processor size
@@ -37,31 +38,14 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
     this->gridSizeLookUp[size] = i;
   }
 
-  if (this->isQR)
-  {
-    this->constructGridQR();
-    this->distributeDataCyclicQR(true);
-  }
-  else
-  {
-    this->matrixDimSize = this->matrixDimSizeRow;			// helpful for existing Cholesky code
-    this->constructGridCholesky();
-    this->distributeDataCyclicCholesky(true);
-  }
+  this->constructGridCholesky();
+  //this->distributeDataCyclic(true);
 
-  #if HELPOUTPUT
+  #if INFO_OUTPUT
   if (this->worldRank == 0)
   {
-    if (this->isQR)
-    {
-      std::cout << "Program - QR\n"; 
-    }
-    else
-    {
-      std::cout << "Program - Cholesky\n"; 
-    }
+    std::cout << "Program - QR\n"; 
     std::cout << "Size of matrix ->                                                 " << this->matrixDimSize << std::endl;
-    std::cout << "Matrix size for base case of Recursive Cholesky Algorithm ->      " << this->baseCaseSize << std::endl;
     std::cout << "Size of MPI_COMM_WORLD ->                                         " << this->worldSize << std::endl;
     std::cout << "Rank of my processor in MPI_COMM_WORLD ->                         " << this->worldRank << std::endl;
     std::cout << "Number of dimensions of processor grid ->                         " << this->nDims << std::endl;
@@ -80,16 +64,7 @@ solver<T>::solver(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char *
 }
 
 template <typename T>
-void solver<T>::constructGridQR(void)
-{
-  // The grid we will start with for the QR will be different than a pure 3D Cube as is for a pure Cholesky
-  // Still should set some data members needed for the Cholesky like this->baseCaseSize and maybe some others
-  // Need to create lots of communicators. Some for the QR, and others for the Cholesky. Might be able to incorporate those into the existing
-	// member variables used for Cholesky
-}
-
-template <typename T>
-void solver<T>::constructGridCholesky(void)
+void qr<T>::constructGridCholesky(void)
 {
   /*
 	Look up to see if the number of processors in startup phase is a cubic. If not, then return.
@@ -151,18 +126,11 @@ void solver<T>::constructGridCholesky(void)
   
 }
 
-
-template <typename T>
-void solver<T>::distributeDataCyclicQR(bool inParallel)
-{
-  // Need to implement this cyclically based on the size of the processor Grid that I choose
-}
-
 /*
   Cyclic distribution of data on one layer, then broadcasting the data to the other P^{1/3}-1 layers, similar to how Scalapack does it
 */
 template <typename T>
-void solver<T>::distributeDataCyclicCholesky(bool inParallel)
+void qr<T>::distributeDataCyclic(bool inParallel)
 {
   /*
     If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
@@ -181,14 +149,19 @@ void solver<T>::distributeDataCyclicCholesky(bool inParallel)
   #if DEBUGGING
   std::cout << "Program is distributing the matrix data in a cyclic manner in solver::distributeCyclicParallel()\n";
   #endif
-  
+
   uint64_t size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
   size *= size;
   uint64_t matSize = this->matrixDimSize;
   matSize *= matSize;
   size = matSize/size;						// Watch for overflow, N^2 / P^{2/3} is the initial size of the data that each p owns
-  //this->matrixA.push_back(std::vector<T>());
+/*
+  this->matrixA.push_back(std::vector<T>());
+  
+  // Comment back out if this does not work
   this->matrixA.resize(1,std::vector<T>(size,0.));		// Try this. Resize vs. push_back, better for parallel version?
+*/  
+
   // Note: above, I am not sure if the vector can hold more than 2^32 elements. Maybe this isnt too big of a deal, but ...
 
   // Only distribute the data sequentially on the first layer. Then we broadcast down the 3D processor cube using the depth communicator
@@ -197,7 +170,6 @@ void solver<T>::distributeDataCyclicCholesky(bool inParallel)
     uint64_t counter = 0;
     for (uint32_t i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
     {
-      this->localSize = 0;
       for (uint32_t j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
       {
         if (i > j)
@@ -216,19 +188,18 @@ void solver<T>::distributeDataCyclicCholesky(bool inParallel)
         }
       
         //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
-        this->matrixA[this->matrixA.size()-1][counter++] = drand48();
+        this->matrixA[0][counter++] = drand48();
         if (i==j)
         {
           //matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
-          this->matrixA[this->matrixA.size()-1][counter-1] += this->matrixDimSize;
+          this->matrixA[0][counter-1] += this->matrixDimSize;
         }
-        this->localSize++;
       }
     }
 
     if (inParallel)
     {
-      MPI_Bcast(&this->matrixA[this->matrixA.size()-1][0], size, MPI_DOUBLE, this->depthCommRank, this->depthComm);  
+      MPI_Bcast(&this->matrixA[0][0], size, MPI_DOUBLE, this->depthCommRank, this->depthComm);  
     }
   }
   else			// All other processor not on that 1st layer
@@ -236,7 +207,7 @@ void solver<T>::distributeDataCyclicCholesky(bool inParallel)
     if (inParallel)
     {
       // I am assuming that the root has rank 0 in the depth communicator
-      MPI_Bcast(&this->matrixA[this->matrixA.size()-1][0], size, MPI_DOUBLE, 0, this->depthComm);
+      MPI_Bcast(&this->matrixA[0][0], size, MPI_DOUBLE, 0, this->depthComm);
     }
   }
 
@@ -244,61 +215,80 @@ void solver<T>::distributeDataCyclicCholesky(bool inParallel)
   if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
   {
     std::cout << "About to print what processor (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ") owns.\n";
-    for (uint32_t i=0; i<this->localSize; i++)
-    {
-      for (uint32_t j=0; j<this->localSize; j++)
-      {
-        uint64_t index = i;
-        index *= this->localSize;
-        index += j;
-        std::cout << this->matrixA[0][index] << " ";
-      }
-      std::cout << "\n";
-    }
+    printMatrixSequential(this->matrixA[0], this->localSize, false);
   }
   #endif
 
+/*
   this->localSize = this->matrixDimSize/this->processorGridDimSize;	// Expensive division. Lots of compute cycles
   uint64_t tempSize = this->localSize;                   // n(n+1)/2 is the size needed to hold the triangular portion of the matrix
   tempSize *= (this->localSize+1);
   tempSize >>= 1;
   this->matrixL.resize(tempSize,0.);
   this->matrixLInverse.resize(tempSize,0.);
-
+*/
+  
 }
 
 /*
   The solve method will initiate the solving of this Cholesky Factorization algorithm
 */
 template<typename T>
-void solver<T>::solve()
+void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI, bool isData)
 {
-  if (this->isQR)
+  // use resize or reserve here for matrixA, matrixL, matrixLI to make sure that enuf memory is used.
+  this->localSize = this->matrixDimSize/this->processorGridDimSize;		// n / P^{1/3}
+  uint64_t triangleSize = this->localSize;
+  triangleSize *= (this->localSize+1);
+  triangleSize >>= 1;  
+  matA.resize(this->localSize*this->localSize);		// Makes sure that the user's data structures are of proper size.
+  matL.resize(triangleSize);
+  matLI.resize(triangleSize);
+  allocateLayers();				// Should I pass in a pointer here? I dont think so since its only for this->matrixA
+  this->matrixA[0] = std::move(matA);		// because this->matrixA holds layers
+  this->matrixL = std::move(matL);
+  this->matrixLInverse = std::move(matLI);
+
+  if (!isData)	// so from QR, isData will be true, but for a true Cholesky, isData = false
   {
-    QREngine();
+    this->distributeDataCyclic((this->worldSize == 1 ? false : true));
+  }
+  
+  // For now, lets just support either numP == 1 (for say QR c==1, but later we could support a tuning parameter that could do a mix?
+  if (this->worldSize == 1)
+  {
+    qrLAPack(this->matrixA[0], this->matrixL, this->matrixLInverse, this->localSize, false); // localSize == matrixDimSize
+    // Might be a more efficient way to do this, but I will cut the size now
+    trimMatrix(this->matrixL, this->localSize);
+    trimMatrix(this->matrixLInverse, this->localSize);		// trimMatrix will cut size from n*n back to n*(n+1)/2
   }
   else
   {
-    CholeskyEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize);
+    // Start at 0th layer
+    qrEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize, 0);
   }
-}
+  /*
+    Now I need to re-validate the arguments so that the user has the data he needs.
+    Need to do another std::move into matrixA, matrixL, and matrixLI again.
+    Basically I invalidate the input matrices at first, then re-validate them before the solve routine returns
+    I can think of it as "sucking" out the data from my member variables back into the user's data structures
+  */
 
-template<typename T>
-void solver<T>::QREngine()
-{
-  // Need to write this, it will call the CholeskyEngine with the right arguments and the correct data structures filled in and ready to go
+  matA = std::move(this->matrixA[0]);		// get the first layer again
+  matL = std::move(this->matrixL);
+  matLI = std::move(this->matrixLInverse);
 }
 
 /*
   Write function description
 */
 template<typename T>
-void solver<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize)
+void qr<T>::qrEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize, uint32_t layer)
 {
 
   if (matrixSize == this->baseCaseSize)
   {
-    CholeskyRecurseBaseCase(dimXstart,dimXend,dimYstart,dimYend,matrixWindow,matrixSize, matrixCutSize);
+    qrRecurseBaseCase(dimXstart,dimXend,dimYstart,dimYend,matrixWindow,matrixSize, matrixCutSize, layer);
     return;
   }
 
@@ -307,12 +297,12 @@ void solver<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t di
   */
 
   uint32_t shift = matrixWindow>>1;
-  CholeskyEngine(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize);
+  qrEngine(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize, layer);
   
   // Add MPI_SendRecv in here
   fillTranspose(dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, 0);
 
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0, matrixCutSize);
+  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0, matrixCutSize, layer);
 
   fillTranspose(dimXstart+shift, dimXend, dimYstart, dimYend-shift, shift, 1);
   
@@ -321,8 +311,7 @@ void solver<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t di
   //syrkWrapper(dimXstart+shift, dimXend, dimYstart, dimYend-shift, 0, 0, 0, 0, dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, (matrixSize>>1), matrixCutSize);
 
 
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1, matrixCutSize);
-
+  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1, matrixCutSize, layer);
 
   // Big question: CholeskyRecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the Schur Complement.
   // Note that the below code has room for optimization via some call to LAPACK, but I would have to loop over and put into a 1d array first and then
@@ -332,10 +321,11 @@ void solver<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t di
  
 
   // BELOW : an absolutely critical new addition to the code. Allows building a state recursively
+/*
   uint64_t tempSize = shift;
   tempSize *= shift;
   this->matrixA.push_back(std::vector<T>(tempSize,0.));					// New submatrix of size shift*shift
-
+*/
   // This indexing may be wrong in this new way that I am doing it.
   //int temp = (dimXstart+shift)*this->localSize + dimYstart+shift;
   uint64_t start = shift;
@@ -352,7 +342,7 @@ void solver<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t di
       hold1 += j;
       uint64_t hold2 = start;
       hold2 += j;
-      this->matrixA[this->matrixA.size()-1][hold1] = this->matrixA[this->matrixA.size()-2][hold2] - this->holdMatrix[hold1];
+      this->matrixA[layer+1][hold1] = this->matrixA[layer][hold2] - this->holdMatrix[hold1];
 //      if (this->worldRank == 0) {std::cout << "RECURSE index - " << start+j << " and val - " << this->matrixA[this->matrixA.size()-1][save+j] << "\n"; }
     }
     //temp += this->localSize;
@@ -360,14 +350,17 @@ void solver<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t di
   }
 
 
-  CholeskyEngine(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift);		// changed to shift, not matrixCutSize/2
+  qrEngine(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift, layer+1);		// changed to shift, not matrixCutSize/2
 
   // These last 4 matrix multiplications are for building up our LInverse and UInverse matrices
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),2, matrixCutSize);
+  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),2, matrixCutSize, layer);	// layer won't matter here
 
-  MM(dimXstart+shift,dimXend,dimYstart+shift,dimYend,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),3, matrixCutSize);
+  MM(dimXstart+shift,dimXend,dimYstart+shift,dimYend,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),3, matrixCutSize, layer);    // layer won't matter here
 
-  this->matrixA.pop_back();			// Absolutely critical. Get rid of that memory that we won't use again.
+  //this->matrixA.pop_back();			// Absolutely critical. Get rid of that memory that we won't use again.
+						// Actually, after reading up on this, popping back won't change the capacity of the vector
+							// so the memory is still sitting there. Won't change until it goes out of scope
+							// or we do a swap trick with a temporary vector
 
 }
 
@@ -376,7 +369,7 @@ void solver<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t di
   This routine requires that matrix data is duplicated across all layers of the 3D Processor Grid
 */
 template<typename T>
-void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize)
+void qr<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize, uint32_t layer)
 {
   /*
     I need two broadcasts, then an AllReduce
@@ -410,7 +403,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
           {
             uint64_t temp = index2;
             temp += j;
-            buffer1[index1++] = this->matrixA[this->matrixA.size()-1][temp];
+            buffer1[index1++] = this->matrixA[layer][temp];
             #if DEBUGGING
             if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
             {
@@ -883,7 +876,7 @@ void solver<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, 
   Transpose Communication Helper Function
 */
 template<typename T>
-void solver<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t dir)
+void qr<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t dir)
 {
   switch (dir)
   {
@@ -964,243 +957,104 @@ void solver<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dim
 
 
 /*
-  Base case of CholeskyRecurse
+  Might be a better way to do this, as in using only a giant 1D vector to hold all layers, but this should be good for now
+  Or possibely allocating a huge 1-D vector and then indexing into it using that 2D. Hmmmmm
 */
 template<typename T>
-void solver<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize)
+void qr<T>::allocateLayers(void)
 {
-  /*
-	1) AllGather onto a single processor, which has to be chosen carefully
-	2) Sequential BLAS-3 routines to solve for LU and inverses
-
-	For now, I can just create a 1-d buffer of the data that I want to send first.
-	Later, I can try to optimize this to avoid needless copying just for a collective
-
-	Also remember the importance of using the corect communicator here. We need the sheet communicator of size P^{2/3}
-	This avoids traffic and is the only way it could work
-
-	I think that I will need to receive the data in a buffer, and then use another buffer to line up the data properly
-	This is extra computational cost, but for the moment, I don't see any other option
-
-	This data will be used to solve for L,U,L-I, and U-I. So it is very important that the input buffer be correct for BLAS-3
-	Then we will work on communicating the correct data to the correct places so that RMM operates correctly.
- 
-	So below, I need to transfer a 2-d vector into a 1-d vector
-  */
-
-  uint64_t sendBufferSize = matrixWindow;
-  sendBufferSize *= (matrixWindow+1);
-  sendBufferSize >>= 1;
-  std::vector<T> sendBuffer(sendBufferSize,0.);
-
-  /* Note that for now, we are accessing matrix A as a 1d square vector, NOT a triangular vector, so startOffset is not sufficient
-  int startOffset = (dimXstart*(dimXstart+1))>>1;
-  */
-
-  uint64_t index1 = 0;
-  uint64_t index2 = 0;
-  for (uint32_t i=0; i<matrixWindow; i++)
-  {
-    for (uint32_t j=0; j<=i; j++)			// Note that because A is upper-triangular (shouldnt really matter), I must
-						// access A differently than before
-    {
-      uint64_t temp = index2;
-      temp += j;
-      sendBuffer[index1++] = this->matrixA[this->matrixA.size()-1][temp];//this->matrixA[index2+j];
-//      if (this->worldRank == 0) {std::cout << "BC index - " << index2+j << " and val - " << sendBuffer[index1-1] << std::endl; }
-    }
-    //index2 += this->localSize;
-    index2 += matrixCutSize;
-  }
-
-  uint64_t recvBufferSize = sendBuffer.size();
-  recvBufferSize *= this->processorGridDimSize;
-  recvBufferSize *= this->processorGridDimSize;
-  std::vector<T> recvBuffer(recvBufferSize,0);
-  MPI_Allgather(&sendBuffer[0], sendBuffer.size(),MPI_DOUBLE,&recvBuffer[0],sendBuffer.size(),MPI_DOUBLE,this->layerComm);
-
-
-  /*
-	After the all-gather, I need to format recvBuffer so that it works with OpenBLAS routines!
+  // Fill up the 2D matrixA so that no push_backs are needed that would cause massive reallocations when size >= capacity
+  // This is a one-time call so expensive divides are ok
+  this->matrixA.resize(this->processorGridDimSize*this->processorGridDimSize);	// changes capacity once so that it is never changed again
+  // We can skip the allocation of the 1st layer because it would be wasted to do move operation
+  // Or maybe I should??? What if not enough space is allocated for it and it causes a giant re-allocation of memory behind the scenes?
+  // So I will leave as starting at i=0 for now, but could change it to i=1 later if that helps
+  uint64_t matSize = this->localSize;			// Will have been given correct value before this
+  matSize *= matSize;
   
-        Word of caution: How do I know the ordering of the blocks? It should be by processor rank within the communicator used, but that processor
-	  rank has no correlation to the 2D gridCoords that were used to distribute the matrix.
-  */
-
-
-  // I still need to fix the below. The way an allgather returns data is in blocks
-  uint64_t count = 0;
-  sendBuffer.clear();				// This is new. Edgar says to use capacity??
-  sendBufferSize = matrixSize;
-  sendBufferSize *= matrixSize;
-  sendBuffer.resize(sendBufferSize,0.);
-  uint64_t loopMax = this->processorGridDimSize;
-  loopMax *= loopMax;
-  for (uint32_t i=0; i<loopMax; i++)  // MACRO loop over all processes' data (stored contiguously)
+// Try this, can erase if there are problems
+/*
+  uint64_t fullSize = matSize;
+  fullSize <<= 2;
+  fullSize -= (4*(matSize >> (2*this->processorGridDimSize*this->processorGridDimSize)));
+  fullSize /= 3;
+  this->matrixA[0] = new T[fullSize];		// new feature. Must do this instead of using resize. This is the only way I can see to do what I want using vectors.
+  uint64_t holdSize = matSize;
+  for (uint32_t i=1; i<this->matrixA.size(); i++)
   {
-    for (uint32_t j=0; j<matrixWindow; j++)
+    //this->matrixA[i].resize(matSize);
+    this->matrixA[i] = &this->matrixA[0][holdSize];
+    matSize >>= 2;					// divide by 4
+    holdSize += matSize;
+  }
+*/
+  for (uint32_t i=0; i<this->matrixA.size(); i++)
+  {
+    this->matrixA[i].resize(matSize);
+    matSize >>= 2;					// divide by 4
+  }
+}
+
+template<typename T>
+void qr<T>::trimMatrix(std::vector<T> &data, uint32_t n)
+{
+  // Use overwriting trick
+  uint64_t tracker = 0;
+  for (uint32_t i=0; i<n; i++)
+  {
+    uint64_t index1 = i*n;
+    for (uint32_t j=0; j<=i; j++)
     {
-      for (uint32_t k=0; k<=j; k++)		// I changed this. It should be correct.
-      {
-        uint64_t index1 = j;
-        index1 *= this->processorGridDimSize;
-        index1 *= matrixSize;
-        uint64_t index2 = i;
-        index2 /= this->processorGridDimSize;					// expensive division
-        index2 *= matrixSize;
-        uint64_t index3 = k;
-        index3 *= this->processorGridDimSize;
-        index3 += (i%this->processorGridDimSize);
-        uint64_t index = index1;
-        index += index2;
-        index += index3;
-        //int index = j*this->processorGridDimSize*matrixSize+(i/this->processorGridDimSize)*matrixSize + k*this->processorGridDimSize+(i%this->processorGridDimSize);  // remember that recvBuffer is stored as P^(2/3) consecutive blocks of matrix data pertaining to each p
-        
-        uint64_t xCheck = index;
-        xCheck /= matrixSize;						// expensive division
-        uint64_t yCheck = index%matrixSize;
-        if (xCheck >= yCheck)
-        {
-          sendBuffer[index] = recvBuffer[count++];
-        }
-        else								// serious corner case
-        {
-          sendBuffer[index] = 0.;
-          count++;
-        }
-      }
+      data[tracker++] = data[index1+j];
     }
   }
 
-  // Cholesky factorization
-  LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',matrixSize,&sendBuffer[0],matrixSize);
-
-  //recvBuffer.resize(sendBuffer.size(),0.);			// I am just re-using vectors. They change form as to what data they hold all the time
- 
-  recvBuffer = sendBuffer;
-
-  // I am assuming that the diagonals are ok (maybe they arent all 1s, but that should be ok right?) 
-  LAPACKE_dtrtri(LAPACK_ROW_MAJOR,'L','N',matrixSize,&recvBuffer[0],matrixSize);
-
-  uint64_t pIndex = this->gridCoords[0];
-  pIndex *= this->processorGridDimSize;
-  pIndex += this->gridCoords[1];
-  //int pIndex = this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1];
-  uint64_t startOffset = dimXstart;
-  startOffset *= (dimXstart+1);
-  startOffset >>= 1;
-  //int startOffset = (dimXstart*(dimXstart+1))>>1;
-  uint64_t rowCounter = 0;
-  for (uint32_t i=0; i<matrixWindow; i++)
-  {
-    uint64_t temp = i+1;
-    temp *= dimYstart;
-    temp += rowCounter;
-    temp += startOffset;
-    //int temp = startOffset + (i+1)*dimYstart + rowCounter;
-    for (uint32_t j=0; j<=i; j++)	// for matrixWindow==2, j should always go to 
-    {
-      // I need to use dimXstart and dimXend and dimYstart and dimYend ...
-      uint64_t index1 = i;
-      index1 *= this->processorGridDimSize;
-      index1 *= matrixSize;
-      uint64_t index2 = pIndex;
-      index2 /= this->processorGridDimSize;				// expensive division
-      index2 *= matrixSize;
-      uint64_t index3 = j;
-      index3 *= this->processorGridDimSize;
-      index3 += (pIndex%this->processorGridDimSize);
-      uint64_t index = index1;
-      index += index2;
-      index += index3;
-      //int index = i*this->processorGridDimSize*matrixSize+(pIndex/this->processorGridDimSize)*matrixSize + j*this->processorGridDimSize+(pIndex%this->processorGridDimSize);
-      uint64_t index4 = temp;
-      index4 += j;
-      this->matrixL[index4] = sendBuffer[index];
-      this->matrixLInverse[index4] = recvBuffer[index];
-    }
-    rowCounter += (i+1);
-  }
+  data.resize(tracker);		// this should cut off the garbage pieces and leave a n*(n+1)/2 size matrix
 }
 
 /*
-  I may want to get rid of this function later.
+  This function was taken from cholesky code and needs to be completely changed
 */
 template<typename T>
-void solver<T>::printL()
+void qr<T>::qrLAPack(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataInverse, uint32_t n, bool needData)
 {
-  // We only need to print out a single layer, due to replication of L on each layer
-  if ((this->gridCoords[2] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[0] == 0))
+  
+  // hold on. Why does this need to distribute the data when we can just use my distributedataCyclic function?
+
+  if (needData)
   {
-    uint64_t tracker = 0;
-    for (uint32_t i=0; i<this->localSize; i++)
+    for (uint32_t i=0; i<n; i++)
     {
-      for (uint32_t j=0; j<this->localSize; j++)
+      for (uint32_t j=0; j<n; j++)
       {
-        if (i >= j)
+        if (i > j)
         {
-          std::cout << this->matrixL[tracker++] << " ";
+          uint64_t seed = i;
+          seed *= n;
+          seed += j;
+          srand48(seed);
         }
         else
         {
-          std::cout << 0 << " ";
+          uint64_t seed = j;
+          seed *= n;
+          seed += i;
+          srand48(seed);
         }
-      }
-      std::cout << "\n";
-    }
-  }
-}
-
-template<typename T>
-void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataInverse, uint32_t n)
-{
-  //std::vector<T> data(n*n); Assume that space has been allocated for data vector on the caller side.
-  for (uint32_t i=0; i<n; i++)
-  {
-    for (uint32_t j=0; j<n; j++)
-    {
-      if (i > j)
-      {
         uint64_t seed = i;
         seed *= n;
         seed += j;
-        srand48(seed);
-      }
-      else
-      {
-        uint64_t seed = j;
-        seed *= n;
-        seed += i;
-        srand48(seed);
-      }
-      uint64_t seed = i;
-      seed *= n;
-      seed += j;
-      data[seed] = drand48();
-      //std::cout << "hoogie - " << i*n+j << " " << data[i*n+j] << std::endl;
-      if (i==j)
-      {
-        data[seed] += this->matrixDimSize;
+        data[seed] = drand48();
+        //std::cout << "hoogie - " << i*n+j << " " << data[i*n+j] << std::endl;
+        if (i==j)
+        {
+          data[seed] += this->matrixDimSize;
+        }
       }
     }
   }
-  
-  #if DEBUGGING
-  std::cout << "*************************************************************************************************************\n";
-  for (uint32_t i=0; i<n; i++)
-  {
-    for (uint32_t j=0; j<n; j++)
-    {
-      uint64_t index = i;
-      index *= n;
-      index += j;
-      std::cout << dataL[index] << " ";
-    }
-  }
-  std::cout << "*************************************************************************************************************\n";
-  #endif
 
-  dataL = data;			// big copy
+  dataL = data;			// big copy. Cant use a std::move operation here because we actually need data, we can't suck out its data
   LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',n,&dataL[0],n);
   dataInverse = dataL;				// expensive copy
   LAPACKE_dtrtri(LAPACK_ROW_MAJOR,'L','N',n,&dataInverse[0],n);
@@ -1225,7 +1079,7 @@ void solver<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vec
 }
 
 template<typename T>
-void solver<T>::getResidualSequential()
+void qr<T>::getResidualLayer(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI)
 {
   /*
 	We want to perform a reduction on the data on one of the P^{1/3} layers, then call lapackTest with a single
@@ -1242,16 +1096,13 @@ void solver<T>::getResidualSequential()
     //std::vector<T> sendData(this->matrixDimSize * this->matrixDimSize);
     uint64_t recvDataSize = this->processorGridDimSize;
     recvDataSize *= recvDataSize;
-    recvDataSize *= this->matrixA[this->matrixA.size()-1].size();
+    recvDataSize *= matA.size();
     std::vector<T> recvData(recvDataSize);	// only the bottom half, remember?
-    MPI_Gather(&this->matrixA[this->matrixA.size()-1][0],this->matrixA[this->matrixA.size()-1].size(), MPI_DOUBLE, &recvData[0],this->matrixA[this->matrixA.size()-1].size(), MPI_DOUBLE,
-	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
-    std::vector<T> recvDataL(this->processorGridDimSize*this->processorGridDimSize*this->matrixL.size());	// only the bottom half, remember?
-    MPI_Gather(&this->matrixL[0],this->matrixL.size(), MPI_DOUBLE, &recvDataL[0],this->matrixL.size(), MPI_DOUBLE,
-	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
-    std::vector<T> recvDataLInverse(this->processorGridDimSize*this->processorGridDimSize*this->matrixLInverse.size());	// only the bottom half, remember?
-    MPI_Gather(&this->matrixLInverse[0],this->matrixLInverse.size(), MPI_DOUBLE, &recvDataLInverse[0],this->matrixLInverse.size(), MPI_DOUBLE,
-	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
+    MPI_Gather(&matA[0],matA.size(), MPI_DOUBLE, &recvData[0],matA.size(), MPI_DOUBLE, 0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
+    std::vector<T> recvDataL(this->processorGridDimSize*this->processorGridDimSize*matL.size());	// only the bottom half, remember?
+    MPI_Gather(&matL[0],matL.size(), MPI_DOUBLE, &recvDataL[0],matL.size(), MPI_DOUBLE, 0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
+    std::vector<T> recvDataLInverse(this->processorGridDimSize*this->processorGridDimSize*matLI.size());	// only the bottom half, remember?
+    MPI_Gather(&matLI[0],matLI.size(), MPI_DOUBLE, &recvDataLInverse[0],matLI.size(), MPI_DOUBLE, 0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
 
     if (this->layerCommRank == 0)
     {
@@ -1265,7 +1116,7 @@ void solver<T>::getResidualSequential()
       std::vector<T> data(matSize);
       std::vector<T> lapackData(matSize);
       std::vector<T> lapackDataInverse(matSize);
-      lapackTest(data, lapackData, lapackDataInverse, this->matrixDimSize);		// pass this vector in by reference and have it get filled up
+      qrLAPack(data, lapackData, lapackDataInverse, this->matrixDimSize, true);		// pass this vector in by reference and have it get filled up
 
       // Now we can start comparing this->matrixL with data
       // Lets just first start out by printing everything separately too the screen to make sure its correct up till here
@@ -1287,7 +1138,7 @@ void solver<T>::getResidualSequential()
             PE += (j%this->processorGridDimSize);
             //int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
             uint64_t recvDataIndex = PE;
-            recvDataIndex *= this->matrixL.size();
+            recvDataIndex *= matL.size();
             recvDataIndex += pCounters[PE];
 	    #if DEBUGGING
             std::cout << lapackData[index] << " " << recvDataL[recvDataIndex] << " " << index << std::endl;
@@ -1295,7 +1146,7 @@ void solver<T>::getResidualSequential()
             #endif
             pCounters[PE]++;
             double diff = lapackData[index++] - recvDataL[recvDataIndex];
-            if (diff > 1e-12) { std::cout << "Bad - " << i << "," << j << " , diff - " << diff << " lapack - " << lapackData[index-1] << " and real data - " << recvDataL[recvDataIndex] << std::endl; }
+            if (diff > 1e-12) { std::cout << "Bad - " << i << "," << j << " , diff - " << diff << " lapack - " << lapackData[index-1] << " and real data - " << recvDataL[recvDataIndex] << " index1 - " << index-1 << " index2 - " << recvDataIndex << std::endl; }
             //double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
             //diff = abs(diff);
             this->matrixLNorm += (diff*diff);
@@ -1330,7 +1181,7 @@ void solver<T>::getResidualSequential()
             PE *= (i%this->processorGridDimSize);
             PE += (j%this->processorGridDimSize);
 	    uint64_t recvDataIndex = PE;
-            recvDataIndex *= this->matrixA[this->matrixA.size()-1].size();
+            recvDataIndex *= matA.size();
             recvDataIndex += pCounters[PE];
             #if DEBUGGING
             std::cout << data[index] << " " << recvData[recvDataIndex] << " " << index << std::endl;
@@ -1370,7 +1221,7 @@ void solver<T>::getResidualSequential()
             PE += (j%this->processorGridDimSize);
             //int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
             uint64_t recvDataIndex = PE;
-            recvDataIndex *= this->matrixLInverse.size();
+            recvDataIndex *= matLI.size();
             recvDataIndex += pCounters[PE];
             #if DEBUGGING
 	    std::cout << lapackDataInverse[index] << " " << recvDataLInverse[recvDataIndex] << " " << index << std::endl;
@@ -1403,16 +1254,57 @@ void solver<T>::getResidualSequential()
 
 
 template <typename T>
-void solver<T>::getResidualParallel()
+void qr<T>::getResidualParallel()
 {
   // Waiting on scalapack support. No other way to this
 }
 
 /*
-  Might want to get rid of this function later on. -> no 64-bit support here because it would be too big to print out anyway
+  printMatrixSequential assumes that it is only called by a single processor
+  Note: matrix could be triangular or square. So I should add a new function or something to print a triangular matrix without segfaulting
 */
 template<typename T>
-void solver<T>::printInputA()
+void qr<T>::printMatrixSequential(std::vector<T> &matrix, uint32_t n, bool isTriangle)
+{
+  if (isTriangle)
+  {
+    uint64_t tracker = 0;
+    for (uint32_t i=0; i<n; i++)
+    {
+      for (uint32_t j=0; j<n; j++)
+      {
+        if (i >= j)
+        {
+          std::cout << matrix[tracker++] << " ";
+        }
+        else
+        {
+          std::cout << 0 << " ";
+        }
+      }
+      std::cout << "\n";
+    }
+  }
+  else  // square
+  {
+    uint64_t tracker = 0;
+    for (uint32_t i=0; i<n; i++)
+    {
+      for (uint32_t j=0; j<n; j++)
+      {
+        std::cout << matrix[tracker++] << " ";
+      }
+      std::cout << "\n";
+    }
+
+  }
+}
+
+/*
+  printMatrixParallel needs to be fixed. Want to assume its being called by P processors or something
+*/
+template<typename T>
+void qr<T>::printMatrixParallel(std::vector<T> &matrix, uint32_t n)
 {
   if (this->gridCoords[2] == 0)		// 1st layer
   {

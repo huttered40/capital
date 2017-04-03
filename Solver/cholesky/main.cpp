@@ -1,6 +1,6 @@
 /*
 
-	Program to start the Recursive 3D LU Factorization Solver
+	Program to factorize a square matrix A into a product of triangular matrices. (A=LL^T)
 	Author: Edward Hutter
 */
 
