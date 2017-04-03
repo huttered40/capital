@@ -168,7 +168,6 @@ void cholesky<T>::distributeDataCyclic(bool inParallel)
     uint64_t counter = 0;
     for (uint32_t i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
     {
-      this->localSize = 0;
       for (uint32_t j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
       {
         if (i > j)
@@ -193,7 +192,6 @@ void cholesky<T>::distributeDataCyclic(bool inParallel)
           //matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
           this->matrixA[this->matrixA.size()-1][counter-1] += this->matrixDimSize;
         }
-        this->localSize++;
       }
     }
 
@@ -215,21 +213,10 @@ void cholesky<T>::distributeDataCyclic(bool inParallel)
   if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
   {
     std::cout << "About to print what processor (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ") owns.\n";
-    for (uint32_t i=0; i<this->localSize; i++)
-    {
-      for (uint32_t j=0; j<this->localSize; j++)
-      {
-        uint64_t index = i;
-        index *= this->localSize;
-        index += j;
-        std::cout << this->matrixA[0][index] << " ";
-      }
-      std::cout << "\n";
-    }
+    printMatrixSequential(this->matrixA[0], this->localSize, false);
   }
   #endif
 
-  // Uncomment back out if this doesnt work
 /*
   this->localSize = this->matrixDimSize/this->processorGridDimSize;	// Expensive division. Lots of compute cycles
   uint64_t tempSize = this->localSize;                   // n(n+1)/2 is the size needed to hold the triangular portion of the matrix
@@ -245,40 +232,54 @@ void cholesky<T>::distributeDataCyclic(bool inParallel)
   The solve method will initiate the solving of this Cholesky Factorization algorithm
 */
 template<typename T>
-void cholesky<T>::choleskySolve(std::vector<T> &matrixA, std::vector<T> &matrixL, std::vector<T> &matrixLI, bool isData)
+void cholesky<T>::choleskySolve(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI, bool isData)
 {
   // use resize or reserve here for matrixA, matrixL, matrixLI to make sure that enuf memory is used.
   this->localSize = this->matrixDimSize/this->processorGridDimSize;		// n / P^{1/3}
   uint64_t triangleSize = this->localSize;
   triangleSize *= (this->localSize+1);
   triangleSize >>= 1;  
-  matrixA.resize(this->localSize*this->localSize);
-  matrixL.resize(triangleSize);
-  matrixLI.resize(triangleSize);
-  this->matrixA.push_back(std::move(matrixA));		// because this->matrixA holds layers
-  this->matrixL = std::move(matrixL);
-  this->matrixLInverse = std::move(matrixLI);
+  matA.resize(this->localSize*this->localSize);
+  matL.resize(triangleSize);
+  matLI.resize(triangleSize);
+  this->matrixA.push_back(std::move(matA));		// because this->matrixA holds layers
+  this->matrixL = std::move(matL);
+  this->matrixLInverse = std::move(matLI);
+
   if (!isData)	// so from QR, isData will be true, but for a true Cholesky, isData = false
   {
-    this->distributeDataCyclic(true);    // Any arguments
+    this->distributeDataCyclic((this->worldSize == 1 ? false : true));
   }
-  CholeskyEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize);
+  
+  // For now, lets just support either numP == 1 (for say QR c==1, but later we could support a tuning parameter that could do a mix?
+  if (this->worldSize == 1)
+  {
+    choleskyLAPack(this->matrixA[0], this->matrixL, this->matrixLInverse, this->localSize, false); // localSize == matrixDimSize
+    // Might be a more efficient way to do this, but I will cut the size now
+    trimMatrix(this->matrixL, this->localSize);
+    trimMatrix(this->matrixLInverse, this->localSize);		// trimMatrix will cut size from n*n back to n*(n+1)/2
+  }
+  else
+  {
+    choleskyEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize);
+  }
   /*
     Now I need to re-validate the arguments so that the user has the data he needs.
     Need to do another std::move into matrixA, matrixL, and matrixLI again.
     Basically I invalidate the input matrices at first, then re-validate them before the solve routine returns
     I can think of it as "sucking" out the data from my member variables back into the user's data structures
   */
-  matrixA = std::move(this->matrixA[0]);		// get the first layer again
-  matrixL = std::move(this->matrixL);
-  matrixLI = std::move(this->matrixLInverse);
+
+  matA = std::move(this->matrixA[0]);		// get the first layer again
+  matL = std::move(this->matrixL);
+  matLI = std::move(this->matrixLInverse);
 }
 
 /*
   Write function description
 */
 template<typename T>
-void cholesky<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize)
+void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize)
 {
 
   if (matrixSize == this->baseCaseSize)
@@ -292,7 +293,7 @@ void cholesky<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
   */
 
   uint32_t shift = matrixWindow>>1;
-  CholeskyEngine(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize);
+  choleskyEngine(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize);
   
   // Add MPI_SendRecv in here
   fillTranspose(dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, 0);
@@ -344,7 +345,7 @@ void cholesky<T>::CholeskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
   }
 
 
-  CholeskyEngine(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift);		// changed to shift, not matrixCutSize/2
+  choleskyEngine(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift);		// changed to shift, not matrixCutSize/2
 
   // These last 4 matrix multiplications are for building up our LInverse and UInverse matrices
   MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),2, matrixCutSize);
@@ -1107,84 +1108,63 @@ void cholesky<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, 
   }
 }
 
-/*
-  I may want to get rid of this function later.
-*/
 template<typename T>
-void cholesky<T>::printL()
+void cholesky<T>::trimMatrix(std::vector<T> &data, uint32_t n)
 {
-  // We only need to print out a single layer, due to replication of L on each layer
-  if ((this->gridCoords[2] == 0) && (this->gridCoords[1] == 0) && (this->gridCoords[0] == 0))
+  // Use overwriting trick
+  uint64_t tracker = 0;
+  for (uint32_t i=0; i<n; i++)
   {
-    uint64_t tracker = 0;
-    for (uint32_t i=0; i<this->localSize; i++)
+    uint64_t index1 = i*n;
+    for (uint32_t j=0; j<=i; j++)
     {
-      for (uint32_t j=0; j<this->localSize; j++)
-      {
-        if (i >= j)
-        {
-          std::cout << this->matrixL[tracker++] << " ";
-        }
-        else
-        {
-          std::cout << 0 << " ";
-        }
-      }
-      std::cout << "\n";
+      data[tracker++] = data[index1+j];
     }
   }
+
+  data.resize(tracker);		// this should cut off the garbage pieces and leave a n*(n+1)/2 size matrix
 }
 
 template<typename T>
-void cholesky<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataInverse, uint32_t n)
+void cholesky<T>::choleskyLAPack(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataInverse, uint32_t n, bool needData)
 {
-  //std::vector<T> data(n*n); Assume that space has been allocated for data vector on the caller side.
-  for (uint32_t i=0; i<n; i++)
+  
+  // hold on. Why does this need to distribute the data when we can just use my distributedataCyclic function?
+
+  if (needData)
   {
-    for (uint32_t j=0; j<n; j++)
+    for (uint32_t i=0; i<n; i++)
     {
-      if (i > j)
+      for (uint32_t j=0; j<n; j++)
       {
+        if (i > j)
+        {
+          uint64_t seed = i;
+          seed *= n;
+          seed += j;
+          srand48(seed);
+        }
+        else
+        {
+          uint64_t seed = j;
+          seed *= n;
+          seed += i;
+          srand48(seed);
+        }
         uint64_t seed = i;
         seed *= n;
         seed += j;
-        srand48(seed);
-      }
-      else
-      {
-        uint64_t seed = j;
-        seed *= n;
-        seed += i;
-        srand48(seed);
-      }
-      uint64_t seed = i;
-      seed *= n;
-      seed += j;
-      data[seed] = drand48();
-      //std::cout << "hoogie - " << i*n+j << " " << data[i*n+j] << std::endl;
-      if (i==j)
-      {
-        data[seed] += this->matrixDimSize;
+        data[seed] = drand48();
+        //std::cout << "hoogie - " << i*n+j << " " << data[i*n+j] << std::endl;
+        if (i==j)
+        {
+          data[seed] += this->matrixDimSize;
+        }
       }
     }
   }
-  
-  #if DEBUGGING
-  std::cout << "*************************************************************************************************************\n";
-  for (uint32_t i=0; i<n; i++)
-  {
-    for (uint32_t j=0; j<n; j++)
-    {
-      uint64_t index = i;
-      index *= n;
-      index += j;
-      std::cout << dataL[index] << " ";
-    }
-  }
-  std::cout << "*************************************************************************************************************\n";
-  #endif
 
-  dataL = data;			// big copy
+  dataL = data;			// big copy. Cant use a std::move operation here because we actually need data, we can't suck out its data
   LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',n,&dataL[0],n);
   dataInverse = dataL;				// expensive copy
   LAPACKE_dtrtri(LAPACK_ROW_MAJOR,'L','N',n,&dataInverse[0],n);
@@ -1209,7 +1189,7 @@ void cholesky<T>::lapackTest(std::vector<T> &data, std::vector<T> &dataL, std::v
 }
 
 template<typename T>
-void cholesky<T>::getResidualSequential(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI)
+void cholesky<T>::getResidualLayer(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI)
 {
   /*
 	We want to perform a reduction on the data on one of the P^{1/3} layers, then call lapackTest with a single
@@ -1246,7 +1226,7 @@ void cholesky<T>::getResidualSequential(std::vector<T> &matA, std::vector<T> &ma
       std::vector<T> data(matSize);
       std::vector<T> lapackData(matSize);
       std::vector<T> lapackDataInverse(matSize);
-      lapackTest(data, lapackData, lapackDataInverse, this->matrixDimSize);		// pass this vector in by reference and have it get filled up
+      choleskyLAPack(data, lapackData, lapackDataInverse, this->matrixDimSize, true);		// pass this vector in by reference and have it get filled up
 
       // Now we can start comparing this->matrixL with data
       // Lets just first start out by printing everything separately too the screen to make sure its correct up till here
@@ -1276,7 +1256,7 @@ void cholesky<T>::getResidualSequential(std::vector<T> &matA, std::vector<T> &ma
             #endif
             pCounters[PE]++;
             double diff = lapackData[index++] - recvDataL[recvDataIndex];
-            if (diff > 1e-12) { std::cout << "Bad - " << i << "," << j << " , diff - " << diff << " lapack - " << lapackData[index-1] << " and real data - " << recvDataL[recvDataIndex] << std::endl; }
+            if (diff > 1e-12) { std::cout << "Bad - " << i << "," << j << " , diff - " << diff << " lapack - " << lapackData[index-1] << " and real data - " << recvDataL[recvDataIndex] << " index1 - " << index-1 << " index2 - " << recvDataIndex << std::endl; }
             //double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
             //diff = abs(diff);
             this->matrixLNorm += (diff*diff);
@@ -1390,10 +1370,51 @@ void cholesky<T>::getResidualParallel()
 }
 
 /*
-  Might want to get rid of this function later on. -> no 64-bit support here because it would be too big to print out anyway
+  printMatrixSequential assumes that it is only called by a single processor
+  Note: matrix could be triangular or square. So I should add a new function or something to print a triangular matrix without segfaulting
 */
 template<typename T>
-void cholesky<T>::printInputA()
+void cholesky<T>::printMatrixSequential(std::vector<T> &matrix, uint32_t n, bool isTriangle)
+{
+  if (isTriangle)
+  {
+    uint64_t tracker = 0;
+    for (uint32_t i=0; i<n; i++)
+    {
+      for (uint32_t j=0; j<n; j++)
+      {
+        if (i >= j)
+        {
+          std::cout << matrix[tracker++] << " ";
+        }
+        else
+        {
+          std::cout << 0 << " ";
+        }
+      }
+      std::cout << "\n";
+    }
+  }
+  else  // square
+  {
+    uint64_t tracker = 0;
+    for (uint32_t i=0; i<n; i++)
+    {
+      for (uint32_t j=0; j<n; j++)
+      {
+        std::cout << matrix[tracker++] << " ";
+      }
+      std::cout << "\n";
+    }
+
+  }
+}
+
+/*
+  printMatrixParallel needs to be fixed. Want to assume its being called by P processors or something
+*/
+template<typename T>
+void cholesky<T>::printMatrixParallel(std::vector<T> &matrix, uint32_t n)
 {
   if (this->gridCoords[2] == 0)		// 1st layer
   {

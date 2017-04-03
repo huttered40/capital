@@ -54,7 +54,6 @@ int main(int argc, char **argv)
 
   start = clock(); 							// start timer
   mySolver.choleskySolve(matA, matL, matLInverse,false);		// run algorithm
-
   duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
   // I want the average of each process's runtime, so I can use a reduction
@@ -74,7 +73,7 @@ int main(int argc, char **argv)
 
   //mySolver.scalapackCholesky();			// dummy function for now. Doesnt do anything
   // for now, comment this out, then of course comment it back in and pass in matA, matL, matLInverse to check for correctness
-  mySolver.getResidualSequential(matA, matL, matLInverse);
+  mySolver.getResidualLayer(matA, matL, matLInverse);
 
   MPI_Finalize();
   return 0;
