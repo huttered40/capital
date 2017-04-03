@@ -186,18 +186,18 @@ void cholesky<T>::distributeDataCyclic(bool inParallel)
         }
       
         //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
-        this->matrixA[this->matrixA.size()-1][counter++] = drand48();
+        this->matrixA[0][counter++] = drand48();
         if (i==j)
         {
           //matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
-          this->matrixA[this->matrixA.size()-1][counter-1] += this->matrixDimSize;
+          this->matrixA[0][counter-1] += this->matrixDimSize;
         }
       }
     }
 
     if (inParallel)
     {
-      MPI_Bcast(&this->matrixA[this->matrixA.size()-1][0], size, MPI_DOUBLE, this->depthCommRank, this->depthComm);  
+      MPI_Bcast(&this->matrixA[0][0], size, MPI_DOUBLE, this->depthCommRank, this->depthComm);  
     }
   }
   else			// All other processor not on that 1st layer
@@ -205,7 +205,7 @@ void cholesky<T>::distributeDataCyclic(bool inParallel)
     if (inParallel)
     {
       // I am assuming that the root has rank 0 in the depth communicator
-      MPI_Bcast(&this->matrixA[this->matrixA.size()-1][0], size, MPI_DOUBLE, 0, this->depthComm);
+      MPI_Bcast(&this->matrixA[0][0], size, MPI_DOUBLE, 0, this->depthComm);
     }
   }
 
@@ -239,10 +239,11 @@ void cholesky<T>::choleskySolve(std::vector<T> &matA, std::vector<T> &matL, std:
   uint64_t triangleSize = this->localSize;
   triangleSize *= (this->localSize+1);
   triangleSize >>= 1;  
-  matA.resize(this->localSize*this->localSize);
+  matA.resize(this->localSize*this->localSize);		// Makes sure that the user's data structures are of proper size.
   matL.resize(triangleSize);
   matLI.resize(triangleSize);
-  this->matrixA.push_back(std::move(matA));		// because this->matrixA holds layers
+  allocateLayers();				// Should I pass in a pointer here? I dont think so since its only for this->matrixA
+  this->matrixA[0] = std::move(matA);		// because this->matrixA holds layers
   this->matrixL = std::move(matL);
   this->matrixLInverse = std::move(matLI);
 
@@ -261,7 +262,8 @@ void cholesky<T>::choleskySolve(std::vector<T> &matA, std::vector<T> &matL, std:
   }
   else
   {
-    choleskyEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize);
+    // Start at 0th layer
+    choleskyEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize, 0);
   }
   /*
     Now I need to re-validate the arguments so that the user has the data he needs.
@@ -279,12 +281,12 @@ void cholesky<T>::choleskySolve(std::vector<T> &matA, std::vector<T> &matL, std:
   Write function description
 */
 template<typename T>
-void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize)
+void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize, uint32_t layer)
 {
 
   if (matrixSize == this->baseCaseSize)
   {
-    CholeskyRecurseBaseCase(dimXstart,dimXend,dimYstart,dimYend,matrixWindow,matrixSize, matrixCutSize);
+    CholeskyRecurseBaseCase(dimXstart,dimXend,dimYstart,dimYend,matrixWindow,matrixSize, matrixCutSize, layer);
     return;
   }
 
@@ -293,12 +295,12 @@ void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
   */
 
   uint32_t shift = matrixWindow>>1;
-  choleskyEngine(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize);
+  choleskyEngine(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize, layer);
   
   // Add MPI_SendRecv in here
   fillTranspose(dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, 0);
 
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0, matrixCutSize);
+  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0, matrixCutSize, layer);
 
   fillTranspose(dimXstart+shift, dimXend, dimYstart, dimYend-shift, shift, 1);
   
@@ -307,7 +309,7 @@ void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
   //syrkWrapper(dimXstart+shift, dimXend, dimYstart, dimYend-shift, 0, 0, 0, 0, dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, (matrixSize>>1), matrixCutSize);
 
 
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1, matrixCutSize);
+  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1, matrixCutSize, layer);
 
   // Big question: CholeskyRecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the Schur Complement.
   // Note that the below code has room for optimization via some call to LAPACK, but I would have to loop over and put into a 1d array first and then
@@ -317,10 +319,11 @@ void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
  
 
   // BELOW : an absolutely critical new addition to the code. Allows building a state recursively
+/*
   uint64_t tempSize = shift;
   tempSize *= shift;
   this->matrixA.push_back(std::vector<T>(tempSize,0.));					// New submatrix of size shift*shift
-
+*/
   // This indexing may be wrong in this new way that I am doing it.
   //int temp = (dimXstart+shift)*this->localSize + dimYstart+shift;
   uint64_t start = shift;
@@ -337,7 +340,7 @@ void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
       hold1 += j;
       uint64_t hold2 = start;
       hold2 += j;
-      this->matrixA[this->matrixA.size()-1][hold1] = this->matrixA[this->matrixA.size()-2][hold2] - this->holdMatrix[hold1];
+      this->matrixA[layer+1][hold1] = this->matrixA[layer][hold2] - this->holdMatrix[hold1];
 //      if (this->worldRank == 0) {std::cout << "RECURSE index - " << start+j << " and val - " << this->matrixA[this->matrixA.size()-1][save+j] << "\n"; }
     }
     //temp += this->localSize;
@@ -345,14 +348,17 @@ void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
   }
 
 
-  choleskyEngine(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift);		// changed to shift, not matrixCutSize/2
+  choleskyEngine(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift, layer+1);		// changed to shift, not matrixCutSize/2
 
   // These last 4 matrix multiplications are for building up our LInverse and UInverse matrices
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),2, matrixCutSize);
+  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),2, matrixCutSize, layer);	// layer won't matter here
 
-  MM(dimXstart+shift,dimXend,dimYstart+shift,dimYend,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),3, matrixCutSize);
+  MM(dimXstart+shift,dimXend,dimYstart+shift,dimYend,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),3, matrixCutSize, layer);    // layer won't matter here
 
-  this->matrixA.pop_back();			// Absolutely critical. Get rid of that memory that we won't use again.
+  //this->matrixA.pop_back();			// Absolutely critical. Get rid of that memory that we won't use again.
+						// Actually, after reading up on this, popping back won't change the capacity of the vector
+							// so the memory is still sitting there. Won't change until it goes out of scope
+							// or we do a swap trick with a temporary vector
 
 }
 
@@ -361,7 +367,7 @@ void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
   This routine requires that matrix data is duplicated across all layers of the 3D Processor Grid
 */
 template<typename T>
-void cholesky<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize)
+void cholesky<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize, uint32_t layer)
 {
   /*
     I need two broadcasts, then an AllReduce
@@ -395,7 +401,7 @@ void cholesky<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA
           {
             uint64_t temp = index2;
             temp += j;
-            buffer1[index1++] = this->matrixA[this->matrixA.size()-1][temp];
+            buffer1[index1++] = this->matrixA[layer][temp];
             #if DEBUGGING
             if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
             {
@@ -952,7 +958,7 @@ void cholesky<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t d
   Base case of CholeskyRecurse
 */
 template<typename T>
-void cholesky<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize)
+void cholesky<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize, uint32_t layer)
 {
   /*
 	1) AllGather onto a single processor, which has to be chosen carefully
@@ -991,7 +997,7 @@ void cholesky<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, 
     {
       uint64_t temp = index2;
       temp += j;
-      sendBuffer[index1++] = this->matrixA[this->matrixA.size()-1][temp];//this->matrixA[index2+j];
+      sendBuffer[index1++] = this->matrixA[layer][temp];//this->matrixA[index2+j];
 //      if (this->worldRank == 0) {std::cout << "BC index - " << index2+j << " and val - " << sendBuffer[index1-1] << std::endl; }
     }
     //index2 += this->localSize;
@@ -1105,6 +1111,45 @@ void cholesky<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, 
       this->matrixLInverse[index4] = recvBuffer[index];
     }
     rowCounter += (i+1);
+  }
+}
+
+/*
+  Might be a better way to do this, as in using only a giant 1D vector to hold all layers, but this should be good for now
+  Or possibely allocating a huge 1-D vector and then indexing into it using that 2D. Hmmmmm
+*/
+template<typename T>
+void cholesky<T>::allocateLayers(void)
+{
+  // Fill up the 2D matrixA so that no push_backs are needed that would cause massive reallocations when size >= capacity
+  // This is a one-time call so expensive divides are ok
+  this->matrixA.resize(this->processorGridDimSize*this->processorGridDimSize);	// changes capacity once so that it is never changed again
+  // We can skip the allocation of the 1st layer because it would be wasted to do move operation
+  // Or maybe I should??? What if not enough space is allocated for it and it causes a giant re-allocation of memory behind the scenes?
+  // So I will leave as starting at i=0 for now, but could change it to i=1 later if that helps
+  uint64_t matSize = this->localSize;			// Will have been given correct value before this
+  matSize *= matSize;
+  
+// Try this, can erase if there are problems
+/*
+  uint64_t fullSize = matSize;
+  fullSize <<= 2;
+  fullSize -= (4*(matSize >> (2*this->processorGridDimSize*this->processorGridDimSize)));
+  fullSize /= 3;
+  this->matrixA[0] = new T[fullSize];		// new feature. Must do this instead of using resize. This is the only way I can see to do what I want using vectors.
+  uint64_t holdSize = matSize;
+  for (uint32_t i=1; i<this->matrixA.size(); i++)
+  {
+    //this->matrixA[i].resize(matSize);
+    this->matrixA[i] = &this->matrixA[0][holdSize];
+    matSize >>= 2;					// divide by 4
+    holdSize += matSize;
+  }
+*/
+  for (uint32_t i=0; i<this->matrixA.size(); i++)
+  {
+    this->matrixA[i].resize(matSize);
+    matSize >>= 2;					// divide by 4
   }
 }
 
