@@ -283,85 +283,12 @@ void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &
   Write function description
 */
 template<typename T>
-void qr<T>::qrEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize, uint32_t layer)
+void qr<T>::choleskyQR(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR)
 {
-
-  if (matrixSize == this->baseCaseSize)
-  {
-    qrRecurseBaseCase(dimXstart,dimXend,dimYstart,dimYend,matrixWindow,matrixSize, matrixCutSize, layer);
-    return;
-  }
-
-  /*
-	Recursive case -> Keep recursing on the top-left half
-  */
-
-  uint32_t shift = matrixWindow>>1;
-  qrEngine(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize, layer);
-  
-  // Add MPI_SendRecv in here
-  fillTranspose(dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, 0);
-
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0, matrixCutSize, layer);
-
-  fillTranspose(dimXstart+shift, dimXend, dimYstart, dimYend-shift, shift, 1);
-  
-
-  //Below is the tricky one. We need to create a vector via MM(..), then subtract it from A via some sort easy method...
-  //syrkWrapper(dimXstart+shift, dimXend, dimYstart, dimYend-shift, 0, 0, 0, 0, dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, (matrixSize>>1), matrixCutSize);
-
-
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1, matrixCutSize, layer);
-
-  // Big question: CholeskyRecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the Schur Complement.
-  // Note that the below code has room for optimization via some call to LAPACK, but I would have to loop over and put into a 1d array first and then
-  // pack it back into my 2d array. So in general, I need to look at whether modifying the code to use 1D vectors instead of 2D vectors is worth it.
-
-  // REPLACE THE BELOW WITH LAPACK SYRK ONCE I FINISH FIXING CORRECTNESS ERRORS
- 
-
-  // BELOW : an absolutely critical new addition to the code. Allows building a state recursively
-/*
-  uint64_t tempSize = shift;
-  tempSize *= shift;
-  this->matrixA.push_back(std::vector<T>(tempSize,0.));					// New submatrix of size shift*shift
-*/
-  // This indexing may be wrong in this new way that I am doing it.
-  //int temp = (dimXstart+shift)*this->localSize + dimYstart+shift;
-  uint64_t start = shift;
-  start *= matrixCutSize;
-  start += shift;
-  //int start = shift*matrixCutSize+shift;
-  for (uint32_t i=0; i<shift; i++)
-  {
-    uint64_t save = i*shift;
-    for (uint32_t j=0; j<shift; j++)
-    {
-      // Only need to push back to this
-      uint64_t hold1 = save;
-      hold1 += j;
-      uint64_t hold2 = start;
-      hold2 += j;
-      this->matrixA[layer+1][hold1] = this->matrixA[layer][hold2] - this->holdMatrix[hold1];
-//      if (this->worldRank == 0) {std::cout << "RECURSE index - " << start+j << " and val - " << this->matrixA[this->matrixA.size()-1][save+j] << "\n"; }
-    }
-    //temp += this->localSize;
-    start += matrixCutSize;
-  }
-
-
-  qrEngine(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift, layer+1);		// changed to shift, not matrixCutSize/2
-
-  // These last 4 matrix multiplications are for building up our LInverse and UInverse matrices
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),2, matrixCutSize, layer);	// layer won't matter here
-
-  MM(dimXstart+shift,dimXend,dimYstart+shift,dimYend,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),3, matrixCutSize, layer);    // layer won't matter here
-
-  //this->matrixA.pop_back();			// Absolutely critical. Get rid of that memory that we won't use again.
-						// Actually, after reading up on this, popping back won't change the capacity of the vector
-							// so the memory is still sitting there. Won't change until it goes out of scope
-							// or we do a swap trick with a temporary vector
-
+  // do the A^{T}*A matrix multiplication
+  // call the cholesky
+  // Perform the TRSM - Q = A*R^{-1}
+  // Remember that for now, I am only doing the c==1 version. This will have to be adjusted substantially to account for c>1
 }
 
 /*
