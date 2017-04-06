@@ -14,15 +14,17 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv)
 {
   this->worldRank = rank;
   this->worldSize = size;
-  this->nDims = nDims;			// Might want to make this a parameter of argv later, especially with QR and tuning parameter c
-  this->matrixSizeRow = atoi(argv[1]);
-  this->matrixSizeCol = atoi(argv[2]);
+  this->nDims = 3;			// Might want to make this a parameter of argv later, especially with QR and tuning parameter c
+  this->matrixSizeRow = atoi(argv[1]);		// N
+  this->matrixSizeCol = atoi(argv[2]);		// k
   this->processorGridDimTune = atoi(argv[3]);
   this->processorGridDimReact = this->worldSize/(this->processorGridDimTune*this->processorGridDimTune);	// 64-bit trick here?
+  this->localRowSize = this->matrixSizeRow/this->processorGridDimReact; // d==P for now
+  this->localColSize = this->matrixSizeCol/this->processorGridDimTune;  // c==1 for now
   this->argc = argc;
   this->argv = argv;
   this->matrixANorm = 0.;
-  this->matrixQorm = 0.;
+  this->matrixQNorm = 0.;
   this->matrixRNorm = 0.;
 
 /*
@@ -30,6 +32,7 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv)
   Maps number of processors involved in the computation to its cubic root to avoid expensive cubic root routine
   Table should reside in the L1 cache for quick lookUp, but only needed once
 */
+  // This might need to be redone for the tuning parameter c, but leave it for now.
   for (uint32_t i=1; i<500; i++)
   {
     uint64_t size = i;
@@ -39,7 +42,7 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv)
   }
 
   this->constructGridCholesky();
-  //this->distributeDataCyclic(true);
+//  this->distributeData(true);
 
   #if INFO_OUTPUT
   if (this->worldRank == 0)
@@ -72,6 +75,7 @@ void qr<T>::constructGridCholesky(void)
 	If found, this->processorGridDimSize will represent the number of processors along one dimension, such as along a row or column (P^(1/3))
   */
 
+/*
   if (this->gridSizeLookUp.find(this->worldSize) == gridSizeLookUp.end())
   {
     #if DEBUGGING
@@ -81,32 +85,35 @@ void qr<T>::constructGridCholesky(void)
   }
 
   this->processorGridDimSize = this->gridSizeLookUp[this->worldSize];
+*/
   
   /*
     this->baseCaseSize gives us a size in which to stop recursing in the CholeskyRecurse method
     = n/P^(2/3). The math behind it is written about in my report and other papers
   */
-  this->baseCaseSize = this->matrixDimSize;
-  uint64_t tempGrid = this->processorGridDimSize;
-  tempGrid *= this->processorGridDimSize;		// watch for possible overflow here later on
-  this->baseCaseSize /= tempGrid;
+
+/*  
   this->gridDims.resize(this->nDims,this->processorGridDimSize);
   this->gridCoords.resize(this->nDims); 
+*/
   
   /*
     The 3D Cartesian Communicator is used to distribute the random data in a cyclic fashion
     The other communicators are created for specific communication patterns involved in the algorithm.
   */
+
+/*  
   std::vector<int> boolVec(3,0);
   MPI_Cart_create(MPI_COMM_WORLD, this->nDims, &this->gridDims[0], &boolVec[0], false, &this->grid3D);
   MPI_Comm_rank(this->grid3D, &this->grid3DRank);
   MPI_Comm_size(this->grid3D, &this->grid3DSize);
   MPI_Cart_coords(this->grid3D, this->grid3DRank, this->nDims, &this->gridCoords[0]);
-
+*/
   /*
     Before creating row and column sub-communicators, grid3D must be split into 2D Layer communicators.
   */
 
+/*
   // 2D (xy) Layer Communicator (split by z coordinate)
   MPI_Comm_split(this->grid3D, this->gridCoords[2],this->grid3DRank,&this->layerComm);
   MPI_Comm_rank(this->layerComm,&this->layerCommRank);
@@ -123,14 +130,14 @@ void qr<T>::constructGridCholesky(void)
   MPI_Comm_split(this->grid3D,this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1],this->gridCoords[2],&this->depthComm);
   MPI_Comm_rank(this->depthComm,&this->depthCommRank);
   MPI_Comm_size(this->depthComm,&this->depthCommSize);
-  
+*/
 }
 
 /*
   Cyclic distribution of data on one layer, then broadcasting the data to the other P^{1/3}-1 layers, similar to how Scalapack does it
 */
 template <typename T>
-void qr<T>::distributeDataCyclic(bool inParallel)
+void qr<T>::distributeData(void)
 {
   /*
     If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
@@ -146,21 +153,11 @@ void qr<T>::distributeDataCyclic(bool inParallel)
     allocate a triangular portion instead of storing half as zeros.
   */
 
-  #if DEBUGGING
-  std::cout << "Program is distributing the matrix data in a cyclic manner in solver::distributeCyclicParallel()\n";
-  #endif
-
   uint64_t size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
   size *= size;
   uint64_t matSize = this->matrixDimSize;
   matSize *= matSize;
   size = matSize/size;						// Watch for overflow, N^2 / P^{2/3} is the initial size of the data that each p owns
-/*
-  this->matrixA.push_back(std::vector<T>());
-  
-  // Comment back out if this does not work
-  this->matrixA.resize(1,std::vector<T>(size,0.));		// Try this. Resize vs. push_back, better for parallel version?
-*/  
 
   // Note: above, I am not sure if the vector can hold more than 2^32 elements. Maybe this isnt too big of a deal, but ...
 
@@ -219,15 +216,6 @@ void qr<T>::distributeDataCyclic(bool inParallel)
   }
   #endif
 
-/*
-  this->localSize = this->matrixDimSize/this->processorGridDimSize;	// Expensive division. Lots of compute cycles
-  uint64_t tempSize = this->localSize;                   // n(n+1)/2 is the size needed to hold the triangular portion of the matrix
-  tempSize *= (this->localSize+1);
-  tempSize >>= 1;
-  this->matrixL.resize(tempSize,0.);
-  this->matrixLInverse.resize(tempSize,0.);
-*/
-  
 }
 
 /*
@@ -237,36 +225,32 @@ template<typename T>
 void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI, bool isData)
 {
   // use resize or reserve here for matrixA, matrixL, matrixLI to make sure that enuf memory is used.
-  this->localSize = this->matrixDimSize/this->processorGridDimSize;		// n / P^{1/3}
-  uint64_t triangleSize = this->localSize;
-  triangleSize *= (this->localSize+1);
-  triangleSize >>= 1;  
-  matA.resize(this->localSize*this->localSize);		// Makes sure that the user's data structures are of proper size.
-  matL.resize(triangleSize);
-  matLI.resize(triangleSize);
-  allocateLayers();				// Should I pass in a pointer here? I dont think so since its only for this->matrixA
-  this->matrixA[0] = std::move(matA);		// because this->matrixA holds layers
-  this->matrixL = std::move(matL);
-  this->matrixLInverse = std::move(matLI);
+  matA.resize(this->localRowSize*this->localColSize);		// Makes sure that the user's data structures are of proper size.
+  matQ.resize(matA.size());
+  matR.resize(this->localColSize*this->localColSize);    // k*k for now, each processor owns this
+  //allocateLayers();				// Should I pass in a pointer here? I dont think so since its only for this->matrixA
+  //this->matrixA[0] = std::move(matA);		// because this->matrixA holds layers
+  //this->matrixL = std::move(matL);
+  //this->matrixLInverse = std::move(matLI);
 
   if (!isData)	// so from QR, isData will be true, but for a true Cholesky, isData = false
   {
-    this->distributeDataCyclic((this->worldSize == 1 ? false : true));
+    this->distributeDataCyclic(();
   }
   
   // For now, lets just support either numP == 1 (for say QR c==1, but later we could support a tuning parameter that could do a mix?
-  if (this->worldSize == 1)
-  {
-    qrLAPack(this->matrixA[0], this->matrixL, this->matrixLInverse, this->localSize, false); // localSize == matrixDimSize
+//  if (this->worldSize == 1)
+//  {
+//    qrLAPack(this->matrixA[0], this->matrixL, this->matrixLInverse, this->localSize, false); // localSize == matrixDimSize
     // Might be a more efficient way to do this, but I will cut the size now
-    trimMatrix(this->matrixL, this->localSize);
-    trimMatrix(this->matrixLInverse, this->localSize);		// trimMatrix will cut size from n*n back to n*(n+1)/2
-  }
-  else
-  {
+//    trimMatrix(this->matrixL, this->localSize);
+//    trimMatrix(this->matrixLInverse, this->localSize);		// trimMatrix will cut size from n*n back to n*(n+1)/2
+//  }
+//  else
+//  {
     // Start at 0th layer
-    qrEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize, 0);
-  }
+//    qrEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize, 0);
+//  }
   /*
     Now I need to re-validate the arguments so that the user has the data he needs.
     Need to do another std::move into matrixA, matrixL, and matrixLI again.
@@ -274,9 +258,12 @@ void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &
     I can think of it as "sucking" out the data from my member variables back into the user's data structures
   */
 
-  matA = std::move(this->matrixA[0]);		// get the first layer again
-  matL = std::move(this->matrixL);
-  matLI = std::move(this->matrixLInverse);
+//  matA = std::move(this->matrixA[0]);		// get the first layer again
+//  matL = std::move(this->matrixL);
+//  matLI = std::move(this->matrixLInverse);
+
+  choleskyQR(matA,matQ,matR);
+
 }
 
 /*
@@ -289,515 +276,9 @@ void qr<T>::choleskyQR(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::ve
   // call the cholesky
   // Perform the TRSM - Q = A*R^{-1}
   // Remember that for now, I am only doing the c==1 version. This will have to be adjusted substantially to account for c>1
+
+  // for c==1 case, call a lapack syrk, an allreduce, another multiplication, etc..
 }
-
-/*
-  Recursive Matrix Multiplication
-  This routine requires that matrix data is duplicated across all layers of the 3D Processor Grid
-*/
-template<typename T>
-void qr<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize, uint32_t layer)
-{
-  /*
-    I need two broadcasts, then an AllReduce
-  */
-
-  /*
-    I think there are only 2 possibilities here. Either size == matrixWindow*(matrixWindow)/2 if the first element fits
-						     or size == matrixWindow*(matrixWindow)/2 - 1 if the first element does not fit.
-  */
-  std::vector<T> buffer1;  // use capacity() or reserve() methods here?
-  std::vector<T> buffer2;
-
-  if (this->rowCommRank == this->gridCoords[2])     // different matches on each of the P^(1/3) layers
-  {
-    switch (key)
-    {
-      case 0:
-      {
-        // (square,lower) -> Note for further optimization.
-        // -> This copy loop may not be needed. I might be able to purely send in &this->matrixLInverse[0] into broadcast
-        uint64_t buffer1Size = matrixWindow;
-        buffer1Size *= matrixWindow;
-        buffer1.resize(buffer1Size,0.);
-        uint64_t startOffset = matrixCutSize;
-        startOffset *= matrixWindow;
-        uint64_t index1 = 0;
-        uint64_t index2 = startOffset;
-        for (uint32_t i=0; i<matrixWindow; i++)
-        {
-          for (uint32_t j=0; j<matrixWindow; j++)
-          {
-            uint64_t temp = index2;
-            temp += j;
-            buffer1[index1++] = this->matrixA[layer][temp];
-            #if DEBUGGING
-            if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
-            {
-              std::cout << "index - " << temp << " and val - " << buffer1[index1-1] << " and matWindow - " << matrixWindow << " and matCutSize - " << matrixCutSize << std::endl;
-            }
-            #endif
-          }
-          index2 += matrixCutSize;
-        }
-        break;
-      }
-      case 1:
-      {
-        // Not triangular
-        uint64_t buffer1Size = matrixWindow;
-        buffer1Size *= matrixWindow;
-        buffer1.resize(buffer1Size);
-        uint64_t startOffset = dimXstartA;
-        startOffset *= (dimXstartA+1);
-        startOffset >>= 1;
-        //int startOffset = (dimXstartA*(dimXstartA+1))>>1;
-        uint64_t index1 = 0;
-        uint64_t index2 = startOffset;
-        index2 += dimYstartA;
-        for (uint32_t i=0; i<matrixWindow; i++)
-        {
-          for (uint32_t j=0; j<matrixWindow; j++)
-          {
-            buffer1[index1++] = this->matrixL[index2++];
-          }
-          uint64_t temp = dimYstartA;
-          temp += i;
-          temp++;
-          //index2 += (dimYstartA+i+1);
-          index2 += temp;
-        }
-        break;
-      }
-      case 2:		// Part of the Inverse L calculation
-      {
-        // Not Triangular
-        uint64_t buffer1Size = matrixWindow;
-        buffer1Size *= matrixWindow;
-        buffer1.resize(buffer1Size);
-        uint64_t startOffset = dimXstartA;
-        startOffset *= (dimXstartA+1);
-        startOffset >>= 1;
-        //int startOffset = (dimXstartA*(dimXstartA+1))>>1;
-        uint64_t index1 = 0;
-        uint64_t index2 = startOffset;
-        index2 += dimYstartA;
-        for (uint64_t i=0; i<matrixWindow; i++)
-        {
-          for (uint64_t j=0; j<matrixWindow; j++)
-          {
-            buffer1[index1++] = this->matrixL[index2++];
-          }
-          uint64_t temp = dimYstartA;
-          temp += i;
-          temp++;
-          index2 += temp;
-          //index2 += (dimYstartA+i+1);
-        }
-        break;
-      }
-      case 3:
-      {
-        // Triangular -> Lower
-        // As noted above, size depends on whether or not the gridCoords lie in the lower-triangular portion of first block
-        uint64_t buffer1Size = matrixWindow;
-        buffer1Size *= (matrixWindow+1);
-        buffer1Size >>= 1;
-        buffer1.resize(buffer1Size);
-        uint64_t startOffset = dimXstartA;
-        startOffset *= (dimXstartA+1);
-        startOffset >>= 1;
-        //int startOffset = (dimXstartA*(dimXstartA+1))>>1;
-        uint64_t index1 = 0;
-        uint64_t index2 = startOffset;
-        index2 += dimYstartA;
-        for (uint32_t i=0; i<matrixWindow; i++)		// start can take on 2 values corresponding to the situation above: 1 or 0
-        {
-          for (uint32_t j=0; j<=i; j++)
-          {
-            buffer1[index1++] = this->matrixLInverse[index2++];
-          }
-          index2 += dimYstartA;
-        }
-        break;
-      }
-    }
-    
-    // Note that this broadcast will broadcast different sizes of buffer1, so on the receiving end, we will need another case statement
-    // so that a properly-sized buffer is used.
-    MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->rowComm);
-  }
-  else
-  {
-    switch (key)
-    {
-      case 0:
-      {
-        uint64_t buffer1Size = matrixWindow;
-        buffer1Size *= matrixWindow;
-        buffer1.resize(buffer1Size);
-        break;
-      }
-      case 1:
-      {
-        uint64_t buffer1Size = matrixWindow;
-        buffer1Size *= matrixWindow;
-        buffer1.resize(buffer1Size);
-        break;
-      }
-      case 2:
-      {
-        uint64_t buffer1Size = matrixWindow;
-        buffer1Size *= matrixWindow;
-        buffer1.resize(buffer1Size);
-        break;
-      }
-      case 3:
-      {
-        uint64_t buffer1Size = matrixWindow;
-        buffer1Size *= (matrixWindow+1);
-        buffer1Size >>= 1;
-        buffer1.resize(buffer1Size);
-        break;
-      }
-    }
-
-    // Note that depending on the key, the broadcast received here will be of different sizes. Need care when unpacking it later.
-    MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->rowComm);
-//    if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 1)) { for (int i=0; i<buffer1.size(); i++) { std::cout << "Inv2? - " << buffer1[i] << " of size - " << buffer1.size() << std::endl; } std::cout << "\n"; }
-  }
-
-  if (this->colCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
-  {
-    switch (key)
-    {
-      case 0:
-      {
-        // Triangular
-        buffer2 = std::move(this->holdTransposeL);			// Change the copy to a move, basically just changing names without copying
-        break;
-      }
-      case 1:
-      {
-        // Not Triangular, but transpose
-        buffer2 = std::move(this->holdTransposeL);			// Changed the copy to a move
-        break;
-      }
-      case 2:
-      {
-        // Triangular -> Lower
-        // As noted above, size depends on whether or not the gridCoords lie in the lower-triangular portion of first block
-        uint64_t buffer2Size = matrixWindow;
-        buffer2Size *= (matrixWindow+1);
-        buffer2Size >>= 1;
-        buffer2.resize(buffer2Size);	// change to bitshift later
-        uint64_t startOffset = dimXstartB;
-        startOffset *= (dimXstartB+1);
-        startOffset >>= 1;
-        //int startOffset = (dimXstartB*(dimXstartB+1))>>1;
-        uint64_t index1 = 0;
-        uint64_t index2 = startOffset;
-        index2 += dimYstartB;
-        for (uint32_t i=0; i<matrixWindow; i++)
-        {
-          for (uint32_t j=0; j<=i; j++)
-          {
-            buffer2[index1++] = this->matrixLInverse[index2++];
-          }
-          index2 += dimYstartB;
-        }
-        break;
-      }
-      case 3:
-      {
-        // Not Triangular, but this requires a special traversal because we are using this->holdMatrix
-        uint64_t buffer2Size = matrixWindow;
-        buffer2Size *= matrixWindow;
-        buffer2.resize(buffer2Size);
-        //int startOffset = (dimXstartB*(dimXstartB-1))>>1;
-        uint64_t index1 = 0;
-        uint64_t index2 = 0;
-        //int index2 = startOffset + dimYstartB;
-        for (uint32_t i=0; i<matrixWindow; i++)
-        {
-          for (uint32_t j=0; j<matrixWindow; j++)
-          {
-            buffer2[index1++] = (-1)*this->holdMatrix[index2++];
-          }
-          //index2 += dimYstartB;
-        }
-        break;
-      }
-    }
-    // Note that this broadcast will broadcast different sizes of buffer1, so on the receiving end, we will need another case statement
-    // so that a properly-sized buffer is used.
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
-  }
-  else
-  {
-    switch (key)
-    {
-      case 0:
-      {
-        // What I can do here is receive with a buffer of size matrixWindow*(matrixWindow+1)/2 and then iterate over the last part to see what kind it is
-        // i was trying to do it with gridCoords, but then I would have needed this->rowRank, stuff like that so this is a bit easier
-        // Maybe I can fix this later to make it more stable
-        uint64_t buffer2Size = matrixWindow;
-        buffer2Size *= (matrixWindow+1);
-        buffer2Size >>= 1;
-        buffer2.resize(buffer2Size);	// this is a special trick
-        break;
-      }
-      case 1:
-      {
-        uint64_t buffer2Size = matrixWindow;
-        buffer2Size *= matrixWindow;
-        buffer2.resize(buffer2Size);				// resize? Maybe reserve? Not sure what is more efficient?
-        break;
-      }
-      case 2:
-      {
-        uint64_t buffer2Size = matrixWindow;
-        buffer2Size *= (matrixWindow+1);
-        buffer2Size >>= 1;
-        buffer2.resize(buffer2Size);	// this is a special trick
-        break;
-      }
-      case 3:
-      {
-        uint64_t buffer2Size = matrixWindow;
-        buffer2Size *= matrixWindow;
-        buffer2.resize(buffer2Size);
-        break;
-      }
-    }
-    // Note that depending on the key, the broadcast received here will be of different sizes. Need care when unpacking it later.
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
-//    if ((this->gridCoords[0] == 1) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 1)) { for (int i=0; i<buffer2.size(); i++) { std::cout << "GAY2 - " << buffer2[i] << " of size - " << buffer2.size() << std::endl; } std::cout << "\n"; }
-  }
-
-  /*
-    Now once here, I have the row data and the column data residing in buffer1 and buffer2
-    I need to use the data in these buffers correctly to calculate partial sums for each place that I own. And store them together in order to
-      properly reduce the sums. So use another temporary buffer. Only update this->matrixU or this->matrixL after the reduction if root or after the final
-        broadcast if non-root.
-  */
-
-
-  // So iterate over everything that we own and calculate its partial sum that will be used in reduction
-  // buffer3 will be used to hold the partial matrix sum result that will contribute to the reduction.
-  uint64_t buffer4Size = matrixWindow;
-  buffer4Size *= matrixWindow;
-  std::vector<T> buffer4(buffer4Size,0.);	// need to give this outside scope
-
-  switch (key)
-  {
-    case 0:
-    {
-      // Triangular Multiplicaton -> (lower,square)
-
-      uint64_t updatedVectorSize = matrixWindow;
-      updatedVectorSize *= matrixWindow;
-      std::vector<T> updatedVector(updatedVectorSize,0.);
-      uint64_t index = 0;
-      for (uint32_t i = 0; i<matrixWindow; i++)
-      {
-        uint64_t temp = i;
-        temp *= matrixWindow;
-        for (uint32_t j = 0; j<=i; j++)
-        {
-          uint64_t updatedVectorIndex = temp+j;
-          updatedVector[updatedVectorIndex] = buffer2[index]; 
-          index++;
-        }
-      }
-      cblas_dtrmm(CblasRowMajor,CblasRight,CblasLower,CblasTrans,CblasNonUnit,matrixWindow,matrixWindow,1.,&updatedVector[0], matrixWindow, &buffer1[0], matrixWindow);
-      MPI_Allreduce(&buffer1[0],&buffer4[0],buffer1.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
-
-      break;
-    }
-    case 1:
-    {
-      // Matrix Multiplication -> (square,square)
-
-      uint64_t buffer3Size = matrixWindow;
-      buffer3Size *= matrixWindow;
-      std::vector<T> buffer3(buffer3Size);
-
-      cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasTrans,matrixWindow,matrixWindow,matrixWindow,1.,&buffer1[0],matrixWindow,&buffer2[0],matrixWindow,1.,&buffer3[0],matrixWindow);
-
-      // Lets use this->holdMatrix as my matrix C and lets right to it. Then we can perform a move operation on this->holdMatrix into this->matrixA[this->matrixA.size()-1]
-      MPI_Allreduce(&buffer3[0],&buffer4[0],buffer3.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
-
-
-/*      
-      uint64_t tempSize = matrixWindow;		// should be the same as shift was in CholeskyRecurse function
-      tempSize *= matrixWindow;
-      this->matrixA.push_back(std::vector<T>(tempSize),0.);
-
-      // Now I need a copy loop to grab the Lower-right quarter square from the current matrixA (sort of a waste of time. Think of ways to reduce this?)
-      std::vector<T> holdSyrkData(matrixWindow*matrixWindow);
-      uint64_t index1 = 0;
-      uint64_t index2 = matrixWindow;
-      index2 *= matrixCutSize;
-      index2 += matrixWindow;
-      for (uint32_t i=0; i<matrixWindow; i++)
-      {
-        for (uint32_t j=0; j<matrixWindow; j++)
-        {
-          uint64_t hold2 = index2;
-          hold2 += j;
-          holdSyrkData[index1++] = this->matrixA[this->matrixA.size()-2][hold2];
-        }
-        index2 += matrixCutSize;
-      }
-
-      cblas_ssyrk(CBlasRowMajor, CBlasLower, CBlasUpper, matrixWindow, matrixWindow, -1., );
-      MPI_Allreduce(&holdMatrix[0],&this->matrixA[this->matrixA.size()-1][0],this->holdMatrix.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
-*/
-      break;
-    }
-    case 2:
-    {
-      // Triangular Multiplication -> (square,lower)
-      uint64_t updatedVectorSize = matrixWindow;
-      updatedVectorSize *= matrixWindow;
-      std::vector<T> updatedVector(updatedVectorSize,0.);
-      uint64_t index = 0;
-      for (uint32_t i = 0; i<matrixWindow; i++)
-      {
-        uint64_t temp = i;
-        temp *= matrixWindow;
-        //int temp = i*matrixWindow;
-        for (uint32_t j = 0; j <= i; j++)	// this could be wrong ???
-        {
-          uint64_t updatedVectorIndex = temp;
-          updatedVectorIndex += j;
-          updatedVector[updatedVectorIndex] = buffer2[index++];
-        }
-      }
-      
-      cblas_dtrmm(CblasRowMajor,CblasRight,CblasLower,CblasNoTrans,CblasNonUnit,matrixWindow,matrixWindow,1.,&updatedVector[0],matrixWindow,&buffer1[0],matrixWindow);
-      MPI_Allreduce(&buffer1[0],&buffer4[0],buffer1.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);	// use buffer4
-      break;
-    }
-    case 3:
-    {
-      // Triangular Multiplication -> (lower,square)
-      uint64_t updatedVectorSize = matrixWindow;
-      updatedVectorSize *= matrixWindow;
-      std::vector<T> updatedVector(updatedVectorSize,0.);
-      uint64_t index = 0;
-      for (uint32_t i = 0; i<matrixWindow; i++)
-      {
-        uint64_t temp = i;
-        temp *= matrixWindow;
-        //int temp = i*matrixWindow;
-        for (uint32_t j = 0; j <= i; j++)	// This could be wrong?
-        {
-          uint64_t updatedVectorSize = temp;
-          updatedVectorSize += j;
-          updatedVector[updatedVectorSize] = buffer1[index++];
-        }
-      }
-
-      cblas_dtrmm(CblasRowMajor,CblasLeft,CblasLower,CblasNoTrans,CblasNonUnit,matrixWindow,matrixWindow,1.,&updatedVector[0],matrixWindow,&buffer2[0],matrixWindow);
-      MPI_Allreduce(&buffer2[0],&buffer4[0],buffer2.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
-      break;
-    }
-  }
-
-  /*
-    Now I need a case statement of where to put the guy that was just broadasted.
-  */
-
-  uint64_t holdMatrixSize = matrixWindow;
-  holdMatrixSize *= matrixWindow;
-  this->holdMatrix.resize(holdMatrixSize,0.);
-  switch (key)
-  {
-    case 0:
-    {
-      // Square
-      uint64_t startOffset = dimXstartC;
-      startOffset *= (dimXstartC+1);
-      startOffset >>= 1;
-      //int startOffset = (dimXstartC*(dimXstartC+1))>>1;
-      uint64_t index1 = 0;
-      uint64_t index2 = startOffset;
-      index2 += dimYstartC;
-      for (uint32_t i=0; i<matrixWindow; i++)
-      {
-        for (uint32_t j=0; j<matrixWindow; j++)
-        {
-          this->matrixL[index2++] = buffer4[index1++];                    // Transpose has poor spatial locality. Could fix later if need be
-        }
-        uint64_t temp = dimYstartC;
-        temp += i;
-        temp++;
-        //index2 += (dimYstartC+i+1);
-        index2 += temp;
-      }
-      break;
-    }
-
-    case 1:						// Can this just be done with a simple copy statement??
-    {
-      uint64_t index1 = 0;
-      for (uint32_t i=0; i<matrixWindow; i++)
-      {
-        uint64_t temp = i;
-        temp *= matrixWindow;
-        for (uint32_t j=0; j<matrixWindow; j++)
-        {
-          uint64_t holdMatrixIndex = temp;
-          holdMatrixIndex += j;
-          this->holdMatrix[holdMatrixIndex] = buffer4[index1++];
-        }
-      }
-      break;
-    }
-
-    case 2:						// Can this just be done with a simple copy statement??
-    {
-      uint64_t index1 = 0;
-      uint64_t index2 = 0;
-      for (uint32_t i=0; i<matrixWindow; i++)
-      {
-        for (uint32_t j=0; j<matrixWindow; j++)
-        {
-          this->holdMatrix[index2++] = buffer4[index1++];
-        }
-      }
-      break;
-    }
-    case 3:
-    {
-      uint64_t startOffset = dimXstartC;
-      startOffset *= (dimXstartC+1);
-      startOffset >>= 1;
-      //int startOffset = (dimXstartC*(dimXstartC+1))>>1;
-      uint64_t index1 = 0;
-      uint64_t index2 = startOffset;
-      index2 += dimYstartC;
-      for (uint32_t i=0; i<matrixWindow; i++)
-      {
-        for (uint32_t j=0; j<matrixWindow; j++)
-        {
-          this->matrixLInverse[index2++] = buffer4[index1++];
-//          if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 0)) {std::cout << "check index2 - " << index2-1 << " " << this->matrixLInverse[index2-1] << std::endl; }
-          
-        }
-        uint64_t temp = dimYstartC;
-        temp += i;
-        temp++;
-        index2 += temp;
-      }
-      break;
-    }
-  }
-}
-
 
 /*
   Transpose Communication Helper Function
