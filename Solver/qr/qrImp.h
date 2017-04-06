@@ -4,7 +4,7 @@
   Turn on debugging statements when necessary by flipping the 0 to 1
 */
 #define DEBUGGING 0
-#define INFO_OUTPUT 1
+#define INFO_OUTPUT 0
 #define PROCESSOR_X_ 0
 #define PROCESSOR_Y_ 0
 #define PROCESSOR_Z_ 0
@@ -15,12 +15,12 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv)
   this->worldRank = rank;
   this->worldSize = size;
   this->nDims = 3;			// Might want to make this a parameter of argv later, especially with QR and tuning parameter c
-  this->matrixSizeRow = atoi(argv[1]);		// N
-  this->matrixSizeCol = atoi(argv[2]);		// k
+  this->matrixRowSize = atoi(argv[1]);		// N
+  this->matrixColSize = atoi(argv[2]);		// k
   this->processorGridDimTune = atoi(argv[3]);
   this->processorGridDimReact = this->worldSize/(this->processorGridDimTune*this->processorGridDimTune);	// 64-bit trick here?
-  this->localRowSize = this->matrixSizeRow/this->processorGridDimReact; // d==P for now
-  this->localColSize = this->matrixSizeCol/this->processorGridDimTune;  // c==1 for now
+  this->localRowSize = this->matrixRowSize/this->processorGridDimReact; // d==P for now
+  this->localColSize = this->matrixColSize/this->processorGridDimTune;  // c==1 for now
   this->argc = argc;
   this->argv = argv;
   this->matrixANorm = 0.;
@@ -48,10 +48,10 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv)
   if (this->worldRank == 0)
   {
     std::cout << "Program - QR\n"; 
-    std::cout << "Size of matrix ->                                                 " << this->matrixDimSize << std::endl;
+    std::cout << "Size of matrix ->                                                 " << this->matrixRowSize << " x " << this->matrixColSize << std::endl;
     std::cout << "Size of MPI_COMM_WORLD ->                                         " << this->worldSize << std::endl;
     std::cout << "Rank of my processor in MPI_COMM_WORLD ->                         " << this->worldRank << std::endl;
-    std::cout << "Number of dimensions of processor grid ->                         " << this->nDims << std::endl;
+    std::cout << "Number of dimensions of processor grid ->                         " << 3 << std::endl;
     std::cout << "Number of processors along one dimension of 3-Dimensional grid -> " << this->processorGridDimSize << std::endl;
     std::cout << "Grid coordinates in 3D Processor Grid for my processor ->        (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
     std::cout << "Size of 2D Layer Communicator ->                                  " << this->layerCommSize << std::endl;
@@ -137,7 +137,7 @@ void qr<T>::constructGridCholesky(void)
   Cyclic distribution of data on one layer, then broadcasting the data to the other P^{1/3}-1 layers, similar to how Scalapack does it
 */
 template <typename T>
-void qr<T>::distributeData(void)
+void qr<T>::distributeData(std::vector<T> &matA)
 {
   /*
     If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
@@ -153,16 +153,13 @@ void qr<T>::distributeData(void)
     allocate a triangular portion instead of storing half as zeros.
   */
 
-  uint64_t size = this->processorGridDimSize;			// Expensive division? Lots of compute cycles? Worse than pushing back?
-  size *= size;
-  uint64_t matSize = this->matrixDimSize;
-  matSize *= matSize;
-  size = matSize/size;						// Watch for overflow, N^2 / P^{2/3} is the initial size of the data that each p owns
-
   // Note: above, I am not sure if the vector can hold more than 2^32 elements. Maybe this isnt too big of a deal, but ...
 
   // Only distribute the data sequentially on the first layer. Then we broadcast down the 3D processor cube using the depth communicator
-  if (((inParallel) && (this->gridCoords[2] == 0)) || (!inParallel))
+
+
+/*
+  if (this->gridCoords[2] == 0)
   {
     uint64_t counter = 0;
     for (uint32_t i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
@@ -207,6 +204,44 @@ void qr<T>::distributeData(void)
       MPI_Bcast(&this->matrixA[0][0], size, MPI_DOUBLE, 0, this->depthComm);
     }
   }
+*/
+
+
+  uint32_t start = this->worldRank*this->localRowSize;      // start acts as the offset into each processor's local data too
+  uint32_t end = std::min(start, this->localColSize);
+
+  // Allocate the diagonals
+  for (uint32_t i=start; i<end; i++)
+  {
+    uint64_t seed = i*this->matrixColSize;
+    seed += start;
+    srand48(seed);
+    matA[seed-start] = drand48() + this->matrixRowSize;                  // Diagonals should be greater than the sum of its column elements for stability reasons
+  }
+
+  // Allocate the strictly lower triangular part
+  for (uint32_t i=0; i<this->localRowSize; i++)
+  {
+    uint64_t seed = (i+start)*this->matrixColSize;					// 64-bit expansion trick here? Do later
+    for (uint32_t j=0; j<i; i++)
+    {
+      seed += j;						// Again, this should work for c==1, but many changes for c==P^{1/3}
+      srand(seed);
+      matA[i*this->localColSize+j] = drand48();
+    }
+  }
+
+  // Allocate the strictly upper triangular part
+  for (uint32_t i=0; i<this->localRowSize; i++)
+  {
+    uint64_t seed = (i+start)*this->matrixColSize;					// 64-bit expansion trick here? Do later
+    for (uint32_t j=i+1; j<this->localColSize; i++)
+    {
+      seed += j;						// Again, this should work for c==1, but many changes for c==P^{1/3}
+      srand(seed);
+      matA[i*this->localColSize+j] = drand48();
+    }
+  }
 
   #if DEBUGGING
   if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
@@ -222,12 +257,12 @@ void qr<T>::distributeData(void)
   The solve method will initiate the solving of this Cholesky Factorization algorithm
 */
 template<typename T>
-void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI, bool isData)
+void qr<T>::qrSolve(std::vector<T> &mat1, std::vector<T> &mat2, std::vector<T> &mat3, bool isData)
 {
-  // use resize or reserve here for matrixA, matrixL, matrixLI to make sure that enuf memory is used.
-  matA.resize(this->localRowSize*this->localColSize);		// Makes sure that the user's data structures are of proper size.
-  matQ.resize(matA.size());
-  matR.resize(this->localColSize*this->localColSize);    // k*k for now, each processor owns this
+  // use resize or reserve here for matrixA, matrixL, matrixLI to make sure that enough memory is used. Might be a better way to do this later
+  mat1.resize(this->localRowSize*this->localColSize);		// Makes sure that the user's data structures are of proper size.
+  mat2.resize(mat1.size(),0.);
+  mat3.resize(this->localColSize*this->localColSize,0.);    // k*k for now, each processor owns this
   //allocateLayers();				// Should I pass in a pointer here? I dont think so since its only for this->matrixA
   //this->matrixA[0] = std::move(matA);		// because this->matrixA holds layers
   //this->matrixL = std::move(matL);
@@ -235,7 +270,7 @@ void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &
 
   if (!isData)	// so from QR, isData will be true, but for a true Cholesky, isData = false
   {
-    this->distributeDataCyclic(();
+    this->distributeData(mat1);		// for now, must pass in matA since I am not using member vectors
   }
   
   // For now, lets just support either numP == 1 (for say QR c==1, but later we could support a tuning parameter that could do a mix?
@@ -262,15 +297,20 @@ void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &
 //  matL = std::move(this->matrixL);
 //  matLI = std::move(this->matrixLInverse);
 
-  choleskyQR(matA,matQ,matR);
+  std::vector<T> tempR1(mat3.size());
+  std::vector<T> tempR2(mat3.size());
+  std::vector<T> tempQ(mat2.size());		// Try to think of a way to get the memory footprint down here. Can I re-use anything?
+  choleskyQR(mat1,tempQ,tempR1);
+  choleskyQR(tempQ,mat2,tempR2);
 
+  // One more multiplication step, mat3 = tempR2*tempR1, via MM for now, may be able to exploit some structure in it for cheaper?
 }
 
 /*
   Write function description
 */
 template<typename T>
-void qr<T>::choleskyQR(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR)
+void qr<T>::choleskyQR(std::vector<T> &matrix1, std::vector<T> &matrix2, std::vector<T> &matrix3)
 {
   // do the A^{T}*A matrix multiplication
   // call the cholesky
@@ -280,145 +320,6 @@ void qr<T>::choleskyQR(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::ve
   // for c==1 case, call a lapack syrk, an allreduce, another multiplication, etc..
 }
 
-/*
-  Transpose Communication Helper Function
-*/
-template<typename T>
-void qr<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t dir)
-{
-  switch (dir)
-  {
-    case 0:
-    {
-      // copy L11-inverse data into holdTransposeInverse to be send/received
-      this->holdTransposeL.clear();
-      uint64_t holdTransposeLSize = matrixWindow;
-      holdTransposeLSize *= (matrixWindow+1);
-      holdTransposeLSize >>= 1;
-      this->holdTransposeL.resize(holdTransposeLSize, 0.);
-      uint64_t startOffset = dimXstart;
-      startOffset *= (dimXstart+1);
-      startOffset >>= 1;
-      //int startOffset = ((dimXstart*(dimXstart+1))>>1);
-      uint64_t index1 = 0;
-      uint64_t index2 = startOffset + dimXstart;
-      for (uint32_t i=0; i<matrixWindow; i++)
-      {
-        for (uint32_t j=0; j<=i; j++)
-        {
-          this->holdTransposeL[index1++] = this->matrixLInverse[index2++];
-        }
-        index2 += dimYstart;
-      }
-      if ((this->gridCoords[0] != this->gridCoords[1]))
-      {
-        // perform MPI_SendRecv_replace
-        int destRank = -1;
-        int rankArray[3] = {this->gridCoords[1], this->gridCoords[0], this->gridCoords[2]};
-        MPI_Cart_rank(this->grid3D, &rankArray[0], &destRank);
-        MPI_Status stat;
-        MPI_Sendrecv_replace(&this->holdTransposeL[0], this->holdTransposeL.size(), MPI_DOUBLE,
-          destRank, 0, destRank, MPI_ANY_TAG, MPI_COMM_WORLD, &stat);
-      }
-      break;
-    }
-    case 1:
-    {
-      // copy L11-inverse data into holdTransposeInverse to be send/received
-      this->holdTransposeL.clear();
-      uint64_t holdTransposeLSize = matrixWindow;
-      holdTransposeLSize *= matrixWindow;
-      this->holdTransposeL.resize(holdTransposeLSize, 0.);
-      uint64_t startOffset = dimXstart;
-      startOffset *= (dimXstart+1);
-      startOffset >>= 1;
-      //int startOffset = ((dimXstart*(dimXstart+1))>>1);
-      uint64_t index1 = 0;
-      uint64_t index2 = startOffset + dimYstart;
-      for (uint32_t i=0; i<matrixWindow; i++)
-      {
-        for (uint32_t j=0; j<matrixWindow; j++)
-        {
-          this->holdTransposeL[index1++] = this->matrixL[index2++];
-        }
-        uint64_t temp = dimYstart;
-        temp += i;
-        temp++;
-        index2 += temp;
-      }
-
-      if ((this->gridCoords[0] != this->gridCoords[1]))
-      {
-        // perform MPI_SendRecv_replace
-        MPI_Status stat;
-        int destRank = -1;
-        int rankArray[3] = {this->gridCoords[1], this->gridCoords[0], this->gridCoords[2]};
-        MPI_Cart_rank(this->grid3D, &rankArray[0], &destRank);
-        MPI_Sendrecv_replace(&this->holdTransposeL[0], this->holdTransposeL.size(), MPI_DOUBLE,
-          destRank, 0, destRank, 0, MPI_COMM_WORLD, &stat);
-
-      }    
-      break;
-    }
-  }
-}
-
-
-/*
-  Might be a better way to do this, as in using only a giant 1D vector to hold all layers, but this should be good for now
-  Or possibely allocating a huge 1-D vector and then indexing into it using that 2D. Hmmmmm
-*/
-template<typename T>
-void qr<T>::allocateLayers(void)
-{
-  // Fill up the 2D matrixA so that no push_backs are needed that would cause massive reallocations when size >= capacity
-  // This is a one-time call so expensive divides are ok
-  this->matrixA.resize(this->processorGridDimSize*this->processorGridDimSize);	// changes capacity once so that it is never changed again
-  // We can skip the allocation of the 1st layer because it would be wasted to do move operation
-  // Or maybe I should??? What if not enough space is allocated for it and it causes a giant re-allocation of memory behind the scenes?
-  // So I will leave as starting at i=0 for now, but could change it to i=1 later if that helps
-  uint64_t matSize = this->localSize;			// Will have been given correct value before this
-  matSize *= matSize;
-  
-// Try this, can erase if there are problems
-/*
-  uint64_t fullSize = matSize;
-  fullSize <<= 2;
-  fullSize -= (4*(matSize >> (2*this->processorGridDimSize*this->processorGridDimSize)));
-  fullSize /= 3;
-  this->matrixA[0] = new T[fullSize];		// new feature. Must do this instead of using resize. This is the only way I can see to do what I want using vectors.
-  uint64_t holdSize = matSize;
-  for (uint32_t i=1; i<this->matrixA.size(); i++)
-  {
-    //this->matrixA[i].resize(matSize);
-    this->matrixA[i] = &this->matrixA[0][holdSize];
-    matSize >>= 2;					// divide by 4
-    holdSize += matSize;
-  }
-*/
-  for (uint32_t i=0; i<this->matrixA.size(); i++)
-  {
-    this->matrixA[i].resize(matSize);
-    matSize >>= 2;					// divide by 4
-  }
-}
-
-template<typename T>
-void qr<T>::trimMatrix(std::vector<T> &data, uint32_t n)
-{
-  // Use overwriting trick
-  uint64_t tracker = 0;
-  for (uint32_t i=0; i<n; i++)
-  {
-    uint64_t index1 = i*n;
-    for (uint32_t j=0; j<=i; j++)
-    {
-      data[tracker++] = data[index1+j];
-    }
-  }
-
-  data.resize(tracker);		// this should cut off the garbage pieces and leave a n*(n+1)/2 size matrix
-}
 
 /*
   This function was taken from cholesky code and needs to be completely changed

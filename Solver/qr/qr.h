@@ -41,7 +41,7 @@ private:
   void allocateLayers();
   void trimMatrix(std::vector<T> &data, uint32_t n);
   void constructGridCholesky();
-  void distributeData(void);
+  void distributeData(std::vector<T> &matA);
   void MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize, uint32_t layer);
   void fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t dir);
   void choleskyQR(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR);
@@ -68,7 +68,8 @@ private:
   uint32_t nDims;						// Represents the numDims of the processor grid
   uint32_t worldRank;						// Represents process rank in MPI_COMM_WORLD
   uint32_t worldSize;  						// Represents number of processors involved in computation
-  uint32_t processorGridDimSize;				// Represents the size of the 3D processor grid, its the cubic root of worldSize
+  uint32_t processorGridDimTune;				// Represents c in a (d x c x c) processor grid
+  uint32_t processorGridDimReact;				// Represents d in a (d x c x c) processor grid
   MPI_Comm grid3D,layerComm,rowComm,colComm,depthComm;
   int32_t grid3DRank,layerCommRank,rowCommRank,colCommRank,depthCommRank;
   int32_t grid3DSize,layerCommSize,rowCommSize,colCommSize,depthCommSize;
