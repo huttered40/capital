@@ -223,7 +223,8 @@ void qr<T>::distributeData(std::vector<T> &matA)
   for (uint32_t i=0; i<this->localRowSize; i++)
   {
     uint64_t seed = (i+start)*this->matrixColSize;					// 64-bit expansion trick here? Do later
-    for (uint32_t j=0; j<i; i++)
+    uint32_t iterMax = std::min(i,this->localColSize);			// remember that matrixColSize == localColSize when c==1, but not otherwise
+    for (uint32_t j=0; j<iterMax; j++)
     {
       seed += j;						// Again, this should work for c==1, but many changes for c==P^{1/3}
       srand(seed);
@@ -235,22 +236,13 @@ void qr<T>::distributeData(std::vector<T> &matA)
   for (uint32_t i=0; i<this->localRowSize; i++)
   {
     uint64_t seed = (i+start)*this->matrixColSize;					// 64-bit expansion trick here? Do later
-    for (uint32_t j=i+1; j<this->localColSize; i++)
+    for (uint32_t j=i+1; j<this->localColSize; j++)
     {
       seed += j;						// Again, this should work for c==1, but many changes for c==P^{1/3}
       srand(seed);
       matA[i*this->localColSize+j] = drand48();
     }
   }
-
-  #if DEBUGGING
-  if ((this->gridCoords[0] == PROCESSOR_X_) && (this->gridCoords[1] == PROCESSOR_Y_) && (this->gridCoords[2] == PROCESSOR_Z_))
-  {
-    std::cout << "About to print what processor (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ") owns.\n";
-    printMatrixSequential(this->matrixA[0], this->localSize, false);
-  }
-  #endif
-
 }
 
 /*
