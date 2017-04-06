@@ -21,6 +21,8 @@
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
 #include "./../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
+//#include "./../cholesky/cholesky.h"				// could be wrong
+
 template <typename T>
 class qr
 {
@@ -93,5 +95,6 @@ private:
 };
 
 #include "qrImp.h"		// for template-instantiation reasons
+//#include "./../cholesky/cholesky.h"
 #include "scalapackQR.h"
 #endif /*QR_H_*/

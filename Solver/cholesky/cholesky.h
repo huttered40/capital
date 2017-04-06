@@ -26,7 +26,7 @@ class cholesky
 {
 public:
 
-  cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv);
+  cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv, MPI_Comm comm);
   
   void choleskySolve(std::vector<T> &matrixA, std::vector<T> &matrixL, std::vector<T> &matrixLI, bool isData);
   void choleskyScalapack();				// this routine is implemented in a special file, scalapackCholesky.h
@@ -70,7 +70,7 @@ private:
   uint32_t worldRank;						// Represents process rank in MPI_COMM_WORLD
   uint32_t worldSize;  						// Represents number of processors involved in computation
   uint32_t processorGridDimSize;				// Represents the size of the 3D processor grid, its the cubic root of worldSize
-  MPI_Comm grid3D,layerComm,rowComm,colComm,depthComm;
+  MPI_Comm worldComm, grid3D,layerComm,rowComm,colComm,depthComm;
   int32_t grid3DRank,layerCommRank,rowCommRank,colCommRank,depthCommRank;
   int32_t grid3DSize,layerCommSize,rowCommSize,colCommSize,depthCommSize;
   std::vector<int32_t> gridDims;

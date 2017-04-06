@@ -4,14 +4,15 @@
   Turn on debugging statements when necessary by flipping the 0 to 1
 */
 #define DEBUGGING 0
-#define INFO_OUTPUT 1
+//#define INFO_OUTPUT 1
 #define PROCESSOR_X_ 0
 #define PROCESSOR_Y_ 0
 #define PROCESSOR_Z_ 0
 
 template<typename T>
-cholesky<T>::cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv)
+cholesky<T>::cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv, MPI_Comm comm)
 {
+  this->worldComm = comm;		// Needed for QR
   this->worldRank = rank;
   this->worldSize = size;
   this->nDims = nDims;			// Might want to make this a parameter of argv later, especially with QR and tuning parameter c
@@ -44,8 +45,8 @@ cholesky<T>::cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, ch
     std::cout << "Program - Cholesky\n"; 
     std::cout << "Size of matrix ->                                                 " << this->matrixDimSize << std::endl;
     std::cout << "Matrix size for base case of Recursive Cholesky Algorithm ->      " << this->baseCaseSize << std::endl;
-    std::cout << "Size of MPI_COMM_WORLD ->                                         " << this->worldSize << std::endl;
-    std::cout << "Rank of my processor in MPI_COMM_WORLD ->                         " << this->worldRank << std::endl;
+    std::cout << "Size of world Communicator ->                                     " << this->worldSize << std::endl;
+    std::cout << "Rank of my processor in world Communicator ->                         " << this->worldRank << std::endl;
     std::cout << "Number of dimensions of processor grid ->                         " << this->nDims << std::endl;
     std::cout << "Number of processors along one dimension of 3-Dimensional grid -> " << this->processorGridDimSize << std::endl;
     std::cout << "Grid coordinates in 3D Processor Grid for my processor ->        (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
@@ -96,7 +97,7 @@ void cholesky<T>::constructGridCholesky(void)
     The other communicators are created for specific communication patterns involved in the algorithm.
   */
   std::vector<int> boolVec(3,0);
-  MPI_Cart_create(MPI_COMM_WORLD, this->nDims, &this->gridDims[0], &boolVec[0], false, &this->grid3D);
+  MPI_Cart_create(this->worldComm, this->nDims, &this->gridDims[0], &boolVec[0], false, &this->grid3D);
   MPI_Comm_rank(this->grid3D, &this->grid3DRank);
   MPI_Comm_size(this->grid3D, &this->grid3DSize);
   MPI_Cart_coords(this->grid3D, this->grid3DRank, this->nDims, &this->gridCoords[0]);
@@ -908,7 +909,7 @@ void cholesky<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t d
         MPI_Cart_rank(this->grid3D, &rankArray[0], &destRank);
         MPI_Status stat;
         MPI_Sendrecv_replace(&this->holdTransposeL[0], this->holdTransposeL.size(), MPI_DOUBLE,
-          destRank, 0, destRank, MPI_ANY_TAG, MPI_COMM_WORLD, &stat);
+          destRank, 0, destRank, MPI_ANY_TAG, this->worldComm, &stat);
       }
       break;
     }
@@ -945,7 +946,7 @@ void cholesky<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t d
         int rankArray[3] = {this->gridCoords[1], this->gridCoords[0], this->gridCoords[2]};
         MPI_Cart_rank(this->grid3D, &rankArray[0], &destRank);
         MPI_Sendrecv_replace(&this->holdTransposeL[0], this->holdTransposeL.size(), MPI_DOUBLE,
-          destRank, 0, destRank, 0, MPI_COMM_WORLD, &stat);
+          destRank, 0, destRank, 0, this->worldComm, &stat);
 
       }    
       break;

@@ -3,11 +3,16 @@
 /*
   Turn on debugging statements when necessary by flipping the 0 to 1
 */
+
+//#include "./../cholesky/cholesky.h"
+
 #define DEBUGGING 0
 #define INFO_OUTPUT 0
 #define PROCESSOR_X_ 0
 #define PROCESSOR_Y_ 0
 #define PROCESSOR_Z_ 0
+
+#include "./../cholesky/cholesky.h"				// Is this the best place for it?
 
 template<typename T>
 qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv)
@@ -289,13 +294,15 @@ void qr<T>::qrSolve(std::vector<T> &mat1, std::vector<T> &mat2, std::vector<T> &
 //  matL = std::move(this->matrixL);
 //  matLI = std::move(this->matrixLInverse);
 
-  std::vector<T> tempR1(mat3.size());
-  std::vector<T> tempR2(mat3.size());
-  std::vector<T> tempQ(mat2.size());		// Try to think of a way to get the memory footprint down here. Can I re-use anything?
+  std::vector<T> tempR1(mat3.size(),0.);
+  std::vector<T> tempR2(mat3.size(),0.);
+  std::vector<T> tempQ(mat2.size(), 0.);		// Try to think of a way to get the memory footprint down here. Can I re-use anything?
   choleskyQR(mat1,tempQ,tempR1);
   choleskyQR(tempQ,mat2,tempR2);
 
   // One more multiplication step, mat3 = tempR2*tempR1, via MM for now, may be able to exploit some structure in it for cheaper?
+  cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, this->localColSize, this->localColSize,
+    this->localColSize, 1., &tempR2[0], this->localColSize, &tempR1[0], this->localColSize, 1., &mat3[0], this->localColSize);
 }
 
 /*
@@ -310,6 +317,16 @@ void qr<T>::choleskyQR(std::vector<T> &matrix1, std::vector<T> &matrix2, std::ve
   // Remember that for now, I am only doing the c==1 version. This will have to be adjusted substantially to account for c>1
 
   // for c==1 case, call a lapack syrk, an allreduce, another multiplication, etc..
+  // Note that ssyrk writes to either the upper triangular part or the lower triangular part, since the resulting matrix is diagonal.
+  std::vector<T> tempC(matrix3.size());		// will be filled up by the SYRK and will be fed into cholesky at matrix A
+  std::vector<T> tempInverse(matrix3.size());		// is this size right with the cholesky? Doesnt cholesky take triangular size??????
+  cblas_dsyrk(CblasRowMajor, CblasLower, CblasTrans, this->localColSize, this->localRowSize, 1., &matrix1[0], this->localColSize, 0, &tempC[0], this->localColSize);
+  MPI_Comm tempComm;							// change name later
+  MPI_Comm_split(MPI_COMM_WORLD, this->worldRank, this->worldRank, &tempComm);
+  cholesky<double> myCholesky(0, 1, 3, this->argc, this->argv, tempComm);		// Note that each processor that calls thinks its the only one
+  myCholesky.choleskySolve(tempC, matrix3, tempInverse, true);
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, this->localColSize, this->localColSize,
+    this->localColSize, 1., &matrix1[0], this->localColSize, &tempInverse[0], this->localColSize, 1., &matrix3[0], this->localColSize);
 }
 
 

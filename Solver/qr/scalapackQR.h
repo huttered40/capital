@@ -6,11 +6,12 @@ extern "C"
   void Cblacs_gridinit(int *ConTxt, char *order, int nprow, int npcol);
 }
 
+/*
 int log2(int n)
 {
   return log(n)/log(2);		// shoudl return a cut-off integer
 }
-
+*/
 
 #define NUM_ITER 5
 
@@ -56,7 +57,7 @@ static void cpdgetrf(char ch,     int n,
 */
 
 template<typename T>
-void solver<T>::scalapackCholesky()
+void qr<T>::qrScalapack()
 {
 /*
   int myRank, numPes;

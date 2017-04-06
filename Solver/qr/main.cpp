@@ -1,6 +1,6 @@
 /*
-
 	Program to factorize matrix A into a product of matrices Q and R (A=QR) over a tunable processor grid
+	
 	Author: Edward Hutter
 */
 
@@ -19,7 +19,7 @@ int main(int argc, char **argv)
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
-  qr<double> mySolver(rank,size,argc, argv);
+  qr<double> mySolver(rank,size,argc, argv);		// What should the constructor really do? Check on this
 
   // So I start my timings after the data is distributed, which involved no communication
   clock_t start;
@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 
   //mySolver.scalapackCholesky();			// dummy function for now. Doesnt do anything
   // for now, comment this out, then of course comment it back in and pass in matA, matL, matLInverse to check for correctness
-  mySolver.getResidualLayer(matA, matQ, matR);
+  //mySolver.getResidualLayer(matA, matQ, matR);
 
   MPI_Finalize();
   return 0;
