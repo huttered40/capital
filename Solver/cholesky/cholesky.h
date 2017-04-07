@@ -27,6 +27,7 @@ class cholesky
 public:
 
   cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv, MPI_Comm comm);
+  cholesky(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixSize, MPI_Comm comm);
   
   void choleskySolve(std::vector<T> &matrixA, std::vector<T> &matrixL, std::vector<T> &matrixLI, bool isData);
   void choleskyScalapack();				// this routine is implemented in a special file, scalapackCholesky.h

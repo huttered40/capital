@@ -6,7 +6,7 @@
 
 //#include "./../cholesky/cholesky.h"
 
-#define DEBUGGING 0
+#define DEBUGGING_QR 0
 #define INFO_OUTPUT 0
 #define PROCESSOR_X_ 0
 #define PROCESSOR_Y_ 0
@@ -15,8 +15,9 @@
 #include "./../cholesky/cholesky.h"				// Is this the best place for it?
 
 template<typename T>
-qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv)
+qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm)
 {
+  this->worldComm = comm;
   this->worldRank = rank;
   this->worldSize = size;
   this->nDims = 3;			// Might want to make this a parameter of argv later, especially with QR and tuning parameter c
@@ -49,6 +50,7 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv)
   this->constructGridCholesky();
 //  this->distributeData(true);
 
+
   #if INFO_OUTPUT
   if (this->worldRank == 0)
   {
@@ -57,8 +59,6 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv)
     std::cout << "Size of MPI_COMM_WORLD ->                                         " << this->worldSize << std::endl;
     std::cout << "Rank of my processor in MPI_COMM_WORLD ->                         " << this->worldRank << std::endl;
     std::cout << "Number of dimensions of processor grid ->                         " << 3 << std::endl;
-    std::cout << "Number of processors along one dimension of 3-Dimensional grid -> " << this->processorGridDimSize << std::endl;
-    std::cout << "Grid coordinates in 3D Processor Grid for my processor ->        (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
     std::cout << "Size of 2D Layer Communicator ->                                  " << this->layerCommSize << std::endl;
     std::cout << "Rank of my processor in 2D Layer Communicator ->                  " << this->layerCommRank << std::endl;
     std::cout << "Size of Row Communicator ->                                       " << this->colCommSize << std::endl;
@@ -213,26 +213,26 @@ void qr<T>::distributeData(std::vector<T> &matA)
 
 
   uint32_t start = this->worldRank*this->localRowSize;      // start acts as the offset into each processor's local data too
-  uint32_t end = std::min(start, this->localColSize);
+  uint32_t end = std::min(start+this->localRowSize, this->localColSize);
 
   // Allocate the diagonals
   for (uint32_t i=start; i<end; i++)
   {
     uint64_t seed = i*this->matrixColSize;
-    seed += start;
+    seed += i;
     srand48(seed);
-    matA[seed-start] = drand48() + this->matrixRowSize;                  // Diagonals should be greater than the sum of its column elements for stability reasons
+    matA[seed-start*this->matrixColSize] = drand48() + this->matrixRowSize;                  // Diagonals should be greater than the sum of its column elements for stability reasons
   }
 
   // Allocate the strictly lower triangular part
   for (uint32_t i=0; i<this->localRowSize; i++)
   {
-    uint64_t seed = (i+start)*this->matrixColSize;					// 64-bit expansion trick here? Do later
-    uint32_t iterMax = std::min(i,this->localColSize);			// remember that matrixColSize == localColSize when c==1, but not otherwise
+    uint64_t temp = (i+start)*this->matrixColSize;					// 64-bit expansion trick here? Do later
+    uint32_t iterMax = std::min(i+start,this->localColSize);			// remember that matrixColSize == localColSize when c==1, but not otherwise
     for (uint32_t j=0; j<iterMax; j++)
     {
-      seed += j;						// Again, this should work for c==1, but many changes for c==P^{1/3}
-      srand(seed);
+      uint64_t seed = temp+j;						// Again, this should work for c==1, but many changes for c==P^{1/3}
+      srand48(seed);
       matA[i*this->localColSize+j] = drand48();
     }
   }
@@ -240,11 +240,12 @@ void qr<T>::distributeData(std::vector<T> &matA)
   // Allocate the strictly upper triangular part
   for (uint32_t i=0; i<this->localRowSize; i++)
   {
-    uint64_t seed = (i+start)*this->matrixColSize;					// 64-bit expansion trick here? Do later
-    for (uint32_t j=i+1; j<this->localColSize; j++)
+    uint64_t temp = (i+start)*this->matrixColSize;					// 64-bit expansion trick here? Do later
+    uint32_t iterMax = std::min(i+start,this->localColSize);			// remember that matrixColSize == localColSize when c==1, but not otherwise
+    for (uint32_t j=iterMax+1; j<this->localColSize; j++)
     {
-      seed += j;						// Again, this should work for c==1, but many changes for c==P^{1/3}
-      srand(seed);
+      uint64_t seed = temp+j;						// Again, this should work for c==1, but many changes for c==P^{1/3}
+      srand48(seed);
       matA[i*this->localColSize+j] = drand48();
     }
   }
@@ -299,10 +300,10 @@ void qr<T>::qrSolve(std::vector<T> &mat1, std::vector<T> &mat2, std::vector<T> &
   std::vector<T> tempQ(mat2.size(), 0.);		// Try to think of a way to get the memory footprint down here. Can I re-use anything?
   choleskyQR(mat1,tempQ,tempR1);
   choleskyQR(tempQ,mat2,tempR2);
-
+  
   // One more multiplication step, mat3 = tempR2*tempR1, via MM for now, may be able to exploit some structure in it for cheaper?
   cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, this->localColSize, this->localColSize,
-    this->localColSize, 1., &tempR2[0], this->localColSize, &tempR1[0], this->localColSize, 1., &mat3[0], this->localColSize);
+    this->localColSize, 1., &tempR2[0], this->localColSize, &tempR1[0], this->localColSize, 0., &mat3[0], this->localColSize);
 }
 
 /*
@@ -319,209 +320,153 @@ void qr<T>::choleskyQR(std::vector<T> &matrix1, std::vector<T> &matrix2, std::ve
   // for c==1 case, call a lapack syrk, an allreduce, another multiplication, etc..
   // Note that ssyrk writes to either the upper triangular part or the lower triangular part, since the resulting matrix is diagonal.
   std::vector<T> tempC(matrix3.size());		// will be filled up by the SYRK and will be fed into cholesky at matrix A
+  std::vector<T> recvC(tempC.size(),0.);
   std::vector<T> tempInverse(matrix3.size());		// is this size right with the cholesky? Doesnt cholesky take triangular size??????
   cblas_dsyrk(CblasRowMajor, CblasLower, CblasTrans, this->localColSize, this->localRowSize, 1., &matrix1[0], this->localColSize, 0, &tempC[0], this->localColSize);
+  MPI_Allreduce(&tempC[0], &recvC[0], tempC.size(), MPI_DOUBLE, MPI_SUM, this->worldComm);
   MPI_Comm tempComm;							// change name later
   MPI_Comm_split(MPI_COMM_WORLD, this->worldRank, this->worldRank, &tempComm);
-  cholesky<double> myCholesky(0, 1, 3, this->argc, this->argv, tempComm);		// Note that each processor that calls thinks its the only one
-  myCholesky.choleskySolve(tempC, matrix3, tempInverse, true);
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, this->localColSize, this->localColSize,
-    this->localColSize, 1., &matrix1[0], this->localColSize, &tempInverse[0], this->localColSize, 1., &matrix3[0], this->localColSize);
+  cholesky<double> myCholesky(0, 1, 3, this->localColSize, tempComm);		// Note that each processor that calls thinks its the only one
+  myCholesky.choleskySolve(recvC, matrix3, tempInverse, true);
+  expandMatrix(tempInverse,this->localColSize);
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, this->localRowSize, this->localColSize,
+    this->localColSize, 1., &matrix1[0], this->localRowSize, &tempInverse[0], this->localColSize, 0., &matrix2[0], this->localRowSize);
 }
 
 
 /*
   This function was taken from cholesky code and needs to be completely changed
+
+  m rows, n cols for whoever calls this
 */
 template<typename T>
-void qr<T>::qrLAPack(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataInverse, uint32_t n, bool needData)
+void qr<T>::qrLAPack(std::vector<T> &data, std::vector<T> &dataQ, std::vector<T> &dataR, uint32_t m, uint32_t n, bool needData)
 {
   
   // hold on. Why does this need to distribute the data when we can just use my distributedataCyclic function?
 
   if (needData)
   {
-    for (uint32_t i=0; i<n; i++)
+    // Allocate the diagonals
+    uint32_t endDiag = std::min(m,n);
+    for (uint32_t i=0; i<endDiag; i++)
     {
-      for (uint32_t j=0; j<n; j++)
+      uint64_t seed = i*n;
+      seed += i;
+      srand48(seed);
+      data[seed] = drand48() + std::max(m,n);                  // Diagonals should be greater than the sum of its column elements for stability reasons
+    }
+
+    // Allocate the strictly lower triangular part
+    for (uint32_t i=0; i<m; i++)
+    {
+      uint64_t temp = i*n;					// 64-bit expansion trick here? Do later
+      uint32_t iterMax = std::min(i,n);			// remember that matrixColSize == localColSize when c==1, but not otherwise
+      for (uint32_t j=0; j<iterMax; j++)
       {
-        if (i > j)
-        {
-          uint64_t seed = i;
-          seed *= n;
-          seed += j;
-          srand48(seed);
-        }
-        else
-        {
-          uint64_t seed = j;
-          seed *= n;
-          seed += i;
-          srand48(seed);
-        }
-        uint64_t seed = i;
-        seed *= n;
-        seed += j;
+        uint64_t seed = temp+j;						// Again, this should work for c==1, but many changes for c==P^{1/3}
+        srand48(seed);
         data[seed] = drand48();
-        //std::cout << "hoogie - " << i*n+j << " " << data[i*n+j] << std::endl;
-        if (i==j)
-        {
-          data[seed] += this->matrixDimSize;
-        }
+      }
+    }
+
+    // Allocate the strictly upper triangular part
+    for (uint32_t i=0; i<m; i++)
+    {
+      uint64_t temp = i*n;					// 64-bit expansion trick here? Do later
+      for (uint32_t j=i+1; j<n; j++)
+      {
+        uint64_t seed = temp+j;						// Again, this should work for c==1, but many changes for c==P^{1/3}
+        srand48(seed);
+        data[seed] = drand48();
       }
     }
   }
 
-  dataL = data;			// big copy. Cant use a std::move operation here because we actually need data, we can't suck out its data
-  LAPACKE_dpotrf(LAPACK_ROW_MAJOR,'L',n,&dataL[0],n);
-  dataInverse = dataL;				// expensive copy
-  LAPACKE_dtrtri(LAPACK_ROW_MAJOR,'L','N',n,&dataInverse[0],n);
+  std::vector<T> helperQR(this->matrixColSize, 0.);		// size - min(m,n)
+  dataQ = data;
+  LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, this->matrixRowSize, this->matrixColSize, &dataQ[0], this->matrixColSize, &helperQR[0]);
 
-  #if DEBUGGING
-  std::cout << "Cholesky Solution is below *************************************************************************************************************\n";
-
-  for (uint32_t i=0; i<n; i++)
-  {
-    for (uint32_t j=0; j<n; j++)
-    {
-      uint64_t index = i;
-      index *= n;
-      index += j;
-      std::cout << dataL[index] << " ";
-    }
-    std::cout << "\n";
-  }
-  #endif
+  // Now to get the actual matrix Q back into row-order form, we need to call another LAPACKE routine
+  // Note: dataQ that was passed in MUST be of size m*n
+  LAPACKE_dorgqr(LAPACK_ROW_MAJOR, this->matrixRowSize, this->matrixColSize, this->matrixColSize, &dataQ[0], this->matrixColSize, &helperQR[0]);  
 
   return;
 }
 
+/*
+  Note: I am just trying to get this to work in the c==1 case. I can generalize it to any c later.
+
+  Also, I can't seem to find how to get matrix R, so I will not check for that right now
+*/
 template<typename T>
-void qr<T>::getResidualLayer(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI)
+void qr<T>::getResidual(std::vector<T> &matA, std::vector<T> &matQ, std::vector<T> &matR)
 {
   /*
 	We want to perform a reduction on the data on one of the P^{1/3} layers, then call lapackTest with a single
 	processor. Then we can, in the right order, compare these solutions for correctness.
   */
 
-  // Initialize
-  this->matrixLNorm = 0.;
-  this->matrixANorm = 0.;
-  this->matrixLInverseNorm = 0.;
 
-  if (this->gridCoords[2] == 0)		// 1st layer
+  // Initialize
+  this->matrixQNorm = 0.;
+  this->matrixANorm = 0.;
+  this->matrixRNorm = 0.;
+
+  if (this->worldRank != 0)		// Not layer anymore, lets use a root of 0 for the MPI_Gather
+  {
+    MPI_Gather(&matA[0],matA.size(), MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, this->worldComm);		// use 0 as root rank, as it needs to be the same for all calls
+    MPI_Gather(&matQ[0],matQ.size(), MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, this->worldComm);		// use 0 as root rank, as it needs to be the same for all calls
+  }
+  else		// If not root 0, contribute to the two gathers
   {
     //std::vector<T> sendData(this->matrixDimSize * this->matrixDimSize);
-    uint64_t recvDataSize = this->processorGridDimSize;
-    recvDataSize *= recvDataSize;
-    recvDataSize *= matA.size();
+    uint64_t recvDataSize = this->matrixRowSize*this->matrixColSize;
     std::vector<T> recvData(recvDataSize);	// only the bottom half, remember?
-    MPI_Gather(&matA[0],matA.size(), MPI_DOUBLE, &recvData[0],matA.size(), MPI_DOUBLE, 0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
-    std::vector<T> recvDataL(this->processorGridDimSize*this->processorGridDimSize*matL.size());	// only the bottom half, remember?
-    MPI_Gather(&matL[0],matL.size(), MPI_DOUBLE, &recvDataL[0],matL.size(), MPI_DOUBLE, 0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
-    std::vector<T> recvDataLInverse(this->processorGridDimSize*this->processorGridDimSize*matLI.size());	// only the bottom half, remember?
-    MPI_Gather(&matLI[0],matLI.size(), MPI_DOUBLE, &recvDataLInverse[0],matLI.size(), MPI_DOUBLE, 0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
+    MPI_Gather(&matA[0],matA.size(), MPI_DOUBLE, &recvData[0],matA.size(), MPI_DOUBLE, 0, this->worldComm);		// use 0 as root rank, as it needs to be the same for all calls
+    std::vector<T> recvDataQ(recvDataSize);	// only the bottom half, remember?
+    MPI_Gather(&matQ[0], matQ.size(), MPI_DOUBLE, &recvDataQ[0],matQ.size(), MPI_DOUBLE, 0, this->worldComm);		// use 0 as root rank, as it needs to be the same for all calls
 
-    if (this->layerCommRank == 0)
+
+    uint64_t matSize = this->matrixRowSize;
+    matSize *= this->matrixColSize;
+    std::vector<T> data(matSize, 0.);
+    std::vector<T> lapackDataQ(matSize, 0.);
+    //std::vector<T> lapackDataR(matSize);						// wont check for R now
+    std::vector<T> tempLaPack;
+    qrLAPack(data, lapackDataQ, tempLaPack, this->matrixRowSize, this->matrixColSize, true);		// pass this vector in by reference and have it get filled up
+    // Now we can start comparing this->matrixL with data
+    // Lets just first start out by printing everything separately too the screen to make sure its correct up till here
+
+ 
+    for (uint64_t i=0; i<data.size(); i++)
     {
-      /*
-	Now on this specific rank, we currently have all the algorithm data that we need to compare, but now we must call the sequential
-        lapackTest method in order to get what we want to compare the Gathered data against.
-      */
+      recvDataQ[i] *= (-1);		//I DONT KNOW WHY IM DOING THIS, BUT ALL OF MY Q IS NEGATIEV
+      #if DEBUGGING_QR
+      std::cout << lapackDataQ[i] << " " << recvDataQ[i] << " " << i << std::endl;
+      std::cout << lapackDataQ[i] - recvDataQ[i] << std::endl;
+      #endif
+      double diff = lapackDataQ[i] - recvDataQ[i];
+      if (diff > 1e-12) { std::cout << "Bad - " << i << ", diff - " << diff << " lapack - " << lapackDataQ[i] << " and real data - " << recvDataQ[i] << std::endl; }
+      //double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
+      //diff = abs(diff);
+      this->matrixQNorm += (diff*diff);
+    }
+    this->matrixQNorm = sqrt(this->matrixQNorm);
 
-      uint64_t matSize = this->matrixDimSize;
-      matSize *= matSize;
-      std::vector<T> data(matSize);
-      std::vector<T> lapackData(matSize);
-      std::vector<T> lapackDataInverse(matSize);
-      qrLAPack(data, lapackData, lapackDataInverse, this->matrixDimSize, true);		// pass this vector in by reference and have it get filled up
 
-      // Now we can start comparing this->matrixL with data
-      // Lets just first start out by printing everything separately too the screen to make sure its correct up till here
-      
-      {
-        uint64_t index = 0;
-        uint64_t pCounterSize = this->processorGridDimSize;
-        pCounterSize *= pCounterSize;
-        std::vector<int> pCounters(pCounterSize,0);		// start each off at zero
-        for (uint32_t i=0; i<this->matrixDimSize; i++)
-        {
-          #if DEBUGGING
-          std::cout << "Row - " << i << std::endl;
-          #endif
-          for (uint32_t j=0; j<=i; j++)
-	  {
-            uint64_t PE = this->processorGridDimSize;
-            PE *= (i%this->processorGridDimSize);
-            PE += (j%this->processorGridDimSize);
-            //int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
-            uint64_t recvDataIndex = PE;
-            recvDataIndex *= matL.size();
-            recvDataIndex += pCounters[PE];
-	    #if DEBUGGING
-            std::cout << lapackData[index] << " " << recvDataL[recvDataIndex] << " " << index << std::endl;
-	    std::cout << lapackData[index] - recvDataL[recvDataIndex] << std::endl;
-            #endif
-            pCounters[PE]++;
-            double diff = lapackData[index++] - recvDataL[recvDataIndex];
-            if (diff > 1e-12) { std::cout << "Bad - " << i << "," << j << " , diff - " << diff << " lapack - " << lapackData[index-1] << " and real data - " << recvDataL[recvDataIndex] << " index1 - " << index-1 << " index2 - " << recvDataIndex << std::endl; }
-            //double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
-            //diff = abs(diff);
-            this->matrixLNorm += (diff*diff);
-          }
-          if (i%2==0)
-          {
-            pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
-          }
-          
-          index = this->matrixDimSize;
-          index *= (i+1);			// try this. We skip the non lower triangular elements
-          #if DEBUGGING
-          std::cout << std::endl;
-          #endif
-        }
-        this->matrixLNorm = sqrt(this->matrixLNorm);
-      }
-      {
-        uint64_t index = 0;
-        uint64_t pCounterSize = this->processorGridDimSize;
-        pCounterSize *= pCounterSize;
-        std::vector<int> pCounters(pCounterSize,0);		// start each off at zero
-        std::cout << "\n";
-        for (uint32_t i=0; i<this->matrixDimSize; i++)
-        {
-          #if DEBUGGING
-          std::cout << "Row - " << i << std::endl;
-          #endif
-          for (uint32_t j=0; j<this->matrixDimSize; j++)
-	  {
-            uint64_t PE = this->processorGridDimSize;
-            PE *= (i%this->processorGridDimSize);
-            PE += (j%this->processorGridDimSize);
-	    uint64_t recvDataIndex = PE;
-            recvDataIndex *= matA.size();
-            recvDataIndex += pCounters[PE];
-            #if DEBUGGING
-            std::cout << data[index] << " " << recvData[recvDataIndex] << " " << index << std::endl;
-	    std::cout << data[index] - recvData[recvDataIndex] << std::endl;
-            #endif
-            pCounters[PE]++;
-            double diff = data[index++] - recvData[recvDataIndex];
-            if (diff > 1e-12) { std::cout << "Bad - " << i << "," << j << " , diff - " << diff << " lapack - " << data[index-1] << " and real data - " << recvData[recvDataIndex] << std::endl; }
-            this->matrixANorm += (diff*diff);
-          }
-//          if (i%2==0)
-//          {
-//            pCounters[1]++;		// this is a serious edge case due to the way I handled the actual code
-//          }
-          index = this->matrixDimSize;
-          index *= (i+1);			// try this. We skip the non lower triangular elements
-          #if DEBUGGING
-          std::cout << std::endl;
-          #endif
-        }
-        this->matrixANorm = sqrt(this->matrixANorm);
-      }
+    for (uint64_t i=0; i<lapackDataQ.size(); i++)
+    {
+      #if DEBUGGING_QR
+      std::cout << data[i] << " " << recvData[i] << " " << std::endl;
+      std::cout << data[i] - recvData[i] << std::endl;
+      #endif
+      double diff = data[i] - recvData[i];
+      if (diff > 1e-12) { std::cout << "Bad - " << i << ", diff - " << diff << " lapack - " << data[i] << " and real data - " << recvData[i] << std::endl; }
+      this->matrixANorm += (diff*diff);
+    }  
+    this->matrixANorm = sqrt(this->matrixANorm);
+/*
       {
         uint64_t index = 0;
         uint64_t pCounterSize = this->processorGridDimSize;
@@ -562,11 +507,10 @@ void qr<T>::getResidualLayer(std::vector<T> &matA, std::vector<T> &matL, std::ve
         }
         this->matrixLInverseNorm = sqrt(this->matrixLInverseNorm);
       }
-      
-      std::cout << "matrix A Norm - " << this->matrixANorm << std::endl;
-      std::cout << "matrix L Norm - " << this->matrixLNorm << std::endl;
-      std::cout << "matrix L Inverse Norm - " << this->matrixLInverseNorm << std::endl;
-    }
+*/      
+    std::cout << "matrix A Norm - " << this->matrixANorm << std::endl;
+    std::cout << "matrix Q Norm - " << this->matrixQNorm << std::endl;
+    std::cout << "matrix R Norm - " << this->matrixRNorm << std::endl;
   }
 }
 
@@ -663,4 +607,25 @@ void qr<T>::printMatrixParallel(std::vector<T> &matrix, uint32_t n)
       }
     }
   }
+}
+
+/*
+  Might be a more efficient way to do this later
+*/
+template<typename T>
+void qr<T>::expandMatrix(std::vector<T> &data, uint32_t n)
+{
+  data.resize(n*n);					// change from lower triangular to square with half zeros
+  std::vector<T> temp(n*n,0.);
+  uint64_t tracker = 0;
+  for (uint32_t i=0; i<n; i++)
+  {
+    uint64_t index1 = i*n;
+    for (uint32_t j=0; j<=i; j++)
+    {
+      temp[index1+j] = data[tracker++];
+    }
+  }
+
+  data = std::move(temp);				// No copy from temp buffer necessary here, just change the internal pointer via a move operation
 }

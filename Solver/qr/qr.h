@@ -28,18 +28,19 @@ class qr
 {
 public:
 
-  qr(uint32_t rank, uint32_t size, int argc, char **argv);
+  qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm);
   
   void qrSolve(std::vector<T> &matrixA, std::vector<T> &matrixL, std::vector<T> &matrixLI, bool isData);
   void qrScalapack();				// this routine is implemented in a special file, scalapackCholesky.h
-  void qrLAPack(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataLInverse, uint32_t n, bool needData);
-  void getResidualLayer(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI);
+  void qrLAPack(std::vector<T> &data, std::vector<T> &dataQ, std::vector<T> &dataR, uint32_t m, uint32_t n, bool needData);
+  void getResidual(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI);
   void getResidualParallel();
   void printMatrixSequential(std::vector<T> &matrix, uint32_t n, bool isTriangle);
   void printMatrixParallel(std::vector<T> &matrix, uint32_t n);
 
 private:
 
+  void expandMatrix(std::vector<T> &data, uint32_t n);
   void allocateLayers();
   void trimMatrix(std::vector<T> &data, uint32_t n);
   void constructGridCholesky();
@@ -72,7 +73,7 @@ private:
   uint32_t worldSize;  						// Represents number of processors involved in computation
   uint32_t processorGridDimTune;				// Represents c in a (d x c x c) processor grid
   uint32_t processorGridDimReact;				// Represents d in a (d x c x c) processor grid
-  MPI_Comm grid3D,layerComm,rowComm,colComm,depthComm;
+  MPI_Comm worldComm, grid3D,layerComm,rowComm,colComm,depthComm;
   int32_t grid3DRank,layerCommRank,rowCommRank,colCommRank,depthCommRank;
   int32_t grid3DSize,layerCommSize,rowCommSize,colCommSize,depthCommSize;
   std::vector<int32_t> gridDims;

@@ -1,18 +1,18 @@
 CCMPI = mpicxx
 CFLAGS = -g -Wall -O0 -std=c++11
 
-OBJS1 = qr3D.o
+OBJS1 = qr.o
 OBJS2 = main.o
-all: qr3D
+all: qr
 
-qr3D: $(OBJS1) $(OBJS2)
-	$(CCMPI) $(CFLAGS) -o qr3D $(OBJS2) ./../../scalapack-2.0.2/libscalapack.a ./../../lapack/lapack-3.4.2/liblapack.a ./../../OpenBLAS/libopenblas.a -lgfortran
+qr: $(OBJS1) $(OBJS2)
+	$(CCMPI) $(CFLAGS) -o qr $(OBJS2) ./../../scalapack-2.0.2/libscalapack.a ./../../lapack/lapack-3.4.2/liblapack.a ./../../OpenBLAS/libopenblas.a -lgfortran
 
-main.o: main.cpp qr3D.h
+main.o: main.cpp qr.h
 	$(CCMPI) $(CFLAGS) -c main.cpp
 
-qr3D.o: qr3D.h qr3DImp.h scalapackSolver.h
-	$(CCMPI) $(CFLAGS) -c qr3D.h
+qr.o: qr.h qrImp.h scalapackQR.h
+	$(CCMPI) $(CFLAGS) -c qr.h
 
 clean:
-	-rm -f *.o qr3D $(OBJS2)
+	-rm -f *.o *.gch qr $(OBJS2)

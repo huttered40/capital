@@ -62,6 +62,59 @@ cholesky<T>::cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, ch
   #endif
 }
 
+template<typename T>
+cholesky<T>::cholesky(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixSize, MPI_Comm comm)
+{
+  this->worldComm = comm;		// Needed for QR
+  this->worldRank = rank;
+  this->worldSize = size;
+  this->nDims = nDims;			// Might want to make this a parameter of argv later, especially with QR and tuning parameter c
+  this->matrixDimSize = matrixSize;
+  this->argc = -1;
+  this->argv = NULL;
+  this->matrixLNorm = 0.;
+  this->matrixANorm = 0.;
+  this->matrixLInverseNorm = 0.;
+
+/*
+  Precompute a list of cubes for quick lookUp of cube dimensions based on processor size
+  Maps number of processors involved in the computation to its cubic root to avoid expensive cubic root routine
+  Table should reside in the L1 cache for quick lookUp, but only needed once
+*/
+  for (uint32_t i=1; i<500; i++)
+  {
+    uint64_t size = i;
+    size *= i;
+    size *= i;
+    this->gridSizeLookUp[size] = i;
+  }
+
+  this->constructGridCholesky();
+  //this->distributeDataCyclic(true);
+
+  #if INFO_OUTPUT
+  if (this->worldRank == 0)
+  {
+    std::cout << "Program - Cholesky\n"; 
+    std::cout << "Size of matrix ->                                                 " << this->matrixDimSize << std::endl;
+    std::cout << "Matrix size for base case of Recursive Cholesky Algorithm ->      " << this->baseCaseSize << std::endl;
+    std::cout << "Size of world Communicator ->                                     " << this->worldSize << std::endl;
+    std::cout << "Rank of my processor in world Communicator ->                         " << this->worldRank << std::endl;
+    std::cout << "Number of dimensions of processor grid ->                         " << this->nDims << std::endl;
+    std::cout << "Number of processors along one dimension of 3-Dimensional grid -> " << this->processorGridDimSize << std::endl;
+    std::cout << "Grid coordinates in 3D Processor Grid for my processor ->        (" << this->gridCoords[0] << "," << this->gridCoords[1] << "," << this->gridCoords[2] << ")" << std::endl;
+    std::cout << "Size of 2D Layer Communicator ->                                  " << this->layerCommSize << std::endl;
+    std::cout << "Rank of my processor in 2D Layer Communicator ->                  " << this->layerCommRank << std::endl;
+    std::cout << "Size of Row Communicator ->                                       " << this->colCommSize << std::endl;
+    std::cout << "Rank of my processor in Row Communicator ->                       " << this->rowCommRank << std::endl;
+    std::cout << "Size of Column Communicator ->                                    " << this->colCommSize << std::endl;
+    std::cout << "Rank of my processor in Column Communicator ->                    " << this->colCommRank << std::endl;
+    std::cout << "Size of Depth Communicator Communicator ->                        " << this->depthCommSize << std::endl;
+    std::cout << "Rank of my processor in Depth Communicator ->                     " << this->depthCommRank << std::endl;
+  }
+  #endif
+}
+
 template <typename T>
 void cholesky<T>::constructGridCholesky(void)
 {
