@@ -1,5 +1,45 @@
+/*
+	Author: Edward Hutter
+*/
 
-... add some stuff here to make it link up with rest of code
+template<typename T>
+matrixMult::matrixMult(void)
+{
 
-.. add a wrapper to figure out what to pass in
-.. 
+}
+
+template<typename T>
+void matrixMult::multiply(void)
+{
+
+}
+
+template<typename T>
+void matrixMult::multiply1(void)
+{
+
+}
+
+template<typename T>
+void matrixMult::multiply2(void)
+{
+
+}
+
+template<typename T>
+void matrixMult::multiply3(void)
+{
+
+}
+
+template<typename T>
+void matrixMult::multiply4(void)
+{
+
+}
+
+template<typename T>
+void matrixMult::multiply5(void)
+{
+
+}
