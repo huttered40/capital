@@ -351,9 +351,10 @@ void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
   uint32_t shift = matrixWindow>>1;
   choleskyEngine(dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1), matrixCutSize, layer);
   
-  // Add MPI_SendRecv in here
   fillTranspose(dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, 0);
 
+  // Get ready to change this call to use the matrixMult class
+  //myMatrixMultiplier.multiply(this->matrixA, this->matrixL, this->matrixLInverse, ...);
   MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0, matrixCutSize, layer);
 
   fillTranspose(dimXstart+shift, dimXend, dimYstart, dimYend-shift, shift, 1);
@@ -417,7 +418,7 @@ void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
 }
 
 /*
-  Recursive Matrix Multiplication
+  Dense Matrix Multiplication
   This routine requires that matrix data is duplicated across all layers of the 3D Processor Grid
 */
 template<typename T>

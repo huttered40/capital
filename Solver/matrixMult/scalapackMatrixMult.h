@@ -1,1 +1,8 @@
-.. add scalapack MM wrapper code in here in order to help benchmark
+
+//#include "matrixMult.h"
+
+template<typename T>
+void matrixMult<T>::scalapackMatrixMult(void)
+{
+
+}

@@ -23,10 +23,10 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm)
   this->nDims = 3;			// Might want to make this a parameter of argv later, especially with QR and tuning parameter c
   this->matrixRowSize = atoi(argv[1]);		// N
   this->matrixColSize = atoi(argv[2]);		// k
-  this->processorGridDimTune = atoi(argv[3]);
+  this->processorGridDimTune = atoi(argv[3]);		// For now, this could be c=1 or c=P^{1/3}
   this->processorGridDimReact = this->worldSize/(this->processorGridDimTune*this->processorGridDimTune);	// 64-bit trick here?
-  this->localRowSize = this->matrixRowSize/this->processorGridDimReact; // d==P for now
-  this->localColSize = this->matrixColSize/this->processorGridDimTune;  // c==1 for now
+  this->localRowSize = this->matrixRowSize/this->processorGridDimReact;
+  this->localColSize = this->matrixColSize/this->processorGridDimTune;
   this->argc = argc;
   this->argv = argv;
   this->matrixANorm = 0.;
@@ -47,7 +47,11 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm)
     this->gridSizeLookUp[size] = i;
   }
 
-  this->constructGridCholesky();
+  this->constructGridQR();					// Question: Do I add Matrix Multiplication code in here, or do add another case in the Cholesky
+								//	MatMul? Or do I separate out those 4 MM cases into separate private methods?
+								//	I would like to have all Matrix Multiplication methods in one place, but I need
+								// 	to make sure that the processor grid is set up in certain way for switching from
+								// 	QR code to Cholesky code.
 //  this->distributeData(true);
 
 
@@ -72,7 +76,7 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm)
 }
 
 template <typename T>
-void qr<T>::constructGridCholesky(void)
+void qr<T>::constructGridQR(void)
 {
   /*
 	Look up to see if the number of processors in startup phase is a cubic. If not, then return.

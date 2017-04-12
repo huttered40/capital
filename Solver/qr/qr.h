@@ -43,7 +43,7 @@ private:
   void expandMatrix(std::vector<T> &data, uint32_t n);
   void allocateLayers();
   void trimMatrix(std::vector<T> &data, uint32_t n);
-  void constructGridCholesky();
+  void constructGridQR();
   void distributeData(std::vector<T> &matA);
   void MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize, uint32_t layer);
   void fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t dir);
