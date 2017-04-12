@@ -26,27 +26,136 @@ class cholesky
 {
 public:
 
-  cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv, MPI_Comm comm);
-  cholesky(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixSize, MPI_Comm comm);
+  cholesky
+  (
+	uint32_t rank,
+	uint32_t size,
+	uint32_t nDims,
+	int argc,
+	char **argv,
+	MPI_Comm comm
+  );
   
-  void choleskySolve(std::vector<T> &matrixA, std::vector<T> &matrixL, std::vector<T> &matrixLI, bool isData);
+  cholesky
+  (
+	uint32_t rank,
+	uint32_t size,
+	uint32_t nDims,
+	uint32_t matrixSize,
+	MPI_Comm comm
+  );
+  
+  void choleskySolve
+  (
+	std::vector<T> &matrixA,
+	std::vector<T> &matrixL,
+	std::vector<T> &matrixLI,
+	bool isData
+  );
+  
   void choleskyScalapack();				// this routine is implemented in a special file, scalapackCholesky.h
-  void choleskyLAPack(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataLInverse, uint32_t n, bool needData);
-  void getResidualLayer(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI);
+  
+  void choleskyLAPack
+  (
+	std::vector<T> &data, std::vector<T> &dataL,
+	std::vector<T> &dataLInverse,
+	uint32_t n,
+	bool needData
+  );
+  
+  void getResidualLayer
+  (
+	std::vector<T> &matA,
+	std::vector<T> &matL,
+	std::vector<T> &matLI
+  );
+  
   void getResidualParallel();
-  void printMatrixSequential(std::vector<T> &matrix, uint32_t n, bool isTriangle);
-  void printMatrixParallel(std::vector<T> &matrix, uint32_t n);
+  
+  void printMatrixSequential
+  (
+  	std::vector<T> &matrix,
+	uint32_t n,
+	bool isTriangle
+  );
+  
+  void printMatrixParallel
+  (
+	std::vector<T> &matrix,
+	uint32_t n
+  );
 
 private:
 
   void allocateLayers();
-  void trimMatrix(std::vector<T> &data, uint32_t n);
+  
+  void trimMatrix
+  (
+	std::vector<T> &data,
+	uint32_t n
+  );
+  
   void constructGridCholesky();
-  void distributeDataCyclic(bool inParallel);
-  void choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize, uint32_t layer);
-  void MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize, uint32_t layer);
-  void CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize, uint32_t layer);
-  void fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t dir);
+  
+  void distributeDataCyclic
+  (
+	bool inParallel
+  );
+  
+  void choleskyEngine
+  (
+	uint32_t dimXstart,
+	uint32_t dimXend,
+	uint32_t dimYstart,
+	uint32_t dimYend,
+	uint32_t matrixWindow,
+	uint32_t matrixSize,
+	uint32_t matrixCutSize,
+	uint32_t layer
+  );
+  
+  void MM
+  (
+	uint32_t dimXstartA,
+	uint32_t dimXendA,
+	uint32_t dimYstartA,
+	uint32_t dimYendA,
+	uint32_t dimXstartB,
+	uint32_t dimXendB,
+	uint32_t dimYstartB,
+	uint32_t dimYendB,
+	uint32_t dimXstartC,
+	uint32_t dimXendC,
+	uint32_t dimYstartC,
+	uint32_t dimYendC,
+	uint32_t matrixWindow,
+	uint32_t matrixSize,
+	uint32_t key,
+	uint32_t matrixCutSize,
+	uint32_t layer
+  );
+  
+  void CholeskyRecurseBaseCase
+  (
+	uint32_t dimXstart,
+	uint32_t dimXend,
+	uint32_t dimYstart,
+	uint32_t dimYend,
+	uint32_t matrixWindow,
+	uint32_t matrixSize,
+	uint32_t matrixCutSize,
+	uint32_t layer
+  );
+  
+  void fillTranspose
+  (
+	uint32_t dimXstart,
+	uint32_t dimXend,
+	uint32_t dimYstart,
+	uint32_t dimYend,
+	uint32_t matrixWindow,
+	uint32_t dir
+  );
 
 /*
     Each data owns a cyclic subset of the matrix (n^2/P^(2/3)) in size, which is what the 3-d p-grid algorithm allows

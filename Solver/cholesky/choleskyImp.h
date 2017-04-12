@@ -10,7 +10,14 @@
 #define PROCESSOR_Z_ 0
 
 template<typename T>
-cholesky<T>::cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, char **argv, MPI_Comm comm)
+cholesky<T>::cholesky
+(
+	uint32_t rank,
+	uint32_t size,
+	uint32_t nDims,
+	int argc,
+	char **argv,
+	MPI_Comm comm )
 {
   this->worldComm = comm;		// Needed for QR
   this->worldRank = rank;
@@ -63,7 +70,14 @@ cholesky<T>::cholesky(uint32_t rank, uint32_t size, uint32_t nDims, int argc, ch
 }
 
 template<typename T>
-cholesky<T>::cholesky(uint32_t rank, uint32_t size, uint32_t nDims, uint32_t matrixSize, MPI_Comm comm)
+cholesky<T>::cholesky
+(
+	uint32_t rank,
+	uint32_t size,
+	uint32_t nDims,
+	uint32_t matrixSize,
+	MPI_Comm comm
+)
 {
   this->worldComm = comm;		// Needed for QR
   this->worldRank = rank;
@@ -182,7 +196,10 @@ void cholesky<T>::constructGridCholesky(void)
   Cyclic distribution of data on one layer, then broadcasting the data to the other P^{1/3}-1 layers, similar to how Scalapack does it
 */
 template <typename T>
-void cholesky<T>::distributeDataCyclic(bool inParallel)
+void cholesky<T>::distributeDataCyclic
+(
+	bool inParallel
+)
 {
   /*
     If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
@@ -286,7 +303,13 @@ void cholesky<T>::distributeDataCyclic(bool inParallel)
   The solve method will initiate the solving of this Cholesky Factorization algorithm
 */
 template<typename T>
-void cholesky<T>::choleskySolve(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI, bool isData)
+void cholesky<T>::choleskySolve
+(
+	std::vector<T> &matA,
+	std::vector<T> &matL,
+	std::vector<T> &matLI,
+	bool isData
+)
 {
   // use resize or reserve here for matrixA, matrixL, matrixLI to make sure that enuf memory is used.
   this->localSize = this->matrixDimSize/this->processorGridDimSize;		// n / P^{1/3}
@@ -335,7 +358,17 @@ void cholesky<T>::choleskySolve(std::vector<T> &matA, std::vector<T> &matL, std:
   Write function description
 */
 template<typename T>
-void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize, uint32_t layer)
+void cholesky<T>::choleskyEngine
+(
+	uint32_t dimXstart,
+	uint32_t dimXend,
+	uint32_t dimYstart,
+	uint32_t dimYend,
+	uint32_t matrixWindow,
+	uint32_t matrixSize,
+	uint32_t matrixCutSize,
+	uint32_t layer
+)
 {
 
   if (matrixSize == this->baseCaseSize)
@@ -422,7 +455,26 @@ void cholesky<T>::choleskyEngine(uint32_t dimXstart, uint32_t dimXend, uint32_t 
   This routine requires that matrix data is duplicated across all layers of the 3D Processor Grid
 */
 template<typename T>
-void cholesky<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA, uint32_t dimYendA, uint32_t dimXstartB, uint32_t dimXendB, uint32_t dimYstartB, uint32_t dimYendB, uint32_t dimXstartC, uint32_t dimXendC, uint32_t dimYstartC, uint32_t dimYendC, uint32_t matrixWindow, uint32_t matrixSize, uint32_t key, uint32_t matrixCutSize, uint32_t layer)
+void cholesky<T>::MM
+(
+	uint32_t dimXstartA,
+	uint32_t dimXendA,
+	uint32_t dimYstartA,
+	uint32_t dimYendA,
+	uint32_t dimXstartB,
+	uint32_t dimXendB,
+	uint32_t dimYstartB,
+	uint32_t dimYendB,
+	uint32_t dimXstartC,
+	uint32_t dimXendC,
+	uint32_t dimYstartC,
+	uint32_t dimYendC,
+	uint32_t matrixWindow,
+	uint32_t matrixSize,
+	uint32_t key,
+	uint32_t matrixCutSize,
+	uint32_t layer
+)
 {
   /*
     I need two broadcasts, then an AllReduce
@@ -929,7 +981,15 @@ void cholesky<T>::MM(uint32_t dimXstartA, uint32_t dimXendA, uint32_t dimYstartA
   Transpose Communication Helper Function
 */
 template<typename T>
-void cholesky<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t dir)
+void cholesky<T>::fillTranspose
+(
+	uint32_t dimXstart,
+	uint32_t dimXend,
+	uint32_t dimYstart,
+	uint32_t dimYend,
+	uint32_t matrixWindow,
+	uint32_t dir
+)
 {
   switch (dir)
   {
@@ -1013,7 +1073,17 @@ void cholesky<T>::fillTranspose(uint32_t dimXstart, uint32_t dimXend, uint32_t d
   Base case of CholeskyRecurse
 */
 template<typename T>
-void cholesky<T>::CholeskyRecurseBaseCase(uint32_t dimXstart, uint32_t dimXend, uint32_t dimYstart, uint32_t dimYend, uint32_t matrixWindow, uint32_t matrixSize, uint32_t matrixCutSize, uint32_t layer)
+void cholesky<T>::CholeskyRecurseBaseCase
+(
+	uint32_t dimXstart,
+	uint32_t dimXend,
+	uint32_t dimYstart,
+	uint32_t dimYend,
+	uint32_t matrixWindow,
+	uint32_t matrixSize,
+	uint32_t matrixCutSize,
+	uint32_t layer
+)
 {
   /*
 	1) AllGather onto a single processor, which has to be chosen carefully
@@ -1209,7 +1279,11 @@ void cholesky<T>::allocateLayers(void)
 }
 
 template<typename T>
-void cholesky<T>::trimMatrix(std::vector<T> &data, uint32_t n)
+void cholesky<T>::trimMatrix
+(
+	std::vector<T> &data,
+	uint32_t n
+)
 {
   // Use overwriting trick
   uint64_t tracker = 0;
@@ -1226,7 +1300,14 @@ void cholesky<T>::trimMatrix(std::vector<T> &data, uint32_t n)
 }
 
 template<typename T>
-void cholesky<T>::choleskyLAPack(std::vector<T> &data, std::vector<T> &dataL, std::vector<T> &dataInverse, uint32_t n, bool needData)
+void cholesky<T>::choleskyLAPack
+(
+	std::vector<T> &data,
+	std::vector<T> &dataL,
+	std::vector<T> &dataInverse,
+	uint32_t n,
+	bool needData
+)
 {
   
   // hold on. Why does this need to distribute the data when we can just use my distributedataCyclic function?
@@ -1289,7 +1370,12 @@ void cholesky<T>::choleskyLAPack(std::vector<T> &data, std::vector<T> &dataL, st
 }
 
 template<typename T>
-void cholesky<T>::getResidualLayer(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI)
+void cholesky<T>::getResidualLayer
+(
+	std::vector<T> &matA,
+	std::vector<T> &matL,
+	std::vector<T> &matLI
+)
 {
   /*
 	We want to perform a reduction on the data on one of the P^{1/3} layers, then call lapackTest with a single
@@ -1474,7 +1560,12 @@ void cholesky<T>::getResidualParallel()
   Note: matrix could be triangular or square. So I should add a new function or something to print a triangular matrix without segfaulting
 */
 template<typename T>
-void cholesky<T>::printMatrixSequential(std::vector<T> &matrix, uint32_t n, bool isTriangle)
+void cholesky<T>::printMatrixSequential
+(
+	std::vector<T> &matrix,
+	uint32_t n,
+	bool isTriangle
+)
 {
   if (isTriangle)
   {
@@ -1514,7 +1605,11 @@ void cholesky<T>::printMatrixSequential(std::vector<T> &matrix, uint32_t n, bool
   printMatrixParallel needs to be fixed. Want to assume its being called by P processors or something
 */
 template<typename T>
-void cholesky<T>::printMatrixParallel(std::vector<T> &matrix, uint32_t n)
+void cholesky<T>::printMatrixParallel
+(
+	std::vector<T> &matrix,
+	uint32_t n
+)
 {
   if (this->gridCoords[2] == 0)		// 1st layer
   {
