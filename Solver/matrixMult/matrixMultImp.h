@@ -39,15 +39,18 @@ matrixMult<T>::matrixMult
 				MPI_Comm columnCommunicator,
 				MPI_Comm layerCommunicator,
 				MPI_Comm grid3DCommunicator,
+				MPI_Comm depthCommunicator,
 				uint32_t rowCommunicatorRank,
 				uint32_t columnCommunicatorRank,
 				uint32_t layerCommunicatorRank,
 				uint32_t grid3DCommunicatorRank,
+				uint32_t depthCommunicatorRank,
 				uint32_t rowCommunicatorSize,
 				uint32_t columnCommunicatorSize,
 				uint32_t layerCommunicatorSize,
 				uint32_t grid3DCommunicatorSize,
-				std::vector<uint32_t> gridCoordinates
+				uint32_t depthCommunicatorSize,
+				std::vector<int> gridCoordinates
 			 	)
 {
   // set up the 4 member communicators for use in multiply operations
@@ -55,14 +58,17 @@ matrixMult<T>::matrixMult
   this->columnComm = columnCommunicator;
   this->layerComm = layerCommunicator;
   this->grid3DComm = grid3DCommunicator;
+  this->depthComm = depthCommunicator;
   this->rowCommRank = rowCommunicatorRank;
   this->columnCommRank = columnCommunicatorRank;
   this->layerCommRank = layerCommunicatorRank;
   this->grid3DCommRank = grid3DCommunicatorRank;
+  this->depthCommRank = depthCommunicatorRank;
   this->rowCommSize = rowCommunicatorSize;
   this->columnCommSize = columnCommunicatorSize;
   this->layerCommSize = layerCommunicatorSize;
   this->grid3DCommSize = grid3DCommunicatorSize;
+  this->depthCommSize = depthCommunicatorSize;
   this->gridCoords = gridCoordinates;
   // Set up anything else?
 }
@@ -97,7 +103,11 @@ void matrixMult<T>::multiply
 
   this->matrixA = std::move(matA);
   this->matrixB = std::move(matB);
-  this->matrixC = std::move(matC);
+  //Special circumstances warrant this change. This is from a bug that i had where I was "moving" the same reference twice.
+  if (key != 4)
+  {
+    this->matrixC = std::move(matC);
+  }
 
   switch (key)
   {
@@ -226,8 +236,10 @@ void matrixMult<T>::multiply
   // reverse the std::moves to fill back up the buffers that were passed in
   matA = std::move(this->matrixA);
   matB = std::move(this->matrixB);
-  matC = std::move(this->matrixC);
-
+  if (key != 4)
+  {
+    matC = std::move(this->matrixC);
+  }
 }
 
 /*
@@ -300,13 +312,13 @@ void matrixMult<T>::multiply1
     MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->rowComm);
   }
 
-  if (this->colCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
+  if (this->columnCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
   {
     // Triangular
     buffer2 = std::move(this->matrixB); //std::move(this->holdTransposeL);			// Change the copy to a move, basically just changing names without copying
     // Note that this broadcast will broadcast different sizes of buffer1, so on the receiving end, we will need another case statement
     // so that a properly-sized buffer is used.
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
   }
   else
   {
@@ -318,7 +330,7 @@ void matrixMult<T>::multiply1
     buffer2Size >>= 1;
     buffer2.resize(buffer2Size);	// this is a special trick
     // Note that depending on the key, the broadcast received here will be of different sizes. Need care when unpacking it later.
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
   }
   
   /*
@@ -358,7 +370,7 @@ void matrixMult<T>::multiply1
   
   uint64_t holdMatrixSize = matrixWindow;
   holdMatrixSize *= matrixWindow;
-  this->holdMatrix.resize(holdMatrixSize,0.);
+  //this->holdMatrix.resize(holdMatrixSize,0.);
       
   // Square
   uint64_t startOffset = dimXstartC;
@@ -451,13 +463,13 @@ void matrixMult<T>::multiply2
     MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->rowComm);
   }
 
-  if (this->colCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
+  if (this->columnCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
   {
     // Not Triangular, but transpose
-    buffer2 = std::move(this->holdTransposeL);			// Changed the copy to a move
+    buffer2 = std::move(this->matrixB);			// Changed the copy to a move
     // Note that this broadcast will broadcast different sizes of buffer1, so on the receiving end, we will need another case statement
     // so that a properly-sized buffer is used.
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
   }
   else
   {
@@ -465,7 +477,7 @@ void matrixMult<T>::multiply2
     buffer2Size *= matrixWindow;
     buffer2.resize(buffer2Size);				// resize? Maybe reserve? Not sure what is more efficient?
     // Note that depending on the key, the broadcast received here will be of different sizes. Need care when unpacking it later.
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
   }
   
   /*
@@ -520,7 +532,7 @@ void matrixMult<T>::multiply2
   
   uint64_t holdMatrixSize = matrixWindow;
   holdMatrixSize *= matrixWindow;
-  this->holdMatrix.resize(holdMatrixSize,0.);
+  //this->holdMatrix.resize(holdMatrixSize,0.);
       
   uint64_t index1 = 0;
   for (uint32_t i=0; i<matrixWindow; i++)
@@ -606,7 +618,7 @@ void matrixMult<T>::multiply3
     MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->rowComm);
   }
 
-  if (this->colCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
+  if (this->columnCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
   {
     // Triangular -> Lower
     // As noted above, size depends on whether or not the gridCoords lie in the lower-triangular portion of first block
@@ -631,7 +643,7 @@ void matrixMult<T>::multiply3
     }
     // Note that this broadcast will broadcast different sizes of buffer1, so on the receiving end, we will need another case statement
     // so that a properly-sized buffer is used.
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
   }
   else
   {
@@ -640,7 +652,7 @@ void matrixMult<T>::multiply3
     buffer2Size >>= 1;
     buffer2.resize(buffer2Size);	// this is a special trick
     // Note that depending on the key, the broadcast received here will be of different sizes. Need care when unpacking it later.
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
   }
   
   /*
@@ -680,7 +692,7 @@ void matrixMult<T>::multiply3
   
   uint64_t holdMatrixSize = matrixWindow;
   holdMatrixSize *= matrixWindow;
-  this->holdMatrix.resize(holdMatrixSize,0.);
+  //this->holdMatrix.resize(holdMatrixSize,0.);
       
   uint64_t index1 = 0;
   uint64_t index2 = 0;
@@ -741,7 +753,7 @@ void matrixMult<T>::multiply4
     {
       for (uint32_t j=0; j<=i; j++)
       {
-        buffer1[index1++] = this->matrixLInverse[index2++];
+        buffer1[index1++] = this->matrixA[index2++];//this->matrixLInverse[index2++];
       }
       index2 += dimYstartA;
     }
@@ -761,7 +773,7 @@ void matrixMult<T>::multiply4
     MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->rowComm);
   }
 
-  if (this->colCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
+  if (this->columnCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
   {
     // Not Triangular, but this requires a special traversal because we are using this->holdMatrix
     uint64_t buffer2Size = matrixWindow;
@@ -781,7 +793,7 @@ void matrixMult<T>::multiply4
     }
     // Note that this broadcast will broadcast different sizes of buffer1, so on the receiving end, we will need another case statement
     // so that a properly-sized buffer is used.
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
   }
   else
   {
@@ -789,7 +801,7 @@ void matrixMult<T>::multiply4
     buffer2Size *= matrixWindow;
     buffer2.resize(buffer2Size);
     // Note that depending on the key, the broadcast received here will be of different sizes. Need care when unpacking it later.
-    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->colComm);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
   }
   
   /*
@@ -829,7 +841,7 @@ void matrixMult<T>::multiply4
   
   uint64_t holdMatrixSize = matrixWindow;
   holdMatrixSize *= matrixWindow;
-  this->holdMatrix.resize(holdMatrixSize,0.);
+  //this->holdMatrix.resize(holdMatrixSize,0.);
       
   uint64_t startOffset = dimXstartC;
   startOffset *= (dimXstartC+1);
@@ -842,9 +854,8 @@ void matrixMult<T>::multiply4
   {
     for (uint32_t j=0; j<matrixWindow; j++)
     {
-      this->matrixLInverse[index2++] = buffer4[index1++];
-//      if ((this->gridCoords[0] == 0) && (this->gridCoords[1] == 1) && (this->gridCoords[2] == 0)) {std::cout << "check index2 - " << index2-1 << " " << this->matrixLInverse[index2-1] << std::endl; }
-      
+      //this->matrixLInverse[index2++] = buffer4[index1++];
+      this->matrixA[index2++] = buffer4[index1++];			// Special case where I write to A and not C 
     }
     uint64_t temp = dimYstartC;
     temp += i;

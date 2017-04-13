@@ -46,6 +46,12 @@ cholesky<T>::cholesky
   this->constructGridCholesky();
   //this->distributeDataCyclic(true);
 
+// Need to use dynamic memory in order to use special constructor I think
+  theMatrixMultiplier = new matrixMult<double>(this->rowComm, this->colComm, this->layerComm, this->grid3D, this->depthComm,
+					this->rowCommRank, this->colCommRank, this->layerCommRank, this->grid3DRank, this->depthCommRank,
+					this->rowCommSize, this->colCommSize, this->layerCommSize, this->grid3DSize, this->depthCommSize,
+					this->gridCoords);
+
   #if INFO_OUTPUT
   if (this->worldRank == 0)
   {
@@ -69,6 +75,9 @@ cholesky<T>::cholesky
   #endif
 }
 
+/*
+	Special constructor called by QR, or other codes that already have a processor grid set up
+*/
 template<typename T>
 cholesky<T>::cholesky
 (
@@ -104,6 +113,10 @@ cholesky<T>::cholesky
   }
 
   this->constructGridCholesky();
+  theMatrixMultiplier = new matrixMult<double>(this->rowComm, this->colComm, this->layerComm, this->grid3D, this->depthComm,
+					this->rowCommRank, this->colCommRank, this->layerCommRank, this->grid3DRank, this->depthCommRank,
+					this->rowCommSize, this->colCommSize, this->layerCommSize, this->grid3DSize, this->depthCommSize,
+					this->gridCoords);
   //this->distributeDataCyclic(true);
 
   #if INFO_OUTPUT
@@ -127,6 +140,15 @@ cholesky<T>::cholesky
     std::cout << "Rank of my processor in Depth Communicator ->                     " << this->depthCommRank << std::endl;
   }
   #endif
+}
+
+/*
+	Destructor
+*/
+template<typename T>
+cholesky<T>::~cholesky()
+{
+  delete theMatrixMultiplier;
 }
 
 template <typename T>
@@ -387,8 +409,11 @@ void cholesky<T>::choleskyEngine
   fillTranspose(dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, 0);
 
   // Get ready to change this call to use the matrixMult class
-  //myMatrixMultiplier.multiply(this->matrixA, this->matrixL, this->matrixLInverse, ...);
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0, matrixCutSize, layer);
+  this->theMatrixMultiplier->multiply(this->matrixA[layer], this->holdTransposeL, this->matrixL, dimXstart+shift,
+  				dimXend, dimYstart, dimYend-shift, 0, 0, 0, 0, dimXstart+shift, dimXend,
+  				dimYstart, dimYend-shift, shift, (matrixSize>>1), 1,
+  				matrixCutSize, layer);
+  //MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0, matrixCutSize, layer);
 
   fillTranspose(dimXstart+shift, dimXend, dimYstart, dimYend-shift, shift, 1);
   
@@ -396,8 +421,11 @@ void cholesky<T>::choleskyEngine
   //Below is the tricky one. We need to create a vector via MM(..), then subtract it from A via some sort easy method...
   //syrkWrapper(dimXstart+shift, dimXend, dimYstart, dimYend-shift, 0, 0, 0, 0, dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, (matrixSize>>1), matrixCutSize);
 
-
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1, matrixCutSize, layer);
+  this->holdMatrix.resize(shift*shift,0.);	// gets ready to store the temporary results used below
+  this->theMatrixMultiplier->multiply(this->matrixL, this->holdTransposeL, this->holdMatrix, dimXstart+shift,
+				dimXend, dimYstart, dimYend-shift, 0, 0, 0, 0, dimXstart, dimXend-shift, dimYstart,
+				dimYend-shift, shift, (matrixSize>>1), 2, matrixCutSize, layer); 
+  //MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1, matrixCutSize, layer);
 
   // Big question: CholeskyRecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the Schur Complement.
   // Note that the below code has room for optimization via some call to LAPACK, but I would have to loop over and put into a 1d array first and then
@@ -435,14 +463,24 @@ void cholesky<T>::choleskyEngine
     start += matrixCutSize;
   }
 
+  // Lets resize this->holdMatrix here instead of inside the MM routine
+
 
   choleskyEngine(dimXstart+shift,dimXend,dimYstart+shift,dimYend,shift,(matrixSize>>1), shift, layer+1);		// changed to shift, not matrixCutSize/2
 
-  // These last 4 matrix multiplications are for building up our LInverse and UInverse matrices
-  MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),2, matrixCutSize, layer);	// layer won't matter here
+  // These last 4 matrix multiplications are for building up our L-Inverse matrix
+  this->holdMatrix.resize(shift*shift);					// 64-bit trick later?
+  //MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),2, matrixCutSize, layer);	// layer won't matter here
+  this->theMatrixMultiplier->multiply(this->matrixL, this->matrixLInverse, this->holdMatrix, dimXstart+shift, dimXend,
+					dimYstart, dimYend-shift, dimXstart, dimXend-shift, dimYstart, dimYend-shift,
+					dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, (matrixSize>>1), 3,
+					matrixCutSize, layer);
 
-  MM(dimXstart+shift,dimXend,dimYstart+shift,dimYend,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),3, matrixCutSize, layer);    // layer won't matter here
+  //MM(dimXstart+shift,dimXend,dimYstart+shift,dimYend,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),3, matrixCutSize, layer);    // layer won't matter here
 
+  this->theMatrixMultiplier->multiply(this->matrixLInverse, this->holdMatrix, this->matrixLInverse, dimXstart+shift, dimXend,
+  					dimYstart+shift, dimYend, dimXstart, dimXend-shift, dimYstart, dimYend-shift, dimXstart+shift,
+  					dimXend, dimYstart, dimYend-shift, shift, (matrixSize>>1), 4, matrixCutSize, layer);
   //this->matrixA.pop_back();			// Absolutely critical. Get rid of that memory that we won't use again.
 						// Actually, after reading up on this, popping back won't change the capacity of the vector
 							// so the memory is still sitting there. Won't change until it goes out of scope
@@ -891,7 +929,7 @@ void cholesky<T>::MM
 
   uint64_t holdMatrixSize = matrixWindow;
   holdMatrixSize *= matrixWindow;
-  this->holdMatrix.resize(holdMatrixSize,0.);
+  //this->holdMatrix.resize(holdMatrixSize,0.);		// Can this be resized in choleskyEngine()? That would make matrixMult conversion doable.
   switch (key)
   {
     case 0:

@@ -21,6 +21,8 @@
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
 #include "./../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
+#include "./../matrixMult/matrixMult.h"
+
 template <typename T>
 class cholesky
 {
@@ -44,6 +46,8 @@ public:
 	uint32_t matrixSize,
 	MPI_Comm comm
   );
+
+  ~cholesky();
   
   void choleskySolve
   (
@@ -199,6 +203,8 @@ private:
 */
   int argc;
   char **argv;
+
+  matrixMult<T> *theMatrixMultiplier;
 
 };
 

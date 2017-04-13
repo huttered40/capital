@@ -26,15 +26,18 @@ public:
 		MPI_Comm columnCommunicator,
 		MPI_Comm layerCommunicator,
 		MPI_Comm grid3DCommunicator,
+		MPI_Comm depthCommunicator,
 		uint32_t rowCommunicatorRank,
 		uint32_t columnCommunicatorRank,
 		uint32_t layerCommunicatorRank,
 		uint32_t grid3DCommunicatorRank,
+		uint32_t depthCommunicatorRank,
 		uint32_t rowCommunicatorSize,
 		uint32_t columnCommunicatorSize,
 		uint32_t layerCommunicatorSize,
 		uint32_t grid3DCommunicatorSize,
-		std::vector<uint32_t> gridCoordinates
+		uint32_t depthCommunicatorSize,
+		std::vector<int> gridCoordinates
   );
 
   void multiply
@@ -184,15 +187,18 @@ private:
   MPI_Comm columnComm;
   MPI_Comm layerComm;
   MPI_Comm grid3DComm;
+  MPI_Comm depthComm;
   uint32_t rowCommRank;
   uint32_t columnCommRank;
   uint32_t layerCommRank;
   uint32_t grid3DCommRank;
+  uint32_t depthCommRank;
   uint32_t rowCommSize;
   uint32_t columnCommSize;
   uint32_t layerCommSize;
   uint32_t grid3DCommSize;
-  std::vector<uint32_t> gridCoords;
+  uint32_t depthCommSize;
+  std::vector<int> gridCoords;
 
 };
 
