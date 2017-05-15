@@ -302,8 +302,8 @@ void qr<T>::qrSolve(std::vector<T> &mat1, std::vector<T> &mat2, std::vector<T> &
   std::vector<T> tempR1(mat3.size(),0.);
   std::vector<T> tempR2(mat3.size(),0.);
   std::vector<T> tempQ(mat2.size(), 0.);		// Try to think of a way to get the memory footprint down here. Can I re-use anything?
-  choleskyQR(mat1,tempQ,tempR1);
-  choleskyQR(tempQ,mat2,tempR2);
+  choleskyQR_1D(mat1,tempQ,tempR1);
+  choleskyQR_1D(tempQ,mat2,tempR2);
   
   // One more multiplication step, mat3 = tempR2*tempR1, via MM for now, may be able to exploit some structure in it for cheaper?
   cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, this->localColSize, this->localColSize,
@@ -314,7 +314,7 @@ void qr<T>::qrSolve(std::vector<T> &mat1, std::vector<T> &mat2, std::vector<T> &
   Write function description
 */
 template<typename T>
-void qr<T>::choleskyQR(std::vector<T> &matrix1, std::vector<T> &matrix2, std::vector<T> &matrix3)
+void qr<T>::choleskyQR_1D(std::vector<T> &matrix1, std::vector<T> &matrix2, std::vector<T> &matrix3)
 {
   // do the A^{T}*A matrix multiplication
   // call the cholesky
@@ -336,6 +336,20 @@ void qr<T>::choleskyQR(std::vector<T> &matrix1, std::vector<T> &matrix2, std::ve
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, this->localRowSize, this->localColSize,
     this->localColSize, 1., &matrix1[0], this->localRowSize, &tempInverse[0], this->localColSize, 0., &matrix2[0], this->localRowSize);
 }
+
+/*
+  Write function description
+*/
+template<typename T>
+void qr<T>::choleskyQR_3D(void)
+{}
+
+/*
+  Write function description
+*/
+template<typename T>
+void qr<T>::choleskyQR_Tunable(void)
+{}
 
 
 /*
