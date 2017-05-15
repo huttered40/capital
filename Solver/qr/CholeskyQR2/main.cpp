@@ -19,20 +19,22 @@ int main(int argc, char **argv)
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
   MPI_Comm_size(MPI_COMM_WORLD,&size);
 
-  qr<double> mySolver(rank,size,argc, argv, MPI_COMM_WORLD);		// What should the constructor really do? Check on this
+  qr<double> mySolver(rank,size,argc, argv, MPI_COMM_WORLD);
 
   // So I start my timings after the data is distributed, which involved no communication
   clock_t start;
   double duration;
 
-  uint32_t N = atoi(argv[1]);
-  uint32_t k = atoi(argv[2]);
-  uint32_t processorGridDimTune = atoi(argv[3]);	// This is the tunable p-grid parameter. For now, its c=1
-  uint32_t processorGridDimReact = size/(processorGridDimTune*processorGridDimTune);	// use 64-bit trick later
-  uint32_t pGridRowPartition = N/processorGridDimReact;
-  uint64_t matASize = pGridRowPartition*k;
+  uint32_t m = atoi(argv[1]);
+  uint32_t n = atoi(argv[2]);
+  uint32_t pGridDimTune = atoi(argv[3]);	// This is the tunable p-grid parameter. For now, its c=1
+  uint32_t pGridDimReact = size/(processorGridDimTune*processorGridDimTune);	// use 64-bit trick later. This division is expensive?
+  uint32_t pGridRowPartition = m/pGridDimReact;
+  uint32_t pGridColPartition = n/pGridDimTune;				// will be n when c==1 (in 1D case)
+  // 64-bit trick needed below? Change later if necessary.
+  uint64_t matASize = pGridRowPartition*pGridColPartition;
   uint64_t matQSize = matASize;
-  uint64_t matRSize = k*k;				// In the c==1 case, every processor will own their own entire R (kxk)
+  uint64_t matRSize = pGridColPartition*pGridColPartition;	// In the c==1 case, every processor will own their own entire R (n x n)
   std::vector<double> matA(matASize);
   std::vector<double> matQ(matQSize);
   std::vector<double> matR(matRSize); 

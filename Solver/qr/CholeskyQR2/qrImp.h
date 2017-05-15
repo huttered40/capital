@@ -1,3 +1,9 @@
+/*
+	Author:
+		Edward Hutter
+*/
+
+
 //#include "solver.h" -> Not done here because of template issues
 
 /*
@@ -14,19 +20,29 @@
 
 #include "./../../cholesky/recursiveCholesky/cholesky.h"				// Is this the best place for it?
 
+/*
+  Constructor for QR class. Called from main.
+*/
 template<typename T>
-qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm)
+qr<T>::qr
+	(
+	uint32_t rank,
+	uint32_t size,		// P
+	int argc,
+	char **argv,		// contains command-line args for m,n,c. d = P/c^{2}
+	MPI_Comm comm		// MPI_COMM_WORLD from main. Then we partition this up from here
+	)
 {
   this->worldComm = comm;
   this->worldRank = rank;
   this->worldSize = size;
-  this->nDims = 3;			// Might want to make this a parameter of argv later, especially with QR and tuning parameter c
-  this->matrixRowSize = atoi(argv[1]);		// N
-  this->matrixColSize = atoi(argv[2]);		// k
-  this->processorGridDimTune = atoi(argv[3]);		// For now, this could be c=1 or c=P^{1/3}
-  this->processorGridDimReact = this->worldSize/(this->processorGridDimTune*this->processorGridDimTune);	// 64-bit trick here?
-  this->localRowSize = this->matrixRowSize/this->processorGridDimReact;
-  this->localColSize = this->matrixColSize/this->processorGridDimTune;
+  this->matrixRowSize = atoi(argv[1]);		// m
+  this->matrixColSize = atoi(argv[2]);		// n
+  this->pGridDimTune = atoi(argv[3]);	// Can range from c= [1,P^{1/3}]
+  this->pGridDimReact = this->worldSize/(this->pGridDimTune*this->pGridDimTune);	// 64-bit trick here? This is d
+  this->nDims = (this->pGridDimTune > 1 ? 3 : 1);
+  this->localRowSize = this->matrixRowSize/this->pGridDimReact;		// m/d
+  this->localColSize = this->matrixColSize/this->pGridDimTune;		// n/c
   this->argc = argc;
   this->argv = argv;
   this->matrixANorm = 0.;
@@ -39,6 +55,7 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm)
   Table should reside in the L1 cache for quick lookUp, but only needed once
 */
   // This might need to be redone for the tuning parameter c, but leave it for now.
+  // As of start of Summer 2017, this needs to be redone for a c x d x c processor grid. Think about it later.
   for (uint32_t i=1; i<500; i++)
   {
     uint64_t size = i;
@@ -60,9 +77,14 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm)
   {
     std::cout << "Program - QR\n"; 
     std::cout << "Size of matrix ->                                                 " << this->matrixRowSize << " x " << this->matrixColSize << std::endl;
-    std::cout << "Size of MPI_COMM_WORLD ->                                         " << this->worldSize << std::endl;
+    std::cout << "Size of MPI_COMM_WORLD (P) ->                                     " << this->worldSize << std::endl;
     std::cout << "Rank of my processor in MPI_COMM_WORLD ->                         " << this->worldRank << std::endl;
-    std::cout << "Number of dimensions of processor grid ->                         " << 3 << std::endl;
+    std::cout << "Number of dimensions of processor grid ->                         " << this->nDims << std::endl;
+    std::cout << "Tunable processor grid parameter c ->                             " << this->pGridDimTune << std::endl;
+    std::cout << "Tunable processor grid parameter d ->                             " << this->pGridDimReact << std::endl;
+
+    // Add the stuff below back later after constructGrid has been redone for a c x d x c processor grid.
+/*
     std::cout << "Size of 2D Layer Communicator ->                                  " << this->layerCommSize << std::endl;
     std::cout << "Rank of my processor in 2D Layer Communicator ->                  " << this->layerCommRank << std::endl;
     std::cout << "Size of Row Communicator ->                                       " << this->colCommSize << std::endl;
@@ -71,10 +93,14 @@ qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm)
     std::cout << "Rank of my processor in Column Communicator ->                    " << this->colCommRank << std::endl;
     std::cout << "Size of Depth Communicator Communicator ->                        " << this->depthCommSize << std::endl;
     std::cout << "Rank of my processor in Depth Communicator ->                     " << this->depthCommRank << std::endl;
+*/
   }
   #endif
 }
 
+/*
+  Why was this commented out? Look at this later. I could need this when setting up c x d x c tunable processor grid
+*/
 template <typename T>
 void qr<T>::constructGridQR(void)
 {
@@ -589,7 +615,7 @@ void qr<T>::printMatrixParallel(std::vector<T> &matrix, uint32_t n)
   if (this->gridCoords[2] == 0)		// 1st layer
   {
     //std::vector<T> sendData(this->matrixDimSize * this->matrixDimSize);
-    std::vector<T> recvData(this->processorGridDimSize*this->processorGridDimSize*this->matrixA[this->matrixA.size()-1].size());	// only the bottom half, remember?
+    std::vector<T> recvData(this->pGridDimSize*this->pGridDimSize*this->matrixA[this->matrixA.size()-1].size());	// only the bottom half, remember?
     MPI_Gather(&this->matrixA[this->matrixA.size()-1][0],this->matrixA[this->matrixA.size()-1].size(), MPI_DOUBLE, &recvData[0],this->matrixA[this->matrixA.size()-1].size(), MPI_DOUBLE,
 	0, this->layerComm);		// use 0 as root rank, as it needs to be the same for all calls
 
@@ -609,12 +635,12 @@ void qr<T>::printMatrixParallel(std::vector<T> &matrix, uint32_t n)
 
       std::cout << "\n\n";
 
-      std::vector<int> pCounters(this->processorGridDimSize*this->processorGridDimSize,0);		// start each off at zero
+      std::vector<int> pCounters(this->pGridDimSize*this->pGridDimSize,0);		// start each off at zero
       for (int i=0; i<this->matrixDimSize; i++)
       {
         for (int j=0; j < this->matrixDimSize; j++)
 	{
-          int PE = (j%this->processorGridDimSize) + (i%this->processorGridDimSize)*this->processorGridDimSize;
+          int PE = (j%this->pGridDimSize) + (i%this->pGridDimSize)*this->pGridDimSize;
           std::cout << recvData[PE*this->matrixA[this->matrixA.size()-1].size() + pCounters[PE]++] << " ";
         }
 //        if (i%2==0)

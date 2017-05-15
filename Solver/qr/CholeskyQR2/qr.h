@@ -62,8 +62,8 @@ private:
   std::vector<T> matrixLInverse;
   std::vector<T> holdMatrix;					// this guy needs to hold the temporary matrix and can keep resizing himself
   std::vector<T> holdTransposeL;
-  uint32_t matrixRowSize;					// N x k matrix, where matrixRowSize = N
-  uint32_t matrixColSize;					// N x k matrix, where matrixColSize = k
+  uint32_t matrixRowSize;					// m x n matrix, where matrixRowSize = m
+  uint32_t matrixColSize;					// m x n matrix, where matrixColSize = n
   uint32_t localRowSize;					// Represents row size of local 2D matrix that is held as a 1D matrix
   uint32_t localColSize;
 
@@ -73,8 +73,8 @@ private:
   uint32_t nDims;						// Represents the numDims of the processor grid
   uint32_t worldRank;						// Represents process rank in MPI_COMM_WORLD
   uint32_t worldSize;  						// Represents number of processors involved in computation
-  uint32_t processorGridDimTune;				// Represents c in a (d x c x c) processor grid
-  uint32_t processorGridDimReact;				// Represents d in a (d x c x c) processor grid
+  uint32_t pGridDimTune;					// Represents c in a (c x d x c) processor grid
+  uint32_t pGridDimReact;					// Represents d in a (c x d x c) processor grid
   MPI_Comm worldComm, grid3D,layerComm,rowComm,colComm,depthComm;
   int32_t grid3DRank,layerCommRank,rowCommRank,colCommRank,depthCommRank;
   int32_t grid3DSize,layerCommSize,rowCommSize,colCommSize,depthCommSize;
