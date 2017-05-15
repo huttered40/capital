@@ -14,9 +14,7 @@
 
 #define DEBUGGING_QR 0
 #define INFO_OUTPUT 0
-#define PROCESSOR_X_ 0
-#define PROCESSOR_Y_ 0
-#define PROCESSOR_Z_ 0
+#define WORLD_RANK 0
 
 #include "./../../cholesky/recursiveCholesky/cholesky.h"				// Is this the best place for it?
 
@@ -73,7 +71,7 @@ qr<T>::qr
 
 
   #if INFO_OUTPUT
-  if (this->worldRank == 0)
+  if (this->worldRank == WORLD_RANK) // This can obviously be changed.
   {
     std::cout << "Program - QR\n"; 
     std::cout << "Size of matrix ->                                                 " << this->matrixRowSize << " x " << this->matrixColSize << std::endl;
@@ -83,17 +81,22 @@ qr<T>::qr
     std::cout << "Tunable processor grid parameter c ->                             " << this->pGridDimTune << std::endl;
     std::cout << "Tunable processor grid parameter d ->                             " << this->pGridDimReact << std::endl;
 
-    // Add the stuff below back later after constructGrid has been redone for a c x d x c processor grid.
-/*
-    std::cout << "Size of 2D Layer Communicator ->                                  " << this->layerCommSize << std::endl;
-    std::cout << "Rank of my processor in 2D Layer Communicator ->                  " << this->layerCommRank << std::endl;
-    std::cout << "Size of Row Communicator ->                                       " << this->colCommSize << std::endl;
-    std::cout << "Rank of my processor in Row Communicator ->                       " << this->rowCommRank << std::endl;
-    std::cout << "Size of Column Communicator ->                                    " << this->colCommSize << std::endl;
-    std::cout << "Rank of my processor in Column Communicator ->                    " << this->colCommRank << std::endl;
-    std::cout << "Size of Depth Communicator Communicator ->                        " << this->depthCommSize << std::endl;
-    std::cout << "Rank of my processor in Depth Communicator ->                     " << this->depthCommRank << std::endl;
-*/
+    std::cout << "Size of subGrid1 Communicator ->                                  " << this->subGrid1Size << std::endl;
+    std::cout << "Rank of my processor in subGrid1 Communicator ->                  " << this->subGrid1Rank << std::endl;
+    std::cout << "Size of subGrid2 Communicator ->                                  " << this->subGrid2Size << std::endl;
+    std::cout << "Rank of my processor in subGrid2 Communicator ->                  " << this->subGrid2Rank << std::endl;
+    std::cout << "Size of helperGrid1 Communicator ->                               " << this->helperGrid1Size << std::endl;
+    std::cout << "Rank of my processor in helperGrid1 Communicator ->               " << this->helperGrid1Rank << std::endl;
+    std::cout << "Size of helperGrid2 Communicator ->                               " << this->helperGrid2Size << std::endl;
+    std::cout << "Rank of my processor in helperGrid2 Communicator ->               " << this->helperGrid2Rank << std::endl;
+    std::cout << "Size of subGrid3 Communicator ->                                  " << this->subGrid3Size << std::endl;
+    std::cout << "Rank of my processor in subGrid3 Communicator ->                  " << this->subGrid3Rank << std::endl;
+    std::cout << "Size of subGrid4 Communicator ->                                  " << this->subGrid4Size << std::endl;
+    std::cout << "Rank of my processor in subGrid4 Communicator ->                  " << this->subGrid4Rank << std::endl;
+    std::cout << "Size of subGrid5 Communicator ->                                  " << this->subGrid5Size << std::endl;
+    std::cout << "Rank of my processor in subGrid5 Communicator ->                  " << this->subGrid5Rank << std::endl;
+    std::cout << "Size of subGrid6 Communicator ->                                  " << this->subGrid6Size << std::endl;
+    std::cout << "Rank of my processor in subGrid6 Communicator ->                  " << this->subGrid6Rank << std::endl;
   }
   #endif
 }
