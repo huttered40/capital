@@ -75,12 +75,20 @@ private:
   uint32_t worldSize;  						// Represents number of processors involved in computation
   uint32_t pGridDimTune;					// Represents c in a (c x d x c) processor grid
   uint32_t pGridDimReact;					// Represents d in a (c x d x c) processor grid
-  MPI_Comm worldComm, grid3D,layerComm,rowComm,colComm,depthComm;
-  int32_t grid3DRank,layerCommRank,rowCommRank,colCommRank,depthCommRank;
-  int32_t grid3DSize,layerCommSize,rowCommSize,colCommSize,depthCommSize;
-  std::vector<int32_t> gridDims;
-  std::vector<int32_t> gridCoords;
-  std::map<uint32_t,uint32_t> gridSizeLookUp;			// Might be able to remove this later.
+
+  
+  MPI_Comm worldComm, helperGrid1, helperGrid2;
+  MPI_Comm subGrid1, subGrid2, subGrid3, subGrid4, subGrid5, subGrid6;	// look in qrImp.h for descriptions on what each of these does
+  
+  int32_t helperGrid1Rank, helperGrid2Rank;
+  int32_t subGrid1Rank, subGrid2Rank, subGrid3Rank, subGrid4Rank, subGrid5Rank, subGrid6Rank;
+
+  int32_t helperGrid1Size, helperGrid2Size;
+  int32_t subGrid1Size, subGrid2Size, subGrid3Size, subGrid4Size, subGrid5Size, subGrid6Size;
+
+  std::vector<int32_t> tunableGridDims;
+  std::vector<int32_t> tunableGridCoords;
+  std::map<uint32_t,uint32_t> tunableGridSizeLookUp;			// Might be able to remove this later.
 
 /*
     Residual information

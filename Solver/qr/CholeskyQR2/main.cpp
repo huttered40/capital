@@ -28,7 +28,7 @@ int main(int argc, char **argv)
   uint32_t m = atoi(argv[1]);
   uint32_t n = atoi(argv[2]);
   uint32_t pGridDimTune = atoi(argv[3]);	// This is the tunable p-grid parameter. For now, its c=1
-  uint32_t pGridDimReact = size/(processorGridDimTune*processorGridDimTune);	// use 64-bit trick later. This division is expensive?
+  uint32_t pGridDimReact = size/(pGridDimTune*pGridDimTune);	// use 64-bit trick later. This division is expensive?
   uint32_t pGridRowPartition = m/pGridDimReact;
   uint32_t pGridColPartition = n/pGridDimTune;				// will be n when c==1 (in 1D case)
   // 64-bit trick needed below? Change later if necessary.

@@ -40,7 +40,7 @@ qr<T>::qr
   this->matrixColSize = atoi(argv[2]);		// n
   this->pGridDimTune = atoi(argv[3]);	// Can range from c= [1,P^{1/3}]
   this->pGridDimReact = this->worldSize/(this->pGridDimTune*this->pGridDimTune);	// 64-bit trick here? This is d
-  this->nDims = (this->pGridDimTune > 1 ? 3 : 1);
+  this->nDims = 3; //(this->pGridDimTune > 1 ? 3 : 1);
   this->localRowSize = this->matrixRowSize/this->pGridDimReact;		// m/d
   this->localColSize = this->matrixColSize/this->pGridDimTune;		// n/c
   this->argc = argc;
@@ -61,7 +61,7 @@ qr<T>::qr
     uint64_t size = i;
     size *= i;
     size *= i;
-    this->gridSizeLookUp[size] = i;
+    this->tunableGridSizeLookUp[size] = i;
   }
 
   this->constructGridQR();					// Question: Do I add Matrix Multiplication code in here, or do add another case in the Cholesky
@@ -99,7 +99,18 @@ qr<T>::qr
 }
 
 /*
-  Why was this commented out? Look at this later. I could need this when setting up c x d x c tunable processor grid
+	Creates the 6 communicators needed for QR part
+	Does not include the communicators needed for CholeskyFactorization3D and MatrixMultiplication3D
+	Watch -- maybe be able to re-use some communicators instead of making a whole new batch each time???
+
+	1. c x d x c grid
+	2. row communicators for movement #1
+	3. groups of contiguous processors of size c along column for movement #2
+	4. groups of size d/c located a jump of distance c away along column for movement #3
+	5. groups of size c along slice depth for movement #4
+	6. sub-cubes of size c x c x c for CholeskyFactorization3D and MatrixMultiplication3D
+
+	1. Helper grid for splitting the depth c into 2D slices. For c==1 case, this should do nothing
 */
 template <typename T>
 void qr<T>::constructGridQR(void)
@@ -122,51 +133,85 @@ void qr<T>::constructGridQR(void)
   this->processorGridDimSize = this->gridSizeLookUp[this->worldSize];
 */
   
-  /*
-    this->baseCaseSize gives us a size in which to stop recursing in the CholeskyRecurse method
-    = n/P^(2/3). The math behind it is written about in my report and other papers
-  */
+  // gridDims vector will always be of size 3 for a c x d x c tunable processor grid.
+  this->tunableGridDims.resize(this->nDims);
+  this->tunableGridDims[0] = this->pGridDimTune;		// c
+  this->tunableGridDims[1] = this->pGridDimReact;		// d
+  this->tunableGridDims[2] = this->pGridDimTune;		// c
+  this->tunableGridCoords.resize(this->nDims);
 
-/*  
-  this->gridDims.resize(this->nDims,this->processorGridDimSize);
-  this->gridCoords.resize(this->nDims); 
-*/
   
   /*
-    The 3D Cartesian Communicator is used to distribute the random data in a cyclic fashion
+    The Tunable Cartesian Communicator is used to distribute the random data in a cyclic fashion
     The other communicators are created for specific communication patterns involved in the algorithm.
   */
 
-/*  
-  std::vector<int> boolVec(3,0);
-  MPI_Cart_create(MPI_COMM_WORLD, this->nDims, &this->gridDims[0], &boolVec[0], false, &this->grid3D);
-  MPI_Comm_rank(this->grid3D, &this->grid3DRank);
-  MPI_Comm_size(this->grid3D, &this->grid3DSize);
-  MPI_Cart_coords(this->grid3D, this->grid3DRank, this->nDims, &this->gridCoords[0]);
+/*
+  Create subGrid1 for movement #1
 */
+  std::vector<int> boolVec(3,0);
+  MPI_Cart_create(MPI_COMM_WORLD, this->nDims, &this->tunableGridDims[0], &boolVec[0], false, &this->subGrid1);
+  MPI_Comm_rank(this->subGrid1, &this->subGrid1Rank);
+  MPI_Comm_size(this->subGrid1, &this->subGrid1Size);
+  MPI_Cart_coords(this->subGrid1, this->subGrid1Rank, this->nDims, &this->tunableGridCoords[0]);
+
   /*
     Before creating row and column sub-communicators, grid3D must be split into 2D Layer communicators.
   */
 
 /*
-  // 2D (xy) Layer Communicator (split by z coordinate)
-  MPI_Comm_split(this->grid3D, this->gridCoords[2],this->grid3DRank,&this->layerComm);
-  MPI_Comm_rank(this->layerComm,&this->layerCommRank);
-  MPI_Comm_size(this->layerComm,&this->layerCommSize);
-  // Row Communicator
-  MPI_Comm_split(this->layerComm, this->gridCoords[0],this->gridCoords[1],&this->rowComm);
-  MPI_Comm_rank(this->rowComm,&this->rowCommRank);
-  MPI_Comm_size(this->rowComm,&this->rowCommSize);
-  // column Communicator
-  MPI_Comm_split(this->layerComm, this->gridCoords[1],this->gridCoords[0],&this->colComm);
-  MPI_Comm_rank(this->colComm,&this->colCommRank);
-  MPI_Comm_size(this->colComm,&this->colCommSize);
-  // Depth Communicator
-  MPI_Comm_split(this->grid3D,this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1],this->gridCoords[2],&this->depthComm);
-  MPI_Comm_rank(this->depthComm,&this->depthCommRank);
-  MPI_Comm_size(this->depthComm,&this->depthCommSize);
+  Create helperGrid1 -> 2D (xy) Layer Communicator (split by z coordinate that is of size c)
 */
+  MPI_Comm_split(this->subGrid1, this->tunableGridCoords[2], this->subGrid1Rank, &this->helperGrid1);
+  MPI_Comm_rank(this->helperGrid1, &this->helperGrid1Rank);
+  MPI_Comm_size(this->helperGrid1, &this->helperGrid1Size);
+
+/*
+  Create subGrid2 for movement #2 -> Row Communicator -> splits helperGrid1 into rows for movement 2
+    This one is a bit different than the one for MM3D. Here, we split the y dimension to get our rows
+*/
+  MPI_Comm_split(this->helperGrid1, this->tunableGridCoords[1], this->tunableGridCoords[0], &this->subGrid2);
+  MPI_Comm_rank(this->subGrid2, &this->subGrid2Rank);
+  MPI_Comm_size(this->subGrid2, &this->subGrid2Size);
+
+/*
+  Create helperGrid2 -> basically the columns need to be separated out from the 2D layer (helperGrid1) in order to subdivide the columns
+	for movements 3 and 4
+*/
+  MPI_Comm_split(this->helperGrid1, this->tunableGridCoords[0], this->tunableGridCoords[1], &this->helperGrid2);
+  MPI_Comm_rank(this->helperGrid2, &this->helperGrid2Rank);
+  MPI_Comm_size(this->helperGrid2, &this->helperGrid2Size);
+
+/*
+  Create subGrid3 for movement #3 -> Column Communicator (helperGrid2) gets split into contiguous groups of size c
+*/
+  MPI_Comm_split(this->helperGrid2, this->tunableGridCoords[1]/this->pGridDimTune, this->tunableGridCoords[1], &this->subGrid3);
+  MPI_Comm_rank(this->subGrid3, &this->subGrid3Rank);
+  MPI_Comm_size(this->subGrid3, &this->subGrid3Size);
+
+/*
+  Create subGrid4 for movement #4 -> Column Communicator (helperGrid2) gets split into groups of size d/c located a jump of size c away
+*/
+  MPI_Comm_split(this->helperGrid2, this->tunableGridCoords[1]%this->pGridDimTune, this->tunableGridCoords[1], &this->subGrid4);
+  MPI_Comm_rank(this->subGrid4, &this->subGrid4Rank);
+  MPI_Comm_size(this->subGrid4, &this->subGrid4Size);
+
+/*
+  Create subGrid5 for movement #5 -> entire tunable grid Communicator (subGrid1) gets split into groups of size c along the depth (dimension xy)
+*/
+  MPI_Comm_split(this->subGrid1, this->tunableGridCoords[0]*this->tunableGridDims[0] + this->tunableGridCoords[1], this->tunableGridCoords[2], &this->subGrid5);
+  MPI_Comm_rank(this->subGrid5, &this->subGrid5Rank);
+  MPI_Comm_size(this->subGrid5, &this->subGrid5Size);
+
+/*
+  Create subGrid6 for movement #6 -> entire tunable grid Communicator (subGrid1) gets split into sub-cubes of dimension c.
+*/
+  MPI_Comm_split(this->subGrid1, this->tunableGridCoords[1]/this->pGridDimTune, this->subGrid1Rank, &this->subGrid6);
+  MPI_Comm_rank(this->subGrid6, &this->subGrid6Rank);
+  MPI_Comm_size(this->subGrid6, &this->subGrid6Size);
+
 }
+
 
 /*
   Cyclic distribution of data on one layer, then broadcasting the data to the other P^{1/3}-1 layers, similar to how Scalapack does it
@@ -280,6 +325,7 @@ void qr<T>::distributeData(std::vector<T> &matA)
     }
   }
 }
+
 
 /*
   The solve method will initiate the solving of this Cholesky Factorization algorithm
