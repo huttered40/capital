@@ -19,7 +19,7 @@
 //#include <math.h>
 #include <assert.h>
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
-#include "./../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
+#include "./../../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
 //#include "./../cholesky/cholesky.h"				// could be wrong
 
@@ -97,5 +97,5 @@ private:
 
 #include "qrImp.h"		// for template-instantiation reasons
 //#include "./../cholesky/cholesky.h"
-#include "scalapackQR.h"
+#include "./../../scalapack/scalapackQR.h"
 #endif /*QR_H_*/

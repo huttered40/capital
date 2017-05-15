@@ -12,7 +12,7 @@
 #define PROCESSOR_Y_ 0
 #define PROCESSOR_Z_ 0
 
-#include "./../cholesky/cholesky.h"				// Is this the best place for it?
+#include "./../../cholesky/recursiveCholesky/cholesky.h"				// Is this the best place for it?
 
 template<typename T>
 qr<T>::qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm)

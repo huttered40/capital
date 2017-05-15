@@ -10,7 +10,7 @@
 #include <mpi.h>
 
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
-#include "./../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
+#include "./../../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
 using namespace std;
 
@@ -203,6 +203,6 @@ private:
 };
 
 #include "matrixMultImp.h"
-#include "scalapackMatrixMult.h"
+#include "./../../scalapack/scalapackMatrixMult.h"
 
 #endif /*MATRIX_MULT_H_*/

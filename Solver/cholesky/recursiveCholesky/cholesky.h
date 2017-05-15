@@ -19,9 +19,9 @@
 //#include <math.h>
 #include <assert.h>
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
-#include "./../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
+#include "./../../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
-#include "./../matrixMult/matrixMult.h"
+#include "./../../matrixMult/Summa3D/matrixMult.h"
 
 template <typename T>
 class cholesky
@@ -209,5 +209,5 @@ private:
 };
 
 #include "choleskyImp.h"		// for template-instantiation reasons
-#include "scalapackCholesky.h"
+#include "./../../scalapack/scalapackCholesky.h"
 #endif /*CHOLESKY_H_*/
