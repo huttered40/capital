@@ -13,7 +13,7 @@
 //#include "./../cholesky/cholesky.h"
 
 #define DEBUGGING_QR 0
-#define INFO_OUTPUT 1
+#define INFO_OUTPUT 0
 #define WORLD_RANK 0
 
 #include "./../../cholesky/recursiveCholesky/cholesky.h"				// Is this the best place for it?
@@ -518,32 +518,58 @@ void qr<T>::getResidual(std::vector<T> &matA, std::vector<T> &matQ, std::vector<
     // Now we can start comparing this->matrixL with data
     // Lets just first start out by printing everything separately too the screen to make sure its correct up till here
 
- 
-    for (uint64_t i=0; i<data.size(); i++)
+    // Best to use 3 nested loops to traverse and compare
+    uint64_t loop1Max = this->matrixRowSize/this->pGridDimReact;
+    uint64_t loop2Max = this->pGridDimReact;
+    int64_t lapackCounter = -1;
+    for (uint64_t i=0; i<loop1Max; i++)					// rowSize/d
     {
-      recvDataQ[i] *= (-1);		//I DONT KNOW WHY IM DOING THIS, BUT ALL OF MY Q IS NEGATIEV
-      #if DEBUGGING_QR
-      std::cout << lapackDataQ[i] << " " << recvDataQ[i] << " " << i << std::endl;
-      std::cout << lapackDataQ[i] - recvDataQ[i] << std::endl;
-      #endif
-      double diff = lapackDataQ[i] - recvDataQ[i];
-      if (diff > 1e-12) { std::cout << "Bad - " << i << ", diff - " << diff << " lapack - " << lapackDataQ[i] << " and real data - " << recvDataQ[i] << std::endl; }
-      //double diff = lapackData[index++] - recvDataL[PE*this->matrixL.size() + pCounters[PE]++];
-      //diff = abs(diff);
-      this->matrixQNorm += (diff*diff);
-    }
+      for (uint64_t j=0; j<loop2Max; j++)				// d (= P in 1D case)
+      {
+        uint64_t offset = j*loop1Max*this->matrixColSize + i*this->matrixColSize;
+        for (uint64_t k=0; k<this->localRowSize; k++)			// should be regular n in the 1D case
+	{
+          lapackCounter++;
+          // stupid corner case that we need to fix
+          lapackDataQ[lapackCounter] *= (-1);
+          #if DEBUGGING_QR
+          std::cout << lapackDataQ[lapackCounter] << " " << recvDataQ[offset+k] << " " << std::endl;
+          std::cout << lapackDataQ[lapackCounter] - recvDataQ[offset+k] << std::endl;
+          #endif
+          double diff = lapackDataQ[lapackCounter] - recvDataQ[offset+k];
+          if (diff < 0) {diff *= (-1);}				// weird corner case.
+          if (diff > 1e-12) { std::cout << "Bad matrix Q - " << offset+k << " " << lapackCounter << ", diff - " << diff << " lapack - " << lapackDataQ[lapackCounter] << " and real data - " << recvDataQ[offset+k] << std::endl; }
+          this->matrixQNorm += (diff*diff);
+
+        }
+      }
+    }  
     this->matrixQNorm = sqrt(this->matrixQNorm);
+ 
 
-
-    for (uint64_t i=0; i<lapackDataQ.size(); i++)
+    // Best to use 3 nested loops to traverse and compare
+    loop1Max = this->matrixRowSize/this->pGridDimReact;
+    loop2Max = this->pGridDimReact;
+    lapackCounter = -1;
+    for (uint64_t i=0; i<loop1Max; i++)					// rowSize/d
     {
-      #if DEBUGGING_QR
-      std::cout << data[i] << " " << recvData[i] << " " << std::endl;
-      std::cout << data[i] - recvData[i] << std::endl;
-      #endif
-      double diff = data[i] - recvData[i];
-      if (diff > 1e-12) { std::cout << "Bad - " << i << ", diff - " << diff << " lapack - " << data[i] << " and real data - " << recvData[i] << std::endl; }
-      this->matrixANorm += (diff*diff);
+      for (uint64_t j=0; j<loop2Max; j++)				// d (= P in 1D case)
+      {
+        uint64_t offset = j*loop1Max*this->matrixColSize + i*this->matrixColSize;
+        for (uint64_t k=0; k<this->localRowSize; k++)			// should be regular n in the 1D case
+	{
+          lapackCounter++;
+          #if DEBUGGING_QR
+          std::cout << data[lapackCounter] << " " << recvData[offset+k] << " " << std::endl;
+          std::cout << data[lapackCounter] - recvData[offset+k] << std::endl;
+          #endif
+          double diff = data[lapackCounter] - recvData[offset+k];
+          if (diff < 0) {diff *= (-1);}				// weird corner case.
+          if (diff > 1e-12) { std::cout << "Bad matrix A - " << offset+k << " " << lapackCounter << ", diff - " << diff << " lapack - " << data[lapackCounter] << " and real data - " << recvData[offset+k] << std::endl; }
+          this->matrixANorm += (diff*diff);
+
+        }
+      }
     }  
     this->matrixANorm = sqrt(this->matrixANorm);
 /*
