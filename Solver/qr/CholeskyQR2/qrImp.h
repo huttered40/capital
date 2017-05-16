@@ -13,7 +13,7 @@
 //#include "./../cholesky/cholesky.h"
 
 #define DEBUGGING_QR 0
-#define INFO_OUTPUT 0
+#define INFO_OUTPUT 1
 #define WORLD_RANK 0
 
 #include "./../../cholesky/recursiveCholesky/cholesky.h"				// Is this the best place for it?
@@ -122,9 +122,7 @@ void qr<T>::constructGridQR(void)
 	Look up to see if the number of processors in startup phase is a cubic. If not, then return.
 	We can reduce this restriction after we have it working for a perfect cubic processor grid
 	If found, this->processorGridDimSize will represent the number of processors along one dimension, such as along a row or column (P^(1/3))
-  */
 
-/*
   if (this->gridSizeLookUp.find(this->worldSize) == gridSizeLookUp.end())
   {
     #if DEBUGGING
@@ -220,76 +218,61 @@ void qr<T>::constructGridQR(void)
   Cyclic distribution of data on one layer, then broadcasting the data to the other P^{1/3}-1 layers, similar to how Scalapack does it
 */
 template <typename T>
-void qr<T>::distributeData(std::vector<T> &matA)
+void qr<T>::distributeData
+			(
+			std::vector<T> &matA,
+			bool cheat			// true if we want to allocate c layers simultaneously. False if we want to broadcast
+			)
 {
-  /*
-    If we think about the Cartesian rank coordinates, then we dont care what layer (in the z-direction) we are in. We care only about the (x,y) coordinates.
-    Sublayers exist in a cyclic distribution, so that in the first sublayer of the matrix, all processors are used.
-    Therefore, we cycle them from (0,1,2,0,1,2,0,1,2,....) in the x-dimension of the cube (when traveling down from the top-front-left corner) to the bottom-front-left corner.
-    Then for each of those, there are the processors in the y-direction as well, which are representing via the nested loop.
-  */
-
-  /*
-    Note that because matrix A is supposed to be symmetric, I will only give out the lower-triangular portion of A
-    Note that this would require a change in my algorithm, because I do reference uper part of A.
-    Instead, I will only give values for the upper-portion of A. At a later date, I can change the code to only
-    allocate a triangular portion instead of storing half as zeros.
-  */
 
   // Note: above, I am not sure if the vector can hold more than 2^32 elements. Maybe this isnt too big of a deal, but ...
-
   // Only distribute the data sequentially on the first layer. Then we broadcast down the 3D processor cube using the depth communicator
 
 
-/*
-  if (this->gridCoords[2] == 0)
+
+  if (cheat)
   {
-    uint64_t counter = 0;
-    for (uint32_t i=this->gridCoords[0]; i<this->matrixDimSize; i+=this->processorGridDimSize)
+    distributeDataLocal(matA);
+  }
+  else
+  {
+    if (this->tunableGridCoords[2] == 0)
     {
-      for (uint32_t j=this->gridCoords[1]; j<this->matrixDimSize; j+=this->processorGridDimSize)
+      distributeDataLocal(matA);
+      // post a broadcast to other c-1 layers
+    }
+    else
+    {
+      // post a broadcast from z-layer 0
+    }
+  }
+}
+
+template<typename T>
+void qr<T>::distributeDataLocal(std::vector<T> &matA)
+{
+  uint64_t counter = -1;
+  for (uint32_t i=this->tunableGridCoords[1]; i<this->matrixRowSize; i+=this->pGridDimReact)		// += d
+  {
+    for (uint32_t j=this->tunableGridCoords[0]; j<this->matrixColSize; j+=this->pGridDimTune)	// += c
+    {
+      // srand, then rand, then check diagonal
+      uint64_t seed = i;
+      seed *= this->matrixColSize;
+      seed += j;
+      srand48(seed);
+      matA[++counter] = drand48();
+
+      // Later on, lets try to elminate the if statement her for efficiency concerns of conditional branches in a tight loop.
+      if (i==j)
       {
-        if (i > j)
-        {
-          uint64_t seed = i;
-          seed *= this->matrixDimSize;
-          seed += j;
-          srand48(seed);
-        }
-        else
-        {
-          uint64_t seed = j;
-          seed *= this->matrixDimSize;
-          seed += i;
-          srand48(seed);
-        }
-      
-        //this->matrixA[this->matrixA.size()-1].push_back((rand()%100)*1./100.);
-        this->matrixA[0][counter++] = drand48();
-        if (i==j)
-        {
-          //matrixA[this->matrixA.size()-1][matrixA[this->matrixA.size()-1].size()-1] += 10.;		// All diagonals will be dominant for now.
-          this->matrixA[0][counter-1] += this->matrixDimSize;
-        }
+        matA[counter] += this->matrixRowSize;			// for stability reasons
       }
     }
-
-    if (inParallel)
-    {
-      MPI_Bcast(&this->matrixA[0][0], size, MPI_DOUBLE, this->depthCommRank, this->depthComm);  
-    }
   }
-  else			// All other processor not on that 1st layer
-  {
-    if (inParallel)
-    {
-      // I am assuming that the root has rank 0 in the depth communicator
-      MPI_Bcast(&this->matrixA[0][0], size, MPI_DOUBLE, 0, this->depthComm);
-    }
-  }
-*/
+}
 
-
+/*
   uint32_t start = this->worldRank*this->localRowSize;      // start acts as the offset into each processor's local data too
   uint32_t end = std::min(start+this->localRowSize, this->localColSize);
 
@@ -328,7 +311,7 @@ void qr<T>::distributeData(std::vector<T> &matA)
     }
   }
 }
-
+*/
 
 /*
   The solve method will initiate the solving of this Cholesky Factorization algorithm
@@ -339,7 +322,7 @@ void qr<T>::qrSolve(std::vector<T> &mat1, std::vector<T> &mat2, std::vector<T> &
   // use resize or reserve here for matrixA, matrixL, matrixLI to make sure that enough memory is used. Might be a better way to do this later
   mat1.resize(this->localRowSize*this->localColSize);		// Makes sure that the user's data structures are of proper size.
   mat2.resize(mat1.size(),0.);
-  mat3.resize(this->localColSize*this->localColSize,0.);    // k*k for now, each processor owns this
+  mat3.resize(this->localColSize*this->localColSize,0.);
   //allocateLayers();				// Should I pass in a pointer here? I dont think so since its only for this->matrixA
   //this->matrixA[0] = std::move(matA);		// because this->matrixA holds layers
   //this->matrixL = std::move(matL);
@@ -347,7 +330,7 @@ void qr<T>::qrSolve(std::vector<T> &mat1, std::vector<T> &mat2, std::vector<T> &
 
   if (!isData)	// so from QR, isData will be true, but for a true Cholesky, isData = false
   {
-    this->distributeData(mat1);		// for now, must pass in matA since I am not using member vectors
+    this->distributeData(mat1, false);		// for now, must pass in matA since I am not using member vectors
   }
   
   // For now, lets just support either numP == 1 (for say QR c==1, but later we could support a tuning parameter that could do a mix?
@@ -402,7 +385,8 @@ void qr<T>::choleskyQR_1D(std::vector<T> &matrix1, std::vector<T> &matrix2, std:
   std::vector<T> recvC(tempC.size(),0.);
   std::vector<T> tempInverse(matrix3.size());		// is this size right with the cholesky? Doesnt cholesky take triangular size??????
   cblas_dsyrk(CblasRowMajor, CblasLower, CblasTrans, this->localColSize, this->localRowSize, 1., &matrix1[0], this->localColSize, 0, &tempC[0], this->localColSize);
-  MPI_Allreduce(&tempC[0], &recvC[0], tempC.size(), MPI_DOUBLE, MPI_SUM, this->worldComm);
+  //MPI_Allreduce(&tempC[0], &recvC[0], tempC.size(), MPI_DOUBLE, MPI_SUM, this->worldComm);
+  MPI_Allreduce(&tempC[0], &recvC[0], tempC.size(), MPI_DOUBLE, MPI_SUM, this->subGrid4);
   MPI_Comm tempComm;							// change name later
   MPI_Comm_split(MPI_COMM_WORLD, this->worldRank, this->worldRank, &tempComm);
   cholesky<double> myCholesky(0, 1, 3, this->localColSize, tempComm);		// Note that each processor that calls thinks its the only one
@@ -421,10 +405,13 @@ void qr<T>::choleskyQR_3D(void)
 
 /*
   Write function description
+  This function should work for any c x d x c processor grid and for any matrix.
 */
 template<typename T>
 void qr<T>::choleskyQR_Tunable(void)
-{}
+{
+
+}
 
 
 /*
@@ -656,7 +643,7 @@ void qr<T>::printMatrixSequential(std::vector<T> &matrix, uint32_t n, bool isTri
 }
 
 /*
-  printMatrixParallel needs to be fixed. Want to assume its being called by P processors or something
+  printMatrixParallel needs to be fixed to work with qr. Lets focus on 1D first.
 */
 template<typename T>
 void qr<T>::printMatrixParallel(std::vector<T> &matrix, uint32_t n)
