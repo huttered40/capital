@@ -23,10 +23,15 @@
 	Simple constructor, requires a 3D grid to be set up before multiply is called
 */
 template<typename T>
-matrixMult<T>::matrixMult(void)
+matrixMult<T>::matrixMult
+			(
+			MPI_Comm grid,		// Existing processor grid that will get split
+			uint32_t dim		// dimension of the processor grid cube (only use case so far is CholeskyQR)
+			)
 {
-  // Should I set up grid by passing in the communicators via the constructor? Or a setGrid() method?
-  // Take this code from Cholesky. Not big deal, very similar
+  // I need to set up a grid for the Summ3D MM operation. Take from Cholesky.
+
+  constructGridMM(grid, dim);
 }
 
 /*
@@ -71,6 +76,47 @@ matrixMult<T>::matrixMult
   this->depthCommSize = depthCommunicatorSize;
   this->gridCoords = gridCoordinates;
   // Set up anything else?
+}
+
+template<typename T>
+void matrixMult<T>::constructGridMM(MPI_Comm grid, uint32_t dim)
+{
+  this->processorGridDimSize = dim;
+  
+  this->gridDims.resize(3,this->processorGridDimSize);
+  this->gridCoords.resize(this->nDims); 
+  
+  /*
+    The 3D Cartesian Communicator is used to distribute the random data in a cyclic fashion
+    The other communicators are created for specific communication patterns involved in the algorithm.
+  */
+  std::vector<int> boolVec(3,0);
+  MPI_Cart_create(this->worldComm, this->nDims, &this->gridDims[0], &boolVec[0], false, &this->grid3D);
+  MPI_Comm_rank(this->grid3D, &this->grid3DRank);
+  MPI_Comm_size(this->grid3D, &this->grid3DSize);
+  MPI_Cart_coords(this->grid3D, this->grid3DRank, this->nDims, &this->gridCoords[0]);
+
+  /*
+    Before creating row and column sub-communicators, grid3D must be split into 2D Layer communicators.
+  */
+
+  // 2D (xy) Layer Communicator (split by z coordinate)
+  MPI_Comm_split(this->grid3D, this->gridCoords[2],this->grid3DRank,&this->layerComm);
+  MPI_Comm_rank(this->layerComm,&this->layerCommRank);
+  MPI_Comm_size(this->layerComm,&this->layerCommSize);
+  // Row Communicator
+  MPI_Comm_split(this->layerComm, this->gridCoords[0],this->gridCoords[1],&this->rowComm);
+  MPI_Comm_rank(this->rowComm,&this->rowCommRank);
+  MPI_Comm_size(this->rowComm,&this->rowCommSize);
+  // column Communicator
+  MPI_Comm_split(this->layerComm, this->gridCoords[1],this->gridCoords[0],&this->colComm);
+  MPI_Comm_rank(this->colComm,&this->colCommRank);
+  MPI_Comm_size(this->colComm,&this->colCommSize);
+  // Depth Communicator
+  MPI_Comm_split(this->grid3D,this->gridCoords[0]*this->processorGridDimSize+this->gridCoords[1],this->gridCoords[2],&this->depthComm);
+  MPI_Comm_rank(this->depthComm,&this->depthCommRank);
+  MPI_Comm_size(this->depthComm,&this->depthCommSize);
+
 }
 
 template<typename T>

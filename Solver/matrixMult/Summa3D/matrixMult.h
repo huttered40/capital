@@ -18,7 +18,7 @@ template <typename T>
 class matrixMult
 {
 public:
-  matrixMult(void);		// I should set up the right P-grid that I need to use in here so that there is no confusion
+  matrixMult(MPI_Comm grid, uint32_t dim);		// I should set up the right P-grid that I need to use in here so that there is no confusion
 
   matrixMult
   (
@@ -69,6 +69,9 @@ public:
 private:
   // a ton of different kinds of matrix multiplication goes here, called from multipy method, get these from the cholesky and the one(s) I need for QR
   // For now, these are very specific, maybe later I can generalize these to take care of all different layouts, storage, kinds of MM, rectangular MM, etc
+
+  void constructGridMM(MPI_Comm grid, uint32_t dim);
+
 
   void multiply1
   (
