@@ -17,6 +17,7 @@
 #define WORLD_RANK 0
 
 #include "./../../cholesky/recursiveCholesky/cholesky.h"				// Is this the best place for it?
+#include "./../../matrixMult/Summa3D/matrixMult.h"
 
 /*
   Constructor for QR class. Called from main.
@@ -272,7 +273,15 @@ void qr<T>::distributeDataLocal(std::vector<T> &matA)
   }
 }
 
+
+
+
+
 /*
+	The following code was used for Blocked data distribution for 1D case. I'm hesitant to delete it.
+
+
+
   uint32_t start = this->worldRank*this->localRowSize;      // start acts as the offset into each processor's local data too
   uint32_t end = std::min(start+this->localRowSize, this->localColSize);
 
@@ -313,16 +322,22 @@ void qr<T>::distributeDataLocal(std::vector<T> &matA)
 }
 */
 
+
+
+
+
+
+
 /*
   The solve method will initiate the solving of this Cholesky Factorization algorithm
 */
 template<typename T>
-void qr<T>::qrSolve(std::vector<T> &mat1, std::vector<T> &mat2, std::vector<T> &mat3, bool isData)
+void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matQ, std::vector<T> &matR, bool isData)
 {
   // use resize or reserve here for matrixA, matrixL, matrixLI to make sure that enough memory is used. Might be a better way to do this later
-  mat1.resize(this->localRowSize*this->localColSize);		// Makes sure that the user's data structures are of proper size.
-  mat2.resize(mat1.size(),0.);
-  mat3.resize(this->localColSize*this->localColSize,0.);
+  matA.resize(this->localRowSize*this->localColSize);		// Makes sure that the user's data structures are of proper size.
+  matQ.resize(matA.size(),0.);
+  matR.resize(this->localColSize*this->localColSize,0.);
   //allocateLayers();				// Should I pass in a pointer here? I dont think so since its only for this->matrixA
   //this->matrixA[0] = std::move(matA);		// because this->matrixA holds layers
   //this->matrixL = std::move(matL);
@@ -330,70 +345,55 @@ void qr<T>::qrSolve(std::vector<T> &mat1, std::vector<T> &mat2, std::vector<T> &
 
   if (!isData)	// so from QR, isData will be true, but for a true Cholesky, isData = false
   {
-    this->distributeData(mat1, false);		// for now, must pass in matA since I am not using member vectors
+    this->distributeData(matA, false);		// for now, must pass in matA since I am not using member vectors
   }
-  
-  // For now, lets just support either numP == 1 (for say QR c==1, but later we could support a tuning parameter that could do a mix?
-//  if (this->worldSize == 1)
-//  {
-//    qrLAPack(this->matrixA[0], this->matrixL, this->matrixLInverse, this->localSize, false); // localSize == matrixDimSize
-    // Might be a more efficient way to do this, but I will cut the size now
-//    trimMatrix(this->matrixL, this->localSize);
-//    trimMatrix(this->matrixLInverse, this->localSize);		// trimMatrix will cut size from n*n back to n*(n+1)/2
-//  }
-//  else
-//  {
-    // Start at 0th layer
-//    qrEngine(0,this->localSize,0,this->localSize,this->localSize,this->matrixDimSize, this->localSize, 0);
-//  }
-  /*
-    Now I need to re-validate the arguments so that the user has the data he needs.
-    Need to do another std::move into matrixA, matrixL, and matrixLI again.
-    Basically I invalidate the input matrices at first, then re-validate them before the solve routine returns
-    I can think of it as "sucking" out the data from my member variables back into the user's data structures
-  */
-
+ 
 //  matA = std::move(this->matrixA[0]);		// get the first layer again
 //  matL = std::move(this->matrixL);
 //  matLI = std::move(this->matrixLInverse);
 
-  std::vector<T> tempR1(mat3.size(),0.);
-  std::vector<T> tempR2(mat3.size(),0.);
-  std::vector<T> tempQ(mat2.size(), 0.);		// Try to think of a way to get the memory footprint down here. Can I re-use anything?
-  choleskyQR_1D(mat1,tempQ,tempR1);
-  choleskyQR_1D(tempQ,mat2,tempR2);
+  std::vector<T> tempR1(matR.size(),0.);
+  std::vector<T> tempR2(matR.size(),0.);
+  std::vector<T> tempQ(matQ.size(), 0.);		// Try to think of a way to get the memory footprint down here. Can I re-use anything?
+  choleskyQR_1D(matA,tempQ,tempR1);
+  choleskyQR_1D(tempQ,matQ,tempR2);
   
   // One more multiplication step, mat3 = tempR2*tempR1, via MM for now, may be able to exploit some structure in it for cheaper?
+
+  // Need to convert this into MM3D code so that it recognizes when the communicator is just single guy
+  //matrixMult<double>
+
+  // At some point, try to exploit the triangular structure here. dgemm might be overkill.
   cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, this->localColSize, this->localColSize,
-    this->localColSize, 1., &tempR2[0], this->localColSize, &tempR1[0], this->localColSize, 0., &mat3[0], this->localColSize);
+    this->localColSize, 1., &tempR2[0], this->localColSize, &tempR1[0], this->localColSize, 0., &matR[0], this->localColSize);
 }
 
 /*
   Write function description
 */
 template<typename T>
-void qr<T>::choleskyQR_1D(std::vector<T> &matrix1, std::vector<T> &matrix2, std::vector<T> &matrix3)
+void qr<T>::choleskyQR_1D(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR)
 {
   // do the A^{T}*A matrix multiplication
   // call the cholesky
   // Perform the TRSM - Q = A*R^{-1}
-  // Remember that for now, I am only doing the c==1 version. This will have to be adjusted substantially to account for c>1
 
-  // for c==1 case, call a lapack syrk, an allreduce, another multiplication, etc..
   // Note that ssyrk writes to either the upper triangular part or the lower triangular part, since the resulting matrix is diagonal.
-  std::vector<T> tempC(matrix3.size());		// will be filled up by the SYRK and will be fed into cholesky at matrix A
-  std::vector<T> recvC(tempC.size(),0.);
-  std::vector<T> tempInverse(matrix3.size());		// is this size right with the cholesky? Doesnt cholesky take triangular size??????
-  cblas_dsyrk(CblasRowMajor, CblasLower, CblasTrans, this->localColSize, this->localRowSize, 1., &matrix1[0], this->localColSize, 0, &tempC[0], this->localColSize);
+  std::vector<T> tempC(matrixR.size(),0.);		// will be filled up by the SYRK and will be fed into cholesky at matrix A
+  std::vector<T> recvC(matrixR.size(),0.);
+  std::vector<T> tempInverse(matrixR.size());		// is this size right with the cholesky? Doesnt cholesky take triangular size??????
+  cblas_dsyrk(CblasRowMajor, CblasLower, CblasTrans, this->localColSize, this->localRowSize, 1., &matrixA[0], this->localColSize, 0, &tempC[0], this->localColSize);
+  
   //MPI_Allreduce(&tempC[0], &recvC[0], tempC.size(), MPI_DOUBLE, MPI_SUM, this->worldComm);
   MPI_Allreduce(&tempC[0], &recvC[0], tempC.size(), MPI_DOUBLE, MPI_SUM, this->subGrid4);
   MPI_Comm tempComm;							// change name later
   MPI_Comm_split(MPI_COMM_WORLD, this->worldRank, this->worldRank, &tempComm);
   cholesky<double> myCholesky(0, 1, 3, this->localColSize, tempComm);		// Note that each processor that calls thinks its the only one
-  myCholesky.choleskySolve(recvC, matrix3, tempInverse, true);
-  expandMatrix(tempInverse,this->localColSize);
+  myCholesky.choleskySolve(recvC, matrixR, tempInverse, true);
+  expandMatrix(tempInverse,this->localColSize);				// There is really no need for this. Change the code in CF3D
+
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, this->localRowSize, this->localColSize,
-    this->localColSize, 1., &matrix1[0], this->localRowSize, &tempInverse[0], this->localColSize, 0., &matrix2[0], this->localRowSize);
+    this->localColSize, 1., &matrixA[0], this->localColSize, &tempInverse[0], this->localColSize, 0., &matrixQ[0], this->localColSize);
 }
 
 /*
@@ -527,7 +527,7 @@ void qr<T>::getResidual(std::vector<T> &matA, std::vector<T> &matQ, std::vector<
       for (uint64_t j=0; j<loop2Max; j++)				// d (= P in 1D case)
       {
         uint64_t offset = j*loop1Max*this->matrixColSize + i*this->matrixColSize;
-        for (uint64_t k=0; k<this->localRowSize; k++)			// should be regular n in the 1D case
+        for (uint64_t k=0; k<this->localColSize; k++)			// should be regular n in the 1D case
 	{
           lapackCounter++;
           // stupid corner case that we need to fix
@@ -556,7 +556,7 @@ void qr<T>::getResidual(std::vector<T> &matA, std::vector<T> &matQ, std::vector<
       for (uint64_t j=0; j<loop2Max; j++)				// d (= P in 1D case)
       {
         uint64_t offset = j*loop1Max*this->matrixColSize + i*this->matrixColSize;
-        for (uint64_t k=0; k<this->localRowSize; k++)			// should be regular n in the 1D case
+        for (uint64_t k=0; k<this->localColSize; k++)			// should be regular n in the 1D case
 	{
           lapackCounter++;
           #if DEBUGGING_QR
