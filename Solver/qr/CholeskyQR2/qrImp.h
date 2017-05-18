@@ -408,6 +408,8 @@ void qr<T>::choleskyQR_1D(std::vector<T> &matrixA, std::vector<T> &matrixQ, std:
 
   // Need a broadcast here on subGrid5
   // Note that this->subGrid5Rank should be able to be substituted for this->tunableGridCoords[2]
+  
+/*
   if (this->tunableGridCoords[2] == (this->tunableGridCoords[1]%this->pGridDimTune))
   {
     MPI_Bcast(&matrixB[0], matrixB.size(), MPI_DOUBLE, this->tunableGridCoords[2], this->subGrid5);
@@ -417,7 +419,8 @@ void qr<T>::choleskyQR_1D(std::vector<T> &matrixA, std::vector<T> &matrixQ, std:
     // using matrixB may be wrong here?????? Check on this when debugging 3D and tunable code
     MPI_Bcast(&matrixB[0], matrixB.size(), MPI_DOUBLE, (this->tunableGridCoords[1]%this->pGridDimTune), this->subGrid5);
   }
-
+*/
+  MPI_Bcast(&matrixB[0], matrixB.size(), MPI_DOUBLE, (this->tunableGridCoords[1]%this->pGridDimTune), this->subGrid5);
 
   MPI_Comm tempComm;							// change name later
   MPI_Comm_split(MPI_COMM_WORLD, this->worldRank, this->worldRank, &tempComm);
