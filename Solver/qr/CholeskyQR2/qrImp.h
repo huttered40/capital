@@ -381,15 +381,48 @@ void qr<T>::choleskyQR_1D(std::vector<T> &matrixA, std::vector<T> &matrixQ, std:
   // Note that ssyrk writes to either the upper triangular part or the lower triangular part, since the resulting matrix is diagonal.
   std::vector<T> tempC(matrixR.size(),0.);		// will be filled up by the SYRK and will be fed into cholesky at matrix A
   std::vector<T> recvC(matrixR.size(),0.);
-  std::vector<T> tempInverse(matrixR.size());		// is this size right with the cholesky? Doesnt cholesky take triangular size??????
-  cblas_dsyrk(CblasRowMajor, CblasLower, CblasTrans, this->localColSize, this->localRowSize, 1., &matrixA[0], this->localColSize, 0, &tempC[0], this->localColSize);
+  std::vector<T> matrixB(matrixR.size(),0.);
+  std::vector<T> tempInverse(matrixR.size(),0.);		// is this size right with the cholesky? Doesnt cholesky take triangular size??????
   
-  //MPI_Allreduce(&tempC[0], &recvC[0], tempC.size(), MPI_DOUBLE, MPI_SUM, this->worldComm);
-  MPI_Allreduce(&tempC[0], &recvC[0], tempC.size(), MPI_DOUBLE, MPI_SUM, this->subGrid4);
+  // Need a broadcast here on subGrid2. Root is based on what z-layer we are on
+  // To avoid overwriting, need an if statement to check if root
+  if (this->subGrid2Rank == this->tunableGridCoords[0])
+  {
+    // post broadcast. Can perform dsyrk
+    MPI_Bcast(&matrixA[0], matrixA.size(), MPI_DOUBLE, this->tunableGridCoords[0], this->subGrid2);
+    cblas_dsyrk(CblasRowMajor, CblasLower, CblasTrans, this->localColSize, this->localRowSize, 1., &matrixA[0], this->localColSize, 0, &tempC[0], this->localColSize);
+  }
+  else
+  {
+    // post broadcast, perform dgemm instead of drsyrk
+    std::vector<T> matrixArecv(matrixA.size(),0.);
+    MPI_Bcast(&matrixArecv[0], matrixArecv.size(), MPI_DOUBLE, this->tunableGridCoords[0], this->subGrid2);
+    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->localColSize, this->localColSize,
+      this->localRowSize, 1., &matrixArecv[0], this->localColSize, &matrixA[0], this->localColSize, 0., &tempC[0], this->localColSize);
+  }
+ 
+  // Note that some of this communication is redudant. Only a select few processors need perform both AllReduces.
+	// Look at this later. Also note that the critical path will not be affected either way. 
+  MPI_Allreduce(&tempC[0], &recvC[0], tempC.size(), MPI_DOUBLE, MPI_SUM, this->subGrid3);
+  MPI_Allreduce(&recvC[0], &matrixB[0], recvC.size(), MPI_DOUBLE, MPI_SUM, this->subGrid4);
+
+  // Need a broadcast here on subGrid5
+  // Note that this->subGrid5Rank should be able to be substituted for this->tunableGridCoords[2]
+  if (this->tunableGridCoords[2] == (this->tunableGridCoords[1]%this->pGridDimTune))
+  {
+    MPI_Bcast(&matrixB[0], matrixB.size(), MPI_DOUBLE, this->tunableGridCoords[2], this->subGrid5);
+  }
+  else
+  {
+    // using matrixB may be wrong here?????? Check on this when debugging 3D and tunable code
+    MPI_Bcast(&matrixB[0], matrixB.size(), MPI_DOUBLE, (this->tunableGridCoords[1]%this->pGridDimTune), this->subGrid5);
+  }
+
+
   MPI_Comm tempComm;							// change name later
   MPI_Comm_split(MPI_COMM_WORLD, this->worldRank, this->worldRank, &tempComm);
   cholesky<double> myCholesky(0, 1, 3, this->localColSize, tempComm);		// Note that each processor that calls thinks its the only one
-  myCholesky.choleskySolve(recvC, matrixR, tempInverse, true);
+  myCholesky.choleskySolve(matrixB, matrixR, tempInverse, true);
   expandMatrix(tempInverse,this->localColSize);				// There is really no need for this. Change the code in CF3D
 
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, this->localRowSize, this->localColSize,
