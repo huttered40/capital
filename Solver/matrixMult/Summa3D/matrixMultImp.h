@@ -174,7 +174,6 @@ void matrixMult<T>::multiply
 		dimYendC,
 		matrixWindow,
 		matrixSize,
-		key,
 		matrixCutSize
 		);
       break;
@@ -196,9 +195,7 @@ void matrixMult<T>::multiply
 		dimYstartC,
 		dimYendC,
 		matrixWindow,
-		matrixSize,
-		key,
-		matrixCutSize
+		matrixSize
 		);
       break;
     }
@@ -219,9 +216,7 @@ void matrixMult<T>::multiply
 		dimYstartC,
 		dimYendC,
 		matrixWindow,
-		matrixSize,
-		key,
-		matrixCutSize
+		matrixSize
 		);
       break;
     }
@@ -242,9 +237,7 @@ void matrixMult<T>::multiply
 		dimYstartC,
 		dimYendC,
 		matrixWindow,
-		matrixSize,
-		key,
-		matrixCutSize
+		matrixSize
 		);
       break;
     }
@@ -265,9 +258,7 @@ void matrixMult<T>::multiply
 		dimYstartC,
 		dimYendC,
 		matrixWindow,
-		matrixSize,
-		key,
-		matrixCutSize
+		matrixSize
 		);
       break;
     }
@@ -302,7 +293,6 @@ void matrixMult<T>::multiply1
 				uint32_t dimYendC,
 				uint32_t matrixWindow,
 				uint32_t matrixSize,
-				uint32_t key,
 				uint32_t matrixCutSize
 				)
 {
@@ -453,9 +443,7 @@ void matrixMult<T>::multiply2
 				uint32_t dimYstartC,
 				uint32_t dimYendC,
 				uint32_t matrixWindow,
-				uint32_t matrixSize,
-				uint32_t key,
-				uint32_t matrixCutSize
+				uint32_t matrixSize
 				)
 {
   std::vector<T> buffer1;  // use capacity() or reserve() methods here?
@@ -607,9 +595,7 @@ void matrixMult<T>::multiply3
 				uint32_t dimYstartC,
 				uint32_t dimYendC,
 				uint32_t matrixWindow,
-				uint32_t matrixSize,
-				uint32_t key,
-				uint32_t matrixCutSize
+				uint32_t matrixSize
 				)
 {
   std::vector<T> buffer1;  // use capacity() or reserve() methods here?
@@ -762,9 +748,7 @@ void matrixMult<T>::multiply4
 				uint32_t dimYstartC,
 				uint32_t dimYendC,
 				uint32_t matrixWindow,
-				uint32_t matrixSize,
-				uint32_t key,
-				uint32_t matrixCutSize
+				uint32_t matrixSize
 				)
 {
   std::vector<T> buffer1;  // use capacity() or reserve() methods here?
@@ -919,9 +903,7 @@ void matrixMult<T>::multiply5
 				uint32_t dimYstartC,
 				uint32_t dimYendC,
 				uint32_t matrixWindow,
-				uint32_t matrixSize,
-				uint32_t key,
-				uint32_t matrixCutSize
+				uint32_t matrixSize
 				)
 {
   std::vector<T> buffer1;  // use capacity() or reserve() methods here?

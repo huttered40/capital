@@ -88,7 +88,6 @@ private:
 		uint32_t dimYendC,
 		uint32_t matrixWindow,
 		uint32_t matrixSize,
-		uint32_t key,
 		uint32_t matrixCutSize
   );
   void multiply2
@@ -106,9 +105,7 @@ private:
 		uint32_t dimYstartC,
 		uint32_t dimYendC,
 		uint32_t matrixWindow,
-		uint32_t matrixSize,
-		uint32_t key,
-		uint32_t matrixCutSize
+		uint32_t matrixSize
   );
   void multiply3
   (
@@ -125,9 +122,7 @@ private:
 		uint32_t dimYstartC,
 		uint32_t dimYendC,
 		uint32_t matrixWindow,
-		uint32_t matrixSize,
-		uint32_t key,
-		uint32_t matrixCutSize
+		uint32_t matrixSize
   );
   void multiply4
   (
@@ -144,9 +139,7 @@ private:
 		uint32_t dimYstartC,
 		uint32_t dimYendC,
 		uint32_t matrixWindow,
-		uint32_t matrixSize,
-		uint32_t key,
-		uint32_t matrixCutSize
+		uint32_t matrixSize
   );
   void multiply5
   (
@@ -163,9 +156,7 @@ private:
 		uint32_t dimYstartC,
 		uint32_t dimYendC,
 		uint32_t matrixWindow,
-		uint32_t matrixSize,
-		uint32_t key,
-		uint32_t matrixCutSize
+		uint32_t matrixSize
   );
 
   // The methods above do not need arguments because i will "move" the arguments passed into multiply() into my member variables and then will call one
