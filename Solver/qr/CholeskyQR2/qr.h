@@ -47,7 +47,7 @@ private:
   void distributeData(std::vector<T> &matA, bool cheat);
   void distributeDataLocal(std::vector<T> &matA);
   void choleskyQR_Tunable(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR);
-  void choleskyQR_1D(void);
+  void choleskyQR_1D(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR);
   void choleskyQR_3D(void);		// these two functions are unimplemented for now.
 
 /*

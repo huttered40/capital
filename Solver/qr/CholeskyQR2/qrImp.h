@@ -358,7 +358,7 @@ void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matQ, std::vector<T> &
   
   switch(mode)
   {
-    case 0:
+    case 0:		// Tunable
     {
       choleskyQR_Tunable(matA,tempQ,tempR1);
       choleskyQR_Tunable(tempQ,matQ,tempR2);
@@ -373,11 +373,19 @@ void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matQ, std::vector<T> &
         this->localColSize, 1., &tempR2[0], this->localColSize, &tempR1[0], this->localColSize, 0., &matR[0], this->localColSize);
       break;
     }
-    case 1:
+    case 1:		// 1D
     {
+      choleskyQR_1D(matA,tempQ,tempR1);
+      choleskyQR_1D(tempQ,matQ,tempR2);
+  
+      // One more multiplication step, mat3 = tempR2*tempR1, via MM for now, may be able to exploit some structure in it for cheaper?
+
+      // At some point, try to exploit the triangular structure here. dgemm might be overkill.
+      cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, this->localColSize, this->localColSize,
+        this->localColSize, 1., &tempR2[0], this->localColSize, &tempR1[0], this->localColSize, 0., &matR[0], this->localColSize);
       break;
     }
-    case 2:
+    case 2:		// 3D
     {
       break;
     }
@@ -457,9 +465,34 @@ void qr<T>::choleskyQR_Tunable(std::vector<T> &matrixA, std::vector<T> &matrixQ,
   Write function description
 */
 template<typename T>
-void qr<T>::choleskyQR_1D(void)
+void qr<T>::choleskyQR_1D(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR)
 {
- // fill in later
+  // do the A^{T}*A matrix multiplication
+  // call the cholesky
+  // Perform the TRSM - Q = A*R^{-1}
+
+  // Note that ssyrk writes to either the upper triangular part or the lower triangular part, since the resulting matrix is diagonal.
+  std::vector<T> recvC(matrixR.size(),0.);
+  std::vector<T> matrixB(matrixR.size(),0.);
+  std::vector<T> tempInverse(matrixR.size(),0.);		// is this size right with the cholesky? Doesnt cholesky take triangular size??????
+  
+  cblas_dsyrk(CblasRowMajor, CblasLower, CblasTrans, this->localColSize, this->localRowSize, 1., &matrixA[0], this->localColSize, 0, &recvC[0], this->localColSize);
+ 
+  // Note that some of this communication is redudant. Only a select few processors need perform both AllReduces.
+	// Look at this later. Also note that the critical path will not be affected either way. 
+  MPI_Allreduce(&recvC[0], &matrixB[0], recvC.size(), MPI_DOUBLE, MPI_SUM, this->subGrid4);
+
+  // Need a broadcast here on subGrid5
+  // Note that this->subGrid5Rank should be able to be substituted for this->tunableGridCoords[2]
+
+  MPI_Comm tempComm;							// change name later
+  MPI_Comm_split(MPI_COMM_WORLD, this->worldRank, this->worldRank, &tempComm);
+  cholesky<double> myCholesky(0, 1, 3, this->localColSize, tempComm);		// Note that each processor that calls thinks its the only one
+  myCholesky.choleskySolve(matrixB, matrixR, tempInverse, true);
+  expandMatrix(tempInverse,this->localColSize);				// There is really no need for this. Change the code in CF3D
+
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, this->localRowSize, this->localColSize,
+    this->localColSize, 1., &matrixA[0], this->localColSize, &tempInverse[0], this->localColSize, 0., &matrixQ[0], this->localColSize);
 }
 
 /*
@@ -537,6 +570,9 @@ void qr<T>::qrLAPack(std::vector<T> &data, std::vector<T> &dataQ, std::vector<T>
   Note: I am just trying to get this to work in the c==1 case. I can generalize it to any c later.
 
   Also, I can't seem to find how to get matrix R, so I will not check for that right now
+
+  Note that I may need a separate getResidual method for each type - (1D, 3D, Tunable).
+  Right now, the method below works correctly for 1D.
 */
 template<typename T>
 void qr<T>::getResidual(std::vector<T> &matA, std::vector<T> &matQ, std::vector<T> &matR)
