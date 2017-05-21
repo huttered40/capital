@@ -137,8 +137,10 @@ void matrixMult<T>::multiply
 				uint32_t dimXendC,
 				uint32_t dimYstartC,
 				uint32_t dimYendC,
-				uint32_t matrixWindow,
-				uint32_t matrixSize,
+				uint32_t matrixWindowRow,
+				uint32_t matrixWindowCol,
+				uint32_t matrixSizeRow,
+				uint32_t matrixSizeCol,
 				uint32_t key,
 				uint32_t matrixCutSize
 			    	)
@@ -179,8 +181,8 @@ void matrixMult<T>::multiply
 		dimXendC,
 		dimYstartC,
 		dimYendC,
-		matrixWindow,
-		matrixSize,
+		matrixWindowRow,		// arbitrary choice between row and col
+		matrixSizeRow,			// arbitrary choice between row and col
 		matrixCutSize
 		);
       break;
@@ -208,8 +210,8 @@ void matrixMult<T>::multiply
 		dimXendC,
 		dimYstartC,
 		dimYendC,
-		matrixWindow,
-		matrixSize
+		matrixWindowRow,		// arbitrary choice between row and col
+		matrixSizeRow			// arbitrary choice between row and col
 		);
       break;
     }
@@ -236,8 +238,8 @@ void matrixMult<T>::multiply
 		dimXendC,
 		dimYstartC,
 		dimYendC,
-		matrixWindow,
-		matrixSize
+		matrixWindowRow,		// arbitrary choice between row and col
+		matrixSizeRow			// arbitrary choice between row and col
 		);
       break;
     }
@@ -264,8 +266,8 @@ void matrixMult<T>::multiply
 		dimXendC,
 		dimYstartC,
 		dimYendC,
-		matrixWindow,
-		matrixSize
+		matrixWindowRow,		// arbitrary choice between row and col
+		matrixSizeRow			// arbitrary choice between row and col
 		);
       break;
     }
@@ -273,20 +275,10 @@ void matrixMult<T>::multiply
     {
       multiply5
 		(
-		dimXstartA,
-		dimXendA,
-		dimYstartA,
-		dimYendA,
-		dimXstartB,
-		dimXendB,
-		dimYstartB,			// this was dimYstartA before. I have no idea how this did not cause errors.
-		dimYendB,
-		dimXstartC,
-		dimXendC,
-		dimYstartC,
-		dimYendC,
-		matrixWindow,
-		matrixSize
+		matrixWindowRow,
+		matrixWindowCol,
+		matrixSizeRow,
+		matrixSizeCol
 		);
       break;
     }
@@ -928,25 +920,21 @@ void matrixMult<T>::multiply4
 }
 
 /*
-	Special matrix multiplication from QR?
+	Matrix Multiplication of a rectangular matrix with a rectangular matrix
+
+	Currently used for Q=AR^{-1}
+	
+	matrixA - full (no cut) rectangular matrix that is packed in a rectangular manner
+	matrixB - full (no cut) triangular matrix that is packed in a rectangular manner
+	matrixC - full (no cut) rectangular matrix that is packed in a rectangular manner
 */
 template<typename T>
 void matrixMult<T>::multiply5
 				(
-         			uint32_t dimXstartA,
-				uint32_t dimXendA,
-				uint32_t dimYstartA,
-				uint32_t dimYendA,
-				uint32_t dimXstartB,
-				uint32_t dimXendB,
-				uint32_t dimYstartB,
-				uint32_t dimYendB,
-				uint32_t dimXstartC,
-				uint32_t dimXendC,
-				uint32_t dimYstartC,
-				uint32_t dimYendC,
-				uint32_t matrixWindow,
-				uint32_t matrixSize
+				uint32_t matrixWindowRow,
+				uint32_t matrixWindowCol,
+				uint32_t matrixSizeRow,
+				uint32_t matrixSizeCol
 				)
 {
   std::vector<T> buffer1;  // use capacity() or reserve() methods here?
