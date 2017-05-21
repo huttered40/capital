@@ -140,8 +140,7 @@ void matrixMult<T>::multiply
 				uint32_t matrixWindow,
 				uint32_t matrixSize,
 				uint32_t key,
-				uint32_t matrixCutSize,
-				uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+				uint32_t matrixCutSize
 			    	)
 {
   // Make sure that the arrays have enough memory, so do a resize
@@ -176,8 +175,7 @@ void matrixMult<T>::multiply
 		matrixWindow,
 		matrixSize,
 		key,
-		matrixCutSize,
-		layer
+		matrixCutSize
 		);
       break;
     }
@@ -200,8 +198,7 @@ void matrixMult<T>::multiply
 		matrixWindow,
 		matrixSize,
 		key,
-		matrixCutSize,
-		layer
+		matrixCutSize
 		);
       break;
     }
@@ -224,8 +221,7 @@ void matrixMult<T>::multiply
 		matrixWindow,
 		matrixSize,
 		key,
-		matrixCutSize,
-		layer
+		matrixCutSize
 		);
       break;
     }
@@ -248,8 +244,7 @@ void matrixMult<T>::multiply
 		matrixWindow,
 		matrixSize,
 		key,
-		matrixCutSize,
-		layer
+		matrixCutSize
 		);
       break;
     }
@@ -272,8 +267,7 @@ void matrixMult<T>::multiply
 		matrixWindow,
 		matrixSize,
 		key,
-		matrixCutSize,
-		layer
+		matrixCutSize
 		);
       break;
     }
@@ -309,8 +303,7 @@ void matrixMult<T>::multiply1
 				uint32_t matrixWindow,
 				uint32_t matrixSize,
 				uint32_t key,
-				uint32_t matrixCutSize,
-				uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+				uint32_t matrixCutSize
 				)
 {
   std::vector<T> buffer1;  // use capacity() or reserve() methods here?
@@ -462,8 +455,7 @@ void matrixMult<T>::multiply2
 				uint32_t matrixWindow,
 				uint32_t matrixSize,
 				uint32_t key,
-				uint32_t matrixCutSize,
-				uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+				uint32_t matrixCutSize
 				)
 {
   std::vector<T> buffer1;  // use capacity() or reserve() methods here?
@@ -617,8 +609,7 @@ void matrixMult<T>::multiply3
 				uint32_t matrixWindow,
 				uint32_t matrixSize,
 				uint32_t key,
-				uint32_t matrixCutSize,
-				uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+				uint32_t matrixCutSize
 				)
 {
   std::vector<T> buffer1;  // use capacity() or reserve() methods here?
@@ -773,8 +764,7 @@ void matrixMult<T>::multiply4
 				uint32_t matrixWindow,
 				uint32_t matrixSize,
 				uint32_t key,
-				uint32_t matrixCutSize,
-				uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+				uint32_t matrixCutSize
 				)
 {
   std::vector<T> buffer1;  // use capacity() or reserve() methods here?
@@ -931,8 +921,7 @@ void matrixMult<T>::multiply5
 				uint32_t matrixWindow,
 				uint32_t matrixSize,
 				uint32_t key,
-				uint32_t matrixCutSize,
-				uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+				uint32_t matrixCutSize
 				)
 {
   std::vector<T> buffer1;  // use capacity() or reserve() methods here?

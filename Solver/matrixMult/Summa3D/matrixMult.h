@@ -60,8 +60,7 @@ public:
 		uint32_t matrixWindow,
 		uint32_t matrixSize,
 		uint32_t key,
-		uint32_t matrixCutSize,
-		uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+		uint32_t matrixCutSize
   );
 
   void scalapackMatrixMult(void);	// Extend this later
@@ -90,8 +89,7 @@ private:
 		uint32_t matrixWindow,
 		uint32_t matrixSize,
 		uint32_t key,
-		uint32_t matrixCutSize,
-		uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+		uint32_t matrixCutSize
   );
   void multiply2
   (
@@ -110,8 +108,7 @@ private:
 		uint32_t matrixWindow,
 		uint32_t matrixSize,
 		uint32_t key,
-		uint32_t matrixCutSize,
-		uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+		uint32_t matrixCutSize
   );
   void multiply3
   (
@@ -130,8 +127,7 @@ private:
 		uint32_t matrixWindow,
 		uint32_t matrixSize,
 		uint32_t key,
-		uint32_t matrixCutSize,
-		uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+		uint32_t matrixCutSize
   );
   void multiply4
   (
@@ -150,8 +146,7 @@ private:
 		uint32_t matrixWindow,
 		uint32_t matrixSize,
 		uint32_t key,
-		uint32_t matrixCutSize,
-		uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+		uint32_t matrixCutSize
   );
   void multiply5
   (
@@ -170,8 +165,7 @@ private:
 		uint32_t matrixWindow,
 		uint32_t matrixSize,
 		uint32_t key,
-		uint32_t matrixCutSize,
-		uint32_t layer				// Will layer be needed? I can pass in the specific layer, BUT I need to provide correct size
+		uint32_t matrixCutSize
   );
 
   // The methods above do not need arguments because i will "move" the arguments passed into multiply() into my member variables and then will call one

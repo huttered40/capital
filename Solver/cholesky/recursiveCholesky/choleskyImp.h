@@ -412,7 +412,7 @@ void cholesky<T>::choleskyEngine
   this->theMatrixMultiplier->multiply(this->matrixA[layer], this->holdTransposeL, this->matrixL, dimXstart+shift,
   				dimXend, dimYstart, dimYend-shift, 0, 0, 0, 0, dimXstart+shift, dimXend,
   				dimYstart, dimYend-shift, shift, (matrixSize>>1), 1,
-  				matrixCutSize, layer);
+  				matrixCutSize);
   //MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),0, matrixCutSize, layer);
 
   fillTranspose(dimXstart+shift, dimXend, dimYstart, dimYend-shift, shift, 1);
@@ -424,7 +424,7 @@ void cholesky<T>::choleskyEngine
   this->holdMatrix.resize(shift*shift,0.);	// gets ready to store the temporary results used below
   this->theMatrixMultiplier->multiply(this->matrixL, this->holdTransposeL, this->holdMatrix, dimXstart+shift,
 				dimXend, dimYstart, dimYend-shift, 0, 0, 0, 0, dimXstart, dimXend-shift, dimYstart,
-				dimYend-shift, shift, (matrixSize>>1), 2, matrixCutSize, layer); 
+				dimYend-shift, shift, (matrixSize>>1), 2, matrixCutSize); 
   //MM(dimXstart+shift,dimXend,dimYstart,dimYend-shift,0,0,0,0,dimXstart,dimXend-shift,dimYstart,dimYend-shift,shift,(matrixSize>>1),1, matrixCutSize, layer);
 
   // Big question: CholeskyRecurseBaseCase relies on taking from matrixA, but in this case, we would have to take from a modified matrix via the Schur Complement.
@@ -474,13 +474,13 @@ void cholesky<T>::choleskyEngine
   this->theMatrixMultiplier->multiply(this->matrixL, this->matrixLInverse, this->holdMatrix, dimXstart+shift, dimXend,
 					dimYstart, dimYend-shift, dimXstart, dimXend-shift, dimYstart, dimYend-shift,
 					dimXstart, dimXend-shift, dimYstart, dimYend-shift, shift, (matrixSize>>1), 3,
-					matrixCutSize, layer);
+					matrixCutSize);
 
   //MM(dimXstart+shift,dimXend,dimYstart+shift,dimYend,dimXstart,dimXend-shift,dimYstart,dimYend-shift,dimXstart+shift,dimXend,dimYstart,dimYend-shift,shift,(matrixSize>>1),3, matrixCutSize, layer);    // layer won't matter here
 
   this->theMatrixMultiplier->multiply(this->matrixLInverse, this->holdMatrix, this->matrixLInverse, dimXstart+shift, dimXend,
   					dimYstart+shift, dimYend, dimXstart, dimXend-shift, dimYstart, dimYend-shift, dimXstart+shift,
-  					dimXend, dimYstart, dimYend-shift, shift, (matrixSize>>1), 4, matrixCutSize, layer);
+  					dimXend, dimYstart, dimYend-shift, shift, (matrixSize>>1), 4, matrixCutSize);
   //this->matrixA.pop_back();			// Absolutely critical. Get rid of that memory that we won't use again.
 						// Actually, after reading up on this, popping back won't change the capacity of the vector
 							// so the memory is still sitting there. Won't change until it goes out of scope
