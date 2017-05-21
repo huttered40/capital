@@ -137,10 +137,12 @@ void matrixMult<T>::multiply
 				uint32_t dimXendC,
 				uint32_t dimYstartC,
 				uint32_t dimYendC,
-				uint32_t matrixWindowRow,
-				uint32_t matrixWindowCol,
-				uint32_t matrixSizeRow,
-				uint32_t matrixSizeCol,
+				uint32_t matrixWindowRowA,
+				uint32_t matrixWindowColA,
+				uint32_t matrixWindowColB,
+				uint32_t matrixSizeRowA,
+				uint32_t matrixSizeColA,
+				uint32_t matrixSizeColB,
 				uint32_t key,
 				uint32_t matrixCutSize
 			    	)
@@ -164,8 +166,8 @@ void matrixMult<T>::multiply
 	Matrix Multiplication of a square matrix and a lower triangular matrix
 
 	matrixA - square cut of a square matrix that is packed in a rectangular manner
-	matrixB - full (no cut) triangular matrix that is packed in a triangular manner
-	matrixC - square cut of a triangular matrix that is packed in a triangular manner
+	matrixB - full (no cut) lower triangular matrix that is packed in a triangular manner
+	matrixC - square cut of a lower triangular matrix that is packed in a triangular manner
     */
       multiply1
 		(
@@ -181,8 +183,8 @@ void matrixMult<T>::multiply
 		dimXendC,
 		dimYstartC,
 		dimYendC,
-		matrixWindowRow,		// arbitrary choice between row and col
-		matrixSizeRow,			// arbitrary choice between row and col
+		matrixWindowRowA,		// arbitrary choice between row and col
+		matrixSizeRowA,			// arbitrary choice between row and col
 		matrixCutSize
 		);
       break;
@@ -192,7 +194,7 @@ void matrixMult<T>::multiply
     /*
 	Matrix Multiplication of a square matrix with a square matrix
 	
-	matrixA - square cut of a triangular matrix that is packed in a triangular manner
+	matrixA - square cut of a lower triangular matrix that is packed in a triangular manner
 	matrixB - full (no cut) square matrix that is packed in a square manner
 	matrixC - full (no cut) square matrix that is packed in a square manner
     */
@@ -210,8 +212,8 @@ void matrixMult<T>::multiply
 		dimXendC,
 		dimYstartC,
 		dimYendC,
-		matrixWindowRow,		// arbitrary choice between row and col
-		matrixSizeRow			// arbitrary choice between row and col
+		matrixWindowRowA,		// arbitrary choice between row and col
+		matrixSizeRowA			// arbitrary choice between row and col
 		);
       break;
     }
@@ -220,8 +222,8 @@ void matrixMult<T>::multiply
     /*
 	Matrix Multiplication of a Square matrix and a lower triangular matrix
 	
-	matrixA - square cut of a triangular matrix that is packed in a triangular manner
-	matrixB - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixA - square cut of a lower triangular matrix that is packed in a triangular manner
+	matrixB - triangular cut of a lower triangular matrix that is packed in a triangular manner
 	matrixC - full (no cut) square matrix that is packed in a square manner
     */
       multiply3
@@ -238,8 +240,8 @@ void matrixMult<T>::multiply
 		dimXendC,
 		dimYstartC,
 		dimYendC,
-		matrixWindowRow,		// arbitrary choice between row and col
-		matrixSizeRow			// arbitrary choice between row and col
+		matrixWindowRowA,		// arbitrary choice between row and col
+		matrixSizeRowA			// arbitrary choice between row and col
 		);
       break;
     }
@@ -248,9 +250,9 @@ void matrixMult<T>::multiply
     /*
 	Matrix Multiplication of a Lower triangular and a square matrix
 	
-	matrixA - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixA - triangular cut of a lower triangular matrix that is packed in a triangular manner
 	matrixB - full (no cut) square matrix that is packed in a square manner
-	matrixC - square cut of a triangular matrix that is packed in a triangular manner
+	matrixC - square cut of a lower triangular matrix that is packed in a triangular manner
     */
       multiply4
 		(
@@ -266,8 +268,8 @@ void matrixMult<T>::multiply
 		dimXendC,
 		dimYstartC,
 		dimYendC,
-		matrixWindowRow,		// arbitrary choice between row and col
-		matrixSizeRow			// arbitrary choice between row and col
+		matrixWindowRowA,		// arbitrary choice between row and col
+		matrixSizeRowA			// arbitrary choice between row and col
 		);
       break;
     }
@@ -275,10 +277,12 @@ void matrixMult<T>::multiply
     {
       multiply5
 		(
-		matrixWindowRow,
-		matrixWindowCol,
-		matrixSizeRow,
-		matrixSizeCol
+		matrixWindowRowA,
+		matrixWindowColA,
+		matrixWindowColB,
+		matrixSizeRowA,
+		matrixSizeColA,
+		matrixSizeColB
 		);
       break;
     }
@@ -297,8 +301,8 @@ void matrixMult<T>::multiply
 	Matrix Multiplication of a square matrix and a lower triangular matrix
 
 	matrixA - square cut of a square matrix that is packed in a rectangular manner
-	matrixB - full (no cut) triangular matrix that is packed in a triangular manner
-	matrixC - square cut of a triangular matrix that is packed in a triangular manner
+	matrixB - full (no cut) lower triangular matrix that is packed in a triangular manner
+	matrixC - square cut of a lower triangular matrix that is packed in a triangular manner
 */
 template<typename T>
 void matrixMult<T>::multiply1
@@ -417,7 +421,9 @@ void matrixMult<T>::multiply1
       index++;
     }
   }
-  
+
+  this->matrixB = std::move(buffer2);		// move back. buffer2's contents get sucked out and put into matrixB.
+ 
   cblas_dtrmm(CblasRowMajor,CblasRight,CblasLower,CblasTrans,CblasNonUnit,matrixWindow,matrixWindow,1.,&updatedVector[0], matrixWindow, &buffer1[0], matrixWindow);
   MPI_Allreduce(&buffer1[0],&buffer4[0],buffer1.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
   
@@ -451,7 +457,7 @@ void matrixMult<T>::multiply1
 /*
 	Matrix Multiplication of a square matrix with a square matrix
 	
-	matrixA - square cut of a triangular matrix that is packed in a triangular manner
+	matrixA - square cut of a lower triangular matrix that is packed in a triangular manner
 	matrixB - full (no cut) square matrix that is packed in a square manner
 	matrixC - full (no cut) square matrix that is packed in a square manner
 */
@@ -559,6 +565,8 @@ void matrixMult<T>::multiply2
   // Lets use this->holdMatrix as my matrix C and lets right to it. Then we can perform a move operation on this->holdMatrix into this->matrixA[this->matrixA.size()-1]
   MPI_Allreduce(&buffer3[0],&buffer4[0],buffer3.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
 
+  this->matrixB = std::move(buffer2);		// move data back into matrixB.
+
 
 /*      
       uint64_t tempSize = matrixWindow;		// should be the same as shift was in CholeskyRecurse function
@@ -584,6 +592,7 @@ void matrixMult<T>::multiply2
       MPI_Allreduce(&holdMatrix[0],&this->matrixA[this->matrixA.size()-1][0],this->holdMatrix.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
 */
   
+/*
   uint64_t holdMatrixSize = matrixWindow;
   holdMatrixSize *= matrixWindow;
   //this->holdMatrix.resize(holdMatrixSize,0.);
@@ -601,13 +610,16 @@ void matrixMult<T>::multiply2
       this->matrixC[holdMatrixIndex] = buffer4[index1++];
     }
   }
+*/
+
+  this->matrixC = std::move(buffer4);		// the above for loop was redundant. No copy necessary
 }
 
 /*
 	Matrix Multiplication of a Square matrix and a lower triangular matrix
 	
-	matrixA - square cut of a triangular matrix that is packed in a triangular manner
-	matrixB - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixA - square cut of a lower triangular matrix that is packed in a triangular manner
+	matrixB - triangular cut of a lower triangular matrix that is packed in a triangular manner
 	matrixC - full (no cut) square matrix that is packed in a square manner
 */
 template<typename T>
@@ -743,7 +755,8 @@ void matrixMult<T>::multiply3
       
   cblas_dtrmm(CblasRowMajor,CblasRight,CblasLower,CblasNoTrans,CblasNonUnit,matrixWindow,matrixWindow,1.,&updatedVector[0],matrixWindow,&buffer1[0],matrixWindow);
   MPI_Allreduce(&buffer1[0],&buffer4[0],buffer1.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);	// use buffer4
-  
+
+/*  
   uint64_t holdMatrixSize = matrixWindow;
   holdMatrixSize *= matrixWindow;
   //this->holdMatrix.resize(holdMatrixSize,0.);
@@ -758,12 +771,15 @@ void matrixMult<T>::multiply3
       this->matrixC[index2++] = buffer4[index1++];
     }
   }
+*/
+
+  this->matrixC = std::move(buffer4);		// The above for loop was redundant. No copy necessary.
 }
 
 /*
 	Matrix Multiplication of a Lower triangular and a square matrix
 	
-	matrixA - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixA - triangular cut of a lower triangular matrix that is packed in a triangular manner
 	matrixB - full (no cut) square matrix that is packed in a square manner
 	matrixC - square cut of a triangular matrix that is packed in a triangular manner
 */
@@ -925,22 +941,82 @@ void matrixMult<T>::multiply4
 	Currently used for Q=AR^{-1}
 	
 	matrixA - full (no cut) rectangular matrix that is packed in a rectangular manner
-	matrixB - full (no cut) triangular matrix that is packed in a rectangular manner
+	matrixB - full (no cut) lower triangular matrix that is packed in a (triangular) manner
 	matrixC - full (no cut) rectangular matrix that is packed in a rectangular manner
 */
 template<typename T>
 void matrixMult<T>::multiply5
 				(
-				uint32_t matrixWindowRow,
-				uint32_t matrixWindowCol,
-				uint32_t matrixSizeRow,
-				uint32_t matrixSizeCol
+				uint32_t matrixWindowRowA,
+				uint32_t matrixWindowColA,
+				uint32_t matrixWindowColB,
+				uint32_t matrixSizeRowA,
+				uint32_t matrixSizeColA,
+				uint32_t matrixSizeColB
 				)
 {
-  std::vector<T> buffer1;  // use capacity() or reserve() methods here?
+  std::vector<T> buffer1;
   std::vector<T> buffer2;
 
-  if (this->rowCommRank == this->gridCoords[2])     // different matches on each of the P^(1/3) layers
+  if (this->rowCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
   {
+    buffer1 = std::move(this->matrixA);
+    MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
   }
+  else
+  {
+    uint64_t buffer1Size = matrixWindowRowA;
+    buffer1Size *= matrixWindowColA;
+    buffer1.resize(buffer1Size);
+    // Note that depending on the key, the broadcast received here will be of different sizes. Need care when unpacking it later.
+    MPI_Bcast(&buffer1[0],buffer1.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
+  }
+
+  if (this->columnCommRank == this->gridCoords[2])    // May want to recheck this later if bugs occur.
+  {
+    buffer2 = std::move(this->matrixB);
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
+  }
+  else
+  {
+    uint64_t buffer2Size = matrixWindowColA;
+    buffer2Size *= matrixWindowColB;
+    buffer2.resize(buffer2Size);
+    // Note that depending on the key, the broadcast received here will be of different sizes. Need care when unpacking it later.
+    MPI_Bcast(&buffer2[0],buffer2.size(),MPI_DOUBLE,this->gridCoords[2],this->columnComm);
+  }
+
+
+// NOTE: EVERYTHING BELOW HERE IS UNFINISHED. I ma waiting on converting R (or L) to triangular-packed array first so
+	// that I only communicate the nonzero portion. Then I have to incur the copy loop to copy the elements
+	// into a rectangular-packed array.
+
+
+ 
+  /*
+    Now once here, I have the row data and the column data residing in buffer1 and buffer2
+    I need to use the data in these buffers correctly to calculate partial sums for each place that I own. And store them together in order to
+      properly reduce the sums. So use another temporary buffer. Only update this->matrixU or this->matrixL after the reduction if root or after the final
+        broadcast if non-root.
+  */
+
+
+  // So iterate over everything that we own and calculate its partial sum that will be used in reduction
+  // buffer3 will be used to hold the partial matrix sum result that will contribute to the reduction.
+  uint64_t buffer4Size = matrixWindowRowA;
+  buffer4Size *= matrixWindowColB;
+  std::vector<T> buffer4(buffer4Size,0.);	// need to give this outside scope
+      
+  // Matrix Multiplication -> (square,square)
+
+  uint64_t buffer3Size = matrixWindowRowA;
+  buffer3Size *= matrixWindowColB;
+  std::vector<T> buffer3(buffer3Size);
+
+  //need a dtrmm here instead since R is triangular. But R has to be in a square matrix :(. Extra copy necessary.
+
+  // Lets use this->holdMatrix as my matrix C and lets right to it. Then we can perform a move operation on this->holdMatrix into this->matrixA[this->matrixA.size()-1]
+  MPI_Allreduce(&buffer3[0],&buffer4[0],buffer3.size(),MPI_DOUBLE,MPI_SUM,this->depthComm);
+
+  this->matrixB = std::move(buffer2);		// move data back into matrixB.
 }

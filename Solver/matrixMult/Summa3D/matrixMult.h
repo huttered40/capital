@@ -57,10 +57,12 @@ public:
 		uint32_t dimXendC,
 		uint32_t dimYstartC,
 		uint32_t dimYendC,
-		uint32_t matrixWindowRow,
-		uint32_t matrixWindowCol,
-		uint32_t matrixSizeRow,
-		uint32_t matrixSizeCol,
+		uint32_t matrixWindowRowA,
+		uint32_t matrixWindowColA,
+		uint32_t matrixWindowColB,
+		uint32_t matrixSizeRowA,
+		uint32_t matrixSizeColA,
+		uint32_t matrixSizeColB,
 		uint32_t key,
 		uint32_t matrixCutSize
   );
@@ -78,8 +80,8 @@ private:
 	Matrix Multiplication of a square matrix and a lower triangular matrix
 
 	matrixA - square cut of a square matrix that is packed in a rectangular manner
-	matrixB - full (no cut) triangular matrix that is packed in a triangular manner
-	matrixC - square cut of a triangular matrix that is packed in a triangular manner
+	matrixB - full (no cut) lower triangular matrix that is packed in a triangular manner
+	matrixC - square cut of a lower triangular matrix that is packed in a triangular manner
 */
   void multiply1
   (
@@ -103,7 +105,7 @@ private:
 /*
 	Matrix Multiplication of a square matrix with a square matrix
 	
-	matrixA - square cut of a triangular matrix that is packed in a triangular manner
+	matrixA - square cut of a lower triangular matrix that is packed in a triangular manner
 	matrixB - full (no cut) square matrix that is packed in a square manner
 	matrixC - full (no cut) square matrix that is packed in a square manner
 */
@@ -128,8 +130,8 @@ private:
 /*
 	Matrix Multiplication of a Square matrix and a lower triangular matrix
 	
-	matrixA - square cut of a triangular matrix that is packed in a triangular manner
-	matrixB - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixA - square cut of a lower triangular matrix that is packed in a triangular manner
+	matrixB - triangular cut of a lower triangular matrix that is packed in a triangular manner
 	matrixC - full (no cut) square matrix that is packed in a square manner
 */
   void multiply3
@@ -153,9 +155,9 @@ private:
 /*
 	Matrix Multiplication of a Lower triangular and a square matrix
 	
-	matrixA - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixA - triangular cut of a lower triangular matrix that is packed in a triangular manner
 	matrixB - full (no cut) square matrix that is packed in a square manner
-	matrixC - square cut of a triangular matrix that is packed in a triangular manner
+	matrixC - square cut of a lower triangular matrix that is packed in a triangular manner
 */
   void multiply4
   (
@@ -176,10 +178,12 @@ private:
   );
   void multiply5
   (
-		uint32_t matrixWindowRow,
-		uint32_t matrixWindowCol,
-		uint32_t matrixSizeRow,
-		uint32_t matrixSizeCol
+		uint32_t matrixWindowRowA,
+		uint32_t matrixWindowColA,
+		uint32_t matrixWindowColB,
+		uint32_t matrixSizeRowA,
+		uint32_t matrixSizeColA,
+		uint32_t matrixSizeColB
   );
 
   // The methods above do not need arguments because i will "move" the arguments passed into multiply() into my member variables and then will call one
