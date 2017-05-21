@@ -40,7 +40,7 @@ int main(int argc, char **argv)
   std::vector<double> matR(matRSize); 
 
   start = clock(); 							// start timer
-  mySolver.qrSolve(matA, matQ, matR, false);		// run algorithm
+  mySolver.qrSolve(matA, matQ, matR, false, 0);		// run algorithm
   duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
   // I want the average of each process's runtime, so I can use a reduction

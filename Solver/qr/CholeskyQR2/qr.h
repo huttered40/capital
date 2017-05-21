@@ -30,7 +30,7 @@ public:
 
   qr(uint32_t rank, uint32_t size, int argc, char **argv, MPI_Comm comm);
   
-  void qrSolve(std::vector<T> &matrixA, std::vector<T> &matrixL, std::vector<T> &matrixLI, bool isData);
+  void qrSolve(std::vector<T> &matrixA, std::vector<T> &matrixL, std::vector<T> &matrixLI, bool isData, int mode);
   void qrScalapack();				// this routine is implemented in a special file, scalapackCholesky.h
   void qrLAPack(std::vector<T> &data, std::vector<T> &dataQ, std::vector<T> &dataR, uint32_t m, uint32_t n, bool needData);
   void getResidual(std::vector<T> &matA, std::vector<T> &matL, std::vector<T> &matLI);
@@ -46,9 +46,9 @@ private:
   void constructGridQR();
   void distributeData(std::vector<T> &matA, bool cheat);
   void distributeDataLocal(std::vector<T> &matA);
-  void choleskyQR_1D(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR);
-  void choleskyQR_3D(void);
-  void choleskyQR_Tunable(void);		// these two functions are unimplemented for now.
+  void choleskyQR_Tunable(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR);
+  void choleskyQR_1D(void);
+  void choleskyQR_3D(void);		// these two functions are unimplemented for now.
 
 /*
     Each data owns a cyclic subset of the matrix (n^2/P^(2/3)) in size, which is what the 3-d p-grid algorithm allows

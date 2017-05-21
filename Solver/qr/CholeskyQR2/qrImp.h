@@ -332,7 +332,7 @@ void qr<T>::distributeDataLocal(std::vector<T> &matA)
   The solve method will initiate the solving of this Cholesky Factorization algorithm
 */
 template<typename T>
-void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matQ, std::vector<T> &matR, bool isData)
+void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matQ, std::vector<T> &matR, bool isData, int mode)
 {
   // use resize or reserve here for matrixA, matrixL, matrixLI to make sure that enough memory is used. Might be a better way to do this later
   matA.resize(this->localRowSize*this->localColSize);		// Makes sure that the user's data structures are of proper size.
@@ -355,24 +355,45 @@ void qr<T>::qrSolve(std::vector<T> &matA, std::vector<T> &matQ, std::vector<T> &
   std::vector<T> tempR1(matR.size(),0.);
   std::vector<T> tempR2(matR.size(),0.);
   std::vector<T> tempQ(matQ.size(), 0.);		// Try to think of a way to get the memory footprint down here. Can I re-use anything?
-  choleskyQR_1D(matA,tempQ,tempR1);
-  choleskyQR_1D(tempQ,matQ,tempR2);
   
-  // One more multiplication step, mat3 = tempR2*tempR1, via MM for now, may be able to exploit some structure in it for cheaper?
+  switch(mode)
+  {
+    case 0:
+    {
+      choleskyQR_Tunable(matA,tempQ,tempR1);
+      choleskyQR_Tunable(tempQ,matQ,tempR2);
+  
+      // One more multiplication step, mat3 = tempR2*tempR1, via MM for now, may be able to exploit some structure in it for cheaper?
 
-  // Need to convert this into MM3D code so that it recognizes when the communicator is just single guy
-  //matrixMult<double>
+      // Need to convert this into MM3D code so that it recognizes when the communicator is just single guy
+      //matrixMult<double>
 
-  // At some point, try to exploit the triangular structure here. dgemm might be overkill.
-  cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, this->localColSize, this->localColSize,
-    this->localColSize, 1., &tempR2[0], this->localColSize, &tempR1[0], this->localColSize, 0., &matR[0], this->localColSize);
+      // At some point, try to exploit the triangular structure here. dgemm might be overkill.
+      cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, this->localColSize, this->localColSize,
+        this->localColSize, 1., &tempR2[0], this->localColSize, &tempR1[0], this->localColSize, 0., &matR[0], this->localColSize);
+      break;
+    }
+    case 1:
+    {
+      break;
+    }
+    case 2:
+    {
+      break;
+    }
+    default:
+    {
+      std::cout << "Not a valid mode. Choose between 0-2." << std::endl;
+      break;
+    }
+  }
 }
 
 /*
   Write function description
 */
 template<typename T>
-void qr<T>::choleskyQR_1D(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR)
+void qr<T>::choleskyQR_Tunable(std::vector<T> &matrixA, std::vector<T> &matrixQ, std::vector<T> &matrixR)
 {
   // do the A^{T}*A matrix multiplication
   // call the cholesky
@@ -436,17 +457,19 @@ void qr<T>::choleskyQR_1D(std::vector<T> &matrixA, std::vector<T> &matrixQ, std:
   Write function description
 */
 template<typename T>
-void qr<T>::choleskyQR_3D(void)
-{}
+void qr<T>::choleskyQR_1D(void)
+{
+ // fill in later
+}
 
 /*
   Write function description
   This function should work for any c x d x c processor grid and for any matrix.
 */
 template<typename T>
-void qr<T>::choleskyQR_Tunable(void)
+void qr<T>::choleskyQR_3D(void)
 {
-
+  // fill in later
 }
 
 
