@@ -166,7 +166,7 @@ void matrixMult<T>::multiply
 		dimYendA,
 		dimXstartB,
 		dimXendB,
-		dimYstartA,
+		dimYstartB,			// this was dimYstartA before. I have no idea how this did not cause errors.
 		dimYendB,
 		dimXstartC,
 		dimXendC,
@@ -189,7 +189,7 @@ void matrixMult<T>::multiply
 		dimYendA,
 		dimXstartB,
 		dimXendB,
-		dimYstartA,
+		dimYstartB,			// this was dimYstartA before. I have no idea how this did not cause errors.
 		dimYendB,
 		dimXstartC,
 		dimXendC,
@@ -212,7 +212,7 @@ void matrixMult<T>::multiply
 		dimYendA,
 		dimXstartB,
 		dimXendB,
-		dimYstartA,
+		dimYstartB,			// this was dimYstartA before. I have no idea how this did not cause errors.
 		dimYendB,
 		dimXstartC,
 		dimXendC,
@@ -235,7 +235,7 @@ void matrixMult<T>::multiply
 		dimYendA,
 		dimXstartB,
 		dimXendB,
-		dimYstartA,
+		dimYstartB,			// this was dimYstartA before. I have no idea how this did not cause errors.
 		dimYendB,
 		dimXstartC,
 		dimXendC,
@@ -258,7 +258,7 @@ void matrixMult<T>::multiply
 		dimYendA,
 		dimXstartB,
 		dimXendB,
-		dimYstartA,
+		dimYstartB,			// this was dimYstartA before. I have no idea how this did not cause errors.
 		dimYendB,
 		dimXstartC,
 		dimXendC,
