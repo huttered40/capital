@@ -451,12 +451,11 @@ void qr<T>::choleskyQR_Tunable(std::vector<T> &matrixA, std::vector<T> &matrixQ,
 */
   MPI_Bcast(&matrixB[0], matrixB.size(), MPI_DOUBLE, (this->tunableGridCoords[1]%this->pGridDimTune), this->subGrid5);
 
-  MPI_Comm tempComm;							// change name later
-  MPI_Comm_split(MPI_COMM_WORLD, this->worldRank, this->worldRank, &tempComm);
-  cholesky<double> myCholesky(0, 1, 3, this->localColSize, tempComm);		// Note that each processor that calls thinks its the only one
+  cholesky<double> myCholesky(0, 1, 3, this->localColSize, this->subGrid6);		// Note that each processor that calls thinks its the only one
   myCholesky.choleskySolve(matrixB, matrixR, tempInverse, true);
   expandMatrix(tempInverse,this->localColSize);				// There is really no need for this. Change the code in CF3D
 
+  // This needs to be changed to a MM3D call. MM3D might need to be modified to allow for a nonsquare matrix multiplication.
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, this->localRowSize, this->localColSize,
     this->localColSize, 1., &matrixA[0], this->localColSize, &tempInverse[0], this->localColSize, 0., &matrixQ[0], this->localColSize);
 }
