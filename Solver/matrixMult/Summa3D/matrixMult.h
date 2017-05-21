@@ -72,6 +72,13 @@ private:
   void constructGridMM(MPI_Comm grid, uint32_t dim);
 
 
+/*
+	Matrix Multiplication of a square matrix and a lower triangular matrix
+
+	matrixA - square cut of a square matrix that is packed in a rectangular manner
+	matrixB - full (no cut) triangular matrix that is packed in a triangular manner
+	matrixC - square cut of a triangular matrix that is packed in a triangular manner
+*/
   void multiply1
   (
          	uint32_t dimXstartA,
@@ -90,6 +97,14 @@ private:
 		uint32_t matrixSize,
 		uint32_t matrixCutSize
   );
+
+/*
+	Matrix Multiplication of a square matrix with a square matrix
+	
+	matrixA - square cut of a triangular matrix that is packed in a triangular manner
+	matrixB - full (no cut) square matrix that is packed in a square manner
+	matrixC - full (no cut) square matrix that is packed in a square manner
+*/
   void multiply2
   (
          	uint32_t dimXstartA,
@@ -107,6 +122,14 @@ private:
 		uint32_t matrixWindow,
 		uint32_t matrixSize
   );
+
+/*
+	Matrix Multiplication of a Square matrix and a lower triangular matrix
+	
+	matrixA - square cut of a triangular matrix that is packed in a triangular manner
+	matrixB - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixC - full (no cut) square matrix that is packed in a square manner
+*/
   void multiply3
   (
          	uint32_t dimXstartA,
@@ -124,6 +147,14 @@ private:
 		uint32_t matrixWindow,
 		uint32_t matrixSize
   );
+
+/*
+	Matrix Multiplication of a Lower triangular and a square matrix
+	
+	matrixA - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixB - full (no cut) square matrix that is packed in a square manner
+	matrixC - square cut of a triangular matrix that is packed in a triangular manner
+*/
   void multiply4
   (
          	uint32_t dimXstartA,

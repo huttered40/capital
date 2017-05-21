@@ -158,6 +158,13 @@ void matrixMult<T>::multiply
   {
     case 1:
     {
+    /*
+	Matrix Multiplication of a square matrix and a lower triangular matrix
+
+	matrixA - square cut of a square matrix that is packed in a rectangular manner
+	matrixB - full (no cut) triangular matrix that is packed in a triangular manner
+	matrixC - square cut of a triangular matrix that is packed in a triangular manner
+    */
       multiply1
 		(
 		dimXstartA,
@@ -180,6 +187,13 @@ void matrixMult<T>::multiply
     }
     case 2:
     {
+    /*
+	Matrix Multiplication of a square matrix with a square matrix
+	
+	matrixA - square cut of a triangular matrix that is packed in a triangular manner
+	matrixB - full (no cut) square matrix that is packed in a square manner
+	matrixC - full (no cut) square matrix that is packed in a square manner
+    */
       multiply2
 		(
 		dimXstartA,
@@ -201,6 +215,13 @@ void matrixMult<T>::multiply
     }
     case 3:
     {
+    /*
+	Matrix Multiplication of a Square matrix and a lower triangular matrix
+	
+	matrixA - square cut of a triangular matrix that is packed in a triangular manner
+	matrixB - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixC - full (no cut) square matrix that is packed in a square manner
+    */
       multiply3
 		(
 		dimXstartA,
@@ -222,6 +243,13 @@ void matrixMult<T>::multiply
     }
     case 4:
     {
+    /*
+	Matrix Multiplication of a Lower triangular and a square matrix
+	
+	matrixA - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixB - full (no cut) square matrix that is packed in a square manner
+	matrixC - square cut of a triangular matrix that is packed in a triangular manner
+    */
       multiply4
 		(
 		dimXstartA,
@@ -275,6 +303,10 @@ void matrixMult<T>::multiply
 
 /*
 	Matrix Multiplication of a square matrix and a lower triangular matrix
+
+	matrixA - square cut of a square matrix that is packed in a rectangular manner
+	matrixB - full (no cut) triangular matrix that is packed in a triangular manner
+	matrixC - square cut of a triangular matrix that is packed in a triangular manner
 */
 template<typename T>
 void matrixMult<T>::multiply1
@@ -426,6 +458,10 @@ void matrixMult<T>::multiply1
 
 /*
 	Matrix Multiplication of a square matrix with a square matrix
+	
+	matrixA - square cut of a triangular matrix that is packed in a triangular manner
+	matrixB - full (no cut) square matrix that is packed in a square manner
+	matrixC - full (no cut) square matrix that is packed in a square manner
 */
 template<typename T>
 void matrixMult<T>::multiply2
@@ -576,8 +612,11 @@ void matrixMult<T>::multiply2
 }
 
 /*
-	Matrix Multiplication of a Square matrix and a lower triangular matrix (same as multiply1() ?? Yes, but a temporary buffer is to be used as is
-		needed in CholeskyMM
+	Matrix Multiplication of a Square matrix and a lower triangular matrix
+	
+	matrixA - square cut of a triangular matrix that is packed in a triangular manner
+	matrixB - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixC - full (no cut) square matrix that is packed in a square manner
 */
 template<typename T>
 void matrixMult<T>::multiply3
@@ -731,6 +770,10 @@ void matrixMult<T>::multiply3
 
 /*
 	Matrix Multiplication of a Lower triangular and a square matrix
+	
+	matrixA - triangular cut of a triangular matrix that is packed in a triangular manner
+	matrixB - full (no cut) square matrix that is packed in a square manner
+	matrixC - square cut of a triangular matrix that is packed in a triangular manner
 */
 template<typename T>
 void matrixMult<T>::multiply4
