@@ -9,8 +9,9 @@
 #include <vector>
 #include <mpi.h>
 
+// We need the header files that contain the declarations of the c-extensions
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
-#include "./../../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
+// #include "/home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/LAPACKE/include/lapacke.h"
 
 using namespace std;
 

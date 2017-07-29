@@ -19,7 +19,7 @@
 //#include <math.h>
 #include <assert.h>
 #include <cblas.h>	// OpenBLAS library. Will need to be linked in the Makefile
-#include "./../../../OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
+#include "/home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/LAPACKE/include/lapacke.h"
 
 #include "./../../matrixMult/Summa3D/matrixMult.h"
 
