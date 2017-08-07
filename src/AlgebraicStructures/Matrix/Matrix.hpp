@@ -10,13 +10,19 @@ Matrix<T,U>::Matrix()
 }
 
 template<typename T, typename U>
+Matrix<T,U>::Matrix(U dimensionX, U dimensionY)
+{
+  
+}
+
+template<typename T, typename U>
 Matrix<T,U>::Matrix(const Matrix& rhs)
 {
   // how can we prevent certain types T??????
   this->_dimensionX{rhs._dimensionX};
   this->_dimensionY{rhs._dimensionY};
   this->_matrix.resize(rhs_.dimensionX);
-  this->_data.resize(rhs._dimensionX * rhs._dimensionY);	// give a default value for whatever T is?
+  this->_matrix[0] = new T[rhs._dimensionX * rhs._dimensionY];
   
   U offset{0};
   for (auto& ptr : this->_matrix)
@@ -46,6 +52,6 @@ Matrix& Matrix<T,U>::operator=(Matrix&& rhs)
 template<typename T, typename U>
 Matrix<T,U>::~Matrix()
 {
-  // I could manually clear the data structures here, but its not necessary
+  delete[] this->_matrix[0];
 }
 
