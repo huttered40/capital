@@ -19,9 +19,9 @@ template<typename T, typename U>
 Matrix<T,U>::Matrix(const Matrix& rhs)
 {
   // how can we prevent certain types T??????
-  this->_dimensionX{rhs._dimensionX};
-  this->_dimensionY{rhs._dimensionY};
-  this->_matrix.resize(rhs_.dimensionX);
+  this->_dimensionX = {rhs._dimensionX};
+  this->_dimensionY = {rhs._dimensionY};
+  this->_matrix.resize(rhs._dimensionX);
   this->_matrix[0] = new T[rhs._dimensionX * rhs._dimensionY];
   
   U offset{0};
@@ -40,18 +40,31 @@ Matrix<T,U>::Matrix(Matrix&& rhs)
 }
 
 template<typename T, typename U>
-Matrix& Matrix<T,U>::operator=(const Matrix& rhs)
+Matrix<T,U>& Matrix<T,U>::operator=(const Matrix& rhs)
 {
+  return *this;
 }
 
 template<typename T, typename U>
-Matrix& Matrix<T,U>::operator=(Matrix&& rhs)
+Matrix<T,U>& Matrix<T,U>::operator=(Matrix&& rhs)
 {
+  return *this;
 }
 
 template<typename T, typename U>
 Matrix<T,U>::~Matrix()
 {
-  delete[] this->_matrix[0];
+  if ((this->_matrix.size() > 0) && (this->_matrix[0] != nullptr))
+  {
+    delete[] this->_matrix[0];
+  }
 }
+
+template<typename T, typename U>
+void Matrix<T,U>::serialize(const Matrix& rhs)
+{}
+
+template<typename T, typename U>
+void Matrix<T,U>::serialize(Matrix&& rhs)
+{}
 

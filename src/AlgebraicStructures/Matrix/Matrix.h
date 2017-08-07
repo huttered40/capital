@@ -18,8 +18,11 @@ public:
   Matrix& operator=(Matrix&& rhs);
   ~Matrix();
 
-  .. I want to have a serialize method that will give me say an upper triangular
-  .. we can do this without creating another full object or copying by just iterating over the pointer offsets and modifying them.
+  //I want to have a serialize method that will give me say an upper triangular
+  //  we can do this without creating another full object or copying by just iterating over the pointer offsets and modifying them.
+  //  We should overload the method so that there can be 2 ways: copying into a new matrix and moving into a new matrix.
+  void serialize(const Matrix& rhs);
+  void serialize(Matrix&& rhs);
 
   // create my own allocator class?
 

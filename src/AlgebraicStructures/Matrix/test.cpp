@@ -10,6 +10,6 @@ using std::cout;
 
 int main(void)
 {
-  cout << "Ed Hutter\n";
+  Matrix<double,int> theMatrix;
   return 0;
 }
