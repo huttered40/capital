@@ -14,10 +14,9 @@ int main(void)
   //   from the blueprint we provided.
 
   Matrix<double,int,MatrixAllocatorContiguous<double,int>,MatrixDistributerCyclic<double,int,std::vector<double*>>> theMatrix(5,5,10,10);
-/*
-  Matrix<double,int> theMatrix2{theMatrix};
-  const Matrix<double,int>& theMatrix3 = theMatrix2;
-  Matrix<double,int> theMatrix4 = std::move(theMatrix2);
-*/
+  Matrix<double,int,MatrixAllocatorContiguous<double,int>,MatrixDistributerCyclic<double,int,std::vector<double*>>> theMatrix2{theMatrix};
+  const Matrix<double,int,MatrixAllocatorContiguous<double,int>,MatrixDistributerCyclic<double,int,std::vector<double*>>>& theMatrix3 = theMatrix2;
+  Matrix<double,int,MatrixAllocatorContiguous<double,int>,MatrixDistributerCyclic<double,int,std::vector<double*>>> theMatrix4 = std::move(theMatrix2);
+
   return 0;
 }

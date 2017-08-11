@@ -42,8 +42,8 @@ public:
 
   explicit Matrix() = delete;
   explicit Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);
-  explicit Matrix(const Matrix& rhs);
-  explicit Matrix(Matrix&& rhs);
+  Matrix(const Matrix& rhs);
+  Matrix(Matrix&& rhs);
   Matrix& operator=(const Matrix& rhs);
   Matrix& operator=(Matrix&& rhs);
   ~Matrix();
