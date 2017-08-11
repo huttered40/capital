@@ -28,8 +28,6 @@ Matrix<T,U,Allocator,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDi
 template<typename T, typename U, class Allocator, class Distributer>
 Matrix<T,U,Allocator,Distributer>::Matrix(const Matrix& rhs)
 {
-  // how can we prevent certain types T??????
-  
   copy(rhs);
   return;
 }
@@ -85,7 +83,7 @@ void Matrix<T,U,Allocator,Distributer>::copy(const Matrix& rhs)
   U offset{0};
   for (auto& ptr : this->_matrix)
   {
-    ptr = this->_matrix[offset];
+    ptr = &this->_matrix[0][offset];
     offset += rhs._dimensionY;
   }
   return;
@@ -116,14 +114,22 @@ void Matrix<T,U,Allocator,Distributer>::Serialize(Matrix&& rhs)
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-void Matrix<T,U,Allocator,Distributer>::Distribute()
+void Matrix<T,U,Allocator,Distributer>::Distribute(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY)
 {
   // call a MatrixSerialize protected static method
-  Distributer::Distribute(this->_matrix, this->_dimensionX, this->_dimensionY, this->_globalDimensionX, this->_globalDimensionY);
+  Distributer::Distribute(this->_matrix, this->_dimensionX, this->_dimensionY, localPgridX, localPgridY, globalPgridX, globalPgridY);
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-void Matrix<T,U,Allocator,Distributer>::print()
+void Matrix<T,U,Allocator,Distributer>::print() const
 {
   // just regular print of the local matrix.
+  for (const auto& rows : this->_matrix)
+  {
+    for (int j=0; j<this->_dimensionY; j++)
+    {
+      std::cout << " " << rows[j];
+    }
+    std::cout << "\n";
+  }
 }

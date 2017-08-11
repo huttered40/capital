@@ -6,6 +6,8 @@
 // System includes
 #include <iostream>
 #include <vector>
+#include <cstdlib>
+#include <cassert>
 
 // Local includes -> Note that this class should need to know nothing about the Matrix class.
 
@@ -32,7 +34,7 @@ public:
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
-  static void Distribute(std::vector<T*>& matrix, U dimension, U dimensionY, U globalDimensionX, U globalDimensionY);
+  static void Distribute(std::vector<T*>& matrix, U dimension, U dimensionY, int localPgridX, int localPgridY, int globalPgridX, int globalPgridY);
 };
 
 // We must provide the template class definitions below. Read up on why exactly we need to do this.

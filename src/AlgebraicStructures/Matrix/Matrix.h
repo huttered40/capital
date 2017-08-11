@@ -53,11 +53,11 @@ public:
   void Serialize(Matrix&& matrix);
 
   // Host method, will call Allocator<T,U,?>::Distribute(...) method
-  void Distribute();
+  void Distribute(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY);
 
   // Just a local print. For a distributed print, we must implement another class that takes the Matrix and operates on it.
   //   That is not something that this class policy needs to worry about.
-  void print();
+  void print() const;
 
   // create my own allocator class using the template parameter? Yes, I want to do this in the future.
 

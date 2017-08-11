@@ -17,8 +17,8 @@ int main(void)
   MatrixType1 theMatrix(5,5,10,10);
   MatrixType1 theMatrix2{theMatrix};
   const MatrixType1& theMatrix3 = theMatrix2;
-  theMatrix2.Distribute();
+  theMatrix2.Distribute(0,0,4,4);
   MatrixType1 theMatrix4 = std::move(theMatrix2);
-
+  theMatrix4.print();
   return 0;
 }
