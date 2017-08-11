@@ -2,19 +2,23 @@
 
 // #include "Matrix.h"  -> Compiler needs the full definition of the templated class in order to instantiate it.
 
+/*
 template<typename T, typename U>
 Matrix<T,U>::Matrix()
 {
   // I want to prevent this entirely. Need to read into = delete() and = default
   // Maybe I just dont provide a templated member function for it? Aren't there corner cases here?
 }
+*/
 
 template<typename T, typename U>
-Matrix<T,U>::Matrix(U dimensionX, U dimensionY)
+Matrix<T,U>::Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY)
 {
   // how can we prevent certain types T??????
   this->_dimensionX = {dimensionX};
   this->_dimensionY = {dimensionY};
+  this->_globalDimensionX = {globalDimensionX};
+  this->_globalDimensionY = {globalDimensionY};
   this->_matrix.resize(dimensionX);
   this->_matrix[0] = new T[dimensionX * dimensionY];
   
@@ -112,3 +116,15 @@ template<typename T, typename U>
 void Matrix<T,U>::serialize(Matrix&& rhs)
 {}
 
+template<typename T, typename U>
+void Matrix<T,U>::distributeCyclic()
+{
+  // act on the Matrix.
+
+}
+
+template<typename T,typename U>
+void Matrix<T,U>::print()
+{
+  // just print the matrix.
+}
