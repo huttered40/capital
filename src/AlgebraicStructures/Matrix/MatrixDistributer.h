@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#ifndef MATRIX_DISTRIBUTION_H_
-#define MATRIX_DISTRIBUTION_H_
+#ifndef MATRIX_DISTRIBUTER_H_
+#define MATRIX_DISTRIBUTER_H_
 
 // System includes
 #include <iostream>
@@ -10,16 +10,16 @@
 // Local includes -> Note that this class should need to know nothing about the Matrix class.
 
 template<typename T, typename U, typename Z>
-class MatrixDistributionCyclic
+class MatrixDistributerCyclic
 {
 public:
   // Prevent anyone from instantiating this class.
   // It is used solely to separate the policy of Matrix distribution
   //   from the Matrix class.
-  MatrixDistributionCyclic() = delete;
-  MatrixDistributionCyclic(const MatrixDistributionCyclic& rhs) = delete;
-  MatrixDistributionCyclic(MatrixDistributionCyclic&& rhs) = delete;
-  ~MatrixDistributionCyclic() = delete;
+  MatrixDistributerCyclic() = delete;
+  MatrixDistributerCyclic(const MatrixDistributerCyclic& rhs) = delete;
+  MatrixDistributerCyclic(MatrixDistributerCyclic&& rhs) = delete;
+  ~MatrixDistributerCyclic() = delete;
 
 protected:
   // Reason why we must provide a templated parameter here is because
@@ -40,6 +40,6 @@ protected:
 };
 
 // We must provide the template class definitions below. Read up on why exactly we need to do this.
-#include "MatrixDistribution.hpp"
+#include "MatrixDistributer.hpp"
 
-#elif /* MATRIX_DISTRIBUTION_H_ */
+#endif /* MATRIX_DISTRIBUTER_H_ */

@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-template<typename T, typename U, template<> >
-static void MatrixDistributionCyclic<T,U,std::vector<T*>>::Distribute
+template<typename T, typename U>
+static void MatrixDistributerCyclic<T,U,std::vector<T*>>::Distribute
 		(
 		  std::vector<T*> matrix,
 		  U dimensionX,

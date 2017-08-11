@@ -11,7 +11,7 @@ Matrix<T,U>::Matrix()
 }
 */
 
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
+template<typename T, typename U, class Allocator, class Distributer>
 Matrix<T,U>::Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY)
 {
   // how can we prevent certain types T??????
@@ -32,7 +32,7 @@ Matrix<T,U>::Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDime
   
 }
 
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
+template<typename T, typename U, class Allocator, class Distributer>
 Matrix<T,U>::Matrix(const Matrix& rhs)
 {
   // how can we prevent certain types T??????
@@ -41,7 +41,7 @@ Matrix<T,U>::Matrix(const Matrix& rhs)
   return;
 }
 
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
+template<typename T, typename U, class Allocator, class Distributer>
 Matrix<T,U>::Matrix(Matrix&& rhs)
 {
   // Use std::forward in the future.
@@ -49,7 +49,7 @@ Matrix<T,U>::Matrix(Matrix&& rhs)
   return;
 }
 
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
+template<typename T, typename U, class Allocator, class Distributer>
 Matrix<T,U>& Matrix<T,U>::operator=(const Matrix& rhs)
 {
   if (this != &rhs)
@@ -59,7 +59,7 @@ Matrix<T,U>& Matrix<T,U>::operator=(const Matrix& rhs)
   return *this;
 }
 
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
+template<typename T, typename U, class Allocator, class Distributer>
 Matrix<T,U>& Matrix<T,U>::operator=(Matrix&& rhs)
 {
   // Use std::forward in the future.
@@ -70,7 +70,7 @@ Matrix<T,U>& Matrix<T,U>::operator=(Matrix&& rhs)
   return *this;
 }
 
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
+template<typename T, typename U, class Allocator, class Distributer>
 Matrix<T,U>::~Matrix()
 {
   if ((this->_matrix.size() > 0) && (this->_matrix[0] != nullptr))
@@ -79,7 +79,7 @@ Matrix<T,U>::~Matrix()
   }
 }
 
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
+template<typename T, typename U, class Allocator, class Distributer>
 void Matrix<T,U>::copy(const Matrix& rhs)
 {
   this->_dimensionX = {rhs._dimensionX};
@@ -98,7 +98,7 @@ void Matrix<T,U>::copy(const Matrix& rhs)
   return;
 }
 
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
+template<typename T, typename U, class Allocator, class Distributer>
 void Matrix<T,U>::mover(Matrix&& rhs)
 {
   this->_dimensionX = {rhs._dimensionX};
@@ -108,23 +108,26 @@ void Matrix<T,U>::mover(Matrix&& rhs)
   return;
 }
 
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
-void Matrix<T,U>::serialize(const Matrix& rhs)
-{}
-
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
-void Matrix<T,U>::serialize(Matrix&& rhs)
-{}
-
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
-void Matrix<T,U>::distributeCyclic()
+template<typename T, typename U, class Allocator, class Distributer>
+void Matrix<T,U>::Serialize(const Matrix& rhs)
 {
-  // act on the Matrix.
-
+  // call a MatrixSerialize protected static method.
 }
 
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
+template<typename T, typename U, class Allocator, class Distributer>
+void Matrix<T,U>::Serialize(Matrix&& rhs)
+{
+  // call a MatrixSerialize protected static method
+}
+
+template<typename T, typename U, class Allocator, class Distributer>
+void Matrix<T,U>::Distribute()
+{
+  // call a MatrixSerialize protected static method
+}
+
+template<typename T, typename U, class Allocator, class Distributer>
 void Matrix<T,U>::print()
 {
-  // just print the matrix.
+  // just regular print of the local matrix.
 }

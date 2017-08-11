@@ -15,4 +15,4 @@ protected:
 
 #include "MatrixSerializer.hpp"
 
-#elif MATRIX_SERIALIZER_H_
+#endif /* MATRIX_SERIALIZER_H_ */

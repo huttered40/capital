@@ -3,8 +3,15 @@
 #ifndef MATRIX_H_
 #define MATRIX_H_
 
-/* system includes */
+// System includes
 #include <vector>
+#include <iostream>
+
+// Local includes -- the policy classes
+#include "MatrixDistributer.h"
+#include "MatrixAllocator.h"
+// Local includes -- non-policy classes
+#include "MatrixSerializer.h"
 
 /*
   Divide the Matrix class into policies.
@@ -23,7 +30,7 @@
   the policy class will be treated as a friend class so that we can make the static method a protected member and prevent
   the user from directly using the class.
 */
-template<typename T, typename U, class Allocator, class Distributer, class Serializer>
+template<typename T, typename U, class Allocator, class Distributer>
 class Matrix
 {
 public:
@@ -31,6 +38,7 @@ public:
   // Mark these two classes as friends so that we can use their protected members.
   friend Allocator;
   friend Distributer;
+  friend MatrixSerializer;
 
   explicit Matrix() = delete;
   explicit Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);
@@ -43,8 +51,8 @@ public:
   //I want to have a serialize method that will give me say an upper triangular
   //  we can do this without creating another full object or copying by just iterating over the pointer offsets and modifying them.
   //  We should overload the method so that there can be 2 ways: copying into a new matrix and moving into a new matrix.
-  void serialize(const Matrix& rhs);
-  void serialize(Matrix&& rhs);
+  void Serialize(const Matrix& matrix);
+  void Serialize(Matrix&& matrix);
 
   // Host method, will call Allocator<T,U,?>::Distribute(...) method
   void Distribute();
@@ -63,6 +71,7 @@ private:
   std::vector<T*> _matrix;
   U _dimensionX;
   U _dimensionY;
+
   // This Matrix is most likely a sub-matrix of a global Matrix partitioned among many processors.
   U _globalDimensionX;
   U _globalDimensionY;
