@@ -26,20 +26,18 @@
   parameter to the Matrix class, and write a family of classes for each policy, where each policy class
   can be simple. Each can have just a single static method and take as arguments a reference to a Matrix.
   I choose static methods so that we don't need a class instance in order to use the class, as the class will
-  not have any member variables either (only static would work anyways with a single static method). In addition,
+  not have any member variables either (only static would work anyways with a single static method).
+  
+NOTE: Below idea does not work. It has been removed!
+  In addition,
   the policy class will be treated as a friend class so that we can make the static method a protected member and prevent
   the user from directly using the class.
 */
 template<typename T, typename U, class Allocator, class Distributer>
 class Matrix
 {
+
 public:
-
-  // Mark these two classes as friends so that we can use their protected members.
-  friend Allocator;
-  friend Distributer;
-  friend MatrixSerializer<T,U,std::vector<T*>>;		// The only option used for now.
-
   explicit Matrix() = delete;
   explicit Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);
   Matrix(const Matrix& rhs);

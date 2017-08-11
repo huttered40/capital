@@ -5,7 +5,9 @@
 template<typename T, typename U, class Allocator, class Distributer>
 Matrix<T,U,Allocator,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY)
 {
-  // how can we prevent certain types T??????
+  // In the future, I would like the Allocator to do all this work. But for now, its ok
+  // I need to read Chapter 4 in Modern C++ Design before I write my own allocators.
+	
   this->_dimensionX = {dimensionX};
   this->_dimensionY = {dimensionY};
   this->_globalDimensionX = {globalDimensionX};
@@ -117,6 +119,7 @@ template<typename T, typename U, class Allocator, class Distributer>
 void Matrix<T,U,Allocator,Distributer>::Distribute()
 {
   // call a MatrixSerialize protected static method
+  Distributer::Distribute(this->_matrix, this->_dimensionX, this->_dimensionY, this->_globalDimensionX, this->_globalDimensionY);
 }
 
 template<typename T, typename U, class Allocator, class Distributer>

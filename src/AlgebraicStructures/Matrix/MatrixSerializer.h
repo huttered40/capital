@@ -25,7 +25,7 @@ public:
   MatrixSerializer<T,U,std::vector<T*>> operator=(MatrixSerializer&& rhs) = delete;
   ~MatrixSerializer() = delete;
 
-protected:
+//protected:
   static void SerializeUpperTriangular(std::vector<T*>& matrix);
   static void SerializeLowerTriangular(std::vector<T*>& matrix);
   static void SerializeUpperTriangular(std::vector<T*>&& matrix);

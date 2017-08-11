@@ -8,7 +8,9 @@ void MatrixDistributerCyclic<T,U,std::vector<T*>>::Distribute
 		(
 		  std::vector<T*>& matrix,
 		  U dimensionX,
-		  U dimensionY
+		  U dimensionY,
+		  U globalDimensionX,
+		  U globalDimensionY
 		)
 {
   std::cout << "I am in the Distribute method!!\n";
