@@ -38,7 +38,7 @@ public:
   // Mark these two classes as friends so that we can use their protected members.
   friend Allocator;
   friend Distributer;
-  friend MatrixSerializer;
+  friend MatrixSerializer<T,U,std::vector<T*>>;		// The only option used for now.
 
   explicit Matrix() = delete;
   explicit Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);

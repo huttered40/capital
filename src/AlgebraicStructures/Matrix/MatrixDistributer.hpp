@@ -1,9 +1,12 @@
 /* Author: Edward Hutter */
 
+// Try this to get it to compile: provide a declaration of a templated constructor,
+//   and then define/implement a specialized method.
+
 template<typename T, typename U>
-static void MatrixDistributerCyclic<T,U,std::vector<T*>>::Distribute
+void MatrixDistributerCyclic<T,U,std::vector<T*>>::Distribute
 		(
-		  std::vector<T*> matrix,
+		  std::vector<T*>& matrix,
 		  U dimensionX,
 		  U dimensionY
 		)

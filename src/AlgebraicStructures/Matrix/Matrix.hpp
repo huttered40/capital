@@ -2,17 +2,8 @@
 
 // #include "Matrix.h"  -> Compiler needs the full definition of the templated class in order to instantiate it.
 
-/*
-template<typename T, typename U>
-Matrix<T,U>::Matrix()
-{
-  // I want to prevent this entirely. Need to read into = delete() and = default
-  // Maybe I just dont provide a templated member function for it? Aren't there corner cases here?
-}
-*/
-
 template<typename T, typename U, class Allocator, class Distributer>
-Matrix<T,U>::Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY)
+Matrix<T,U,Allocator,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY)
 {
   // how can we prevent certain types T??????
   this->_dimensionX = {dimensionX};
@@ -33,7 +24,7 @@ Matrix<T,U>::Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDime
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-Matrix<T,U>::Matrix(const Matrix& rhs)
+Matrix<T,U,Allocator,Distributer>::Matrix(const Matrix& rhs)
 {
   // how can we prevent certain types T??????
   
@@ -42,7 +33,7 @@ Matrix<T,U>::Matrix(const Matrix& rhs)
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-Matrix<T,U>::Matrix(Matrix&& rhs)
+Matrix<T,U,Allocator,Distributer>::Matrix(Matrix&& rhs)
 {
   // Use std::forward in the future.
   mover(std::move(rhs));
@@ -50,7 +41,7 @@ Matrix<T,U>::Matrix(Matrix&& rhs)
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-Matrix<T,U>& Matrix<T,U>::operator=(const Matrix& rhs)
+Matrix<T,U,Allocator,Distributer>& Matrix<T,U,Allocator,Distributer>::operator=(const Matrix& rhs)
 {
   if (this != &rhs)
   {
@@ -60,7 +51,7 @@ Matrix<T,U>& Matrix<T,U>::operator=(const Matrix& rhs)
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-Matrix<T,U>& Matrix<T,U>::operator=(Matrix&& rhs)
+Matrix<T,U,Allocator,Distributer>& Matrix<T,U,Allocator,Distributer>::operator=(Matrix&& rhs)
 {
   // Use std::forward in the future.
   if (this != &rhs)
@@ -71,7 +62,7 @@ Matrix<T,U>& Matrix<T,U>::operator=(Matrix&& rhs)
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-Matrix<T,U>::~Matrix()
+Matrix<T,U,Allocator,Distributer>::~Matrix()
 {
   if ((this->_matrix.size() > 0) && (this->_matrix[0] != nullptr))
   {
@@ -80,7 +71,7 @@ Matrix<T,U>::~Matrix()
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-void Matrix<T,U>::copy(const Matrix& rhs)
+void Matrix<T,U,Allocator,Distributer>::copy(const Matrix& rhs)
 {
   this->_dimensionX = {rhs._dimensionX};
   this->_dimensionY = {rhs._dimensionY};
@@ -99,7 +90,7 @@ void Matrix<T,U>::copy(const Matrix& rhs)
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-void Matrix<T,U>::mover(Matrix&& rhs)
+void Matrix<T,U,Allocator,Distributer>::mover(Matrix&& rhs)
 {
   this->_dimensionX = {rhs._dimensionX};
   this->_dimensionY = {rhs._dimensionY};
@@ -109,25 +100,27 @@ void Matrix<T,U>::mover(Matrix&& rhs)
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-void Matrix<T,U>::Serialize(const Matrix& rhs)
+void Matrix<T,U,Allocator,Distributer>::Serialize(const Matrix& rhs)
 {
-  // call a MatrixSerialize protected static method.
+  // call a MatrixSerialize protected static method using the member variabe _matrix, NOT Matrix,
+  //   since we don't to create a circular definition.
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-void Matrix<T,U>::Serialize(Matrix&& rhs)
+void Matrix<T,U,Allocator,Distributer>::Serialize(Matrix&& rhs)
+{
+  // call a MatrixSerialize protected static method using the member variabe _matrix, NOT Matrix,
+  //   since we don't to create a circular definition.
+}
+
+template<typename T, typename U, class Allocator, class Distributer>
+void Matrix<T,U,Allocator,Distributer>::Distribute()
 {
   // call a MatrixSerialize protected static method
 }
 
 template<typename T, typename U, class Allocator, class Distributer>
-void Matrix<T,U>::Distribute()
-{
-  // call a MatrixSerialize protected static method
-}
-
-template<typename T, typename U, class Allocator, class Distributer>
-void Matrix<T,U>::print()
+void Matrix<T,U,Allocator,Distributer>::print()
 {
   // just regular print of the local matrix.
 }
