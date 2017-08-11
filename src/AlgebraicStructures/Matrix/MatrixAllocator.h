@@ -14,7 +14,13 @@
 
 
 template<typename T, typename U>
-class MatrixAllocatorContiguous
+class MatrixAllocatorRectangular
+{
+
+};
+
+template<typename T, typename U>
+class MatrixAllocatorTriangular
 {
 
 };
