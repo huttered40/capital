@@ -6,10 +6,32 @@
 /* system includes */
 #include <vector>
 
-template<typename T, typename U>
+/*
+  Divide the Matrix class into policies.
+  As of right now, I can identify 2 policies -> creation and distribution
+  As explicitey stated in Modern C++ Design, each policiy should be treated as
+  its own set of classes, with each different policiy choice called a policy class
+  and given its own class.
+
+  I do not want to overload the class template with more than 6 parameters. But I do want
+  to give the user of the Matrix class options as to how to build and distribute its data.
+  As of right now, the best design choice I can come up with would be to add another template
+  parameter to the Matrix class, and write a family of classes for each policy, where each policy class
+  can be simple. Each can have just a single static method and take as arguments a reference to a Matrix.
+  I choose static methods so that we don't need a class instance in order to use the class, as the class will
+  not have any member variables either (only static would work anyways with a single static method). In addition,
+  the policy class will be treated as a friend class so that we can make the static method a protected member and prevent
+  the user from directly using the class.
+*/
+template<typename T, typename U, class Allocator, class Distributer, class Serializer>
 class Matrix
 {
 public:
+
+  // Mark these two classes as friends so that we can use their protected members.
+  friend Allocator;
+  friend Distributer;
+
   explicit Matrix() = delete;
   explicit Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);
   explicit Matrix(const Matrix& rhs);
@@ -24,15 +46,14 @@ public:
   void serialize(const Matrix& rhs);
   void serialize(Matrix&& rhs);
 
-  // Later on: Listen to the red book and design a distribution policy and implement policy classes that implement specific distribution strategies
-  //           so that the user of the Matrix class can choose the kind of distribution it wants.
-  void distributeCyclic();
+  // Host method, will call Allocator<T,U,?>::Distribute(...) method
+  void Distribute();
 
   // Just a local print. For a distributed print, we must implement another class that takes the Matrix and operates on it.
   //   That is not something that this class policy needs to worry about.
   void print();
 
-  // create my own allocator class?
+  // create my own allocator class using the template parameter? Yes, I want to do this in the future.
 
 private:
 
