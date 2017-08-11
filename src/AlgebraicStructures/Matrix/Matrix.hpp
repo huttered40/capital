@@ -16,7 +16,7 @@ Matrix<T,U,Allocator,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDi
   U offset{0};
   for (auto& ptr : this->_matrix)
   {
-    ptr = &this->_matrix[offset];
+    ptr = &this->_matrix[0][offset];
     offset += dimensionY;
   }
   return;

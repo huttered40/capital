@@ -27,6 +27,8 @@ public:
   MatrixDistributerCyclic() = delete;
   MatrixDistributerCyclic(const MatrixDistributerCyclic& rhs) = delete;
   MatrixDistributerCyclic(MatrixDistributerCyclic&& rhs) = delete;
+  MatrixDistributerCyclic<T,U,std::vector<T*>> operator=(const MatrixDistributerCyclic& rhs) = delete;
+  MatrixDistributerCyclic<T,U,std::vector<T*>> operator=(MatrixDistributerCyclic&& rhs) = delete;
   ~MatrixDistributerCyclic() = delete;
 
 protected:

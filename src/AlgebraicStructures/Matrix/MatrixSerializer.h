@@ -18,6 +18,12 @@ template<typename T, typename U>
 class MatrixSerializer<T,U,std::vector<T*>>
 {
 public:
+  MatrixSerializer() = delete;
+  MatrixSerializer(const MatrixSerializer& rhs) = delete;
+  MatrixSerializer(MatrixSerializer&& rhs) = delete;
+  MatrixSerializer<T,U,std::vector<T*>> operator=(const MatrixSerializer& rhs) = delete;
+  MatrixSerializer<T,U,std::vector<T*>> operator=(MatrixSerializer&& rhs) = delete;
+  ~MatrixSerializer() = delete;
 
 protected:
   static void SerializeUpperTriangular(std::vector<T*>& matrix);
