@@ -6,6 +6,9 @@
 // System includes
 #include <iostream>
 #include <vector>
+#include <cassert>
+#include <cstring>
+
 
 // Local includes
 
@@ -32,11 +35,12 @@ public:
 
   static void Allocate();
   static void Construct();
-  static void Assemble();
+  static void Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY);
   static void Deallocate();
   static void Destroy();
-  static void Dissamble();
-  static void Print();
+  static void Dissamble(std::vector<T*>& matrix);
+  static void Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY);
+  static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
 };
 
 
@@ -54,11 +58,12 @@ public:
 
   static void Allocate();
   static void Construct();
-  static void Assemble();
+  static void Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY);
   static void Deallocate();
   static void Destroy();
-  static void Dissamble();
-  static void Print();
+  static void Dissamble(std::vector<T*>& matrix);
+  static void Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY);
+  static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
 };
 
 template<typename T, typename U>
@@ -75,11 +80,12 @@ public:
 
   static void Allocate();
   static void Construct();
-  static void Assemble();
+  static void Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY);
   static void Deallocate();
   static void Destroy();
-  static void Dissamble();
-  static void Print();
+  static void Dissamble(std::vector<T*>& matrix);
+  static void Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY);
+  static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
 };
 
 template<typename T, typename U>
@@ -96,11 +102,12 @@ public:
 
   static void Allocate();
   static void Construct();
-  static void Assemble();
+  static void Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY);
   static void Deallocate();
   static void Destroy();
-  static void Dissamble();
-  static void Print();
+  static void Dissamble(std::vector<T*>& matrix);
+  static void Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY);
+  static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
 };
 
 #include "MatrixAllocator.hpp"

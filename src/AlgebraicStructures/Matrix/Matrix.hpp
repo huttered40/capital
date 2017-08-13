@@ -12,15 +12,8 @@ Matrix<T,U,Allocator,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDi
   this->_dimensionY = {dimensionY};
   this->_globalDimensionX = {globalDimensionX};
   this->_globalDimensionY = {globalDimensionY};
-  this->_matrix.resize(dimensionX);
-  this->_matrix[0] = new T[dimensionX * dimensionY];
-  
-  U offset{0};
-  for (auto& ptr : this->_matrix)
-  {
-    ptr = &this->_matrix[0][offset];
-    offset += dimensionY;
-  }
+
+  Allocator<T,U>::Assemble(this->_matrix, this->_dimensionX, this->_dimensionY);
   return;
   
 }
@@ -64,10 +57,7 @@ Matrix<T,U,Allocator,Distributer>& Matrix<T,U,Allocator,Distributer>::operator=(
 template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 Matrix<T,U,Allocator,Distributer>::~Matrix()
 {
-  if ((this->_matrix.size() > 0) && (this->_matrix[0] != nullptr))
-  {
-    delete[] this->_matrix[0];
-  }
+  Allocator<T,U>::Dissamble(this->_matrix);
 }
 
 template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
@@ -75,17 +65,7 @@ void Matrix<T,U,Allocator,Distributer>::copy(const Matrix& rhs)
 {
   this->_dimensionX = {rhs._dimensionX};
   this->_dimensionY = {rhs._dimensionY};
-  this->_matrix.resize(rhs._dimensionX);
-  
-  // Deep copy is needed with the current implementation
-  this->_matrix[0] = new T[rhs._dimensionX * rhs._dimensionY];
-  
-  U offset{0};
-  for (auto& ptr : this->_matrix)
-  {
-    ptr = &this->_matrix[0][offset];
-    offset += rhs._dimensionY;
-  }
+  Allocator<T,U>::Copy(this->_matrix, rhs._matrix, this->_dimensionX, this->_dimensionY);
   return;
 }
 
@@ -95,6 +75,7 @@ void Matrix<T,U,Allocator,Distributer>::mover(Matrix&& rhs)
   this->_dimensionX = {rhs._dimensionX};
   this->_dimensionY = {rhs._dimensionY};
   // Suck out the matrix member from rhs and stick it in our field.
+  // For now, we don't need a Allocator Policy Interface Move() method.
   this->_matrix = std::move(rhs._matrix); 
   return;
 }
@@ -124,13 +105,5 @@ void Matrix<T,U,Allocator,Distributer>::Distribute(int localPgridX, int localPgr
 template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 void Matrix<T,U,Allocator,Distributer>::print() const
 {
-  // just regular print of the local matrix.
-  for (const auto& rows : this->_matrix)
-  {
-    for (int j=0; j<this->_dimensionY; j++)
-    {
-      std::cout << " " << rows[j];
-    }
-    std::cout << "\n";
-  }
+  Allocator<T,U>::Print(this->_matrix, this->_dimensionX, this->_dimensionY);
 }
