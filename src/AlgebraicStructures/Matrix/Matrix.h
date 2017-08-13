@@ -33,7 +33,10 @@ NOTE: Below idea does not work. It has been removed!
   the policy class will be treated as a friend class so that we can make the static method a protected member and prevent
   the user from directly using the class.
 */
-template<typename T, typename U, class Allocator, class Distributer>
+
+// We now use template-template parameters to give the library user a more intuitive interface and to give
+//  the library itself more freedome to instantiate particular policy classes with different template parameters.
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 class Matrix
 {
 

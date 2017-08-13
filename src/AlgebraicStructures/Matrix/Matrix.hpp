@@ -2,7 +2,7 @@
 
 // #include "Matrix.h"  -> Compiler needs the full definition of the templated class in order to instantiate it.
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 Matrix<T,U,Allocator,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY)
 {
   // In the future, I would like the Allocator to do all this work. But for now, its ok
@@ -25,14 +25,14 @@ Matrix<T,U,Allocator,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDi
   
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 Matrix<T,U,Allocator,Distributer>::Matrix(const Matrix& rhs)
 {
   copy(rhs);
   return;
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 Matrix<T,U,Allocator,Distributer>::Matrix(Matrix&& rhs)
 {
   // Use std::forward in the future.
@@ -40,7 +40,7 @@ Matrix<T,U,Allocator,Distributer>::Matrix(Matrix&& rhs)
   return;
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 Matrix<T,U,Allocator,Distributer>& Matrix<T,U,Allocator,Distributer>::operator=(const Matrix& rhs)
 {
   if (this != &rhs)
@@ -50,7 +50,7 @@ Matrix<T,U,Allocator,Distributer>& Matrix<T,U,Allocator,Distributer>::operator=(
   return *this;
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 Matrix<T,U,Allocator,Distributer>& Matrix<T,U,Allocator,Distributer>::operator=(Matrix&& rhs)
 {
   // Use std::forward in the future.
@@ -61,7 +61,7 @@ Matrix<T,U,Allocator,Distributer>& Matrix<T,U,Allocator,Distributer>::operator=(
   return *this;
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 Matrix<T,U,Allocator,Distributer>::~Matrix()
 {
   if ((this->_matrix.size() > 0) && (this->_matrix[0] != nullptr))
@@ -70,7 +70,7 @@ Matrix<T,U,Allocator,Distributer>::~Matrix()
   }
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 void Matrix<T,U,Allocator,Distributer>::copy(const Matrix& rhs)
 {
   this->_dimensionX = {rhs._dimensionX};
@@ -89,7 +89,7 @@ void Matrix<T,U,Allocator,Distributer>::copy(const Matrix& rhs)
   return;
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 void Matrix<T,U,Allocator,Distributer>::mover(Matrix&& rhs)
 {
   this->_dimensionX = {rhs._dimensionX};
@@ -99,28 +99,29 @@ void Matrix<T,U,Allocator,Distributer>::mover(Matrix&& rhs)
   return;
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 void Matrix<T,U,Allocator,Distributer>::Serialize(const Matrix& rhs)
 {
   // call a MatrixSerialize protected static method using the member variabe _matrix, NOT Matrix,
   //   since we don't to create a circular definition.
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 void Matrix<T,U,Allocator,Distributer>::Serialize(Matrix&& rhs)
 {
   // call a MatrixSerialize protected static method using the member variabe _matrix, NOT Matrix,
   //   since we don't to create a circular definition.
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 void Matrix<T,U,Allocator,Distributer>::Distribute(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY)
 {
   // call a MatrixSerialize protected static method
-  Distributer::Distribute(this->_matrix, this->_dimensionX, this->_dimensionY, localPgridX, localPgridY, globalPgridX, globalPgridY);
+  // We may want to change vector<T*> to something more general later on.
+  Distributer<T,U,std::vector<T*>>::Distribute(this->_matrix, this->_dimensionX, this->_dimensionY, localPgridX, localPgridY, globalPgridX, globalPgridY);
 }
 
-template<typename T, typename U, class Allocator, class Distributer>
+template<typename T, typename U, template<typename,typename> class Allocator, template<typename, typename, typename> class Distributer>
 void Matrix<T,U,Allocator,Distributer>::print() const
 {
   // just regular print of the local matrix.
