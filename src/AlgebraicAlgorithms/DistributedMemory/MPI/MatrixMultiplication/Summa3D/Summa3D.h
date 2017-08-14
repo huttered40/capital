@@ -14,7 +14,7 @@
   We can implement square MM for now, but soon, we will need triangular MM
     and triangular matrices, as well as Square-Triangular Multiplication and Triangular-Square Multiplication
 */
-template<typename T, typename U, class AllocatorA, class AllocatorB, class AllocatorC, class Distributer>
+template<typename T, typename U, class Structure/A, class AllocatorB, class AllocatorC, class Distributer>
 class MatrixMultiplication3D
 {
   using MatrixTypeA = Matrix<T,U,AllocatorA,Distributer>
