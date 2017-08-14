@@ -25,7 +25,8 @@ int main(void)
   theMatrix4.print();
   cout << "\n\n";
   theMatrixS.print();
-
+  cout << "\n\n";
   theMatrix4.Serialize(theMatrixS);
+  theMatrixS.print();
   return 0;
 }

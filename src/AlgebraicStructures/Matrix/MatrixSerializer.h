@@ -6,6 +6,7 @@
 // System includes
 #include <vector>
 #include <iostream>
+#include <cstring>
 
 // Local includes
 #include "MatrixStructure.h"
