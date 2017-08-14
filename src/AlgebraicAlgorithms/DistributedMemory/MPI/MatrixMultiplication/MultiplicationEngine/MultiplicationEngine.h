@@ -3,6 +3,12 @@
 #ifndef MULTIPLICATION_ENGINE_H_
 #define MULTIPLICATION_ENGINE_H_
 
+// System includes
+
+// Local includes
+#include "~/hutter2/ParallelAlgebraicAlgorithms/src/AlgebraicStructures/Matrix/Matrix.h"
+
+
 // We should use a host class and implement/define partial specialization classes
 template<typename T, typename U>
 class MultiplicationEngine

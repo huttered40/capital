@@ -8,6 +8,7 @@
 
 // Local includes
 #include "~/hutter2/ParallelAlgebraicAlgorithms/src/AlgebraicStructures/Matrix/Matrix.h"
+#include "../MultiplicationEngine/MultiplicationEngine.h"
 
 /*
   We can implement square MM for now, but soon, we will need triangular MM
