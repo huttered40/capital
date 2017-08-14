@@ -13,13 +13,13 @@ Matrix: $(OBJS2)
 test.o: test.cpp Matrix.h
 	$(CCMPI) $(CFLAGS) -o test.o -c test.cpp
 
-Matrix.o: Matrix.h Matrix.hpp MatrixDistributer.h MatrixAllocator.h MatrixSerializer.h
+Matrix.o: Matrix.h Matrix.hpp MatrixStructure.h MatrixAllocator.h MatrixSerializer.h
 	$(CCMPI) $(CFLAGS) -o Matrix.o -c Matrix.h
 
 MatrixDistributer.o: MatrixDiatributer.h MatrixDistributer.hpp
 	$(CCMPI) $(CFLAGS) -o MatrixDistributer.o -c MatrixDistributer.h
 
-MatrixAllocator.o: MatrixAllocator.h MatrixAllocator.hpp
+MatrixAllocator.o: MatrixStructure.h MatrixStructure.hpp
 	$(CCMPI) $(CFLAGS) -o MatrixAllocator.o -c MatrixAllocator.h
 
 MatrixSerializer.o: MatrixSerializer.h MatrixSerializer.hpp

@@ -4,15 +4,15 @@
 //   and then define/implement a specialized method.
 
 template<typename T, typename U>
-void MatrixDistributerCyclic<T,U,std::vector<T*>>::Distribute
+void MatrixDistributerCyclic<T,U>::Distribute
                 (
 		   std::vector<T*>& matrix,
 		   U dimensionX,
 		   U dimensionY,
-		   int localPgridX,
-		   int localPgridY,
-		   int globalPgridX,
-		   int globalPgridY
+		   U localPgridX,
+		   U localPgridY,
+		   U globalPgridX,
+		   U globalPgridY
 		 )
 {
   std::cout << "I am in the Distribute method!!\n";
@@ -22,7 +22,7 @@ void MatrixDistributerCyclic<T,U,std::vector<T*>>::Distribute
     for (int j=0; j<dimensionY; j++)
     {
       srand(i*dimensionY+j);
-      matrix[i][j] = rand() % 100;			// Change this later.
+      matrix[i][j] = drand48();			// Change this later.
     }
   }
   return;
