@@ -217,9 +217,9 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Copy(std::vector<T*>& matr
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureUpperTriangular<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
+void MatrixStructureUpperTriangular<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY)
 {
-  Distributer<T,U,2>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,2>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimY);
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>

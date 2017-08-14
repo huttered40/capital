@@ -84,10 +84,12 @@ void MatrixDistributerCyclic<T,U,2>::Distribute
   U saveGlobalPosition = localPgridX*globalDimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   U counter{0};
   U startIter;
+  U endIter;
   for (U i=0; i<dimensionX; i++)
   {
     U globalPosition = saveGlobalPosition;
-    startIter = counter;
+    startIter = 0;
+    endIter = dimensionY-counter;
     // Special corner case: If a processor's first data on each row is out of bounds of the UT structure, then give a 0 value
     if (localPgridX > localPgridY)
     {
@@ -95,7 +97,7 @@ void MatrixDistributerCyclic<T,U,2>::Distribute
       startIter++;
       globalPosition += globalPgridY;
     }
-    for (U j=startIter; j<dimensionY; j++)
+    for (U j=startIter; j<endIter; j++)
     {
       srand(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
