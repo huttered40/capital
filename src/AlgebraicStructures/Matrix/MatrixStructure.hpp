@@ -1,19 +1,19 @@
 /* Author: Edward Hutter */
 
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Allocate()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Construct()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
   // dimensionX must be equal to dimensionY, but I can't check this at compile time.
@@ -30,19 +30,19 @@ void MatrixStructureSquare<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U
   }
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Deallocate()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Destroy()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Dissamble(std::vector<T*>& matrix)
 {
   if ((matrix.size() > 0) && (matrix[0] != nullptr))
@@ -51,7 +51,7 @@ void MatrixStructureSquare<T,U,Distributer>::Dissamble(std::vector<T*>& matrix)
   }
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
 {
   Assemble(matrix, dimensionX, dimensionX);	// Just choose one dimension.
@@ -59,13 +59,13 @@ void MatrixStructureSquare<T,U,Distributer>::Copy(std::vector<T*>& matrix, const
   std::memcpy(matrix[0], source[0], numElems);
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,0>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
   for (const auto& rows : matrix)
@@ -80,19 +80,19 @@ void MatrixStructureSquare<T,U,Distributer>::Print(const std::vector<T*>& matrix
 
 
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Allocate()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Construct()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
   matrix.resize(dimensionX);
@@ -106,19 +106,19 @@ void MatrixStructureRectangle<T,U,Distributer>::Assemble(std::vector<T*>& matrix
   }
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Deallocate()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Destroy()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Dissamble(std::vector<T*>& matrix)
 {
   if ((matrix.size() > 0) && (matrix[0] != nullptr))
@@ -127,7 +127,7 @@ void MatrixStructureRectangle<T,U,Distributer>::Dissamble(std::vector<T*>& matri
   }
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
 {
   Assemble(matrix, dimensionX, dimensionY);
@@ -135,13 +135,13 @@ void MatrixStructureRectangle<T,U,Distributer>::Copy(std::vector<T*>& matrix, co
   std::memcpy(matrix[0], source[0], numElems);
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,1>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
   for (const auto& rows : matrix)
@@ -155,19 +155,19 @@ void MatrixStructureRectangle<T,U,Distributer>::Print(const std::vector<T*>& mat
 }
 
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Allocate()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Construct()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
   // dimensionY must be equal to dimensionX
@@ -187,19 +187,19 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Assemble(std::vector<T*>& 
   }
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Deallocate()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Destroy()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Dissamble(std::vector<T*>& matrix)
 {
   if ((matrix.size() > 0) && (matrix[0] != nullptr))
@@ -208,7 +208,7 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Dissamble(std::vector<T*>&
   }
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
 {
   Assemble(matrix, dimensionX, dimensionY);
@@ -216,18 +216,23 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Copy(std::vector<T*>& matr
   std::memcpy(matrix[0], source[0], numElems);
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,2>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
   U counter{dimensionY};
   for (const auto& rows : matrix)
   {
+    U iter{dimensionY-counter};
+    for (U i=0; i<iter; i++)
+    {
+      std::cout << "  ";
+    }
     for (U i=0; i<counter; i++)
     {
       std::cout << " " << rows[i];
@@ -238,19 +243,19 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Print(const std::vector<T*
 }
 
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Allocate()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Construct()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
   // dimensionY must be equal to dimensionX
@@ -270,19 +275,19 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Assemble(std::vector<T*>& 
   }
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Deallocate()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Destroy()
 {
   // Nothing yet
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Dissamble(std::vector<T*>& matrix)
 {
   if ((matrix.size() > 0) && (matrix[0] != nullptr))
@@ -291,7 +296,7 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Dissamble(std::vector<T*>&
   }
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
 {
   Assemble(matrix, dimensionX, dimensionY);
@@ -299,13 +304,13 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Copy(std::vector<T*>& matr
   std::memcpy(matrix[0], source[0], numElems);
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,3>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
   U counter{1};

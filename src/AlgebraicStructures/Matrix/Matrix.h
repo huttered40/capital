@@ -35,7 +35,7 @@ NOTE: Below idea does not work. It has been removed!
 
 // We now use template-template parameters to give the library user a more intuitive interface and to give
 //  the library itself more freedome to instantiate particular policy classes with different template parameters.
-template<typename T, typename U, template<typename,typename,template<typename,typename> class> class Structure, template<typename, typename> class Distributer>
+template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
 class Matrix
 {
 

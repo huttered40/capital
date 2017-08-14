@@ -22,7 +22,7 @@
 // For now, I will assume that the data structure utilized in this Policy
 //   will be a vector<T*>. We can change and generalize this later as needed.
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 class MatrixStructureSquare
 {
 public:
@@ -46,7 +46,7 @@ public:
 };
 
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 class MatrixStructureRectangle
 {
 public:
@@ -69,7 +69,7 @@ public:
   static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
 };
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 class MatrixStructureUpperTriangular
 {
 public:
@@ -92,7 +92,7 @@ public:
   static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
 };
 
-template<typename T, typename U, template<typename,typename> class Distributer>
+template<typename T, typename U, template<typename,typename,int> class Distributer>
 class MatrixStructureLowerTriangular
 {
 public:
