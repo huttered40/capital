@@ -37,6 +37,51 @@ public:
   static void Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY);
 };
 
+// Use partial specialization to define certain combinations
+template<typename T, typename U>
+class Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>
+{
+public:
+  // Prevent this class from being instantiated.
+  Serializer() = delete;
+  Serializer(const Serializer& rhs) = delete;
+  Serializer(Serializer&& rhs) = delete;
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(const Serializer& rhs) = delete;
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
+
+  static void Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY);
+};
+
+// Use partial specialization to define certain combinations
+template<typename T, typename U>
+class Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>
+{
+public:
+  // Prevent this class from being instantiated.
+  Serializer() = delete;
+  Serializer(const Serializer& rhs) = delete;
+  Serializer(Serializer&& rhs) = delete;
+  Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
+  Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
+
+  static void Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY);
+};
+
+// Use partial specialization to define certain combinations
+template<typename T, typename U>
+class Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>
+{
+public:
+  // Prevent this class from being instantiated.
+  Serializer() = delete;
+  Serializer(const Serializer& rhs) = delete;
+  Serializer(Serializer&& rhs) = delete;
+  Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
+  Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
+
+  static void Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY);
+};
+
 #include "MatrixSerializer.hpp"
 
 #endif /* MATRIX_SERIALIZE_H_ */
