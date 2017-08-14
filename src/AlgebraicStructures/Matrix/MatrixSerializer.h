@@ -4,49 +4,38 @@
 #define MATRIX_SERIALIZER_H_
 
 // System includes
-#include <iostream>
 #include <vector>
+#include <iostream>
 
 // Local includes
-
-// See MatrixDistributer.h for discussions on the format of this code.
-
+#include "MatrixStructure.h"
 
 /*
-Notes: I may want to look into the new pass-by-value is cheaper than fill by reference
-         due to move semantics and move constructor being called automatically
-         since the return value of a function is an rvalue unless its a lvalue reference.
-
-       Also, I may want to look into just changing the base matrix into whatever
-         I am serializing into. This would be only if I needed it.
-
-       For now, lets focus on the case where I pass the matrix data structure by reference
-         and fill it up.
-
+  Note: Serialize is an engine that can take any Structure combo
+  Example: Source is a (cyclically distributed) Upper-triangular matrix and Dest must be a Square (cyclically distributed) matrix
+  Future: Need to deal with changing between distributions. Maybe add this to the Distributer Policy.
 */
 
+// Fully templated class is declared, not defined
+template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class StructureSource,
+  template<typename,typename,template<typename,typename,int> class> class StructureDest>
+class Serializer;
 
-// Fully templated class is only declared
-template<typename T, typename U, int Z>
-class MatrixSerializer;
-
-// Partially specialized template classes
+// Use partial specialization to define certain combinations
 template<typename T, typename U>
-class MatrixSerializer<T,U,0>
+class Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>
 {
 public:
-  MatrixSerializer() = delete;
-  MatrixSerializer(const MatrixSerializer& rhs) = delete;
-  MatrixSerializer(MatrixSerializer&& rhs) = delete;
-  MatrixSerializer<T,U,0> operator=(const MatrixSerializer& rhs) = delete;
-  MatrixSerializer<T,U,0> operator=(MatrixSerializer&& rhs) = delete;
-  ~MatrixSerializer() = delete;
+  // Prevent this class from being instantiated.
+  Serializer() = delete;
+  Serializer(const Serializer& rhs) = delete;
+  Serializer(Serializer&& rhs) = delete;
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(const Serializer& rhs) = delete;
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
 
-  static void Serialize(std::vector<T*>& matrix);
-  static void Serialize(std::vector<T*>&& matrix);
-
+  static void Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY);
 };
 
 #include "MatrixSerializer.hpp"
 
-#endif /* MATRIX_SERIALIZER_H_ */
+#endif /* MATRIX_SERIALIZE_H_ */

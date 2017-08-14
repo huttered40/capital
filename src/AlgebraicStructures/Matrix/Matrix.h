@@ -9,7 +9,6 @@
 
 // Local includes -- the policy classes
 #include "MatrixStructure.h"
-// Local includes -- non-policy classes
 #include "MatrixSerializer.h"
 
 /*
@@ -48,11 +47,12 @@ public:
   Matrix& operator=(Matrix&& rhs);
   ~Matrix();
 
-  //I want to have a serialize method that will give me say an upper triangular
-  //  we can do this without creating another full object or copying by just iterating over the pointer offsets and modifying them.
-  //  We should overload the method so that there can be 2 ways: copying into a new matrix and moving into a new matrix.
-  void Serialize(const Matrix& matrix);
-  void Serialize(Matrix&& matrix);
+  // automatically inlined
+  // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
+  std::vector<T*>& getData() { return this->_matrix;}
+
+  template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
+  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest);
 
   // Host method, will call Allocator<T,U,?>::Distribute(...) method
   void Distribute(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY);

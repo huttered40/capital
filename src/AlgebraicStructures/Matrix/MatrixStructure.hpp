@@ -65,6 +65,7 @@ void MatrixStructureSquare<T,U,Distributer>::Distribute(std::vector<T*>& matrix,
   Distributer<T,U,0>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
+
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {

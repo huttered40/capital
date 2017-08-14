@@ -77,17 +77,17 @@ void Matrix<T,U,Structure,Distributer>::mover(Matrix&& rhs)
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-void Matrix<T,U,Structure,Distributer>::Serialize(const Matrix& rhs)
+template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
+void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distributer>& dest)
 {
-  // call a MatrixSerialize protected static method using the member variabe _matrix, NOT Matrix,
-  //   since we don't to create a circular definition.
-}
-
-template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-void Matrix<T,U,Structure,Distributer>::Serialize(Matrix&& rhs)
-{
-  // call a MatrixSerialize protected static method using the member variabe _matrix, NOT Matrix,
-  //   since we don't to create a circular definition.
+  // So we are not going through the Structure Policy here like we did with the Distributer Policy.
+  // Maybe that is something I should change later about the Distributer Policy implementation if this works correctly.
+  
+  // Note: I cannot just use the private members of dest because it is actually a different Type due to its
+  //         different template parameters. This is a problem. I can implement a public getMatrix() method, and hav
+  std::vector<T*>& saveDest = dest.getData();	// Should incur no copy. A reference to the inner vector has been given.
+  // saveDest is an lvalue with type rvalue reference to std::vector<T*>, so the Serialize method in Serializer can bind to it as usual
+  Serializer<T,U,Structure,StructureDest>::Serialize(this->_matrix, saveDest, this->_dimensionX, this->_dimensionY);
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
