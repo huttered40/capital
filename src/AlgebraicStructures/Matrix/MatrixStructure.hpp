@@ -60,9 +60,9 @@ void MatrixStructureSquare<T,U,Distributer>::Copy(std::vector<T*>& matrix, const
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureSquare<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
+void MatrixStructureSquare<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U,0>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,0>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -136,9 +136,9 @@ void MatrixStructureRectangle<T,U,Distributer>::Copy(std::vector<T*>& matrix, co
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureRectangle<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
+void MatrixStructureRectangle<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U,1>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,1>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -217,9 +217,9 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Copy(std::vector<T*>& matr
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureUpperTriangular<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
+void MatrixStructureUpperTriangular<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U,2>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,2>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -305,9 +305,9 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Copy(std::vector<T*>& matr
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureLowerTriangular<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
+void MatrixStructureLowerTriangular<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U,3>::Distribute(matrix, localDimensionX, localDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,3>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>

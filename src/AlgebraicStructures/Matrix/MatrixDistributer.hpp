@@ -11,6 +11,8 @@ void MatrixDistributerCyclic<T,U,0>::Distribute
 		   std::vector<T*>& matrix,
 		   U dimensionX,
 		   U dimensionY,
+                   U globalDimensionX,
+                   U globalDimensionY,
 		   U localPgridX,
 		   U localPgridY,
 		   U globalPgridX,
@@ -18,7 +20,7 @@ void MatrixDistributerCyclic<T,U,0>::Distribute
 		 )
 {
 
-  U saveGlobalPosition = localPgridX*dimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  U saveGlobalPosition = localPgridX*globalDimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   for (U i=0; i<dimensionX; i++)
   {
     U globalPosition = saveGlobalPosition;
@@ -28,7 +30,7 @@ void MatrixDistributerCyclic<T,U,0>::Distribute
       matrix[i][j] = drand48();			// Change this later.
       globalPosition += globalPgridY;
     }
-    saveGlobalPosition += (globalPgridX*dimensionY);
+    saveGlobalPosition += (globalPgridX*globalDimensionY);
   }
   return;
 }
@@ -40,6 +42,8 @@ void MatrixDistributerCyclic<T,U,1>::Distribute
 		   std::vector<T*>& matrix,
 		   U dimensionX,
 		   U dimensionY,
+                   U globalDimensionX,
+                   U globalDimensionY,
 		   U localPgridX,
 		   U localPgridY,
 		   U globalPgridX,
@@ -47,7 +51,7 @@ void MatrixDistributerCyclic<T,U,1>::Distribute
 		 )
 {
 
-  U saveGlobalPosition = localPgridX*dimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  U saveGlobalPosition = localPgridX*globalDimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   for (U i=0; i<dimensionX; i++)
   {
     U globalPosition = saveGlobalPosition;
@@ -57,7 +61,7 @@ void MatrixDistributerCyclic<T,U,1>::Distribute
       matrix[i][j] = drand48();			// Change this later.
       globalPosition += globalPgridY;
     }
-    saveGlobalPosition += (globalPgridX*dimensionY);
+    saveGlobalPosition += (globalPgridX*globalDimensionY);
   }
   return;
 }
@@ -69,28 +73,27 @@ void MatrixDistributerCyclic<T,U,2>::Distribute
 		   std::vector<T*>& matrix,
 		   U dimensionX,
 		   U dimensionY,
+                   U globalDimensionX,
+                   U globalDimensionY,
 		   U localPgridX,
 		   U localPgridY,
 		   U globalPgridX,
 		   U globalPgridY
 		 )
 {
-  U saveGlobalPosition = localPgridX*dimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  U saveGlobalPosition = localPgridX*globalDimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   U counter{0};
   U startIter;
   for (U i=0; i<dimensionX; i++)
   {
     U globalPosition = saveGlobalPosition;
+    startIter = counter;
     // Special corner case: If a processor's first data on each row is out of bounds of the UT structure, then give a 0 value
     if (localPgridX > localPgridY)
     {
       matrix[i][0] = 0;
-      startIter = counter+1;
+      startIter++;
       globalPosition += globalPgridY;
-    }
-    else
-    {
-      startIter = counter;
     }
     for (U j=startIter; j<dimensionY; j++)
     {
@@ -99,7 +102,7 @@ void MatrixDistributerCyclic<T,U,2>::Distribute
       globalPosition += globalPgridY;
     }
     counter++;
-    saveGlobalPosition += (globalPgridX*dimensionY);
+    saveGlobalPosition += (globalPgridX*globalDimensionY);
   }
   return;
 }
@@ -111,18 +114,19 @@ void MatrixDistributerCyclic<T,U,3>::Distribute
 		   std::vector<T*>& matrix,
 		   U dimensionX,
 		   U dimensionY,
+                   U globalDimensionX,
+                   U globalDimensionY,
 		   U localPgridX,
 		   U localPgridY,
 		   U globalPgridX,
 		   U globalPgridY
 		 )
 {
-  U saveGlobalPosition = localPgridX*dimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  U saveGlobalPosX = localPgridX;
+  U saveGlobalPosY = localPgridY;
   U counter{1};
-  U startIter;
   for (U i=0; i<dimensionX; i++)
   {
-    U globalPosition = saveGlobalPosition;
     counter=i+1;
     // Special corner case: If a processor's last data on each row is out of bounds of the UT structure, then give a 0 value
     if (localPgridX < localPgridY)
@@ -130,26 +134,30 @@ void MatrixDistributerCyclic<T,U,3>::Distribute
       // Set the last position in row
       matrix[i][counter-1] = 0;
       counter--;
-      startIter = 0;
     }
-    else if (localPgridX == localPgridY)
+    for (U j=0; j<counter; j++)
     {
-      // Set the first position in row to a 1 -> special only to LowerTriangular matrices.
-      matrix[i][0] = 1.;
-      startIter = 1;
-      globalPosition += globalPgridY;
+      // Maybe in the future, get rid of this inner if statementand try something else? If statements in inner
+      //   nested loops can be very expensive.
+      if (saveGlobalPosX == saveGlobalPosY)
+      {
+        // Set the first position in row to a 1 -> special only to LowerTriangular matrices.
+        matrix[i][j] = 1.;
+      }
+      else if (saveGlobalPosX < saveGlobalPosY)
+      {
+        matrix[i][j] = 0;
+      }
+      else
+      {
+        U globalPos = saveGlobalPosX*globalDimensionY+saveGlobalPosY;
+        srand(globalPos);
+        matrix[i][j] = drand48();			// Change this later.
+      }
+      saveGlobalPosY += globalPgridY;
     }
-    else
-    {
-      startIter = 0;
-    }
-    for (U j=startIter; j<counter; j++)
-    {
-      srand(globalPosition);
-      matrix[i][j] = drand48();			// Change this later.
-      globalPosition += globalPgridY;
-    }
-    saveGlobalPosition += (globalPgridX*dimensionY);
+    saveGlobalPosX += globalPgridX;
+    saveGlobalPosY = localPgridY;
   }
   return;
 }

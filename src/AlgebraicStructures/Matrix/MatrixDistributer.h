@@ -46,7 +46,7 @@ public:
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
-  static void Distribute(std::vector<T*>& matrix, U dimensionX, U dimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
+  static void Distribute(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
 };
 
 // Partially specialized class that will allow us to use the partially specialized method.
@@ -65,7 +65,7 @@ public:
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
-  static void Distribute(std::vector<T*>& matrix, U dimensionX, U dimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
+  static void Distribute(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
 };
 
 // Partially specialized class that will allow us to use the partially specialized method.
@@ -84,7 +84,7 @@ public:
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
-  static void Distribute(std::vector<T*>& matrix, U dimensionX, U dimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
+  static void Distribute(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
 };
 
 // Partially specialized class that will allow us to use the partially specialized method.
@@ -103,7 +103,7 @@ public:
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
-  static void Distribute(std::vector<T*>& matrix, U dimensionX, U dimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
+  static void Distribute(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
 };
 
 // We must provide the template class definitions below. Read up on why exactly we need to do this.
