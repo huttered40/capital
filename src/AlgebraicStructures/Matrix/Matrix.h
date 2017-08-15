@@ -50,6 +50,7 @@ public:
   // automatically inlined
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
   std::vector<T*>& getData() { return this->_matrix;}
+  U getNumElems() { return this->_numElems; }
 
   template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
   void Serialize(Matrix<T,U,StructureDest,Distributer>& dest);
@@ -69,6 +70,8 @@ private:
   void mover(Matrix&& rhs);		// will need to use std::forward<T> with this I think.
 
   std::vector<T*> _matrix;
+
+  U _numElems;
   U _dimensionX;
   U _dimensionY;
 

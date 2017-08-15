@@ -14,13 +14,14 @@ void MatrixStructureSquare<T,U,Distributer>::Construct()
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureSquare<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY)
+void MatrixStructureSquare<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
   // dimensionX must be equal to dimensionY, but I can't check this at compile time.
   assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionX);
-  matrix[0] = new T[dimensionX * dimensionX];
+  matrixNumElems = dimensionX * dimensionX;
+  matrix[0] = new T[matrixNumElems];
   
   U offset{0};
   for (auto& ptr : matrix)
@@ -94,10 +95,11 @@ void MatrixStructureRectangle<T,U,Distributer>::Construct()
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureRectangle<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY)
+void MatrixStructureRectangle<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
   matrix.resize(dimensionX);
-  matrix[0] = new T[dimensionX * dimensionY];
+  matrixNumElems = dimensionX * dimensionY;
+  matrix[0] = new T[matrixNumElems];
   
   U offset{0};
   for (auto& ptr : matrix)
@@ -169,14 +171,14 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Construct()
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureUpperTriangular<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY)
+void MatrixStructureUpperTriangular<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
   // dimensionY must be equal to dimensionX
   assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionX);
-  U numElems = ((dimensionY*(dimensionY+1))>>1);
-  matrix[0] = new T[numElems];
+  matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
+  matrix[0] = new T[matrixNumElems];
   
   U offset{0};
   U counter{dimensionY};
@@ -257,14 +259,14 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Construct()
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureLowerTriangular<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U dimensionX, U dimensionY)
+void MatrixStructureLowerTriangular<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
   // dimensionY must be equal to dimensionX
   assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionX);
-  U numElems = ((dimensionX*(dimensionX+1))>>1);
-  matrix[0] = new T[numElems];
+  matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
+  matrix[0] = new T[matrixNumElems];
   
   U offset{0};
   U counter{1};
@@ -300,7 +302,8 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Dissamble(std::vector<T*>&
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
 {
-  Assemble(matrix, dimensionX, dimensionY);
+  int dummy = 0;
+  Assemble(matrix, dummy, dimensionX, dimensionY);
   U numElems = ((dimensionX*(dimensionX+1))>>1);
   std::memcpy(matrix[0], source[0], numElems*sizeof(T));
 }

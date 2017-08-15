@@ -10,7 +10,7 @@ Matrix<T,U,Structure,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDi
   this->_globalDimensionX = {globalDimensionX};
   this->_globalDimensionY = {globalDimensionY};
 
-  Structure<T,U,Distributer>::Assemble(this->_matrix, this->_dimensionX, this->_dimensionY);
+  Structure<T,U,Distributer>::Assemble(this->_matrix, this->_numElems, this->_dimensionX, this->_dimensionY);
   return;
 }
 
@@ -61,6 +61,9 @@ void Matrix<T,U,Structure,Distributer>::copy(const Matrix& rhs)
 {
   this->_dimensionX = {rhs._dimensionX};
   this->_dimensionY = {rhs._dimensionY};
+  this->_numElems = {rhs._numElems};
+  this->_globalDimensionX = {rhs._globalDimensionX};
+  this->_globalDimensionY = {rhs._globalDimensionY};
   Structure<T,U,Distributer>::Copy(this->_matrix, rhs._matrix, this->_dimensionX, this->_dimensionY);
   return;
 }
@@ -70,6 +73,9 @@ void Matrix<T,U,Structure,Distributer>::mover(Matrix&& rhs)
 {
   this->_dimensionX = {rhs._dimensionX};
   this->_dimensionY = {rhs._dimensionY};
+  this->_numElems = {rhs._numElems};
+  this->_globalDimensionX = {rhs._globalDimensionX};
+  this->_globalDimensionY = {rhs._globalDimensionY};
   // Suck out the matrix member from rhs and stick it in our field.
   // For now, we don't need a Allocator Policy Interface Move() method.
   this->_matrix = std::move(rhs._matrix); 
@@ -80,6 +86,8 @@ template<typename T, typename U, template<typename,typename,template<typename,ty
 template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
 void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distributer>& dest)
 {
+  // Matrix must be already cnstructed with memory. Add a check for this later.
+
   // So we are not going through the Structure Policy here like we did with the Distributer Policy.
   // Maybe that is something I should change later about the Distributer Policy implementation if this works correctly.
   
@@ -93,6 +101,8 @@ void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distr
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
 void Matrix<T,U,Structure,Distributer>::Distribute(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY)
 {
+  // Matrix must be already cnstructed with memory. Add a check for this later.
+
   // This is a 2-level Policy-class trick due to the lack of orthogonality between the
   //   Structure Policy and the Distributer Policy.
   
