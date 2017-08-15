@@ -1,7 +1,10 @@
 /* Author: Edward Hutter */
 
+
 #ifndef MULTIPLICATION_ENGINE_H_
 #define MULTIPLICATION_ENGINE_H_
+
+/*
 
 // System includes
 
@@ -27,5 +30,9 @@ public:
 
 private:
 }
+
+#include "MatrixMultiplicationEngine.hpp"
+
+*/
 
 #endif /* MULTIPLICATION_ENGINE_H_ */

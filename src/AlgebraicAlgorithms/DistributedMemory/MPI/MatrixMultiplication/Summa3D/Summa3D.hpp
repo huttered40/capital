@@ -1,12 +1,19 @@
 /* Author: Edward Hutter */
 
 
-  MatrixMultuplication3D();
-  MatrixMultuplication3D(const MatrixMultiplication3D& rhs);
-  MatrixMultuplication3D(MatrixMultiplication3D&& rhs);
-  ~MatrixMultiplication3D();
-
-  void Multiply(const MatrixTypeA& matrixA, const MatrixTypeB& matrixB, MatrixTypeC& matrixC);
-  void Multiply(MatrixTypeA& matrixA, MatrixTypeB& matrixB, MatrixTypeC& matrixC);
-  MatrixTypeC Multiply(const MatrixTypeA& matrixA, const MatrixTypeB& matrixB); // Matrix move constructor should be called in return statement
-  MatrixTypeC Multiply(MatrixTypeA& matrixA, MatrixTypeB& matrixB);  // Matrix move constructor should be called in return statement
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC>
+template<template<typename,typename,int> class Distribution>
+void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
+                                                              const Matrix<T,U,StructureA,Distribution>& matrixA,
+                                                              const Matrix<T,U,StructureB,Distribution>& matrixB,
+                                                                    Matrix<T,U,StructureC,Distribution>& matrixC,
+                                                              U dimensionX,
+                                                              U dimensionY,
+                                                              U dimensionZ
+                                                            )
+{
+  std::cout << "Ed is here\n";
+}

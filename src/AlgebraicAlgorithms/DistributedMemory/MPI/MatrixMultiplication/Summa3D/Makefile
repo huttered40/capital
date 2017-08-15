@@ -1,19 +1,19 @@
 CCMPI = g++  #mpicxx
 CFLAGS = -g -Wall -O0 -std=c++11
 
-OBJS1 = MatrixMultiplication3D.o
-OBJS2 = test3D.o
+OBJS1 = Summa3D.o
+OBJS2 = test.o
 
-all: MatrixMultiplication3D
+all: Summa3D
 
-MatrixMultiplication3D: $(OBJS2)
-	$(CCMPI) $(CFLAGS) -o MatrixMultiplication3D $(OBJS2)
+Summa3D: $(OBJS2)
+	$(CCMPI) $(CFLAGS) -o Summa3D $(OBJS2)
 
-test3D.o: test3D.cpp MatrixMultiplication3D.h
-	$(CCMPI) $(CFLAGS) -o test3D.o -c test3D.cpp
+test.o: test.cpp Summa3D.h
+	$(CCMPI) $(CFLAGS) -o test.o -c test.cpp
 
-MatrixMultiplication3D.o: MatrixMultiplication3D.h MatrixMultiplication3D.hpp
-	$(CCMPI) $(CFLAGS) -o MatrixMultiplication3D.o -c MatrixMultiplication3D.h
+Summa3D.o: Summa3D.h Summa3D.hpp
+	$(CCMPI) $(CFLAGS) -o Summa3D.o -c Summa3D.h
 
 clean:
-	-rm -f *.o *.gch MatrixMultiplication3D
+	-rm -f *.o *.gch Summa3D

@@ -1,51 +1,56 @@
 /* Author: Edward Hutter */
 
-#ifndef MATRIX_MULTIPLICATION_3D_H_
-#define MATRIX_MULTIPLICATION_3D_H_
+#ifndef SUMMA3D_H_
+#define SUMMA3D_H_
 
 // System includes
 #include <iostream>
+#include <vector>
 
 // Local includes
-#include "~/hutter2/ParallelAlgebraicAlgorithms/src/AlgebraicStructures/Matrix/Matrix.h"
-#include "../MultiplicationEngine/MultiplicationEngine.h"
+#include "./../../../../../AlgebraicStructures/Matrix/Matrix.h"
+#include "./../MatrixMultiplicationEngine/MatrixMultiplicationEngine.h"
 
 /*
   We can implement square MM for now, but soon, we will need triangular MM
     and triangular matrices, as well as Square-Triangular Multiplication and Triangular-Square Multiplication
+  Also, we need to figure out what to do with Rectangular.
 */
-template<typename T, typename U, class Structure/A, class AllocatorB, class AllocatorC, class Distributer>
-class MatrixMultiplication3D
+
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC>
+class Summa3D
 {
-  using MatrixTypeA = Matrix<T,U,AllocatorA,Distributer>
-  using MatrixTypeB = Matrix<T,U,AllocatorB,Distributer>
-  using MatrixTypeC = Matrix<T,U,AllocatorC,Distributer>
 
 public:
-  MatrixMultuplication3D();
-  MatrixMultuplication3D(const MatrixMultiplication3D& rhs);
-  MatrixMultuplication3D(MatrixMultiplication3D&& rhs);
-  ~MatrixMultiplication3D();
+  // Prevent any instantiation of this class.
+  Summa3D() = delete;
+  Summa3D(const Summa3D& rhs) = delete;
+  Summa3D(Summa3D&& rhs) = delete;
+  Summa3D& operator=(const Summa3D& rhs) = delete;
+  Summa3D& operator=(Summa3D&& rhs) = delete;
+  ~Summa3D() = delete;
 
-  void Multiply(const MatrixTypeA& matrixA, const MatrixTypeB& matrixB, MatrixTypeC& matrixC);
-  void Multiply(MatrixTypeA& matrixA, MatrixTypeB& matrixB, MatrixTypeC& matrixC);
-  MatrixTypeC Multiply(const MatrixTypeA& matrixA, const MatrixTypeB& matrixB); // Matrix move constructor should be called in return statement
-  MatrixTypeC Multiply(MatrixTypeA& matrixA, MatrixTypeB& matrixB);  // Matrix move constructor should be called in return statement
+  // For now, lets just use 1 method.
+  template<template<typename,typename,int> class Distribution>
+  static void Multiply(
+                        const Matrix<T,U,StructureA,Distribution>& matrixA,
+                        const Matrix<T,U,StructureB,Distribution>& matrixB,
+                              Matrix<T,U,StructureC,Distribution>& matrixC,
+                        U dimensionX,
+                        U dimensionY,
+                        U dimensionZ
+                      );
 
 private:
-  // Matrices for C=AB
-  Matrix<T,U,AllocatorA,Distributer> _matrixA;
-  Matrix<T,U,AllocatorB,Distributer> _matrixB;
-  Matrix<T,U,AllocatorC,Distributer> _matrixC;
-
-  // A - X x Y
-  // B - Y x Z
-  // C - X x Z
-  U _dimensionX;
-  U _dimensionY;
-  U _dimensionZ;
+/*
+  There is no reason to store state here. All we need this to do is to act as an interface. Nothing more.
+  MatrixMultiplicationEngine will take over from here. Storing state here would make no sense.
+*/
 };
 
-#include "MatrixMultiplication3D.hpp"
+#include "Summa3D.hpp"
 
-#endif /*MATRIX_MULTIPLICATION_3D_H_ */
+#endif /* SUMMA3D_H_ */
