@@ -1,4 +1,4 @@
-CCMPI = g++  #mpicxx
+CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
 CFLAGS = -g -Wall -O0 -std=c++11
 
 OBJS1 = Summa3D.o

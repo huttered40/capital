@@ -41,8 +41,8 @@ public:
   MatrixDistributerCyclic() = delete;
   MatrixDistributerCyclic(const MatrixDistributerCyclic& rhs) = delete;
   MatrixDistributerCyclic(MatrixDistributerCyclic&& rhs) = delete;
-  MatrixDistributerCyclic<T,U,0> operator=(const MatrixDistributerCyclic& rhs) = delete;
-  MatrixDistributerCyclic<T,U,0> operator=(MatrixDistributerCyclic&& rhs) = delete;
+  MatrixDistributerCyclic<T,U,0>& operator=(const MatrixDistributerCyclic& rhs) = delete;
+  MatrixDistributerCyclic<T,U,0>& operator=(MatrixDistributerCyclic&& rhs) = delete;
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
@@ -60,8 +60,8 @@ public:
   MatrixDistributerCyclic() = delete;
   MatrixDistributerCyclic(const MatrixDistributerCyclic& rhs) = delete;
   MatrixDistributerCyclic(MatrixDistributerCyclic&& rhs) = delete;
-  MatrixDistributerCyclic<T,U,1> operator=(const MatrixDistributerCyclic& rhs) = delete;
-  MatrixDistributerCyclic<T,U,1> operator=(MatrixDistributerCyclic&& rhs) = delete;
+  MatrixDistributerCyclic<T,U,1>& operator=(const MatrixDistributerCyclic& rhs) = delete;
+  MatrixDistributerCyclic<T,U,1>& operator=(MatrixDistributerCyclic&& rhs) = delete;
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
@@ -79,8 +79,8 @@ public:
   MatrixDistributerCyclic() = delete;
   MatrixDistributerCyclic(const MatrixDistributerCyclic& rhs) = delete;
   MatrixDistributerCyclic(MatrixDistributerCyclic&& rhs) = delete;
-  MatrixDistributerCyclic<T,U,2> operator=(const MatrixDistributerCyclic& rhs) = delete;
-  MatrixDistributerCyclic<T,U,2> operator=(MatrixDistributerCyclic&& rhs) = delete;
+  MatrixDistributerCyclic<T,U,2>& operator=(const MatrixDistributerCyclic& rhs) = delete;
+  MatrixDistributerCyclic<T,U,2>& operator=(MatrixDistributerCyclic&& rhs) = delete;
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
@@ -98,8 +98,8 @@ public:
   MatrixDistributerCyclic() = delete;
   MatrixDistributerCyclic(const MatrixDistributerCyclic& rhs) = delete;
   MatrixDistributerCyclic(MatrixDistributerCyclic&& rhs) = delete;
-  MatrixDistributerCyclic<T,U,3> operator=(const MatrixDistributerCyclic& rhs) = delete;
-  MatrixDistributerCyclic<T,U,3> operator=(MatrixDistributerCyclic&& rhs) = delete;
+  MatrixDistributerCyclic<T,U,3>& operator=(const MatrixDistributerCyclic& rhs) = delete;
+  MatrixDistributerCyclic<T,U,3>& operator=(MatrixDistributerCyclic&& rhs) = delete;
   ~MatrixDistributerCyclic() = delete;
 
 //protected:

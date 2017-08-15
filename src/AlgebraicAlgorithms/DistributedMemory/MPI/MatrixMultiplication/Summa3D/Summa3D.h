@@ -6,10 +6,11 @@
 // System includes
 #include <iostream>
 #include <vector>
+#include <mpi.h>
 
 // Local includes
 #include "./../../../../../AlgebraicStructures/Matrix/Matrix.h"
-#include "./../MatrixMultiplicationEngine/MatrixMultiplicationEngine.h"
+#include "Summa3DEngine.h"
 
 /*
   We can implement square MM for now, but soon, we will need triangular MM
@@ -33,7 +34,11 @@ public:
   Summa3D& operator=(Summa3D&& rhs) = delete;
   ~Summa3D() = delete;
 
-  // For now, lets just use 1 method.
+  // Format: matrixA is X x Y
+  //         matrixB is Y x Z
+  //         matrixC is X x Z
+
+
   template<template<typename,typename,int> class Distribution>
   static void Multiply(
                         const Matrix<T,U,StructureA,Distribution>& matrixA,
@@ -41,8 +46,33 @@ public:
                               Matrix<T,U,StructureC,Distribution>& matrixC,
                         U dimensionX,
                         U dimensionY,
-                        U dimensionZ
+                        U dimensionZ,
+                        MPI_Comm commWorld
                       );
+
+  template<template<typename,typename,int> class Distribution>
+  static void Multiply(
+                        const Matrix<T,U,StructureA,Distribution>& matrixA,
+                        const Matrix<T,U,StructureB,Distribution>& matrixB,
+                              Matrix<T,U,StructureC,Distribution>& matrixC,
+                        U matrixAcutXstart,
+                        U matrixAcutXend,
+                        U matrixAcutYstart,
+                        U matrixAcutYend,
+                        U matrixBcutYstart,
+                        U matrixBcutYend,
+                        U matrixBcutZstart,
+                        U matrixBcutZend,
+                        U matrixCcutXstart,
+                        U matrixCcutXend,
+                        U matrixCcutZstart,
+                        U matrixCcutZend,
+                        MPI_Comm commWorld
+                      );
+
+  // Later on, I'd like an overloaded Multiply() method that took parameters to "cut up" the current 3 matrices (so 8 extra arguments)
+  // This will require more Serialize methods, but the engine should remain the same, so I don't want that to change. Only at this 1st
+  // level should anything be different.
 
 private:
 /*
