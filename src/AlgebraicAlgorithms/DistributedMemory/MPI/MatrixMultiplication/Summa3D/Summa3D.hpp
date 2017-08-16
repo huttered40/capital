@@ -16,11 +16,12 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
                                                               int pGridCoordX,
                                                               int pGridCoordY,
                                                               int pGridCoordZ,
+                                                              int pGridDim,
                                                               MPI_Comm commWorld
                                                             )
 {
-  T* dataA = matrixA.getData()[0]; 
-  T* dataB = matrixB.getData()[0];
+  T* dataA = matrixA.getData(); 
+  T* dataB = matrixB.getData();
   U sizeA = matrixA.getNumElems();
   U sizeB = matrixB.getNumElems();
   T* foreignA = nullptr;
@@ -31,9 +32,11 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   MPI_Comm rowComm;
   MPI_Comm columnComm;
   MPI_Comm sliceComm;
-  
+  MPI_Comm depthComm;
+
   // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
   // Then, subdivide further into row groups and column groups
+  MPI_Comm_split(commWorld, pGridCoordY*pGridDim+pGridCoordX, rank, &depthComm);
   MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
   MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
@@ -77,9 +80,12 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY);
   Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ);
 
-  // Call Summa3DEngine<...>
+  T* solutionBuffer = matrixC.getData();
+  U numElems = matrixC.getNumElems();
 
-  // AllReduce
+  blasEngine<T,U,StructureA, StructureB, StructureC>::dgemm();
+
+  MPI_Allreduce(MPI_IN_PLACE, solutionBuffer, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
   if (!foreignA)
   {
@@ -115,6 +121,7 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
                                                               int pGridCoordX,
                                                               int pGridCoordY,
                                                               int pGridCoordZ,
+                                                              int pGridDim,
                                                               MPI_Comm commWorld
                                                             )
 {

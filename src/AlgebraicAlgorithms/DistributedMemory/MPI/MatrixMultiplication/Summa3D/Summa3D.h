@@ -11,7 +11,7 @@
 // Local includes
 #include "./../../../../../AlgebraicStructures/Matrix/Matrix.h"
 #include "./../../../../../AlgebraicStructures/Matrix/MatrixSerializer.h"
-#include "Summa3DEngine.h"
+#include "./../../../../../AlgebraicBLAS/blasEngine.h"
 
 /*
   We can implement square MM for now, but soon, we will need triangular MM
@@ -51,6 +51,7 @@ public:
                         int pGridCoordX,
                         int pGridCoordY,
                         int pGridCoordZ,
+                        int pGridDim,
                         MPI_Comm commWorld
                       );
 
@@ -74,6 +75,7 @@ public:
                         int pGridCoordX,
                         int pGridCoordY,
                         int pGridCoordZ,
+                        int pGridDim,
                         MPI_Comm commWorld
                       );
 

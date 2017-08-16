@@ -49,7 +49,8 @@ public:
 
   // automatically inlined
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
-  std::vector<T*>& getData() { return this->_matrix;}
+  std::vector<T*>& getMatrixData() { return this->_matrix;}
+  T* getData() { return this->_matrix[0];}
   U getNumElems() { return this->_numElems; }
 
   template<template<typename,typename,template<typename,typename,int> class> class StructureDest>

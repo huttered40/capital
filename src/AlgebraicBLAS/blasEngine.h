@@ -23,16 +23,15 @@ class blasEngine<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructure
   // Lets prevent any instances of this class from being created.
 public:
   blasEngine() = delete;
-  blasEngine(const blas3DEngine& rhs) = delete;
+  blasEngine(const blasEngine& rhs) = delete;
   blasEngine(blasEngine&& rhs) = delete;
   blasEngine<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare>& operator=(const blasEngine& rhs) = delete;
   blasEngine<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare>& operator=(blasEngine&& rhs) = delete;
   ~blasEngine() = delete;
 
   // Engine methods
-  static void dgemm();
+  static void dgemm(void);
 
-private:
 };
 
 #include "blasEngine.hpp"
