@@ -13,10 +13,18 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
                                                               U dimensionX,
                                                               U dimensionY,
                                                               U dimensionZ,
+                                                              int pGridCoordX,
+                                                              int pGridCoordY,
+                                                              int pGridCoordZ,
                                                               MPI_Comm commWorld
                                                             )
 {
-  std::cout << "Ed is here\n";
+  // Broadcast first
+  // Broadcast next
+  // Call the right cblas routine
+  // broadcast again
+
+
 }
 
 template<typename T, typename U,
@@ -40,8 +48,10 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
                                                               U matrixCcutXend,
                                                               U matrixCcutZstart,
                                                               U matrixCcutZend,
+                                                              int pGridCoordX,
+                                                              int pGridCoordY,
+                                                              int pGridCoordZ,
                                                               MPI_Comm commWorld
                                                             )
 {
-  std::cout << "Ed is here\n";
 }
