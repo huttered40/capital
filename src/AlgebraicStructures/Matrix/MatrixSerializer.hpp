@@ -3,11 +3,11 @@
 template<typename T, typename U>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY)
 {
-  U counter{dimensionY};
+  U counter{dimensionX};
   U srcOffset{0};
   U destOffset{0};
-  U counter2{dimensionY+1};
-  for (U i=0; i<dimensionX; i++)
+  U counter2{dimensionX+1};
+  for (U i=0; i<dimensionY; i++)
   {
     memcpy(&dest[0][destOffset], &src[0][srcOffset], counter*sizeof(T));
     srcOffset += counter2;
@@ -23,8 +23,8 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
   U counter{1};
   U srcOffset{0};
   U destOffset{0};
-  U counter2{dimensionY};
-  for (U i=0; i<dimensionX; i++)
+  U counter2{dimensionX};
+  for (U i=0; i<dimensionY; i++)
   {
     memcpy(&dest[0][destOffset], &src[0][srcOffset], counter*sizeof(T));
     srcOffset += counter2;
@@ -37,14 +37,14 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 template<typename T, typename U>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY)
 {
-  U counter{dimensionY};
+  U counter{dimensionX};
   U srcOffset{0};
   U destOffset{0};
   U zeroOffset{0};
-  U counter2{dimensionY+1};
-  for (U i=0; i<dimensionX; i++)
+  U counter2{dimensionX+1};
+  for (U i=0; i<dimensionY; i++)
   {
-    U zeroIter = dimensionY-counter;
+    U zeroIter = dimensionX-counter;
     for (U j=0; j<zeroIter; j++)
     {
       dest[0][zeroOffset+j] = 0;
@@ -52,7 +52,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
     memcpy(&dest[0][destOffset], &src[0][srcOffset], counter*sizeof(T));
     srcOffset += counter;
     destOffset += counter2;
-    zeroOffset += dimensionY;
+    zeroOffset += dimensionX;
     counter--;
   }
   return;
@@ -65,18 +65,18 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   U srcOffset{0};
   U destOffset{0};
   U zeroOffset{1};
-  U counter2{dimensionY};
-  for (U i=0; i<dimensionX; i++)
+  U counter2{dimensionX};
+  for (U i=0; i<dimensionY; i++)
   {
     memcpy(&dest[0][destOffset], &src[0][srcOffset], counter*sizeof(T));
-    U zeroIter = dimensionY-counter;
+    U zeroIter = dimensionX-counter;
     for (U j=0; j<zeroIter; j++)
     {
       dest[0][zeroOffset+j] = 0;
     }
     srcOffset += counter;
     destOffset += counter2;
-    zeroOffset += (dimensionY+1);
+    zeroOffset += (dimensionX+1);
     counter++;
   }
   return;

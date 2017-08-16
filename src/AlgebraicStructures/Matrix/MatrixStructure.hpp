@@ -97,7 +97,7 @@ void MatrixStructureRectangle<T,U,Distributer>::Construct()
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
-  matrix.resize(dimensionX);
+  matrix.resize(dimensionY);
   matrixNumElems = dimensionX * dimensionY;
   matrix[0] = new T[matrixNumElems];
   
@@ -105,7 +105,7 @@ void MatrixStructureRectangle<T,U,Distributer>::Assemble(std::vector<T*>& matrix
   for (auto& ptr : matrix)
   {
     ptr = &matrix[0][offset];
-    offset += dimensionY;
+    offset += dimensionX;
   }
 }
 
@@ -176,12 +176,12 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Assemble(std::vector<T*>& 
   // dimensionY must be equal to dimensionX
   assert(dimensionX == dimensionY);
 
-  matrix.resize(dimensionX);
+  matrix.resize(dimensionY);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
   matrix[0] = new T[matrixNumElems];
   
   U offset{0};
-  U counter{dimensionY};
+  U counter{dimensionX};
   for (auto& ptr : matrix)
   {
     ptr = &matrix[0][offset];
@@ -228,10 +228,10 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Distribute(std::vector<T*>
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
-  U counter{dimensionY};
+  U counter{dimensionX};
   for (const auto& rows : matrix)
   {
-    U iter{dimensionY-counter};
+    U iter{dimensionX-counter};
     for (U i=0; i<iter; i++)
     {
       std::cout << "  ";
@@ -264,7 +264,7 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Assemble(std::vector<T*>& 
   // dimensionY must be equal to dimensionX
   assert(dimensionX == dimensionY);
 
-  matrix.resize(dimensionX);
+  matrix.resize(dimensionY);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
   matrix[0] = new T[matrixNumElems];
   
@@ -304,7 +304,7 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Copy(std::vector<T*>& matr
 {
   int dummy = 0;
   Assemble(matrix, dummy, dimensionX, dimensionY);
-  U numElems = ((dimensionX*(dimensionX+1))>>1);
+  U numElems = ((dimensionY*(dimensionY+1))>>1);
   std::memcpy(matrix[0], source[0], numElems*sizeof(T));
 }
 

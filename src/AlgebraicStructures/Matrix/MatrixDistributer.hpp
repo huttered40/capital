@@ -20,17 +20,17 @@ void MatrixDistributerCyclic<T,U,0>::Distribute
 		 )
 {
 
-  U saveGlobalPosition = localPgridX*globalDimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
-  for (U i=0; i<dimensionX; i++)
+  U saveGlobalPosition = localPgridY*globalDimensionX+localPgridX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  for (U i=0; i<dimensionY; i++)
   {
     U globalPosition = saveGlobalPosition;
     for (U j=0; j<dimensionX; j++)
     {
       srand(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
-      globalPosition += globalPgridY;
+      globalPosition += globalPgridX;
     }
-    saveGlobalPosition += (globalPgridX*globalDimensionY);
+    saveGlobalPosition += (globalPgridY*globalDimensionX);
   }
   return;
 }
@@ -51,17 +51,17 @@ void MatrixDistributerCyclic<T,U,1>::Distribute
 		 )
 {
 
-  U saveGlobalPosition = localPgridX*globalDimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
-  for (U i=0; i<dimensionX; i++)
+  U saveGlobalPosition = localPgridY*globalDimensionX+localPgridX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  for (U i=0; i<dimensionY; i++)
   {
     U globalPosition = saveGlobalPosition;
-    for (U j=0; j<dimensionY; j++)
+    for (U j=0; j<dimensionX; j++)
     {
       srand(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
-      globalPosition += globalPgridY;
+      globalPosition += globalPgridX;
     }
-    saveGlobalPosition += (globalPgridX*globalDimensionY);
+    saveGlobalPosition += (globalPgridY*globalDimensionX);
   }
   return;
 }
@@ -81,30 +81,30 @@ void MatrixDistributerCyclic<T,U,2>::Distribute
 		   U globalPgridY
 		 )
 {
-  U saveGlobalPosition = localPgridX*globalDimensionY+localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  U saveGlobalPosition = localPgridY*globalDimensionX+localPgridX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   U counter{0};
   U startIter;
   U endIter;
-  for (U i=0; i<dimensionX; i++)
+  for (U i=0; i<dimensionY; i++)
   {
     U globalPosition = saveGlobalPosition;
     startIter = 0;
-    endIter = dimensionY-counter;
+    endIter = dimensionX-counter;
     // Special corner case: If a processor's first data on each row is out of bounds of the UT structure, then give a 0 value
-    if (localPgridX > localPgridY)
+    if (localPgridY > localPgridX)
     {
       matrix[i][0] = 0;
       startIter++;
-      globalPosition += globalPgridY;
+      globalPosition += globalPgridX;
     }
     for (U j=startIter; j<endIter; j++)
     {
       srand(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
-      globalPosition += globalPgridY;
+      globalPosition += globalPgridX;
     }
     counter++;
-    saveGlobalPosition += (globalPgridX*globalDimensionY);
+    saveGlobalPosition += (globalPgridY*globalDimensionX);
   }
   return;
 }
@@ -127,11 +127,11 @@ void MatrixDistributerCyclic<T,U,3>::Distribute
   U saveGlobalPosX = localPgridX;
   U saveGlobalPosY = localPgridY;
   U counter{1};
-  for (U i=0; i<dimensionX; i++)
+  for (U i=0; i<dimensionY; i++)
   {
     counter=i+1;
     // Special corner case: If a processor's last data on each row is out of bounds of the UT structure, then give a 0 value
-    if (localPgridX < localPgridY)
+    if (localPgridY < localPgridX)
     {
       // Set the last position in row
       matrix[i][counter-1] = 0;
@@ -146,20 +146,20 @@ void MatrixDistributerCyclic<T,U,3>::Distribute
         // Set the first position in row to a 1 -> special only to LowerTriangular matrices.
         matrix[i][j] = 1.;
       }
-      else if (saveGlobalPosX < saveGlobalPosY)
+      else if (saveGlobalPosY < saveGlobalPosX)
       {
         matrix[i][j] = 0;
       }
       else
       {
-        U globalPos = saveGlobalPosX*globalDimensionY+saveGlobalPosY;
+        U globalPos = saveGlobalPosY*globalDimensionX+saveGlobalPosX;
         srand(globalPos);
         matrix[i][j] = drand48();			// Change this later.
       }
-      saveGlobalPosY += globalPgridY;
+      saveGlobalPosX += globalPgridX;
     }
-    saveGlobalPosX += globalPgridX;
-    saveGlobalPosY = localPgridY;
+    saveGlobalPosY += globalPgridY;
+    saveGlobalPosX = localPgridX;
   }
   return;
 }

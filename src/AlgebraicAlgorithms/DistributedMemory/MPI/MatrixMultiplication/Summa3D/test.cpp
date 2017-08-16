@@ -40,8 +40,8 @@ int main(int argc, char** argv)
 
   int helper = pGridDimensionSize;
   helper *= helper;
-  int pCoordX = (rank%helper)/pGridDimensionSize;
-  int pCoordY = rank%pGridDimensionSize; 
+  int pCoordX = rank%pGridDimensionSize;
+  int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
   matA.Distribute(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
