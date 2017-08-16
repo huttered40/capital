@@ -1,8 +1,21 @@
 /* Author: Edward Hutter */
 
+// Helper static method -- fills a range with zeros
+template<typename T, typename U>
+static void fillZerosContig(T* addr, U size)
+{
+  for (U i=0; i<size; i++)
+  {
+    addr[i] = 0;
+  }
+}
+
+
 template<typename T, typename U>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY)
 {
+  assert(dimensionX == dimensionY);
+
   // Do nothing but must be defined
   if (dest == nullptr)
   {
@@ -10,10 +23,37 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(T* 
   }
   return;
 }
+  
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = rangeX*rangeY;
+    dest = new T[numElems];
+  }
+
+  U destIndex = 0;
+  U srcIndexSave = cutDimensionYstart*dimensionX+cutDimensionXstart;
+  for (U i=0; i<rangeY; i++)
+  {
+    memcpy(&dest[destIndex], &src[srcIndexSave], sizeof(T)*rangeX);
+    destIndex += rangeX;
+    srcIndexSave += dimensionX;
+  }
+}
 
 template<typename T, typename U>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
 {
+  assert(dimensionX == dimensionY);
+
   if (dest == nullptr)
   {
     U numElems = ((dimensionX*(dimensionX+1))>>1);
@@ -35,8 +75,96 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 }
 
 template<typename T, typename U>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, bool fillZeros)
+{
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = dimensionX*dimensionX;
+    dest = new T[numElems];
+  }
+
+  U counter{dimensionX};
+  U srcOffset{0};
+  U destOffset{0};
+  U counter2{dimensionX+1};
+  for (U i=0; i<dimensionY; i++)
+  {
+    U fillSize = dimensionX-counter;
+    fillZerosContig(&dest[destOffset], fillSize);
+    destOffset += fillSize;
+    memcpy(&dest[destOffset], &src[srcOffset], counter*sizeof(T));
+    srcOffset += counter2;
+    destOffset += counter;
+    counter--;
+  }
+  return;
+}
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = ((rangeX*(rangeX+1))>>1);
+    dest = new T[numElems];
+  }
+
+  U destIndex = 0;
+  U counter{rangeX};
+  U srcIndexSave = cutDimensionYstart*dimensionX+cutDimensionXstart;
+  for (U i=0; i<rangeY; i++)
+  {
+    memcpy(&dest[destIndex], &src[srcIndexSave], sizeof(T)*counter);
+    destIndex += counter;
+    srcIndexSave += (dimensionX+1);
+    counter--;
+  }
+}
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = rangeX*rangeX;
+    dest = new T[numElems];
+  }
+
+  U destIndex = 0;
+  U counter{rangeX};
+  U srcIndexSave = cutDimensionYstart*dimensionX+cutDimensionXstart;
+  for (U i=0; i<rangeY; i++)
+  {
+    U fillSize = rangeX-counter;
+    fillZerosContig(&dest[destIndex], fillSize);
+    destIndex += fillSize;
+    memcpy(&dest[destIndex], &src[srcIndexSave], sizeof(T)*counter);
+    destIndex += counter;
+    srcIndexSave += dimensionX;
+    counter--;
+  }
+}
+
+
+template<typename T, typename U>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
 {
+  assert(dimensionX == dimensionY);
+
   if (dest == nullptr)
   {
     U numElems = ((dimensionX*(dimensionX+1))>>1);
@@ -58,8 +186,96 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, bool fillZeros)
+{
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = dimensionX*dimensionX;
+    dest = new T[numElems];
+  }
+
+  U counter{1};
+  U srcOffset{0};
+  U destOffset{0};
+  U counter2{dimensionX};
+  for (U i=0; i<dimensionY; i++)
+  {
+    memcpy(&dest[destOffset], &src[srcOffset], counter*sizeof(T));
+    srcOffset += counter2;
+    destOffset += counter;
+    U fillSize = dimensionX - counter;
+    fillZerosContig(&dest[destOffset], fillSize);
+    destOffset += fillSize;
+    counter++;
+  }
+  return;
+}
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = ((rangeX*(rangeX+1))>>1);
+    dest = new T[numElems];
+  }
+
+  U counter{1};
+  U srcOffset{cutDimensionYstart*dimensionX+cutDimensionXstart};
+  U destOffset{0};
+  for (U i=0; i<rangeY; i++)
+  {
+    memcpy(&dest[destOffset], &src[srcOffset], sizeof(T)*counter);
+    destOffset += counter;
+    srcOffset += dimensionX;
+    counter++;
+  }
+}
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = rangeX*rangeX;
+    dest = new T[numElems];
+  }
+
+  U counter{1};
+  U srcOffset{cutDimensionYstart*dimensionX+cutDimensionXstart};
+  U destOffset{0};
+  for (U i=0; i<rangeY; i++)
+  {
+    memcpy(&dest[destOffset], &src[srcOffset], sizeof(T)*counter);
+    destOffset += counter;
+    srcOffset += dimensionX;
+    U fillSize = rangeX - counter;
+    fillZerosContig(&dest[destOffset], fillSize);
+    destOffset += fillSize;
+    counter++;
+  }
+}
+
+
+template<typename T, typename U>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
 {
+  assert(dimensionX == dimensionY);
+
   if (dest == nullptr)
   {
     U numElems = dimensionX*dimensionX;
@@ -73,11 +289,8 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   U counter2{dimensionX+1};
   for (U i=0; i<dimensionY; i++)
   {
-    U zeroIter = dimensionX-counter;
-    for (U j=0; j<zeroIter; j++)
-    {
-      dest[zeroOffset+j] = 0;
-    }
+    U fillZeros = dimensionX-counter;
+    fillZerosContig(&dest[zeroOffset], fillZeros);
     memcpy(&dest[destOffset], &src[srcOffset], counter*sizeof(T));
     srcOffset += counter;
     destOffset += counter2;
@@ -88,8 +301,76 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = rangeX*rangeX;
+    dest = new T[numElems];
+  }
+
+  U counter{dimensionX-cutDimensionYstart-1};
+  U srcOffset = ((dimensionX*(dimensionX+1))>>1);
+  U helper = dimensionX - cutDimensionYstart;
+  srcOffset -= ((helper*(helper+1))>>1);		// Watch out for 64-bit rvalue implicit cast problems!
+  srcOffset += (cutDimensionXstart-cutDimensionYstart);
+  U destOffset{0};
+  for (U i=0; i<rangeY; i++)
+  {
+    memcpy(&dest[destOffset], &src[srcOffset], sizeof(T)*rangeX);
+    destOffset += rangeX;
+    srcOffset += counter;
+    counter--;
+  }
+}
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = rangeX*rangeX;
+    dest = new T[numElems];
+  }
+
+  U counter{dimensionX-cutDimensionYstart-1};
+  U counter2{rangeX};
+  U srcOffset = ((dimensionX*(dimensionX+1))>>1);
+  U helper = dimensionX - cutDimensionYstart;
+  srcOffset -= ((helper*(helper+1))>>1);		// Watch out for 64-bit rvalue implicit cast problems!
+  srcOffset += (cutDimensionXstart-cutDimensionYstart);
+  U destOffset{0};
+  for (U i=0; i<rangeY; i++)
+  {
+    U fillZeros = rangeX - counter2;
+    fillZerosContig(&dest[destOffset], fillZeros);
+    destOffset += fillZeros;
+    memcpy(&dest[destOffset], &src[srcOffset], sizeof(T)*counter2);
+    destOffset += counter2;
+    srcOffset += (counter+1);
+    counter--;
+    counter2--;
+  }
+}
+
+
+template<typename T, typename U>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY)
 {
+  assert(dimensionX == dimensionY);
+
   // Do nothing but must be defined
   if (dest == nullptr)
   {
@@ -97,6 +378,39 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
   }
   return;
 }
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = ((rangeX*(rangeX+1))>>1);
+    dest = new T[numElems];
+  }
+
+  U counter{dimensionX-cutDimensionYstart-1};
+  U counter2{rangeX};
+  U srcOffset = ((dimensionX*(dimensionX+1))>>1);
+  U helper = dimensionX - cutDimensionYstart;
+  srcOffset -= ((helper*(helper+1))>>1);		// Watch out for 64-bit rvalue implicit cast problems!
+  srcOffset += (cutDimensionXstart-cutDimensionYstart);
+  U destOffset{0};
+  for (U i=0; i<rangeY; i++)
+  {
+    memcpy(&dest[destOffset], &src[srcOffset], sizeof(T)*counter2);
+    destOffset += counter2;
+    srcOffset += (counter+1);
+    counter--;
+    counter2--;
+  }
+}
+
 
 template<typename T, typename U>
 void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
@@ -129,6 +443,67 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = rangeX*rangeX;
+    dest = new T[numElems];
+  }
+
+  U counter{cutDimensionYstart};
+  U srcOffset = ((counter*(counter+1))>>1);
+  srcOffset += cutDimensionXstart;
+  U destOffset{0};
+  for (U i=0; i<rangeY; i++)
+  {
+    memcpy(&dest[destOffset], &src[srcOffset], sizeof(T)*rangeX);
+    destOffset += rangeX;
+    srcOffset += (counter+1);
+    counter++;
+  }
+}
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = rangeX*rangeX;
+    dest = new T[numElems];
+  }
+
+  U counter{cutDimensionYstart};
+  U counter2{1};
+  U srcOffset = ((counter*(counter+1))>>1);
+  srcOffset += cutDimensionXstart;
+  U destOffset{0};
+  for (U i=0; i<rangeY; i++)
+  {
+    memcpy(&dest[destOffset], &src[srcOffset], sizeof(T)*counter2);
+    destOffset += counter2;
+    U fillSize = rangeX - counter2;
+    fillZerosContig(&dest[destOffset], fillSize);
+    destOffset += fillSize;
+    srcOffset += (counter+1);
+    counter++;
+    counter2++;
+  }
+}
+
+template<typename T, typename U>
 void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY)
 {
   // Do nothing but must be defined
@@ -137,4 +512,34 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
     dest = src;
   }
   return;
+}
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+{
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+
+  assert(rangeX == rangeY);
+  assert(dimensionX == dimensionY);
+
+  if (dest == nullptr)
+  {
+    U numElems = ((rangeX*(rangeX+1))>>1);
+    dest = new T[numElems];
+  }
+
+  U counter{cutDimensionYstart};
+  U counter2{1};
+  U srcOffset = ((counter*(counter+1))>>1);
+  srcOffset += cutDimensionXstart;
+  U destOffset{0};
+  for (U i=0; i<rangeY; i++)
+  {
+    memcpy(&dest[destOffset], &src[srcOffset], sizeof(T)*counter2);
+    destOffset += counter2;
+    srcOffset += (counter+1);
+    counter++;
+    counter2++;
+  }
 }

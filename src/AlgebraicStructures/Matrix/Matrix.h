@@ -55,6 +55,12 @@ public:
   template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
   void Serialize(Matrix<T,U,StructureDest,Distributer>& dest);
 
+  template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
+  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend);
+
+  template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
+  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros);
+
   // Host method, will call Allocator<T,U,?>::Distribute(...) method
   void Distribute(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY);
 
