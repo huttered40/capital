@@ -7,7 +7,7 @@ OBJS2 = test.o
 all: Summa3D
 
 Summa3D: $(OBJS2)
-	$(CCMPI) $(CFLAGS) -o Summa3D $(OBJS2)
+	$(CCMPI) $(CFLAGS) -o Summa3D $(OBJS2) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a
 
 test.o: test.cpp Summa3D.h
 	$(CCMPI) $(CFLAGS) -o test.o -c test.cpp

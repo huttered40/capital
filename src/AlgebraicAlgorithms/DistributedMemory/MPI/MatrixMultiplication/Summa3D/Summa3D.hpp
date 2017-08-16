@@ -41,11 +41,11 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
 
-  bool isRootRow = pGridCoordX == pGridCoordZ ? true : false;
-  bool isRootColumn = pGridCoordY == pGridCoordZ ? true : false;
+  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
+  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
   // Broadcast
-  if (pGridCoordX == pGridCoordZ)
+  if (isRootRow)
   {
     MPI_Bcast(dataA, sizeA, MPI_DOUBLE, pGridCoordZ, rowComm);
   }
@@ -56,7 +56,7 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   }
 
   // Broadcast data along columns
-  if (pGridCoordX == pGridCoordZ)
+  if (isRootColumn)
   {
     MPI_Bcast(dataB, sizeB, MPI_DOUBLE, pGridCoordZ, columnComm);
   }
@@ -80,12 +80,13 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY);
   Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ);
 
-  T* solutionBuffer = matrixC.getData();
+  T* matrixCforEngine = matrixC.getData();
   U numElems = matrixC.getNumElems();
 
-  blasEngine<T,U,StructureA, StructureB, StructureC>::dgemm();
+  blasEngine<T,U,StructureA, StructureB, StructureC>::multiply(matrixAforEngine, matrixBforEngine, matrixCforEngine, dimensionX, dimensionY,
+    dimensionX, dimensionZ, dimensionY, dimensionZ);
 
-  MPI_Allreduce(MPI_IN_PLACE, solutionBuffer, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
+  MPI_Allreduce(MPI_IN_PLACE, matrixCforEngine, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
   if (!foreignA)
   {

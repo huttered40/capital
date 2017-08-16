@@ -5,6 +5,7 @@
 
 
 // System includes
+#include <cblas.h>
 
 // Local includes
 #include "./../AlgebraicStructures/Matrix/MatrixStructure.h"
@@ -30,7 +31,7 @@ public:
   ~blasEngine() = delete;
 
   // Engine methods
-  static void dgemm(void);
+  static void multiply(T* matrixA, T* matrixB, T* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimX, U matrixBdimZ, U matrixCdimY, U matrixCdimZ);
 
 };
 
