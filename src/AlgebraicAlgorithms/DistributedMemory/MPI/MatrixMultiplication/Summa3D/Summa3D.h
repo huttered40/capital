@@ -41,9 +41,9 @@ public:
 
   template<template<typename,typename,int> class Distribution>
   static void Multiply(
-                        const Matrix<T,U,StructureA,Distribution>& matrixA,
-                        const Matrix<T,U,StructureB,Distribution>& matrixB,
-                              Matrix<T,U,StructureC,Distribution>& matrixC,
+                        Matrix<T,U,StructureA,Distribution>& matrixA,
+                        Matrix<T,U,StructureB,Distribution>& matrixB,
+                        Matrix<T,U,StructureC,Distribution>& matrixC,
                         U dimensionX,
                         U dimensionY,
                         U dimensionZ,
@@ -55,9 +55,9 @@ public:
 
   template<template<typename,typename,int> class Distribution>
   static void Multiply(
-                        const Matrix<T,U,StructureA,Distribution>& matrixA,
-                        const Matrix<T,U,StructureB,Distribution>& matrixB,
-                              Matrix<T,U,StructureC,Distribution>& matrixC,
+                        Matrix<T,U,StructureA,Distribution>& matrixA,
+                        Matrix<T,U,StructureB,Distribution>& matrixB,
+                        Matrix<T,U,StructureC,Distribution>& matrixC,
                         U matrixAcutXstart,
                         U matrixAcutXend,
                         U matrixAcutYstart,
