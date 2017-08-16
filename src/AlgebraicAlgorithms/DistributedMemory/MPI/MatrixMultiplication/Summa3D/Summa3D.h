@@ -10,6 +10,7 @@
 
 // Local includes
 #include "./../../../../../AlgebraicStructures/Matrix/Matrix.h"
+#include "./../../../../../AlgebraicStructures/Matrix/MatrixSerializer.h"
 #include "Summa3DEngine.h"
 
 /*

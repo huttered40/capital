@@ -1,15 +1,32 @@
 /* Author: Edward Hutter */
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY)
 {
+  // Do nothing but must be defined
+  if (dest == nullptr)
+  {
+    dest = src;
+  }
+  return;
+}
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
+{
+  if (dest == nullptr)
+  {
+    U numElems = ((dimensionX*(dimensionX+1))>>1);
+    dest = new T[numElems];
+  }
+
   U counter{dimensionX};
   U srcOffset{0};
   U destOffset{0};
   U counter2{dimensionX+1};
   for (U i=0; i<dimensionY; i++)
   {
-    memcpy(&dest[0][destOffset], &src[0][srcOffset], counter*sizeof(T));
+    memcpy(&dest[destOffset], &src[srcOffset], counter*sizeof(T));
     srcOffset += counter2;
     destOffset += counter;
     counter--;
@@ -18,15 +35,21 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
 {
+  if (dest == nullptr)
+  {
+    U numElems = ((dimensionX*(dimensionX+1))>>1);
+    dest = new T[numElems];
+  }
+
   U counter{1};
   U srcOffset{0};
   U destOffset{0};
   U counter2{dimensionX};
   for (U i=0; i<dimensionY; i++)
   {
-    memcpy(&dest[0][destOffset], &src[0][srcOffset], counter*sizeof(T));
+    memcpy(&dest[destOffset], &src[srcOffset], counter*sizeof(T));
     srcOffset += counter2;
     destOffset += counter;
     counter++;
@@ -35,8 +58,14 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
 {
+  if (dest == nullptr)
+  {
+    U numElems = dimensionX*dimensionX;
+    dest = new T[numElems];
+  }
+
   U counter{dimensionX};
   U srcOffset{0};
   U destOffset{0};
@@ -47,9 +76,9 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
     U zeroIter = dimensionX-counter;
     for (U j=0; j<zeroIter; j++)
     {
-      dest[0][zeroOffset+j] = 0;
+      dest[zeroOffset+j] = 0;
     }
-    memcpy(&dest[0][destOffset], &src[0][srcOffset], counter*sizeof(T));
+    memcpy(&dest[destOffset], &src[srcOffset], counter*sizeof(T));
     srcOffset += counter;
     destOffset += counter2;
     zeroOffset += dimensionX;
@@ -59,8 +88,25 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const std::vector<T*>& src, std::vector<T*>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY)
 {
+  // Do nothing but must be defined
+  if (dest == nullptr)
+  {
+    dest = src;
+  }
+  return;
+}
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
+{
+  if (dest == nullptr)
+  {
+    U numElems = dimensionX*dimensionX;
+    dest = new T[numElems];
+  }
+
   U counter{1};
   U srcOffset{0};
   U destOffset{0};
@@ -68,16 +114,27 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   U counter2{dimensionX};
   for (U i=0; i<dimensionY; i++)
   {
-    memcpy(&dest[0][destOffset], &src[0][srcOffset], counter*sizeof(T));
+    memcpy(&dest[destOffset], &src[srcOffset], counter*sizeof(T));
     U zeroIter = dimensionX-counter;
     for (U j=0; j<zeroIter; j++)
     {
-      dest[0][zeroOffset+j] = 0;
+      dest[zeroOffset+j] = 0;
     }
     srcOffset += counter;
     destOffset += counter2;
     zeroOffset += (dimensionX+1);
     counter++;
+  }
+  return;
+}
+
+template<typename T, typename U>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY)
+{
+  // Do nothing but must be defined
+  if (dest == nullptr)
+  {
+    dest = src;
   }
   return;
 }

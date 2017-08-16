@@ -38,6 +38,9 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
 
+  bool isRootRow = pGridCoordX == pGridCoordZ ? true : false;
+  bool isRootColumn = pGridCoordY == pGridCoordZ ? true : false;
+
   // Broadcast
   if (pGridCoordX == pGridCoordZ)
   {
@@ -61,7 +64,22 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   }
 
   // Now need to perform the cblas call via Summa3DEngine (to use the right cblas call based on the structure combo)
-  // and the AllReduce call.
+  // Need to call serialize blindly, even if we are going from square to square
+  //   This is annoyingly required for cblas calls. For now, just abide by the rules.
+  // We also must create an interface to serialize from vectors to vectors to avoid instantiating temporary matrices.
+  // These can be made static methods in the Matrix class to the MatrixSerialize class.
+  // Its just another option for the user.
+
+  T* matrixAtoSerialize = isRootRow ? dataA : foreignA;
+  T* matrixBtoSerialize = isRootColumn ? dataB : foreignB;
+  T* matrixAforEngine = nullptr;
+  T* matrixBforEngine = nullptr;
+  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY);
+  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ);
+
+  // Call Summa3DEngine<...>
+
+  // AllReduce
 
   if (!foreignA)
   {
