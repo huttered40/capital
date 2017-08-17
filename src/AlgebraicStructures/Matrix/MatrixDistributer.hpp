@@ -6,7 +6,7 @@
 
 // MatrixStructureSquare
 template<typename T, typename U>
-void MatrixDistributerCyclic<T,U,0>::Distribute
+void MatrixDistributerCyclic<T,U,0>::DistributeRandom
                 (
 		   std::vector<T*>& matrix,
 		   U dimensionX,
@@ -35,9 +35,43 @@ void MatrixDistributerCyclic<T,U,0>::Distribute
   return;
 }
 
+// MatrixStructureSquare
+template<typename T, typename U>
+void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
+                (
+		   std::vector<T*>& matrix,
+		   U dimensionX,
+		   U dimensionY,
+                   U globalDimensionX,
+                   U globalDimensionY,
+		   U localPgridX,
+		   U localPgridY,
+		   U globalPgridX,
+		   U globalPgridY,
+                   bool diagonallyDominant
+		 )
+{
+  // Note: this is not fully implemented yet, as I have not decided on whether I need to perform a local transpose
+  //       or local (but distributed based on the values each processor gets) transpose.
+
+  U saveGlobalPosition = localPgridY*globalDimensionX+localPgridX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  for (U i=0; i<dimensionY; i++)
+  {
+    U globalPosition = saveGlobalPosition;
+    for (U j=0; j<dimensionX; j++)
+    {
+      srand(globalPosition);
+      matrix[i][j] = drand48();			// Change this later.
+      globalPosition += globalPgridX;
+    }
+    saveGlobalPosition += (globalPgridY*globalDimensionX);
+  }
+  return;
+}
+
 // MatrixStructureRectangle
 template<typename T, typename U>
-void MatrixDistributerCyclic<T,U,1>::Distribute
+void MatrixDistributerCyclic<T,U,1>::DistributeRandom
                 (
 		   std::vector<T*>& matrix,
 		   U dimensionX,
@@ -68,7 +102,7 @@ void MatrixDistributerCyclic<T,U,1>::Distribute
 
 // MatrixStructureUpperTriangular
 template<typename T, typename U>
-void MatrixDistributerCyclic<T,U,2>::Distribute
+void MatrixDistributerCyclic<T,U,2>::DistributeRandom
                 (
 		   std::vector<T*>& matrix,
 		   U dimensionX,
@@ -111,7 +145,7 @@ void MatrixDistributerCyclic<T,U,2>::Distribute
 
 // MatrixStructureLowerTriangular
 template<typename T, typename U>
-void MatrixDistributerCyclic<T,U,3>::Distribute
+void MatrixDistributerCyclic<T,U,3>::DistributeRandom
                 (
 		   std::vector<T*>& matrix,
 		   U dimensionX,

@@ -61,11 +61,16 @@ void MatrixStructureSquare<T,U,Distributer>::Copy(std::vector<T*>& matrix, const
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureSquare<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
+void MatrixStructureSquare<T,U,Distributer>::DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U,0>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,0>::DistributeRandom(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
+template<typename T, typename U, template<typename,typename,int> class Distributer>
+void MatrixStructureSquare<T,U,Distributer>::DistributeSymmetric(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY, bool diagonallyDominant)
+{
+  Distributer<T,U,0>::DistributeSymmetric(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY, diagonallyDominant);
+}
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
@@ -139,9 +144,9 @@ void MatrixStructureRectangle<T,U,Distributer>::Copy(std::vector<T*>& matrix, co
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureRectangle<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
+void MatrixStructureRectangle<T,U,Distributer>::DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U,1>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,1>::DistributeRandom(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -220,9 +225,9 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Copy(std::vector<T*>& matr
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureUpperTriangular<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY)
+void MatrixStructureUpperTriangular<T,U,Distributer>::DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY)
 {
-  Distributer<T,U,2>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimY);
+  Distributer<T,U,2>::DistributeRandom(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimY);
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -309,9 +314,9 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Copy(std::vector<T*>& matr
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureLowerTriangular<T,U,Distributer>::Distribute(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
+void MatrixStructureLowerTriangular<T,U,Distributer>::DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimDimY)
 {
-  Distributer<T,U,3>::Distribute(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
+  Distributer<T,U,3>::DistributeRandom(matrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, localPgridDimX, localPgridDimY, globalPgridDimX, globalPgridDimDimY);
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>

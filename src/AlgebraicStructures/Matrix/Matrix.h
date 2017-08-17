@@ -63,7 +63,8 @@ public:
   void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros);
 
   // Host method, will call Allocator<T,U,?>::Distribute(...) method
-  void Distribute(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY);
+  void DistributeRandom(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY);
+  void DistributeSymmetric(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY, bool diagonallyDominant);
 
   // Just a local print. For a distributed print, we must implement another class that takes the Matrix and operates on it.
   //   That is not something that this class policy needs to worry about.

@@ -18,10 +18,10 @@ int main(void)
 /*
   MatrixType1 theMatrix(8,8,16,16);
   MatrixType2 theMatrixS(4,4,16,16);
-  theMatrixS.Distribute(0,0,2,2);
+  theMatrixS.DistributeRandom(0,0,2,2);
   MatrixType1 theMatrix2{theMatrix};
   const MatrixType1& theMatrix3 = theMatrix2;
-  theMatrix2.Distribute(1,1,2,2);
+  theMatrix2.DistributeRandom(1,1,2,2);
   MatrixType1 theMatrix4 = std::move(theMatrix2);
   theMatrix4.print();
   cout << "\n\n";
@@ -33,7 +33,7 @@ int main(void)
 
   MatrixType2 theMatrix1(4,4,16,16);
   MatrixType1 theMatrix2(8,8,16,16);
-  theMatrix2.Distribute(0,0,1,1);
+  theMatrix2.DistributeRandom(0,0,1,1);
   theMatrix2.Serialize(theMatrix1,4,8,4,8);	// square to lower triangular
   theMatrix1.print();
   cout << "\n\n";

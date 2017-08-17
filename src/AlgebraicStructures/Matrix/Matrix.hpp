@@ -121,14 +121,26 @@ void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distr
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-void Matrix<T,U,Structure,Distributer>::Distribute(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY)
+void Matrix<T,U,Structure,Distributer>::DistributeRandom(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY)
 {
-  // Matrix must be already cnstructed with memory. Add a check for this later.
+  // Matrix must be already constructed with memory. Add a check for this later.
 
   // This is a 2-level Policy-class trick due to the lack of orthogonality between the
   //   Structure Policy and the Distributer Policy.
   
-  Structure<T,U,Distributer>::Distribute(this->_matrix, this->_dimensionX, this->_dimensionY, this->_globalDimensionX, this->_globalDimensionY, localPgridX, localPgridY, globalPgridX, globalPgridY);
+  Structure<T,U,Distributer>::DistributeRandom(this->_matrix, this->_dimensionX, this->_dimensionY, this->_globalDimensionX, this->_globalDimensionY, localPgridX, localPgridY, globalPgridX, globalPgridY);
+}
+
+template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
+void Matrix<T,U,Structure,Distributer>::DistributeSymmetric(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY, bool diagonallyDominant)
+{
+  // Matrix must be already constructed with memory. Add a check for this later.
+
+  // This is a 2-level Policy-class trick due to the lack of orthogonality between the
+  //   Structure Policy and the Distributer Policy.
+
+  // Note: this method is only defined for Square matrices 
+  Structure<T,U,Distributer>::DistributeSymmetric(this->_matrix, this->_dimensionX, this->_dimensionY, this->_globalDimensionX, this->_globalDimensionY, localPgridX, localPgridY, globalPgridX, globalPgridY, diagonallyDominant);
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>

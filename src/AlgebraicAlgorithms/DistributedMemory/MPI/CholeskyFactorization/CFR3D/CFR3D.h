@@ -4,9 +4,12 @@
 #define CFR3D_H_
 
 // System includes
+#include <iostream>
 
 // Local includes
-
+#include "./../../../../../AlgebraicStructures/Matrix/Matrix.h"
+#include "./../../../../../AlgebraicStructures/Matrix/MatrixSerializer.h"
+#include "./../../../../../AlgebraicBLAS/blasEngine.h"
 
 // Lets use partial template specialization
 // So only declare the fully templated class
@@ -27,7 +30,7 @@ public:
   CFR3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(const CFR3D& rhs) = delete;
   CFR3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(CFR3D&& rhs) = delete;
 
-  static void Factor(MatrixStructureSquare matrixA, MatrixStructureLowerTriangular matrixL, U dimension, MPI_Comm commWorld);
+  static void Factor(MatrixStructureSquare& matrixA, MatrixStructureLowerTriangular& matrixL, U dimension, MPI_Comm commWorld);
 
 };
 
