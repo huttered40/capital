@@ -26,7 +26,7 @@ void MatrixDistributerCyclic<T,U,0>::DistributeRandom
     U globalPosition = saveGlobalPosition;
     for (U j=0; j<dimensionX; j++)
     {
-      srand(globalPosition);
+      srand48(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
       globalPosition += globalPgridX;
     }
@@ -55,16 +55,25 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
   //       or local (but distributed based on the values each processor gets) transpose.
 
   U saveGlobalPosition = localPgridY*globalDimensionX+localPgridX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  U trackX = localPgridX;
+  U trackY = localPgridY;
   for (U i=0; i<dimensionY; i++)
   {
     U globalPosition = saveGlobalPosition;
     for (U j=0; j<dimensionX; j++)
     {
-      srand(globalPosition);
+      srand48(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
+      if ((diagonallyDominant) && (trackX==trackY))
+      {
+        matrix[i][j] += globalDimensionX;		// X or Y, should not matter
+      }
       globalPosition += globalPgridX;
+      trackX += globalPgridX;
     }
     saveGlobalPosition += (globalPgridY*globalDimensionX);
+    trackY += globalPgridY;
+    trackX = localPgridX;		// reset
   }
   return;
 }
@@ -91,7 +100,7 @@ void MatrixDistributerCyclic<T,U,1>::DistributeRandom
     U globalPosition = saveGlobalPosition;
     for (U j=0; j<dimensionX; j++)
     {
-      srand(globalPosition);
+      srand48(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
       globalPosition += globalPgridX;
     }
@@ -133,7 +142,7 @@ void MatrixDistributerCyclic<T,U,2>::DistributeRandom
     }
     for (U j=startIter; j<endIter; j++)
     {
-      srand(globalPosition);
+      srand48(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
       globalPosition += globalPgridX;
     }
@@ -187,7 +196,7 @@ void MatrixDistributerCyclic<T,U,3>::DistributeRandom
       else
       {
         U globalPos = saveGlobalPosY*globalDimensionX+saveGlobalPosX;
-        srand(globalPos);
+        srand48(globalPos);
         matrix[i][j] = drand48();			// Change this later.
       }
       saveGlobalPosX += globalPgridX;
