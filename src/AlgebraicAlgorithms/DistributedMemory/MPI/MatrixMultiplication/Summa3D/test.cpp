@@ -50,7 +50,10 @@ int main(int argc, char** argv)
   cout << "Processor " << rank << " has dimensions - (" << pCoordX << "," << pCoordY << "," << pCoordZ << ")\n";
 
   Summa3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare>::
-    Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, pCoordX, pCoordY, pCoordZ, pGridDimensionSize,MPI_COMM_WORLD);
+    Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD);
+
+  if (rank == 0)
+  matC.print();
 
   MPI_Finalize();
 

@@ -13,22 +13,20 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
                                                               U dimensionX,
                                                               U dimensionY,
                                                               U dimensionZ,
-                                                              int pGridCoordX,
-                                                              int pGridCoordY,
-                                                              int pGridCoordZ,
-                                                              int pGridDim,
                                                               MPI_Comm commWorld
                                                             )
 {
-  T* dataA = matrixA.getData(); 
-  T* dataB = matrixB.getData();
-  U sizeA = matrixA.getNumElems();
-  U sizeB = matrixB.getNumElems();
-  T* foreignA = nullptr;
-  T* foreignB = nullptr;
-
-  int rank;
+  int rank,size;
   MPI_Comm_rank(commWorld, &rank);
+  MPI_Comm_size(commWorld, &size);
+
+  int pGridDimensionSize = ceil(pow(size,1./3.));
+  int helper = pGridDimensionSize;
+  helper *= helper;
+  int pGridCoordX = rank%pGridDimensionSize;
+  int pGridCoordY = (rank%helper)/pGridDimensionSize;
+  int pGridCoordZ = rank/helper;
+
   MPI_Comm rowComm;
   MPI_Comm columnComm;
   MPI_Comm sliceComm;
@@ -36,10 +34,17 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
 
   // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
   // Then, subdivide further into row groups and column groups
-  MPI_Comm_split(commWorld, pGridCoordY*pGridDim+pGridCoordX, rank, &depthComm);
+  MPI_Comm_split(commWorld, pGridCoordY*pGridDimensionSize+pGridCoordX, rank, &depthComm);
   MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
   MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
+
+  T* dataA = matrixA.getData(); 
+  T* dataB = matrixB.getData();
+  U sizeA = matrixA.getNumElems();
+  U sizeB = matrixB.getNumElems();
+  T* foreignA = nullptr;
+  T* foreignB = nullptr;
 
   bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
@@ -119,10 +124,6 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
                                                               U matrixCcutXend,
                                                               U matrixCcutZstart,
                                                               U matrixCcutZend,
-                                                              int pGridCoordX,
-                                                              int pGridCoordY,
-                                                              int pGridCoordZ,
-                                                              int pGridDim,
                                                               MPI_Comm commWorld
                                                             )
 {

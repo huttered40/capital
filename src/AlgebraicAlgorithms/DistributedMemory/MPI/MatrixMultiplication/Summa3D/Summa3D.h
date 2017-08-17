@@ -48,10 +48,6 @@ public:
                         U dimensionX,
                         U dimensionY,
                         U dimensionZ,
-                        int pGridCoordX,
-                        int pGridCoordY,
-                        int pGridCoordZ,
-                        int pGridDim,
                         MPI_Comm commWorld
                       );
 
@@ -72,10 +68,6 @@ public:
                         U matrixCcutXend,
                         U matrixCcutZstart,
                         U matrixCcutZend,
-                        int pGridCoordX,
-                        int pGridCoordY,
-                        int pGridCoordZ,
-                        int pGridDim,
                         MPI_Comm commWorld
                       );
 
