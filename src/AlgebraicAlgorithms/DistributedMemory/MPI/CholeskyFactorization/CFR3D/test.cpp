@@ -34,8 +34,7 @@ int main(int argc, char** argv)
   cout << ", rank - " << rank << ", size - " << size << ", one dimension of the 3D grid's size - " << pGridDimensionSize << endl;
 
   MatrixTypeA matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeB matB(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeC matC(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+  MatrixTypeL matL(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
 
   int helper = pGridDimensionSize;
   helper *= helper;
@@ -43,16 +42,15 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
-  matA.Distribute(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
-  matB.Distribute(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
+  matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, true);
 
   cout << "Processor " << rank << " has dimensions - (" << pCoordX << "," << pCoordY << "," << pCoordZ << ")\n";
 
-  Summa3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare>::
-    Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD);
+  CFR3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular>::
+    Factor(matA, matL, localMatrixSize, MPI_COMM_WORLD);
 
   if (rank == 0)
-  matC.print();
+  matL.print();
 
   MPI_Finalize();
 

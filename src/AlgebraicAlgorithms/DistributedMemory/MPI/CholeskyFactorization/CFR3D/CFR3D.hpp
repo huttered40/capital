@@ -2,13 +2,12 @@
 
 
 template<typename T, typename U>
-class CFR3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>
+template<template<typename,typename,int> class Distribution>
 void CFR3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Factor(
-  MatrixStructureSquare& matrixA,
-  MatrixStructureLowerTriangular& matrixL,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+  Matrix<T,U,MatrixStructureLowerTriangular,Distribution>& matrixL,
   U dimension,
-  MPI_Comm commWorld
-  )
+  MPI_Comm commWorld )
 {
   std::cout << "Ed Hutter\n";
 }

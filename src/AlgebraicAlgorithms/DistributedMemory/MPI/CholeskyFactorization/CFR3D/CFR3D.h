@@ -5,6 +5,7 @@
 
 // System includes
 #include <iostream>
+#include <mpi.h>
 
 // Local includes
 #include "./../../../../../AlgebraicStructures/Matrix/Matrix.h"
@@ -14,8 +15,8 @@
 // Lets use partial template specialization
 // So only declare the fully templated class
 template<typename T, typename U,
-  template<typename,typename,template<typename,typename,class> class, template<typename,typename,int> class> class MatrixA,
-  template<typename,typename,template<typename,typename,class> class, template<typename,typename,int> class> class MatrixU>
+  template<typename,typename,template<typename,typename,int> class> class StructureA,
+  template<typename,typename,template<typename,typename,int> class> class StructureL>
 class CFR3D;
 
 // Partial specialization of CFR3D algorithm class
@@ -30,7 +31,13 @@ public:
   CFR3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(const CFR3D& rhs) = delete;
   CFR3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(CFR3D&& rhs) = delete;
 
-  static void Factor(MatrixStructureSquare& matrixA, MatrixStructureLowerTriangular& matrixL, U dimension, MPI_Comm commWorld);
+  template<template<typename,typename,int> class Distribution>
+  static void Factor(
+                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+                      Matrix<T,U,MatrixStructureLowerTriangular,Distribution>& matrixL,
+                      U dimension,
+                      MPI_Comm commWorld
+                    );
 
 };
 

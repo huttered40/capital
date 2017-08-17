@@ -44,8 +44,8 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
-  matA.Distribute(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
-  matB.Distribute(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
+  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
+  matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
 
   cout << "Processor " << rank << " has dimensions - (" << pCoordX << "," << pCoordY << "," << pCoordZ << ")\n";
 
