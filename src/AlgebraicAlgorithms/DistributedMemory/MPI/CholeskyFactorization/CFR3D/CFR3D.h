@@ -40,6 +40,30 @@ public:
                       MPI_Comm commWorld
                     );
 
+private:
+  template<template<typename,typename,int> class Distribution>
+  static void rFactor(
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+                       Matrix<T,U,MatrixStructureLowerTriangular,Distribution>& matrixL,
+                       Matrix<T,U,MatrixStructureLowerTriangular,Distribution>& matrixLI,
+                       U dimension,
+                       U bcDimension,
+                       U globalDimension,
+                       U matAstartX,
+                       U matAendX,
+                       U matAstartY,
+                       U matAendY,
+                       U matLstartX,
+                       U matLendX,
+                       U matLstartY,
+                       U matLendY,
+                       U matLIstartX,
+                       U matLIendX,
+                       U matLIstartY,
+                       U matLIendY,
+                       MPI_Comm commWorld
+                     );
+
 };
 
 #include "CFR3D.hpp"
