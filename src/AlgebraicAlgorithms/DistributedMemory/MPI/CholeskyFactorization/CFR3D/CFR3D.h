@@ -35,6 +35,7 @@ public:
   static void Factor(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                       Matrix<T,U,MatrixStructureLowerTriangular,Distribution>& matrixL,
+                      Matrix<T,U,MatrixStructureLowerTriangular,Distribution>& matrixLI,
                       U dimension,
                       MPI_Comm commWorld
                     );

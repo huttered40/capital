@@ -35,6 +35,7 @@ int main(int argc, char** argv)
 
   MatrixTypeA matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
   MatrixTypeL matL(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+  MatrixTypeL matLI(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
 
   int helper = pGridDimensionSize;
   helper *= helper;
@@ -47,7 +48,7 @@ int main(int argc, char** argv)
   cout << "Processor " << rank << " has dimensions - (" << pCoordX << "," << pCoordY << "," << pCoordZ << ")\n";
 
   CFR3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular>::
-    Factor(matA, matL, localMatrixSize, MPI_COMM_WORLD);
+    Factor(matA, matL, matLI, localMatrixSize, MPI_COMM_WORLD);
 
   if (rank == 0)
   matL.print();
