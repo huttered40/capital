@@ -49,9 +49,11 @@ public:
 
   // automatically inlined
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
-  std::vector<T*>& getMatrixData() { return this->_matrix;}
-  T* getData() { return this->_matrix[0];}
-  U getNumElems() { return this->_numElems; }
+  inline std::vector<T*>& getMatrixData() { return this->_matrix;}
+  inline T* getData() { return this->_matrix[0];}
+  inline U getNumElems() { return this->_numElems; }
+  inline T& operator[](const std::pair<U,U>& dim) {return this->_matrix[dim.first][dim.second];}
+  inline T& getAccess(U dim1, U dim2) {return this->_matrix[dim1][dim2];}
 
   template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
   void Serialize(Matrix<T,U,StructureDest,Distributer>& dest);

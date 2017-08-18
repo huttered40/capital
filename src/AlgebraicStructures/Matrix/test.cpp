@@ -7,6 +7,7 @@
 #include "Matrix.h"
 
 using std::cout;
+using std::endl;
 
 int main(void)
 {
@@ -40,5 +41,6 @@ int main(void)
   theMatrix1.print();
   cout << "\n\n";
   theMatrix2.print();
+  cout << theMatrix2[std::make_pair(0,0)] << endl;
   return 0;
 }
