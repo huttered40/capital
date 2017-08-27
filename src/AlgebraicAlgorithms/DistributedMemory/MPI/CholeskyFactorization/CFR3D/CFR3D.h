@@ -61,6 +61,7 @@ private:
                        U matLIendX,
                        U matLIstartY,
                        U matLIendY,
+                       U tranposePartner,
                        MPI_Comm commWorld
                      );
 

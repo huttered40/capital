@@ -18,11 +18,15 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::Factor(
   int pGridDimensionSize = ceil(pow(size,1./3.));
   int helper = pGridDimensionSize;
   helper *= helper;
+  int pGridCoordX = rank%pGridDimensionSize;
+  int pGridCoordY = (rank%helper)/pGridDimensionSize;
+  int pGridCoordZ = rank/helper;
+  int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
   U bcDimension = dimension/helper;
   U globalDimension = dimension*pGridDimensionSize;
 
   rFactor(matrixA, matrixL, matrixLI, dimension, bcDimension, globalDimension,
-    0, dimension, 0, dimension, 0, dimension, 0, dimension, 0, dimension, 0, dimension, commWorld);
+    0, dimension, 0, dimension, 0, dimension, 0, dimension, 0, dimension, 0, dimension, transposePartner, commWorld);
 }
 
 template<typename T, typename U>
@@ -46,6 +50,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
   U matLIendX,
   U matLIstartY,
   U matLIendY,
+  U transposePartner,
   MPI_Comm commWorld )
 {
   if (globalDimension == bcDimension)
@@ -58,11 +63,35 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
   rFactor(matrixA, matrixL, matrixLI, shift, bcDimension, (globalDimension>>1),
     matAstartX, matAstartX+shift, matAstartY, matAstartY+shift,
     matLstartX, matLstartX+shift, matLstartY, matLstartY+shift,
-    matLIstartX, matLIstartX+shift, matLIstartY, matLIstartY+shift, commWorld);
+    matLIstartX, matLIstartX+shift, matLIstartY, matLIstartY+shift, transposePartner, commWorld);
 
-  // Perform transpose via some static method since it is something we will use alot
+  T* transposeData;
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);	// use MPI_COMM_WORLD for this p2p communication, but could use a smaller communicator
 
-  // Perform first matrix multiplication
+  // Regardless of whether or not we don't need to communicate, we still need to serialize into a square buffer
+  if (rank != transposePartner)
+  {
+    U triangleSize = ((shift*(shift+1))>>1);
+    T* dest = new T[triangleSize];
+    T* source = matrixLI.getData(); 
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(source, dest, localDimension, localDimension,
+      0, shift, 0, shift);
+ 
+    MPI_Sendrecv_replace(dest, triangleSize, MPI_DOUBLE, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+ 
+    // Serialize into square matrix
+    transposeData = new T[shift*shift];
+    Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>::Serialize(dest, transposeData, localDimension, localDimension, 0, shift, 0, shift);
+  }
+  else
+  {
+    // No communication necessary. Serialize into square matrix
+    T* source = matrixLI.getData();
+    transposeData = new T[shift*shift];
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(source, transposeData, localDimension, localDimension, 0, shift, 0, shift);
+  }
+
   // Note that we aim to "fill up" the top-left part of L and L^{-1} when this returns. 
   //Summa3D<...>::Multiply(...);
 
