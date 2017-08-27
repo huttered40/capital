@@ -14,7 +14,7 @@ using namespace std;
 int main(int argc, char** argv)
 {
   using MatrixTypeA = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
-  using MatrixTypeL = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
+  using MatrixTypeL = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
 
   // argv[1] - Matrix size x where x represents 2^x.
   // So in future, we might want t way to test non power of 2 dimension matrices
@@ -47,11 +47,11 @@ int main(int argc, char** argv)
 
   cout << "Processor " << rank << " has dimensions - (" << pCoordX << "," << pCoordY << "," << pCoordZ << ")\n";
 
-  CFR3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular>::
+  CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare>::
     Factor(matA, matL, matLI, localMatrixSize, MPI_COMM_WORLD);
 
   if (rank == 0)
-  matL.print();
+  //matL.print();
 
   MPI_Finalize();
 

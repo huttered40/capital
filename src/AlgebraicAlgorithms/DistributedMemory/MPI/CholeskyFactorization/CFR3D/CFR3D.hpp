@@ -3,10 +3,10 @@
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void CFR3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Factor(
+void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::Factor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-  Matrix<T,U,MatrixStructureLowerTriangular,Distribution>& matrixL,
-  Matrix<T,U,MatrixStructureLowerTriangular,Distribution>& matrixLI,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
   U dimension,
   MPI_Comm commWorld )
 {
@@ -27,11 +27,11 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Factor(
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void CFR3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::rFactor(
+void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-  Matrix<T,U,MatrixStructureLowerTriangular,Distribution>& matrixL,
-  Matrix<T,U,MatrixStructureLowerTriangular,Distribution>& matrixLI,
-  U dimension,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
+  U localDimension,
   U bcDimension,
   U globalDimension,
   U matAstartX,
@@ -50,9 +50,20 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::rFactor(
 {
   if (globalDimension == bcDimension)
   {
-    std::cout << "Base case has been reached!\n";
+    std::cout << "Base case has been reached with " << globalDimension << " " << localDimension << " " << bcDimension << "\n";
     return;
   }
 
-  std::cout << "In recursive function\n";
+  U shift = (localDimension>>1);
+  rFactor(matrixA, matrixL, matrixLI, shift, bcDimension, (globalDimension>>1),
+    matAstartX, matAstartX+shift, matAstartY, matAstartY+shift,
+    matLstartX, matLstartX+shift, matLstartY, matLstartY+shift,
+    matLIstartX, matLIstartX+shift, matLIstartY, matLIstartY+shift, commWorld);
+
+  // Perform transpose via some static method since it is something we will use alot
+
+  // Perform first matrix multiplication
+  // Note that we aim to "fill up" the top-left part of L and L^{-1} when this returns. 
+  //Summa3D<...>::Multiply(...);
+
 }
