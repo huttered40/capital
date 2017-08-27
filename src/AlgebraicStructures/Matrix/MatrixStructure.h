@@ -44,6 +44,8 @@ public:
   static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
   static void DistributeSymmetric(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY, bool diagonallyDominant);
   static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
+
+  inline U getNumElems(U rangeX, U rangeY) { return rangeX*rangeY; }
 };
 
 
@@ -68,6 +70,8 @@ public:
   static void Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY);
   static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
   static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
+
+  inline U getNumElems(U rangeX, U rangeY) { return rangeX*rangeY; }
 };
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -91,6 +95,8 @@ public:
   static void Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY);
   static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
   static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
+
+  inline U getNumElems(U rangeX, U rangeY) { return ((rangeX*(rangeX+1))>>1); }
 };
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -114,6 +120,8 @@ public:
   static void Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY);
   static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
   static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
+
+  inline U getNumElems(U rangeX, U rangeY) { return ((rangeX*(rangeX+1))>>1); }
 };
 
 #include "MatrixStructure.hpp"

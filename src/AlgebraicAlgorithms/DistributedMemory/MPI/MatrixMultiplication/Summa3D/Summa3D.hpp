@@ -82,8 +82,10 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   T* matrixBtoSerialize = isRootColumn ? dataB : foreignB;
   T* matrixAforEngine = nullptr;
   T* matrixBforEngine = nullptr;
-  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY);
-  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ);
+  int infoA = 0;
+  int inforB = 0;
+  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY, infoA);
+  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ, infoB);
 
   T* matrixCforEngine = matrixC.getData();
   U numElems = matrixC.getNumElems();
@@ -101,6 +103,8 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   {
     delete[] foreignB;
   }
+
+  // This is a hacky way to do this, due to the ability for 
 }
 
 template<typename T, typename U,
@@ -157,41 +161,23 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
 
   T* dataA;
   T* dataB;
-  U sizeA = matrixA.getNumElems();
-  U sizeB = matrixB.getNumElems();
-  bool wholeA = false;
-  bool wholeB = false;  
+  U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
+  U sizeB = matrixB.getNumElems(rangeA_x, rangeA_y);
 
-  // To avoid needless serialization if matrix is whole, we perform simple check
-  U temp = rangeA_x * rangeA_y;
-  if (temp == sizeA)
-  {
-    dataA = matrixA.getData();
-  }
-  else
-  {
-    wholeA = true;
-    dataA = new T[temp];
-    T* matAsource = matrixA.getData();
-    Serializer<T,U,StructureA,StructureA>::Serialize(matAsource, dataA, matrixAcutXstart,
-      matrixAcutXend, matrixAcutYstart, matrixAcutYend);
-    // Now, dataA is set and ready to be communicated
-  }
-  temp = (matrixBcutXend-matrixBcutXstart);
-  temp *= (matrixBcutYend-matrixBcutYstart);
-  if (temp == sizeB)
-  {
-    dataB = matrixB.getData();
-  }
-  else
-  {
-    wholeB = true;
-    dataB = new T[temp];
-    T* matBsource = matrixB.getData();
-    Serializer<T,U,StructureB,StructureB>::Serialize(matBsource, dataB, matrixBcutXstart,
-      matrixBcutXend, matrixBcutYstart, matrixBcutYend);
-    // Now, dataB is set and ready to be communicated
-  }
+  // No clear way to prevent a needless copy if the cut dimensions of a matrix are full.
+  dataA = new T[sizeA];
+  T* matAsource = matrixA.getData();
+  int infoA1 = 0;
+  Serializer<T,U,StructureA,StructureA>::Serialize(matAsource, dataA, matrixAcutXstart,
+    matrixAcutXend, matrixAcutYstart, matrixAcutYend, infoA1);
+  // Now, dataA is set and ready to be communicated
+
+  dataB = new T[sizeB];
+  T* matBsource = matrixB.getData();
+  infoB1 = 0;
+  Serializer<T,U,StructureB,StructureB>::Serialize(matBsource, dataB, matrixBcutXstart,
+    matrixBcutXend, matrixBcutYstart, matrixBcutYend, infoB1);
+  // Now, dataB is set and ready to be communicated
 
   T* foreignA = nullptr;
   T* foreignB = nullptr;
@@ -232,8 +218,10 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   T* matrixBtoSerialize = isRootColumn ? dataB : foreignB;
   T* matrixAforEngine = nullptr;
   T* matrixBforEngine = nullptr;
-  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY);
-  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ);
+  int infoA2 = 0;
+  int infoB2 = 0;
+  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY, infoA2);
+  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ, infoB2);
 
   T* matrixCforEngine = matrixC.getData();
   U numElems = matrixC.getNumElems();
@@ -252,6 +240,8 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
     delete[] foreignB;
   }
 
+  // Need to fix the below
+/*
   if (wholeA)
   {
     delete[] dataA;
@@ -260,4 +250,5 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   {
     delete[] dataB;
   }
+*/
 }

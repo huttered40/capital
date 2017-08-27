@@ -84,7 +84,7 @@ void Matrix<T,U,Structure,Distributer>::mover(Matrix&& rhs)
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
 template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
-void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distributer>& dest)
+void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distributer>& dest, int& info)
 {
   // Matrix must be already cnstructed with memory. Add a check for this later.
 
@@ -96,28 +96,28 @@ void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distr
   std::vector<T*>& saveDest = dest.getData();	// Should incur no copy. A reference to the inner vector has been given.
   T* save = saveDest[0];
   T* saveSrc = this->_matrix[0];
-  Serializer<T,U,Structure,StructureDest>::Serialize(saveSrc, save, this->_dimensionX, this->_dimensionY);
+  Serializer<T,U,Structure,StructureDest>::Serialize(saveSrc, save, this->_dimensionX, this->_dimensionY, info);
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
 template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
-void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info)
 {
   // See notes in first Serialize method above
   T* saveDest = dest.getData();	// Should incur no copy. A reference to the inner vector has been given.
   T* saveSrc = this->_matrix[0];
-  Serializer<T,U,Structure,StructureDest>::Serialize(saveSrc, saveDest, this->_dimensionX, this->_dimensionY, cutDimensionXstart, cutDimensionXend, cutDimensionYstart, cutDimensionYend);
+  Serializer<T,U,Structure,StructureDest>::Serialize(saveSrc, saveDest, this->_dimensionX, this->_dimensionY, cutDimensionXstart, cutDimensionXend, cutDimensionYstart, cutDimensionYend, info);
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
 template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
-void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+void Matrix<T,U,Structure,Distributer>::Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, int& info)
 {
   // See notes in first Serialize method above
   std::vector<T*>& saveDest = dest.getData();	// Should incur no copy. A reference to the inner vector has been given.
   T* save = saveDest[0];
   T* saveSrc = this->_matrix[0];
-  Serializer<T,U,Structure,StructureDest>::Serialize(saveSrc, save, this->_dimensionX, this->_dimensionY, cutDimensionXstart, cutDimensionXend, cutDimensionYstart, cutDimensionYend, fillZeros);
+  Serializer<T,U,Structure,StructureDest>::Serialize(saveSrc, save, this->_dimensionX, this->_dimensionY, cutDimensionXstart, cutDimensionXend, cutDimensionYstart, cutDimensionYend, fillZeros, info);
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>

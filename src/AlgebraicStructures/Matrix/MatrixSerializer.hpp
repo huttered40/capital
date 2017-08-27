@@ -1,5 +1,15 @@
 /* Author: Edward Hutter */
 
+/*
+  Note: info 1 -> no memory was allocated for dest
+        info 2 -> memory was allocated for dest
+        info 3 -> memory was not allocated, but dest was changed to point to src
+*/
+
+const int NO_MEMORY_ALLOCATED = 1;
+const int MEMORY_ALLOCATED = 2;
+const int MEMORY_SWAP_WITH_SRC = 3;
+
 // Helper static method -- fills a range with zeros
 template<typename T, typename U>
 static void fillZerosContig(T* addr, U size)
@@ -12,20 +22,22 @@ static void fillZerosContig(T* addr, U size)
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY, int& info)
 {
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   // Do nothing but must be defined
   if (dest == nullptr)
   {
+    info = MEMORY_SWAP_WITH_SRC;
     dest = src;
   }
   return;
 }
   
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -33,8 +45,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(con
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = rangeX*rangeY;
     dest = new T[numElems];
   }
@@ -50,12 +64,14 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(con
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, int& info)
 {
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = ((dimensionX*(dimensionX+1))>>1);
     dest = new T[numElems];
   }
@@ -75,12 +91,14 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, bool fillZeros)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, bool fillZeros, int& info)
 {
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = dimensionX*dimensionX;
     dest = new T[numElems];
   }
@@ -103,7 +121,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -111,8 +129,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = ((rangeX*(rangeX+1))>>1);
     dest = new T[numElems];
   }
@@ -130,7 +150,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -138,8 +158,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = rangeX*rangeX;
     dest = new T[numElems];
   }
@@ -161,12 +183,14 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, int& info)
 {
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = ((dimensionX*(dimensionX+1))>>1);
     dest = new T[numElems];
   }
@@ -186,12 +210,14 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, bool fillZeros)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, bool fillZeros, int& info)
 {
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = dimensionX*dimensionX;
     dest = new T[numElems];
   }
@@ -214,7 +240,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -222,8 +248,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = ((rangeX*(rangeX+1))>>1);
     dest = new T[numElems];
   }
@@ -241,7 +269,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -249,8 +277,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = rangeX*rangeX;
     dest = new T[numElems];
   }
@@ -272,12 +302,14 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, int& info)
 {
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = dimensionX*dimensionX;
     dest = new T[numElems];
   }
@@ -301,7 +333,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -309,8 +341,10 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = rangeX*rangeX;
     dest = new T[numElems];
   }
@@ -331,7 +365,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -339,8 +373,10 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = rangeX*rangeX;
     dest = new T[numElems];
   }
@@ -367,20 +403,22 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY, int& info)
 {
   assert(dimensionX == dimensionY);
 
   // Do nothing but must be defined
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_SWAP_WITH_SRC;
     dest = src;
   }
   return;
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -388,8 +426,10 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = ((rangeX*(rangeX+1))>>1);
     dest = new T[numElems];
   }
@@ -413,10 +453,12 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, int& info)
 {
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = dimensionX*dimensionX;
     dest = new T[numElems];
   }
@@ -443,7 +485,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -451,8 +493,10 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = rangeX*rangeX;
     dest = new T[numElems];
   }
@@ -471,7 +515,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -479,8 +523,10 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = rangeX*rangeX;
     dest = new T[numElems];
   }
@@ -504,18 +550,20 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(T* src, T*& dest, U dimensionX, U dimensionY, int& info)
 {
   // Do nothing but must be defined
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_SWAP_WITH_SRC;
     dest = src;
   }
   return;
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -523,8 +571,10 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
+  info = NO_MEMORY_ALLOCATED;
   if (dest == nullptr)
   {
+    info = MEMORY_ALLOCATED;
     U numElems = ((rangeX*(rangeX+1))>>1);
     dest = new T[numElems];
   }
