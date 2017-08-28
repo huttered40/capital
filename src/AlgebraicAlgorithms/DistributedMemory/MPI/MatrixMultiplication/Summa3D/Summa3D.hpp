@@ -94,8 +94,40 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   T* matrixCforEngine = matrixC.getData();
   U numElems = matrixC.getNumElems();
 
-  blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, dimensionX, dimensionY,
-    dimensionX, dimensionZ, dimensionY, dimensionZ, blasEngineInfo);
+  // Assume for now that first 2 bits give 4 possibilies
+  //   0 -> _gemm
+  //   1 -> _trmm
+  //   2 -> ?
+  //   3 -> ?
+  bool helper1 = blasEngineInfo&0x1;
+  blasEngineInfo >>= 1;
+  bool helper2 = blasEngineInfo&0x1;
+  blasEngineInfo >>= 1;
+  int whichRoutine = static_cast<int>(helper2)*2 + static_cast<int>(helper1);
+  switch (whichRoutine)
+  {
+    case 0:
+    {
+      blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, dimensionX, dimensionY,
+        dimensionX, dimensionZ, dimensionY, dimensionZ, 1., 1., dimensionY, dimensionX, dimensionY, blasEngineInfo);
+      break;
+    }
+    case 1:
+    {
+      int checkOrder = (0x2 & (blasEngineInfo>>1));		// check the 2nd bit to see if square matrix is on left or right
+      blasEngine<T,U>::_trmm(matrixAforEngine, matrixBforEngine, (checkOrder ? dimensionX : dimensionY),
+        (checkOrder ? dimensionZ : dimensionX), 1., (checkOrder ? dimensionY : dimensionX), (checkOrder ? dimensionX : dimensionY), blasEngineInfo);
+      break;
+    }
+    case 2:
+    {
+      break;
+    }
+    case 3:
+    {
+      break;
+    }
+  }
 
   MPI_Allreduce(MPI_IN_PLACE, matrixCforEngine, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
@@ -243,8 +275,42 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U rangeC_z = matrixCcutZend - matrixCcutZstart;
 
   // The BLAS call below needs modifed because we need to allow for transpose or triangular structure AND allow for dtrmm instead of dgemm
-  blasEngine<T,U>::multiply(matrixAforEngine, matrixBforEngine, matrixCforEngine, rangeA_x, rangeA_y,
+  blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, rangeA_x, rangeA_y,
     rangeB_x, rangeB_z, rangeC_y, rangeC_z, blasEngineInfo);
+  // Assume for now that first 2 bits give 4 possibilies
+  //   0 -> _gemm
+  //   1 -> _trmm
+  //   2 -> ?
+  //   3 -> ?
+  bool helper1 = blasEngineInfo&0x1;
+  blasEngineInfo >>= 1;
+  bool helper2 = blasEngineInfo&0x1;
+  blasEngineInfo >>= 1;
+  int whichRoutine = static_cast<int>(helper2)*2 + static_cast<int>(helper1);
+  switch (whichRoutine)
+  {
+    case 0:
+    {
+      blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, rangeA_x, rangeA_y,
+        rangeB_x, rangeB_z, rangeC_y, rangeC_z, 1., 1., rangeA_y, rangeB_x, rangeC_y, blasEngineInfo);
+      break;
+    }
+    case 1:
+    {
+      int checkOrder = (0x2 & (blasEngineInfo>>1));		// check the 2nd bit to see if square matrix is on left or right
+      blasEngine<T,U>::_trmm(matrixAforEngine, matrixBforEngine, (checkOrder ? rangeB_x : rangeA_y),
+        (checkOrder ? rangeB_z : rangeA_x), 1., (checkOrder ? rangeA_y : rangeB_x), (checkOrder ? rangeB_x : rangeA_y), blasEngineInfo);
+      break;
+    }
+    case 2:
+    {
+      break;
+    }
+    case 3:
+    {
+      break;
+    }
+  }
 
   MPI_Allreduce(MPI_IN_PLACE, matrixCforEngine, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 

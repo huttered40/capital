@@ -5,6 +5,7 @@
 
 
 // System includes
+#include <complex>
 #include <cblas.h>
 
 // Local includes
@@ -19,6 +20,23 @@
 //   double precision complex (std::complex<double>)
 // So it'd be best if we used partial template specialization to specialize the blasEngine Policy classes
 //   so as to only define the routines with T = one of the 4 types above
+
+
+class cblasHelper
+{
+public:
+  cblasHelper() = delete;
+  cblasHelper(const cblasHelper& rhs) = delete;
+  cblasHelper(cblasHelper&& rhs) = delete;
+  cblasHelper& operator=(const cblasHelper& rhs) = delete;
+  cblasHelper& operator=(cblasHelper&& rhs) = delete;
+
+// Make these methods protected so that only the derived classes can access them.
+protected:
+  static void setInfoParameters_gemm(int info, CBLAS_ORDER& arg1, CBLAS_TRANSPOSE& arg2, CBLAS_TRANSPOSE& arg3);
+  static void setInfoParameters_trmm(int info, CBLAS_ORDER& arg1, CBLAS_SIDE& arg2, CBLAS_UPLO& arg3, CBLAS_TRANSPOSE& arg4, CBLAS_DIAG& arg5);
+};
+
 
 // Declare this fully templated "base" class but do not define it. This prevents users from using this class, but
 //   allows partially specialized template classes to specialize it.
@@ -38,9 +56,9 @@ public:
   ~cblasEngine() = delete;
 
   // Engine methods
-  static void _gemm(T* matrixA, T* matrixB, T* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimX, U matrixBdimZ, U matrixCdimY, U matrixCdimZ,
+  static void _gemm(float* matrixA, float* matrixB, float* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimX, U matrixBdimZ, U matrixCdimY, U matrixCdimZ,
                       float alpha, float beta, U lda, U ldb, U ldc, int info);
-  static void _trmm(T* matrixA, T* matrixB, U matrixBnumRows, U matrixBnumCols, float alpha, U lda, U ldb, int info);
+  static void _trmm(float* matrixA, float* matrixB, U matrixBnumRows, U matrixBnumCols, float alpha, U lda, U ldb, int info);
 
 };
 
@@ -57,9 +75,9 @@ public:
   ~cblasEngine() = delete;
 
   // Engine methods
-  static void _gemm(T* matrixA, T* matrixB, T* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimX, U matrixBdimZ, U matrixCdimY, U matrixCdimZ,
+  static void _gemm(double* matrixA, double* matrixB, double* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimX, U matrixBdimZ, U matrixCdimY, U matrixCdimZ,
                       double alpha, double beta, U lda, U ldb, U ldc, int info);
-  static void _trmm(T* matrixA, T* matrixB, U matrixBnumRows, U matrixBnumCols, double alpha, U lda, U ldb, int info);
+  static void _trmm(double* matrixA, double* matrixB, U matrixBnumRows, U matrixBnumCols, double alpha, U lda, U ldb, int info);
 
 };
 
@@ -76,9 +94,9 @@ public:
   ~cblasEngine() = delete;
 
   // Engine methods
-  static void _gemm(T* matrixA, T* matrixB, T* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimX, U matrixBdimZ, U matrixCdimY, U matrixCdimZ,
-                      std::complex<float> alpha, std::complex<float> beta, U lda, U ldb, U ldc, int info);
-  static void _trmm(T* matrixA, T* matrixB, U matrixBnumRows, U matrixBnumCols, std::complex<float> alpha, U lda, U ldb, int info);
+  static void _gemm(std::complex<float>* matrixA, std::complex<float>* matrixB, std::complex<float>* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimX,
+                     U matrixBdimZ, U matrixCdimY, U matrixCdimZ, std::complex<float> alpha, std::complex<float> beta, U lda, U ldb, U ldc, int info);
+  static void _trmm(std::complex<float>* matrixA, std::complex<float>* matrixB, U matrixBnumRows, U matrixBnumCols, std::complex<float> alpha, U lda, U ldb, int info);
 
 };
 
@@ -95,26 +113,11 @@ public:
   ~cblasEngine() = delete;
 
   // Engine methods
-  static void _gemm(T* matrixA, T* matrixB, T* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimX, U matrixBdimZ, U matrixCdimY, U matrixCdimZ,
-                      std::complex<double> alpha, std::complex<double> beta, U lda, U ldb, U ldc, int info);
-  static void _trmm(T* matrixA, T* matrixB, U matrixBnumRows, U matrixBnumCols, std::complex<double> alpha, U lda, U ldb, int info);
+  static void _gemm(std::complex<double>* matrixA, std::complex<double>* matrixB, std::complex<double>* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimX,
+                     U matrixBdimZ, U matrixCdimY, U matrixCdimZ, std::complex<double> alpha, std::complex<double> beta, U lda, U ldb, U ldc, int info);
+  static void _trmm(std::complex<double>* matrixA, std::complex<double>* matrixB, U matrixBnumRows, U matrixBnumCols, std::complex<double> alpha, U lda, U ldb, int info);
 
 };
-
-class cblasHelper
-{
-public:
-  cblasHelper() = delete;
-  cblasHelper(const cblasHelper& rhs) = delete;
-  cblasHelper(cblasHelper&& rhs) = delete;
-  cblasHelper& operator=(const cblasHelper& rhs) = delete;
-  cblasHelper& operator=(cblasHelper&& rhs) = delete;
-
-// Make these methods protected so that only the derived classes can access them.
-protected:
-  void setInfoParameters_gemm(int info, CBLAS_ORDER& arg1, CBLAS_TRANSPOSE& arg2, CBLAS_TRANSPOSE& arg3);
-  void setInfoParameters_trmm(int info, CBLAS_ORDER& arg1, CBLAS_SIDE& arg2, CBLAS_UPLO& arg3, CBLAS_TRANSPOSE& arg4, CBLAS_DIAG& arg5);
-}
 
 #include "blasEngine.hpp"
 

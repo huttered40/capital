@@ -72,7 +72,7 @@ void cblasHelper::setInfoParameters_trmm(
     arg3 = CblasLower;
   }
   info >>= 1;
-  if ((info&0x1)
+  if ((info&0x1))
   {
     arg4 = CblasTrans;
   }
@@ -81,13 +81,13 @@ void cblasHelper::setInfoParameters_trmm(
     arg4 = CblasNoTrans;
   }
   info >>= 1;
-  if ((info&0x1)
+  if ((info&0x1))
   {
     arg5 = CblasUnit;
   }
   else
   {
-    arg5 = CblasNonUnit
+    arg5 = CblasNonUnit;
   }
 }
 
@@ -138,7 +138,7 @@ void cblasEngine<float,U>::_trmm(
   CBLAS_UPLO arg3;
   CBLAS_TRANSPOSE arg4;
   CBLAS_DIAG arg5;
-  setInfoParameters_dtrmm(info, arg1, arg2, arg3, arg4, arg5);
+  setInfoParameters_trmm(info, arg1, arg2, arg3, arg4, arg5);
 
   cblas_strmm(arg1, arg2, arg3, arg4, arg5, matrixBnumRows, matrixBnumCols, alpha, matrixA,
     lda, matrixB, ldb);
@@ -191,7 +191,7 @@ void cblasEngine<double,U>::_trmm(
   CBLAS_UPLO arg3;
   CBLAS_TRANSPOSE arg4;
   CBLAS_DIAG arg5;
-  setInfoParameters_dtrmm(info, arg1, arg2, arg3, arg4, arg5);
+  setInfoParameters_trmm(info, arg1, arg2, arg3, arg4, arg5);
 
   cblas_dtrmm(arg1, arg2, arg3, arg4, arg5, matrixBnumRows, matrixBnumCols, alpha, matrixA,
     lda, matrixB, ldb);
@@ -244,7 +244,7 @@ void cblasEngine<std::complex<float>,U>::_trmm(
   CBLAS_UPLO arg3;
   CBLAS_TRANSPOSE arg4;
   CBLAS_DIAG arg5;
-  setInfoParameters_dtrmm(info, arg1, arg2, arg3, arg4, arg5);
+  setInfoParameters_trmm(info, arg1, arg2, arg3, arg4, arg5);
 
   cblas_ctrmm(arg1, arg2, arg3, arg4, arg5, matrixBnumRows, matrixBnumCols, alpha, matrixA,
     lda, matrixB, ldb);
@@ -297,7 +297,7 @@ void cblasEngine<std::complex<double>,U>::_trmm(
   CBLAS_UPLO arg3;
   CBLAS_TRANSPOSE arg4;
   CBLAS_DIAG arg5;
-  setInfoParameters_dtrmm(info, arg1, arg2, arg3, arg4, arg5);
+  setInfoParameters_trmm(info, arg1, arg2, arg3, arg4, arg5);
 
   cblas_ztrmm(arg1, arg2, arg3, arg4, arg5, matrixBnumRows, matrixBnumCols, alpha, matrixA,
     lda, matrixB, ldb);
