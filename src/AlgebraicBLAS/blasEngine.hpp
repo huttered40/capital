@@ -28,11 +28,11 @@ void cblasHelper::setInfoParameters_gemm(
   info >>= 1;
   if ((info&0x1))
   {
-    arg2 = CblasTrans;
+    arg3 = CblasTrans;
   }
   else
   {
-    arg2 = CblasNoTrans;
+    arg3 = CblasNoTrans;
   }
 }
 
