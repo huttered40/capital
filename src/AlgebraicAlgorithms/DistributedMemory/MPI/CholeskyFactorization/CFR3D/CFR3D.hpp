@@ -75,21 +75,25 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     U triangleSize = ((shift*(shift+1))>>1);
     T* dest = new T[triangleSize];
     T* source = matrixLI.getData(); 
+    int info1 = 0;
     Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(source, dest, localDimension, localDimension,
-      0, shift, 0, shift);
+      0, shift, 0, shift, info1);
  
     MPI_Sendrecv_replace(dest, triangleSize, MPI_DOUBLE, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
  
     // Serialize into square matrix
     transposeData = new T[shift*shift];
-    Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>::Serialize(dest, transposeData, localDimension, localDimension, 0, shift, 0, shift);
+    int info2 = 0;
+    Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>::Serialize(dest, transposeData, localDimension, localDimension, 0, shift, 0, shift, info2);
+    delete[] dest;
   }
   else
   {
     // No communication necessary. Serialize into square matrix
     T* source = matrixLI.getData();
     transposeData = new T[shift*shift];
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(source, transposeData, localDimension, localDimension, 0, shift, 0, shift);
+    int info3 = 0;
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(source, transposeData, localDimension, localDimension, 0, shift, 0, shift, info3);
   }
 
   // Note that we aim to "fill up" the top-left part of L and L^{-1} when this returns. 

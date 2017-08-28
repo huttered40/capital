@@ -5,6 +5,7 @@
 
 // System includes
 #include <iostream>
+#include <complex>
 #include <mpi.h>
 
 // Local includes
