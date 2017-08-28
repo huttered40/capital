@@ -4,16 +4,18 @@
 template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureA,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC>
+  template<typename,typename, template<typename,typename,int> class> class StructureC,
+  template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
+void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
                                                               Matrix<T,U,StructureB,Distribution>& matrixB,
                                                               Matrix<T,U,StructureC,Distribution>& matrixC,
                                                               U dimensionX,
                                                               U dimensionY,
                                                               U dimensionZ,
-                                                              MPI_Comm commWorld
+                                                              MPI_Comm commWorld,
+                                                              int blasEngineInfo
                                                             )
 {
   int rank,size;
@@ -83,15 +85,17 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   T* matrixAforEngine = nullptr;
   T* matrixBforEngine = nullptr;
   int infoA = 0;
-  int inforB = 0;
+  int infoB = 0;
   Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY, infoA);
   Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ, infoB);
+
+  // infoA and infoB have information as to what kind of memory allocations occured within Serializer
 
   T* matrixCforEngine = matrixC.getData();
   U numElems = matrixC.getNumElems();
 
-  blasEngine<T,U,StructureA, StructureB, StructureC>::multiply(matrixAforEngine, matrixBforEngine, matrixCforEngine, dimensionX, dimensionY,
-    dimensionX, dimensionZ, dimensionY, dimensionZ);
+  blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, dimensionX, dimensionY,
+    dimensionX, dimensionZ, dimensionY, dimensionZ, blasEngineInfo);
 
   MPI_Allreduce(MPI_IN_PLACE, matrixCforEngine, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
@@ -104,15 +108,23 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
     delete[] foreignB;
   }
 
-  // This is a hacky way to do this, due to the ability for 
+  if (infoA == 2)
+  {
+    delete[] matrixAforEngine;
+  }
+  if (infoB == 2)
+  {
+    delete[] matrixBforEngine;
+  }
 }
 
 template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureA,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC>
+  template<typename,typename, template<typename,typename,int> class> class StructureC,
+  template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
+void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
                                                               Matrix<T,U,StructureB,Distribution>& matrixB,
                                                               Matrix<T,U,StructureC,Distribution>& matrixC,
@@ -120,15 +132,16 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
                                                               U matrixAcutXend,
                                                               U matrixAcutYstart,
                                                               U matrixAcutYend,
-                                                              U matrixBcutYstart,
-                                                              U matrixBcutYend,
+                                                              U matrixBcutXstart,
+                                                              U matrixBcutXend,
                                                               U matrixBcutZstart,
                                                               U matrixBcutZend,
-                                                              U matrixCcutXstart,
-                                                              U matrixCcutXend,
+                                                              U matrixCcutYstart,
+                                                              U matrixCcutYend,
                                                               U matrixCcutZstart,
                                                               U matrixCcutZend,
-                                                              MPI_Comm commWorld
+                                                              MPI_Comm commWorld,
+                                                              int blasEngineInfo
                                                             )
 {
   int rank,size;
@@ -154,15 +167,15 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
 
-  U rangeA_x = matrixAcutXend-matrixAcutXstart
-  U rangeA_y = matrixAcutYend-matrixAcutYstart
-  U rangeB_x = matrixBcutXend-matrixBcutXstart
-  U rangeB_y = matrixBcutYend-matrixBcutYstart
+  U rangeA_x = matrixAcutXend-matrixAcutXstart;
+  U rangeA_y = matrixAcutYend-matrixAcutYstart;
+  U rangeB_x = matrixBcutXend-matrixBcutXstart;
+  U rangeB_z = matrixBcutZend-matrixBcutZstart;
 
   T* dataA;
   T* dataB;
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
-  U sizeB = matrixB.getNumElems(rangeA_x, rangeA_y);
+  U sizeB = matrixB.getNumElems(rangeB_x, rangeB_z);
 
   // No clear way to prevent a needless copy if the cut dimensions of a matrix are full.
   dataA = new T[sizeA];
@@ -174,9 +187,9 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
 
   dataB = new T[sizeB];
   T* matBsource = matrixB.getData();
-  infoB1 = 0;
+  int infoB1 = 0;
   Serializer<T,U,StructureB,StructureB>::Serialize(matBsource, dataB, matrixBcutXstart,
-    matrixBcutXend, matrixBcutYstart, matrixBcutYend, infoB1);
+    matrixBcutXend, matrixBcutZstart, matrixBcutZend, infoB1);
   // Now, dataB is set and ready to be communicated
 
   T* foreignA = nullptr;
@@ -220,14 +233,18 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   T* matrixBforEngine = nullptr;
   int infoA2 = 0;
   int infoB2 = 0;
-  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY, infoA2);
-  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ, infoB2);
+  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, 0, rangeA_x, 0, rangeA_y, infoA2);
+  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, 0, rangeB_x, 0, rangeB_z, infoB2);
 
   T* matrixCforEngine = matrixC.getData();
   U numElems = matrixC.getNumElems();
 
-  blasEngine<T,U,StructureA, StructureB, StructureC>::multiply(matrixAforEngine, matrixBforEngine, matrixCforEngine, dimensionX, dimensionY,
-    dimensionX, dimensionZ, dimensionY, dimensionZ);
+  U rangeC_y = matrixCcutYend - matrixCcutYstart; 
+  U rangeC_z = matrixCcutZend - matrixCcutZstart;
+
+  // The BLAS call below needs modifed because we need to allow for transpose or triangular structure AND allow for dtrmm instead of dgemm
+  blasEngine<T,U>::multiply(matrixAforEngine, matrixBforEngine, matrixCforEngine, rangeA_x, rangeA_y,
+    rangeB_x, rangeB_z, rangeC_y, rangeC_z, blasEngineInfo);
 
   MPI_Allreduce(MPI_IN_PLACE, matrixCforEngine, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
@@ -239,16 +256,20 @@ void Summa3D<T,U,StructureA,StructureB,StructureC>::Multiply(
   {
     delete[] foreignB;
   }
-
-  // Need to fix the below
-/*
-  if (wholeA)
+  if (infoA1 == 2)
   {
     delete[] dataA;
   }
-  if (wholeB)
+  if (infoB1 == 2)
   {
     delete[] dataB;
   }
-*/
+  if (infoA2 == 2)
+  {
+    delete[] matrixAforEngine;
+  }
+  if (infoB2 == 2)
+  {
+    delete[] matrixBforEngine;
+  }
 }

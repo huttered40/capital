@@ -22,7 +22,8 @@
 template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureA,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC>
+  template<typename,typename, template<typename,typename,int> class> class StructureC,
+  template<typename,typename> class blasEngine>
 class Summa3D
 {
 
@@ -48,7 +49,8 @@ public:
                         U dimensionX,
                         U dimensionY,
                         U dimensionZ,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        int blasEngineInfo
                       );
 
   template<template<typename,typename,int> class Distribution>
@@ -60,15 +62,16 @@ public:
                         U matrixAcutXend,
                         U matrixAcutYstart,
                         U matrixAcutYend,
-                        U matrixBcutYstart,
-                        U matrixBcutYend,
+                        U matrixBcutXstart,
+                        U matrixBcutXend,
                         U matrixBcutZstart,
                         U matrixBcutZend,
-                        U matrixCcutXstart,
-                        U matrixCcutXend,
+                        U matrixCcutYstart,
+                        U matrixCcutYend,
                         U matrixCcutZstart,
                         U matrixCcutZend,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        int blasEngineInfo
                       );
 
   // Later on, I'd like an overloaded Multiply() method that took parameters to "cut up" the current 3 matrices (so 8 extra arguments)
