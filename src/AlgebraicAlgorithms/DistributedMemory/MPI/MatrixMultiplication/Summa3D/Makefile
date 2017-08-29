@@ -23,4 +23,4 @@ Summa3D.o: Summa3D.h Summa3D.hpp
 	$(CCMPI) $(CFLAGS) -o Summa3D.o -c Summa3D.h
 
 clean:
-	-rm -f *.o *.gch Summa3D
+	-rm -f *.o *.gch test testSequentialValidation

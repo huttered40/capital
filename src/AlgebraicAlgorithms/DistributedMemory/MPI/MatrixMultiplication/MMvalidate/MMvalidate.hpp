@@ -7,7 +7,7 @@ template<
           template<typename,typename, template<typename,typename,int> class> class StructureC,
           template<typename,typename,int> class Distribution
         >
-void MMlocal<T,U,blasEngine>::multiply(
+void MMvalidate<T,U,blasEngine>::multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         Matrix<T,U,StructureC,Distribution>& matrixC,
@@ -83,7 +83,7 @@ template<
           template<typename,typename, template<typename,typename,int> class> class StructureC,
           template<typename,typename,int> class Distribution
         >
-void MMlocal<T,U,blasEngine>::multiply(
+void MMvalidate<T,U,blasEngine>::multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         Matrix<T,U,StructureC,Distribution>& matrixC,

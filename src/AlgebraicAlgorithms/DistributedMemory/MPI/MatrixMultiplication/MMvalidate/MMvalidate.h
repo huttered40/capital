@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#ifndef MMLOCAL_H_
-#define MMLOCAL_H_
+#ifndef MMVALIDATE_H_
+#define MMVALIDATE_H_
 
 // System includes
 #include <iostream>
@@ -12,15 +12,15 @@
 #include "./../../../../../AlgebraicBLAS/blasEngine.h"
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
-class MMlocal
+class MMvalidate
 {
 public:
-  MMlocal() = delete;
-  ~MMlocal() = delete;
-  MMlocal(const MMlocal& rhs) = delete;
-  MMlocal(MMlocal&& rhs) = delete;
-  MMlocal& operator=(const MMlocal& rhs) = delete;
-  MMlocal& operator=(MMlocal&& rhs) = delete;
+  MMvalidate() = delete;
+  ~MMvalidate() = delete;
+  MMvalidate(const MMvalidate& rhs) = delete;
+  MMvalidate(MMvalidate&& rhs) = delete;
+  MMvalidate& operator=(const MMvalidate& rhs) = delete;
+  MMvalidate& operator=(MMvalidate&& rhs) = delete;
 
   // This method does not depend on the structures. There are situations where have square structured matrices,
   //   but want to use trmm, for example, so disregard the structures in this entire class.
@@ -72,6 +72,6 @@ public:
 };
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)
-#include "MMlocal.hpp"
+#include "MMvalidate.hpp"
 
-#endif /* MMLOCAL_H_ */
+#endif /* MMVALIDATE_H_ */
