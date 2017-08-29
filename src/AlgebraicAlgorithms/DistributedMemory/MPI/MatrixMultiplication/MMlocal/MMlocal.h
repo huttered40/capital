@@ -4,6 +4,7 @@
 #define MMLOCAL_H_
 
 // System includes
+#include <iostream>
 
 // Local includes
 #include "./../../../../../AlgebraicStructures/Matrix/Matrix.h"
@@ -18,8 +19,8 @@ public:
   ~MMlocal() = delete;
   MMlocal(const MMlocal& rhs) = delete;
   MMlocal(MMlocal&& rhs) = delete;
-  MMlocal& operator=()(const MMlocal& rhs) = delete;
-  MMlocal& operator=()(MMlocal&& rhs) = delete;
+  MMlocal& operator=(const MMlocal& rhs) = delete;
+  MMlocal& operator=(MMlocal&& rhs) = delete;
 
   // This method does not depend on the structures. There are situations where have square structured matrices,
   //   but want to use trmm, for example, so disregard the structures in this entire class.
@@ -31,7 +32,7 @@ public:
             template<typename,typename, template<typename,typename,int> class> class StructureA,
             template<typename,typename, template<typename,typename,int> class> class StructureB,
             template<typename,typename, template<typename,typename,int> class> class StructureC,
-            template<typename,typename,int> Distribution
+            template<typename,typename,int> class Distribution
           >
   static void multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
@@ -47,7 +48,7 @@ public:
             template<typename,typename, template<typename,typename,int> class> class StructureA,
             template<typename,typename, template<typename,typename,int> class> class StructureB,
             template<typename,typename, template<typename,typename,int> class> class StructureC,
-            template<typename,typename,int> Distribution
+            template<typename,typename,int> class Distribution
           >
   static void multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,

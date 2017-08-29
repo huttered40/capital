@@ -13,6 +13,7 @@
 #include "./../../../../../AlgebraicStructures/Matrix/Matrix.h"
 #include "./../../../../../AlgebraicStructures/Matrix/MatrixSerializer.h"
 #include "./../../../../../AlgebraicBLAS/blasEngine.h"
+#include "./../MMlocal/MMlocal.h"
 
 /*
   We can implement square MM for now, but soon, we will need triangular MM
