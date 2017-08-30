@@ -11,6 +11,10 @@
 #include "./../../../../../AlgebraicStructures/Matrix/MatrixSerializer.h"
 #include "./../../../../../AlgebraicBLAS/blasEngine.h"
 
+
+// These static methods will take the matrix in question, distributed in some fashion across the processors
+//   and use them to calculate the residual or error.
+
 template<typename T, typename U, template<typename,typename> class blasEngine>
 class MMvalidate
 {
@@ -29,15 +33,11 @@ public:
   //   in order to use it as a method argument.
 
   template<
-            template<typename,typename, template<typename,typename,int> class> class StructureA,
-            template<typename,typename, template<typename,typename,int> class> class StructureB,
-            template<typename,typename, template<typename,typename,int> class> class StructureC,
+            template<typename,typename, template<typename,typename,int> class> class Structure,
             template<typename,typename,int> class Distribution
           >
-  static void multiply(
-                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                        Matrix<T,U,StructureC,Distribution>& matrixC,
+  static T validateLocal(
+                        Matrix<T,U,Structure,Distribution>& matrixSol,
                         U dimensionX,
                         U dimensionY,
                         U dimensionZ,
@@ -45,15 +45,11 @@ public:
                       );
 
   template<
-            template<typename,typename, template<typename,typename,int> class> class StructureA,
-            template<typename,typename, template<typename,typename,int> class> class StructureB,
-            template<typename,typename, template<typename,typename,int> class> class StructureC,
+            template<typename,typename, template<typename,typename,int> class> class Structure,
             template<typename,typename,int> class Distribution
           >
-  static void multiply(
-                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                        Matrix<T,U,StructureC,Distribution>& matrixC,
+  static T validateLocal(
+                        Matrix<T,U,Structure,Distribution>& matrixSol,
                         U matrixAcutXstart,
                         U matrixAcutXend,
                         U matrixAcutYstart,
@@ -68,6 +64,7 @@ public:
                         U matrixCcutZend,
                         int blasEngineInfo
                       );
+
 
 };
 

@@ -11,6 +11,8 @@
 
 using namespace std;
 
+// Idea: We calculate 3D Summa as usual, and then we pass it into the MMvalidate solo class
+
 int main(int argc, char** argv)
 {
   using MatrixTypeA = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
@@ -53,8 +55,7 @@ int main(int argc, char** argv)
   Summa3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
     Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD,info);
 
-  if (rank == 0)
-  matC.print();
+  double error = MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize, info);
 
   MPI_Finalize();
 

@@ -2,22 +2,19 @@
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
 template<
-          template<typename,typename, template<typename,typename,int> class> class StructureA,
-          template<typename,typename, template<typename,typename,int> class> class StructureB,
-          template<typename,typename, template<typename,typename,int> class> class StructureC,
+          template<typename,typename, template<typename,typename,int> class> class Structure,
           template<typename,typename,int> class Distribution
         >
-void MMvalidate<T,U,blasEngine>::multiply(
-                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                        Matrix<T,U,StructureC,Distribution>& matrixC,
+T MMvalidate<T,U,blasEngine>::validateLocal(
+                        Matrix<T,U,Structure,Distribution>& matrixSol,
                         U dimensionX,
                         U dimensionY,
                         U dimensionZ,
                         int blasEngineInfo
                       )
 {
-  T* matrixAtoSerialize = matrixA.getData(); 
+/*  
+T* matrixAtoSerialize = matrixA.getData(); 
   T* matrixBtoSerialize = matrixB.getData();
   T* matrixAforEngine = nullptr;
   T* matrixBforEngine = nullptr;
@@ -74,19 +71,16 @@ void MMvalidate<T,U,blasEngine>::multiply(
   {
     delete[] matrixBforEngine;
   }
+*/
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
 template<
-          template<typename,typename, template<typename,typename,int> class> class StructureA,
-          template<typename,typename, template<typename,typename,int> class> class StructureB,
-          template<typename,typename, template<typename,typename,int> class> class StructureC,
+          template<typename,typename, template<typename,typename,int> class> class Structure,
           template<typename,typename,int> class Distribution
         >
-void MMvalidate<T,U,blasEngine>::multiply(
-                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                        Matrix<T,U,StructureC,Distribution>& matrixC,
+T MMvalidate<T,U,blasEngine>::validateLocal(
+                        Matrix<T,U,Structure,Distribution>& matrixSol,
                         U matrixAcutXstart,
                         U matrixAcutXend,
                         U matrixAcutYstart,
@@ -102,6 +96,7 @@ void MMvalidate<T,U,blasEngine>::multiply(
                         int blasEngineInfo
                       )
 {
+/*
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
   U rangeA_y = matrixAcutYend-matrixAcutYstart;
   U rangeB_x = matrixBcutXend-matrixBcutXstart;
@@ -203,4 +198,5 @@ void MMvalidate<T,U,blasEngine>::multiply(
   {
     delete[] matrixBforEngine;
   }
+*/
 }
