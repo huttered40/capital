@@ -10,8 +10,8 @@
 #include <mpi.h>
 
 // Local includes
-#include "./../../../../../AlgebraicStructures/Matrix/Matrix.h"
-#include "./../../../../../AlgebraicStructures/Matrix/MatrixSerializer.h"
+#include "./../../../../../AlgebraicContainers/Matrix/Matrix.h"
+#include "./../../../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
 #include "./../../../../../AlgebraicBLAS/blasEngine.h"
 #include "./../MMvalidate/MMvalidate.h"
 
