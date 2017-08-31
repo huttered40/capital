@@ -13,6 +13,12 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
                         int blasEngineInfo
                       )
 {
+  // What I want to do here is generate a full matrix with the correct values
+  //   and then compare with the local part of matrixSol.
+  //   Finally, we can AllReduce the residuals.
+
+  // Best way: reuse existing correct code : use MatrixDistributer, so we should create a Matrix instance.
+
 /*  
 T* matrixAtoSerialize = matrixA.getData(); 
   T* matrixBtoSerialize = matrixB.getData();
