@@ -7,9 +7,13 @@ template<
         >
 T MMvalidate<T,U,blasEngine>::validateLocal(
                         Matrix<T,U,Structure,Distribution>& matrixSol,
-                        U dimensionX,
-                        U dimensionY,
-                        U dimensionZ,
+                        U localDimensionX,
+                        U localDimensionY,
+                        U localDimensionZ,
+                        U globalDimensionX,
+                        U globalDimensionY,
+                        U globalDimensionZ,
+                        MPI_Comm comm,
                         int blasEngineInfo
                       )
 {
@@ -87,21 +91,19 @@ template<
         >
 T MMvalidate<T,U,blasEngine>::validateLocal(
                         Matrix<T,U,Structure,Distribution>& matrixSol,
-                        U matrixAcutXstart,
-                        U matrixAcutXend,
-                        U matrixAcutYstart,
-                        U matrixAcutYend,
-                        U matrixBcutXstart,
-                        U matrixBcutXend,
-                        U matrixBcutZstart,
-                        U matrixBcutZend,
-                        U matrixCcutYstart,
-                        U matrixCcutYend,
-                        U matrixCcutZstart,
-                        U matrixCcutZend,
+                        U matrixSolcutYstart,
+                        U matrixSolcutYend,
+                        U matrixSolcutZstart,
+                        U matrixSolcutZend,
+                        U globalDimensionX,
+                        U globalDimensionY,
+                        U globalDimensionZ,
+                        MPI_Comm comm,
                         int blasEngineInfo
                       )
 {
+  // Note: we will generate the entire global matrix on each layer for each processor for now, but this involves extra work that is not necessary.
+
 /*
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
   U rangeA_y = matrixAcutYend-matrixAcutYstart;

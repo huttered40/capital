@@ -38,9 +38,13 @@ public:
           >
   static T validateLocal(
                         Matrix<T,U,Structure,Distribution>& matrixSol,
-                        U dimensionX,
-                        U dimensionY,
-                        U dimensionZ,
+                        U localDimensionX,
+                        U localDimensionY,
+                        U localDimensionZ,
+                        U globalDimensionX,
+                        U globalDimensionY,
+                        U globalDimensionZ,
+                        MPI_Comm comm,
                         int blasEngineInfo
                       );
 
@@ -50,18 +54,14 @@ public:
           >
   static T validateLocal(
                         Matrix<T,U,Structure,Distribution>& matrixSol,
-                        U matrixAcutXstart,
-                        U matrixAcutXend,
-                        U matrixAcutYstart,
-                        U matrixAcutYend,
-                        U matrixBcutXstart,
-                        U matrixBcutXend,
-                        U matrixBcutZstart,
-                        U matrixBcutZend,
-                        U matrixCcutYstart,
-                        U matrixCcutYend,
-                        U matrixCcutZstart,
-                        U matrixCcutZend,
+                        U matrixSolcutYstart,
+                        U matrixSolcutYend,
+                        U matrixSolcutZstart,
+                        U matrixSolcutZend,
+                        U globalDimensionX,
+                        U globalDimensionY,
+                        U globalDimensionZ,
+                        MPI_Comm comm,
                         int blasEngineInfo
                       );
 

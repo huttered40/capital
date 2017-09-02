@@ -53,9 +53,10 @@ int main(int argc, char** argv)
 
   int info = ((1<<2));
   Summa3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
-    Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD,info);
+    Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, info);
 
-  double error = MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize, info);
+  double error = MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize,
+    globalMatrixSize, globalMatrixSize, globalMatrixSize, MPI_COMM_WORLD, info);
 
   MPI_Finalize();
 
