@@ -23,11 +23,28 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
 
   // Best way: reuse existing correct code : use MatrixDistributer, so we should create a Matrix instance.
 
+  int rank,size;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+
+  // size -- total number of processors in the 3D grid
+
+  int pGridDimensionSize = ceil(pow(size,1./3.));
+  
+  int helper = pGridDimensionSize;
+  helper *= helper;
+  int pCoordX = rank%pGridDimensionSize;
+  int pCoordY = (rank%helper)/pGridDimensionSize;
+  int pCoordZ = rank/helper;
+
+  MPI_Comm sliceComm;
+  MPI_Comm_split(comm, pCoordZ, rank, &sliceComm);
+
   using globalMatrixType = Matrix<T,U,Structure,Distribution>;
-  globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionY,globalDimensionZ);
-  globalMatrixType globalMatrixB(globalDimensionZ,globalDimensionX,globalDimensionY,globalDimensionZ);
-  globalMatrixA.DistributeRandom(1, 1, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
-  globalMatrixB.DistributeRandom(1, 1, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
+  globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
+  globalMatrixType globalMatrixB(globalDimensionZ,globalDimensionX,globalDimensionZ,globalDimensionX);
+  globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
+  globalMatrixB.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
 
   // No need to serialize this data. It is already in proper format for a call to BLAS
   std::vector<T> matrixAforEngine = globalMatrixA.getVectorData();
@@ -38,6 +55,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
   {
     case blasEngineMethod::AblasGemm:
     {
+      // Later on, may want to resize matrixCforEngine in here to avoid needless memory allocation in TRMM cases
       blasEngine<T,U>::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], globalDimensionX, globalDimensionY,
         globalDimensionX, globalDimensionZ, globalDimensionY, globalDimensionZ, 1., 1., globalDimensionY, globalDimensionX, globalDimensionY, srcPackage);
       break;
@@ -49,6 +67,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
         (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionZ : globalDimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionY : globalDimensionX)
 ,
         (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY), srcPackage);
+      matrixCforEngine = matrixBforEngine;// Dont move right now. Im worried about corrupting data in matrixB. Look into this!! std::move(matrixBforEngine;...
       break;
     }
     default:
@@ -59,36 +78,33 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
   }
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-/*
+
+  // Temporary code for quick n' dirty simulation of squae matrices
+
   T error = 0;
-  for (U i=0; i<...; i++)
+  std::vector<T>& tester = matrixSol.getVectorData();
+  U countTester = 0;
+  U countRef = pCoordX + pCoordY*globalDimensionX;
+
+  for (U i=0; i<localDimensionY; i++)
   {
-    for (U j=0; j<...; j++)
+    U saveCountRef = countRef;
+    for (U j=0; j<localDimensionZ; j++)
     {
-      
+      error += abs(tester[countTester] - matrixCforEngine[countRef]);
+      //if (rank == 1) { std::cout << tester[countTester] << " " << matrixCforEngine[countRef] << std::endl;}
+      countRef += pGridDimensionSize;
+      countTester++;
     }
+    countRef = saveCountRef + pGridDimensionSize*globalDimensionX;
   }
-*/
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating
   //   a single double primitive type.
-/*
-  int rank,size,provided;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  // size -- total number of processors in the 3D grid
-
-  int pGridDimensionSize = ceil(pow(size,1./3.));
-  
-  int helper = pGridDimensionSize;
-  helper *= helper;
-  int pCoordX = rank%pGridDimensionSize;
-  int pCoordY = (rank%helper)/pGridDimensionSize;
-  int pCoordZ = rank/helper;
-*/
-
-  return 0.;
+  // sizeof trick is risky
+  MPI_Allreduce(MPI_IN_PLACE, &error, sizeof(T), MPI_CHAR, MPI_SUM, sliceComm);
+  return error;
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>

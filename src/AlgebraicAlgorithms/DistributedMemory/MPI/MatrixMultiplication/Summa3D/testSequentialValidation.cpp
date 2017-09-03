@@ -33,9 +33,6 @@ int main(int argc, char** argv)
   uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
   uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
   
-  cout << "global matrix size - " << globalMatrixSize << ", local Matrix size - " << localMatrixSize;
-  cout << ", rank - " << rank << ", size - " << size << ", one dimension of the 3D grid's size - " << pGridDimensionSize << endl;
-
   MatrixTypeA matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
   MatrixTypeB matB(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
   MatrixTypeC matC(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
@@ -49,8 +46,6 @@ int main(int argc, char** argv)
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
 
-  cout << "Processor " << rank << " has dimensions - (" << pCoordX << "," << pCoordY << "," << pCoordZ << ")\n";
-
   blasEngineArgumentPackage_gemm blasArgs;
   blasArgs.order = blasEngineOrder::AblasRowMajor;
   blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
@@ -60,6 +55,8 @@ int main(int argc, char** argv)
 
   double error = MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize,
     globalMatrixSize, globalMatrixSize, globalMatrixSize, MPI_COMM_WORLD, blasArgs);
+
+  std::cout << "Error for procesor " << rank << " = " << error << std::endl;
 
   MPI_Finalize();
 
