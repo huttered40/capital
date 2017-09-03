@@ -2,93 +2,35 @@
 
 
 void cblasHelper::setInfoParameters_gemm(
-                                           int info,
-                                           CBLAS_ORDER& arg1,
-                                           CBLAS_TRANSPOSE& arg2,
-                                           CBLAS_TRANSPOSE& arg3
-                                         )
+                                          const blasEngineArgumentPackage& srcPackage,
+                                          CBLAS_ORDER& destArg1,
+                                          CBLAS_TRANSPOSE& destArg2,
+                                          CBLAS_TRANSPOSE& destArg3
+                                        )
 {
-  if ((info&0x1))
-  {
-    arg1 = CblasRowMajor;
-  }
-  else
-  {
-    arg1 = CblasColMajor;
-  }
-  info >>= 1;
-  if ((info&0x1))
-  {
-    arg2 = CblasTrans;
-  }
-  else
-  {
-    arg2 = CblasNoTrans;
-  }
-  info >>= 1;
-  if ((info&0x1))
-  {
-    arg3 = CblasTrans;
-  }
-  else
-  {
-    arg3 = CblasNoTrans;
-  }
+  // Lots of branches :( --> I can use tertiary operator ?, which is much cheaper than an if/else statements
+
+  const blasEngineArgumentPackage_gemm& srcArgs = static_cast<const blasEngineArgumentPackage_gemm&>(srcPackage);
+  destArg1 = (srcArgs.order == blasEngineOrder::AblasRowMajor ? CblasRowMajor : CblasColMajor);
+  destArg2 = (srcArgs.transposeA == blasEngineTranspose::AblasTrans ? CblasTrans : CblasNoTrans);
+  destArg3 = (srcArgs.transposeB == blasEngineTranspose::AblasTrans ? CblasTrans : CblasNoTrans);
 }
 
 void cblasHelper::setInfoParameters_trmm(
-                                          int info,
-                                          CBLAS_ORDER& arg1,
-                                          CBLAS_SIDE& arg2,
-                                          CBLAS_UPLO& arg3,
-                                          CBLAS_TRANSPOSE& arg4,
-                                          CBLAS_DIAG& arg5
+                                          const blasEngineArgumentPackage& srcPackage,
+                                          CBLAS_ORDER& destArg1,
+                                          CBLAS_SIDE& destArg2,
+                                          CBLAS_UPLO& destArg3,
+                                          CBLAS_TRANSPOSE& destArg4,
+                                          CBLAS_DIAG& destArg5
                                         )
 {
-  if ((info&0x1))
-  {
-    arg1 = CblasRowMajor;
-  }
-  else
-  {
-    arg1 = CblasColMajor;
-  }
-  info >>= 1;
-  if ((info&0x1))
-  {
-    arg2 = CblasLeft;
-  }
-  else
-  {
-    arg2 = CblasRight;
-  }
-  info >>= 1;
-  if ((info&0x1))
-  {
-    arg3 = CblasUpper;
-  }
-  else
-  {
-    arg3 = CblasLower;
-  }
-  info >>= 1;
-  if ((info&0x1))
-  {
-    arg4 = CblasTrans;
-  }
-  else
-  {
-    arg4 = CblasNoTrans;
-  }
-  info >>= 1;
-  if ((info&0x1))
-  {
-    arg5 = CblasUnit;
-  }
-  else
-  {
-    arg5 = CblasNonUnit;
-  }
+  const blasEngineArgumentPackage_trmm& srcArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
+  destArg1 = (srcArgs.order == blasEngineOrder::AblasRowMajor ? CblasRowMajor : CblasColMajor);
+  destArg2 = (srcArgs.side == blasEngineSide::AblasLeft ? CblasLeft : CblasRight);
+  destArg3 = (srcArgs.uplo == blasEngineUpLo::AblasLower ? CblasLower : CblasUpper);
+  destArg4 = (srcArgs.transposeA == blasEngineTranspose::AblasTrans ? CblasTrans : CblasNoTrans);
+  destArg5 = (srcArgs.diag == blasEngineDiag::AblasUnit ? CblasUnit : CblasNonUnit);
 }
 
 template<typename U>
@@ -98,23 +40,23 @@ void cblasEngine<float,U>::_gemm(
             float* matrixC,
             U matrixAdimX,
             U matrixAdimY,
-            U matrixBdimX,
             U matrixBdimZ,
-            U matrixCdimY,
+            U matrixBdimX,
             U matrixCdimZ,
+            U matrixCdimY,
             float alpha,
             float beta,
             U lda,
             U ldb,
             U ldc,
-            int info 
+            const blasEngineArgumentPackage& srcPackage
          )
 {
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_TRANSPOSE arg2;
   CBLAS_TRANSPOSE arg3;
-  setInfoParameters_gemm(info, arg1, arg2, arg3);
+  setInfoParameters_gemm(srcPackage, arg1, arg2, arg3);
 
   cblas_sgemm(arg1, arg2, arg3, matrixAdimY, matrixCdimZ, matrixAdimX, alpha,
     matrixA, lda, matrixB, ldb, beta, matrixC, ldc);
@@ -129,7 +71,7 @@ void cblasEngine<float,U>::_trmm(
             float alpha,
             U lda,
             U ldb,
-            int info
+            const blasEngineArgumentPackage& srcPackage
          )
 {
   // First, unpack the info parameter
@@ -138,7 +80,7 @@ void cblasEngine<float,U>::_trmm(
   CBLAS_UPLO arg3;
   CBLAS_TRANSPOSE arg4;
   CBLAS_DIAG arg5;
-  setInfoParameters_trmm(info, arg1, arg2, arg3, arg4, arg5);
+  setInfoParameters_trmm(srcPackage, arg1, arg2, arg3, arg4, arg5);
 
   cblas_strmm(arg1, arg2, arg3, arg4, arg5, matrixBnumRows, matrixBnumCols, alpha, matrixA,
     lda, matrixB, ldb);
@@ -151,23 +93,23 @@ void cblasEngine<double,U>::_gemm(
             double* matrixC,
             U matrixAdimX,
             U matrixAdimY,
-            U matrixBdimX,
             U matrixBdimZ,
-            U matrixCdimY,
+            U matrixBdimX,
             U matrixCdimZ,
+            U matrixCdimY,
             double alpha,
             double beta,
             U lda,
             U ldb,
             U ldc,
-            int info 
+            const blasEngineArgumentPackage& srcPackage
          )
 {
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_TRANSPOSE arg2;
   CBLAS_TRANSPOSE arg3;
-  setInfoParameters_gemm(info, arg1, arg2, arg3);
+  setInfoParameters_gemm(srcPackage, arg1, arg2, arg3);
 
   cblas_dgemm(arg1, arg2, arg3, matrixAdimY, matrixCdimZ, matrixAdimX, alpha,
     matrixA, lda, matrixB, ldb, beta, matrixC, ldc);
@@ -182,7 +124,7 @@ void cblasEngine<double,U>::_trmm(
             double alpha,
             U lda,
             U ldb,
-            int info
+            const blasEngineArgumentPackage& srcPackage
          )
 {
   // First, unpack the info parameter
@@ -191,7 +133,7 @@ void cblasEngine<double,U>::_trmm(
   CBLAS_UPLO arg3;
   CBLAS_TRANSPOSE arg4;
   CBLAS_DIAG arg5;
-  setInfoParameters_trmm(info, arg1, arg2, arg3, arg4, arg5);
+  setInfoParameters_trmm(srcPackage, arg1, arg2, arg3, arg4, arg5);
 
   cblas_dtrmm(arg1, arg2, arg3, arg4, arg5, matrixBnumRows, matrixBnumCols, alpha, matrixA,
     lda, matrixB, ldb);
@@ -204,23 +146,23 @@ void cblasEngine<std::complex<float>,U>::_gemm(
             std::complex<float>* matrixC,
             U matrixAdimX,
             U matrixAdimY,
-            U matrixBdimX,
             U matrixBdimZ,
-            U matrixCdimY,
+            U matrixBdimX,
             U matrixCdimZ,
+            U matrixCdimY,
             std::complex<float> alpha,
             std::complex<float> beta,
             U lda,
             U ldb,
             U ldc,
-            int info 
+            const blasEngineArgumentPackage& srcPackage
          )
 {
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_TRANSPOSE arg2;
   CBLAS_TRANSPOSE arg3;
-  setInfoParameters_gemm(info, arg1, arg2, arg3);
+  setInfoParameters_gemm(srcPackage, arg1, arg2, arg3);
 
   cblas_cgemm(arg1, arg2, arg3, matrixAdimY, matrixCdimZ, matrixAdimX, alpha,
     matrixA, lda, matrixB, ldb, beta, matrixC, ldc);
@@ -235,7 +177,7 @@ void cblasEngine<std::complex<float>,U>::_trmm(
             std::complex<float> alpha,
             U lda,
             U ldb,
-            int info
+            const blasEngineArgumentPackage& srcPackage
          )
 {
   // First, unpack the info parameter
@@ -244,7 +186,7 @@ void cblasEngine<std::complex<float>,U>::_trmm(
   CBLAS_UPLO arg3;
   CBLAS_TRANSPOSE arg4;
   CBLAS_DIAG arg5;
-  setInfoParameters_trmm(info, arg1, arg2, arg3, arg4, arg5);
+  setInfoParameters_trmm(srcPackage, arg1, arg2, arg3, arg4, arg5);
 
   cblas_ctrmm(arg1, arg2, arg3, arg4, arg5, matrixBnumRows, matrixBnumCols, alpha, matrixA,
     lda, matrixB, ldb);
@@ -257,23 +199,23 @@ void cblasEngine<std::complex<double>,U>::_gemm(
             std::complex<double>* matrixC,
             U matrixAdimX,
             U matrixAdimY,
-            U matrixBdimX,
             U matrixBdimZ,
-            U matrixCdimY,
+            U matrixBdimX,
             U matrixCdimZ,
+            U matrixCdimY,
             std::complex<double> alpha,
             std::complex<double> beta,
             U lda,
             U ldb,
             U ldc,
-            int info 
+            const blasEngineArgumentPackage& srcPackage
          )
 {
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_TRANSPOSE arg2;
   CBLAS_TRANSPOSE arg3;
-  setInfoParameters_gemm(info, arg1, arg2, arg3);
+  setInfoParameters_gemm(srcPackage, arg1, arg2, arg3);
 
   cblas_zgemm(arg1, arg2, arg3, matrixAdimY, matrixCdimZ, matrixAdimX, alpha,
     matrixA, lda, matrixB, ldb, beta, matrixC, ldc);
@@ -288,7 +230,7 @@ void cblasEngine<std::complex<double>,U>::_trmm(
             std::complex<double> alpha,
             U lda,
             U ldb,
-            int info
+            const blasEngineArgumentPackage& srcPackage
          )
 {
   // First, unpack the info parameter
@@ -297,7 +239,7 @@ void cblasEngine<std::complex<double>,U>::_trmm(
   CBLAS_UPLO arg3;
   CBLAS_TRANSPOSE arg4;
   CBLAS_DIAG arg5;
-  setInfoParameters_trmm(info, arg1, arg2, arg3, arg4, arg5);
+  setInfoParameters_trmm(srcPackage, arg1, arg2, arg3, arg4, arg5);
 
   cblas_ztrmm(arg1, arg2, arg3, arg4, arg5, matrixBnumRows, matrixBnumCols, alpha, matrixA,
     lda, matrixB, ldb);

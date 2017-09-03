@@ -49,9 +49,12 @@ int main(int argc, char** argv)
 
   cout << "Processor " << rank << " has dimensions - (" << pCoordX << "," << pCoordY << "," << pCoordZ << ")\n";
 
-  int info = ((1<<2));
+  blasEngineArgumentPackage_gemm blasArgs;
+  blasArgs.order = blasEngineOrder::AblasRowMajor;
+  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+  blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   Summa3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
-    Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD,info);
+    Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
 
   if (rank == 0)
   matC.print();

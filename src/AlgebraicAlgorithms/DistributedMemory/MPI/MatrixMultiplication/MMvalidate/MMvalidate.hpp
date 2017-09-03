@@ -14,7 +14,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
                         U globalDimensionY,
                         U globalDimensionZ,
                         MPI_Comm comm,
-                        int blasEngineInfo
+                        const blasEngineArgumentPackage& srcPackage
                       )
 {
   // What I want to do here is generate a full matrix with the correct values
@@ -23,65 +23,72 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
 
   // Best way: reuse existing correct code : use MatrixDistributer, so we should create a Matrix instance.
 
-/*  
-T* matrixAtoSerialize = matrixA.getData(); 
-  T* matrixBtoSerialize = matrixB.getData();
-  T* matrixAforEngine = nullptr;
-  T* matrixBforEngine = nullptr;
-  int infoA = 0;
-  int infoB = 0;
-  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY, infoA);
-  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ, infoB);
+  using globalMatrixType = Matrix<T,U,Structure,Distribution>;
+  globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionY,globalDimensionZ);
+  globalMatrixType globalMatrixB(globalDimensionZ,globalDimensionX,globalDimensionY,globalDimensionZ);
+  globalMatrixA.DistributeRandom(1, 1, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
+  globalMatrixB.DistributeRandom(1, 1, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
 
-  // infoA and infoB have information as to what kind of memory allocations occured within Serializer
+  // No need to serialize this data. It is already in proper format for a call to BLAS
+  T* matrixAforEngine = globalMatrixA.getData();
+  T* matrixBforEngine = globalMatrixB.getData();
+  T* matrixCforEngine = new T[globalDimensionY*globalDimensionZ];	// No matrix needed for this. Only used in BLAS call
 
-  T* matrixCforEngine = matrixC.getData();
-  U numElems = matrixC.getNumElems();
-
-  // Assume for now that first 2 bits give 4 possibilies
-  //   0 -> _gemm
-  //   1 -> _trmm
-  //   2 -> ?
-  //   3 -> ?
-  bool helper1 = blasEngineInfo&0x1;
-  blasEngineInfo >>= 1;
-  bool helper2 = blasEngineInfo&0x1;
-  blasEngineInfo >>= 1;
-  int whichRoutine = static_cast<int>(helper2)*2 + static_cast<int>(helper1);
-  switch (whichRoutine)
+  switch (srcPackage.method)
   {
-    case 0:
+    case blasEngineMethod::AblasGemm:
     {
-      blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, dimensionX, dimensionY,
-        dimensionX, dimensionZ, dimensionY, dimensionZ, 1., 1., dimensionY, dimensionX, dimensionY, blasEngineInfo);
+      blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, globalDimensionX, globalDimensionY,
+        globalDimensionX, globalDimensionZ, globalDimensionY, globalDimensionZ, 1., 1., globalDimensionY, globalDimensionX, globalDimensionY, srcPackage);
       break;
     }
-    case 1:
+    case blasEngineMethod::AblasTrmm:
     {
-      int checkOrder = (0x2 & (blasEngineInfo>>1));		// check the 2nd bit to see if square matrix is on left or right
-      blasEngine<T,U>::_trmm(matrixAforEngine, matrixBforEngine, (checkOrder ? dimensionX : dimensionY),
-        (checkOrder ? dimensionZ : dimensionX), 1., (checkOrder ? dimensionY : dimensionX), (checkOrder ? dimensionX : dimensionY), blasEngineInfo);
+      const blasEngineArgumentPackage_trmm& blasArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
+      blasEngine<T,U>::_trmm(matrixAforEngine, matrixBforEngine, (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY),
+        (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionZ : globalDimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionY : globalDimensionX)
+,
+        (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY), srcPackage);
       break;
     }
-    case 2:
+    default:
     {
-      break;
-    }
-    case 3:
-    {
-      break;
+      std::cout << "Bad BLAS method used in blasEngineArgumentPackage\n";
+      abort();
     }
   }
 
-  if (infoA == 2)
+  // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
+/*
+  T error = 0;
+  for (U i=0; i<...; i++)
   {
-    delete[] matrixAforEngine;
-  }
-  if (infoB == 2)
-  {
-    delete[] matrixBforEngine;
+    for (U j=0; j<...; j++)
+    {
+      
+    }
   }
 */
+
+  // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating
+  //   a single double primitive type.
+/*
+  int rank,size,provided;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  // size -- total number of processors in the 3D grid
+
+  int pGridDimensionSize = ceil(pow(size,1./3.));
+  
+  int helper = pGridDimensionSize;
+  helper *= helper;
+  int pCoordX = rank%pGridDimensionSize;
+  int pCoordY = (rank%helper)/pGridDimensionSize;
+  int pCoordZ = rank/helper;
+*/
+  delete[] matrixCforEngine;			// I want to find a better way for the library to take care of extra-allocated memory.
+
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
@@ -99,7 +106,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
                         U globalDimensionY,
                         U globalDimensionZ,
                         MPI_Comm comm,
-                        int blasEngineInfo
+                        const blasEngineArgumentPackage& srcPackage
                       )
 {
   // Note: we will generate the entire global matrix on each layer for each processor for now, but this involves extra work that is not necessary.

@@ -52,7 +52,7 @@ public:
                         U dimensionY,
                         U dimensionZ,
                         MPI_Comm commWorld,
-                        int blasEngineInfo
+                        const blasEngineArgumentPackage& srcPackage
                       );
 
   template<template<typename,typename,int> class Distribution>
@@ -73,7 +73,7 @@ public:
                         U matrixCcutZstart,
                         U matrixCcutZend,
                         MPI_Comm commWorld,
-                        int blasEngineInfo
+                        const blasEngineArgumentPackage& srcPackage
                       );
 
   // Later on, I'd like an overloaded Multiply() method that took parameters to "cut up" the current 3 matrices (so 8 extra arguments)
