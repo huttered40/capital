@@ -34,8 +34,8 @@ public:
   Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
 
-  static void Serialize(T* src, T*& dest, U dimensionX, U dimensionY, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend);
 };
 
 // Use partial specialization to define certain combinations
@@ -50,10 +50,10 @@ public:
   Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
 
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, bool fillZeros, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, int& info);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool fillZeros);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros);
 };
 
 // Use partial specialization to define certain combinations
@@ -68,10 +68,10 @@ public:
   Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
 
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, bool fillZeros, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, int& info);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool fillZeros);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros);
 };
 
 // Use partial specialization to define certain combinations
@@ -86,9 +86,9 @@ public:
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
 
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, int& info);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros);
 };
 
 // Use partial specialization to define certain combinations
@@ -103,8 +103,8 @@ public:
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
 
-  static void Serialize(T* src, T*& dest, U dimensionX, U dimensionY, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend);
 };
 
 // Use partial specialization to define certain combinations
@@ -119,9 +119,9 @@ public:
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
 
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, int& info);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros);
 };
 
 // Use partial specialization to define certain combinations
@@ -136,8 +136,8 @@ public:
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureLowerTriangular>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
 
-  static void Serialize(T* src, T*& dest, U dimensionX, U dimensionY, int& info);
-  static void Serialize(const T* src, T*& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, int& info);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY);
+  static void Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend);
 };
 
 #include "MatrixSerializer.hpp"

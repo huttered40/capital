@@ -37,8 +37,7 @@ int main(void)
   MatrixType3 theMatrix1(4,4,16,16);
   MatrixType3 theMatrix2(8,8,16,16);
   theMatrix2.DistributeSymmetric(1,1,2,2, true);
-  int info = 0;
-  theMatrix2.Serialize(theMatrix1,4,8,4,8, info);	// square to lower triangular
+  theMatrix2.Serialize(theMatrix1,4,8,4,8);	// square to lower triangular
   theMatrix1.print();
   cout << "\n\n";
   theMatrix2.print();

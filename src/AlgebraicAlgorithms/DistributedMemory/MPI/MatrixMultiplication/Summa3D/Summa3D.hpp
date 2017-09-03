@@ -41,12 +41,12 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
 
-  T* dataA = matrixA.getData(); 
-  T* dataB = matrixB.getData();
+  std::vector<T>& dataA = matrixA.getVectorData(); 
+  std::vector<T>& dataB = matrixB.getVectorData();
   U sizeA = matrixA.getNumElems();
   U sizeB = matrixB.getNumElems();
-  T* foreignA = nullptr;
-  T* foreignB = nullptr;
+  std::vector<T> foreignA;
+  std::vector<T> foreignB;
 
   bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
@@ -54,23 +54,23 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   // Broadcast
   if (isRootRow)
   {
-    MPI_Bcast(dataA, sizeA, MPI_DOUBLE, pGridCoordZ, rowComm);
+    MPI_Bcast(&dataA[0], sizeA, MPI_DOUBLE, pGridCoordZ, rowComm);
   }
   else
   {
-    foreignA = new T[sizeA];
-    MPI_Bcast(foreignA, sizeA, MPI_DOUBLE, pGridCoordZ, rowComm);
+    foreignA.resize(sizeA);
+    MPI_Bcast(&foreignA[0], sizeA, MPI_DOUBLE, pGridCoordZ, rowComm);
   }
 
   // Broadcast data along columns
   if (isRootColumn)
   {
-    MPI_Bcast(dataB, sizeB, MPI_DOUBLE, pGridCoordZ, columnComm);
+    MPI_Bcast(&dataB[0], sizeB, MPI_DOUBLE, pGridCoordZ, columnComm);
   }
   else
   {
-    foreignB = new T[sizeB];
-    MPI_Bcast(foreignB, sizeB, MPI_DOUBLE, pGridCoordZ, columnComm);
+    foreignB.resize(sizeB);
+    MPI_Bcast(&foreignB[0], sizeB, MPI_DOUBLE, pGridCoordZ, columnComm);
   }
 
   // Now need to perform the cblas call via Summa3DEngine (to use the right cblas call based on the structure combo)
@@ -80,62 +80,63 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   // These can be made static methods in the Matrix class to the MatrixSerialize class.
   // Its just another option for the user.
 
-  T* matrixAtoSerialize = isRootRow ? dataA : foreignA;
-  T* matrixBtoSerialize = isRootColumn ? dataB : foreignB;
-  T* matrixAforEngine = nullptr;
-  T* matrixBforEngine = nullptr;
-  int infoA = 0;
-  int infoB = 0;
-  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY, infoA);
-  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ, infoB);
+  std::vector<T>& matrixAtoSerialize = isRootRow ? dataA : foreignA;
+  std::vector<T>& matrixBtoSerialize = isRootColumn ? dataB : foreignB;
+  std::vector<T> matrixAforEngine;
+  std::vector<T> matrixBforEngine;
 
-  // infoA and infoB have information as to what kind of memory allocations occured within Serializer
+  // Now, the trouble here is that we want to make this generic, but we don't want to perform an extra copy/serialization if we don't have to
+  // For example, if StructureA == MatrixStructureSquare, we don't want to perform any work, but we want this decision to be made
+  // by the library in Serializer, not here. Well, I guess I just make the distinction here. Good enough
 
-  T* matrixCforEngine = matrixC.getData();
-  U numElems = matrixC.getNumElems();
+  if (!std::is_same<StructureA,MatrixStructureSquare>::value)		// compile time if statement. Branch prediction should be correct.
+  {
+    Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY);
+  }
+  else
+  {
+    matrixAforEngine = std::move(matrixAtoSerialize);
+  }
+  if (!std::is_same<StructureA,MatrixStructureSquare>::value)
+  {
+    Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ);
+  }
+  else
+  {
+    matrixBforEngine = std::move(matrixBtoSerialize);
+  }
+
+
+  std::vector<T>& matrixCforEngine = matrixC.getVectorData();
 
   switch (srcPackage.method)
   {
     case blasEngineMethod::AblasGemm:
     {
-      blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, dimensionX, dimensionY,
+      blasEngine<T,U>::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], dimensionX, dimensionY,
         dimensionX, dimensionZ, dimensionY, dimensionZ, 1., 1., dimensionY, dimensionX, dimensionY, srcPackage);
       break;
     }
     case blasEngineMethod::AblasTrmm:
     {
       const blasEngineArgumentPackage_trmm& blasArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
-      blasEngine<T,U>::_trmm(matrixAforEngine, matrixBforEngine, (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
+      blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
         (blasArgs.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
         (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY), srcPackage);
+      matrixCforEngine = std::move(matrixBforEngine);	// TRMM doesn't touch matrixC, so the user actually doesn't even have to allocate it, but we
+                                                        //   move data into it before the AllReduce so the user gets back the solution in matrixC
       break;
     }
     default:
     {
-      std::cout << "Bad BLAS method used in blasEngineArgumentPackage\n";
+      std::cout << "Invalid BLAS method used in blasEngineArgumentPackage\n";
       abort();
     }
   }
 
-  MPI_Allreduce(MPI_IN_PLACE, matrixCforEngine, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
+  MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
-  if (!foreignA)
-  {
-    delete[] foreignA;
-  }
-  if (!foreignB)
-  {
-    delete[] foreignB;
-  }
-
-  if (infoA == 2)
-  {
-    delete[] matrixAforEngine;
-  }
-  if (infoB == 2)
-  {
-    delete[] matrixBforEngine;
-  }
+  // Unlike before when I had explicit new calls, the memory will get deleted automatically since the vectors will go out of scope
 }
 
 template<typename T, typename U,

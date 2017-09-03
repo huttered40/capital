@@ -14,19 +14,19 @@ void MatrixStructureSquare<T,U,Distributer>::Construct()
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureSquare<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
+void MatrixStructureSquare<T,U,Distributer>::Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
   // dimensionX must be equal to dimensionY, but I can't check this at compile time.
   assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionX);
   matrixNumElems = dimensionX * dimensionX;
-  matrix[0] = new T[matrixNumElems];
+  data.resize(matrixNumElems);
   
   U offset{0};
   for (auto& ptr : matrix)
   {
-    ptr = &matrix[0][offset];
+    ptr = &data[offset];
     offset += dimensionX;
   }
 }
@@ -53,10 +53,10 @@ void MatrixStructureSquare<T,U,Distributer>::Dissamble(std::vector<T*>& matrix)
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureSquare<T,U,Distributer>::Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
+void MatrixStructureSquare<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
 {
-  Assemble(matrix, dimensionX, dimensionX);	// Just choose one dimension.
-  U numElems = dimensionX*dimensionX;		// Just choose one dimension.
+  U numElems = 0;		// Just choose one dimension.
+  Assemble(data, matrix, numElems, dimensionX, dimensionX);	// Just choose one dimension.
   std::memcpy(matrix[0], source[0], numElems*sizeof(T));
 }
 
@@ -100,16 +100,16 @@ void MatrixStructureRectangle<T,U,Distributer>::Construct()
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureRectangle<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
+void MatrixStructureRectangle<T,U,Distributer>::Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
   matrix.resize(dimensionY);
   matrixNumElems = dimensionX * dimensionY;
-  matrix[0] = new T[matrixNumElems];
+  data.resize(matrixNumElems);
   
   U offset{0};
   for (auto& ptr : matrix)
   {
-    ptr = &matrix[0][offset];
+    ptr = &data[offset];
     offset += dimensionX;
   }
 }
@@ -136,10 +136,10 @@ void MatrixStructureRectangle<T,U,Distributer>::Dissamble(std::vector<T*>& matri
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureRectangle<T,U,Distributer>::Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
+void MatrixStructureRectangle<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
 {
-  Assemble(matrix, dimensionX, dimensionY);
-  U numElems = dimensionX*dimensionY;
+  int numElems = 0;
+  Assemble(data, matrix, numElems, dimensionX, dimensionY);
   std::memcpy(matrix[0], source[0], numElems*sizeof(T));
 }
 
@@ -176,14 +176,14 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Construct()
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureUpperTriangular<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
+void MatrixStructureUpperTriangular<T,U,Distributer>::Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
   // dimensionY must be equal to dimensionX
   assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionY);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
-  matrix[0] = new T[matrixNumElems];
+  data.resize(matrixNumElems);
   
   U offset{0};
   U counter{dimensionX};
@@ -217,10 +217,10 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Dissamble(std::vector<T*>&
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureUpperTriangular<T,U,Distributer>::Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
+void MatrixStructureUpperTriangular<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
 {
-  Assemble(matrix, dimensionX, dimensionY);
-  U numElems = ((dimensionY*(dimensionY+1))>>1);
+  U numElems = 0;
+  Assemble(data, matrix, numElems, dimensionX, dimensionY);
   std::memcpy(matrix[0], source[0], numElems*sizeof(T));
 }
 
@@ -264,20 +264,20 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Construct()
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureLowerTriangular<T,U,Distributer>::Assemble(std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
+void MatrixStructureLowerTriangular<T,U,Distributer>::Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
   // dimensionY must be equal to dimensionX
   assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionY);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
-  matrix[0] = new T[matrixNumElems];
+  data.reize(matrixNumElems);
   
   U offset{0};
   U counter{1};
   for (auto& ptr : matrix)
   {
-    ptr = &matrix[0][offset];
+    ptr = &data[offset];
     offset += counter;				// Hopefully this doesn't have 64-bit overflow problems :(
     counter++;
   }
@@ -305,11 +305,10 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Dissamble(std::vector<T*>&
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureLowerTriangular<T,U,Distributer>::Copy(std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
+void MatrixStructureLowerTriangular<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
 {
-  int dummy = 0;
-  Assemble(matrix, dummy, dimensionX, dimensionY);
-  U numElems = ((dimensionY*(dimensionY+1))>>1);
+  U numElems = 0;
+  Assemble(data, matrix, numElems, dimensionX, dimensionY);
   std::memcpy(matrix[0], source[0], numElems*sizeof(T));
 }
 
