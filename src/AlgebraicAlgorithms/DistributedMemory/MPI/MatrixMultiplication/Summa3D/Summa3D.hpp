@@ -89,7 +89,7 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   // For example, if StructureA == MatrixStructureSquare, we don't want to perform any work, but we want this decision to be made
   // by the library in Serializer, not here. Well, I guess I just make the distinction here. Good enough
 
-  if (!std::is_same<StructureA,MatrixStructureSquare>::value)		// compile time if statement. Branch prediction should be correct.
+  if (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)		// compile time if statement. Branch prediction should be correct.
   {
     Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY);
   }
@@ -97,7 +97,7 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   {
     matrixAforEngine = std::move(matrixAtoSerialize);
   }
-  if (!std::is_same<StructureA,MatrixStructureSquare>::value)
+  if (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)
   {
     Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ);
   }
@@ -108,6 +108,7 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
 
   std::vector<T>& matrixCforEngine = matrixC.getVectorData();
+  U numElems = matrixC.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
   switch (srcPackage.method)
   {

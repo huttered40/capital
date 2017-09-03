@@ -30,22 +30,22 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
   globalMatrixB.DistributeRandom(1, 1, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
 
   // No need to serialize this data. It is already in proper format for a call to BLAS
-  T* matrixAforEngine = globalMatrixA.getData();
-  T* matrixBforEngine = globalMatrixB.getData();
-  T* matrixCforEngine = new T[globalDimensionY*globalDimensionZ];	// No matrix needed for this. Only used in BLAS call
+  std::vector<T> matrixAforEngine = globalMatrixA.getVectorData();
+  std::vector<T> matrixBforEngine = globalMatrixB.getVectorData();
+  std::vector<T> matrixCforEngine(globalDimensionY*globalDimensionZ, 0);	// No matrix needed for this. Only used in BLAS call
 
   switch (srcPackage.method)
   {
     case blasEngineMethod::AblasGemm:
     {
-      blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, globalDimensionX, globalDimensionY,
+      blasEngine<T,U>::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], globalDimensionX, globalDimensionY,
         globalDimensionX, globalDimensionZ, globalDimensionY, globalDimensionZ, 1., 1., globalDimensionY, globalDimensionX, globalDimensionY, srcPackage);
       break;
     }
     case blasEngineMethod::AblasTrmm:
     {
       const blasEngineArgumentPackage_trmm& blasArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
-      blasEngine<T,U>::_trmm(matrixAforEngine, matrixBforEngine, (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY),
+      blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY),
         (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionZ : globalDimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionY : globalDimensionX)
 ,
         (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY), srcPackage);
@@ -87,8 +87,8 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 */
-  delete[] matrixCforEngine;			// I want to find a better way for the library to take care of extra-allocated memory.
 
+  return 0.;
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
