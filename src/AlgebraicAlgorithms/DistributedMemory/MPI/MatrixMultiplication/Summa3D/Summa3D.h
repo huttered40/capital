@@ -64,14 +64,14 @@ public:
                         U matrixAcutXend,
                         U matrixAcutYstart,
                         U matrixAcutYend,
-                        U matrixBcutXstart,
-                        U matrixBcutXend,
                         U matrixBcutZstart,
                         U matrixBcutZend,
-                        U matrixCcutYstart,
-                        U matrixCcutYend,
+                        U matrixBcutXstart,
+                        U matrixBcutXend,
                         U matrixCcutZstart,
                         U matrixCcutZend,
+                        U matrixCcutYstart,
+                        U matrixCcutYend,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage& srcPackage
                       );

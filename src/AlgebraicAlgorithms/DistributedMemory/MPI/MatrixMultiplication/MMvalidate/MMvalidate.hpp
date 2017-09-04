@@ -127,107 +127,87 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
 {
   // Note: we will generate the entire global matrix on each layer for each processor for now, but this involves extra work that is not necessary.
 
-/*
-  U rangeA_x = matrixAcutXend-matrixAcutXstart;
-  U rangeA_y = matrixAcutYend-matrixAcutYstart;
-  U rangeB_x = matrixBcutXend-matrixBcutXstart;
-  U rangeB_z = matrixBcutZend-matrixBcutZstart;
+  int rank,size;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
 
-  T* dataA;
-  T* dataB;
-  U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
-  U sizeB = matrixB.getNumElems(rangeB_x, rangeB_z);
+  // size -- total number of processors in the 3D grid
 
-  // No clear way to prevent a needless copy if the cut dimensions of a matrix are full.
-  dataA = new T[sizeA];
-  T* matAsource = matrixA.getData();
-  int infoA1 = 0;
-  Serializer<T,U,StructureA,StructureA>::Serialize(matAsource, dataA, matrixAcutXstart,
-    matrixAcutXend, matrixAcutYstart, matrixAcutYend, infoA1);
-  // Now, dataA is set and ready to be communicated
+  int pGridDimensionSize = ceil(pow(size,1./3.));
+  
+  int helper = pGridDimensionSize;
+  helper *= helper;
+  int pCoordX = rank%pGridDimensionSize;
+  int pCoordY = (rank%helper)/pGridDimensionSize;
+  int pCoordZ = rank/helper;
 
-  dataB = new T[sizeB];
-  T* matBsource = matrixB.getData();
-  int infoB1 = 0;
-  Serializer<T,U,StructureB,StructureB>::Serialize(matBsource, dataB, matrixBcutXstart,
-    matrixBcutXend, matrixBcutZstart, matrixBcutZend, infoB1);
-  // Now, dataB is set and ready to be communicated
+  MPI_Comm sliceComm;
+  MPI_Comm_split(comm, pCoordZ, rank, &sliceComm);
 
-  // Now need to perform the cblas call via Summa3DEngine (to use the right cblas call based on the structure combo)
-  // Need to call serialize blindly, even if we are going from square to square
-  //   This is annoyingly required for cblas calls. For now, just abide by the rules.
-  // We also must create an interface to serialize from vectors to vectors to avoid instantiating temporary matrices.
-  // These can be made static methods in the Matrix class to the MatrixSerialize class.
-  // Its just another option for the user.
+  using globalMatrixType = Matrix<T,U,Structure,Distribution>;
+  globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
+  globalMatrixType globalMatrixB(globalDimensionZ,globalDimensionX,globalDimensionZ,globalDimensionX);
+  globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
+  globalMatrixB.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
 
-  T* matrixAtoSerialize = dataA;
-  T* matrixBtoSerialize = dataB;
-  T* matrixAforEngine = nullptr;
-  T* matrixBforEngine = nullptr;
-  int infoA2 = 0;
-  int infoB2 = 0;
-  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, 0, rangeA_x, 0, rangeA_y, infoA2);
-  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, 0, rangeB_x, 0, rangeB_z, infoB2);
+  // No need to serialize this data. It is already in proper format for a call to BLAS
+  std::vector<T> matrixAforEngine = globalMatrixA.getVectorData();
+  std::vector<T> matrixBforEngine = globalMatrixB.getVectorData();
+  std::vector<T> matrixCforEngine(globalDimensionY*globalDimensionZ, 0);	// No matrix needed for this. Only used in BLAS call
 
-  T* matrixCforEngine = matrixC.getData();
-  U numElems = matrixC.getNumElems();
-
-  U rangeC_y = matrixCcutYend - matrixCcutYstart; 
-  U rangeC_z = matrixCcutZend - matrixCcutZstart;
-
-  // The BLAS call below needs modifed because we need to allow for transpose or triangular structure AND allow for dtrmm instead of dgemm
-  blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, rangeA_x, rangeA_y,
-    rangeB_x, rangeB_z, rangeC_y, rangeC_z, blasEngineInfo);
-  // Assume for now that first 2 bits give 4 possibilies
-  //   0 -> _gemm
-  //   1 -> _trmm
-  //   2 -> ?
-  //   3 -> ?
-  bool helper1 = blasEngineInfo&0x1;
-  blasEngineInfo >>= 1;
-  bool helper2 = blasEngineInfo&0x1;
-  blasEngineInfo >>= 1;
-  int whichRoutine = static_cast<int>(helper2)*2 + static_cast<int>(helper1);
-  switch (whichRoutine)
+  switch (srcPackage.method)
   {
-    case 0:
+    case blasEngineMethod::AblasGemm:
     {
-      blasEngine<T,U>::_gemm(matrixAforEngine, matrixBforEngine, matrixCforEngine, rangeA_x, rangeA_y,
-        rangeB_x, rangeB_z, rangeC_y, rangeC_z, 1., 1., rangeA_y, rangeB_x, rangeC_y, blasEngineInfo);
+      // Later on, may want to resize matrixCforEngine in here to avoid needless memory allocation in TRMM cases
+      blasEngine<T,U>::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], globalDimensionX, globalDimensionY,
+        globalDimensionX, globalDimensionZ, globalDimensionY, globalDimensionZ, 1., 1., globalDimensionY, globalDimensionX, globalDimensionY, srcPackage);
       break;
     }
-    case 1:
+    case blasEngineMethod::AblasTrmm:
     {
-      int checkOrder = (0x2 & (blasEngineInfo>>1));		// check the 2nd bit to see if square matrix is on left or right
-      blasEngine<T,U>::_trmm(matrixAforEngine, matrixBforEngine, (checkOrder ? rangeB_x : rangeA_y),
-        (checkOrder ? rangeB_z : rangeA_x), 1., (checkOrder ? rangeA_y : rangeB_x), (checkOrder ? rangeB_x : rangeA_y), blasEngineInfo);
+      const blasEngineArgumentPackage_trmm& blasArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
+      blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY),
+        (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionZ : globalDimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionY : globalDimensionX)
+,
+        (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY), srcPackage);
+      matrixCforEngine = matrixBforEngine;// Dont move right now. Im worried about corrupting data in matrixB. Look into this!! std::move(matrixBforEngine;...
       break;
     }
-    case 2:
+    default:
     {
-      break;
-    }
-    case 3:
-    {
-      break;
+      std::cout << "Bad BLAS method used in blasEngineArgumentPackage\n";
+      abort();
     }
   }
 
-  if (infoA1 == 2)
+  // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
+
+  // Temporary code for quick n' dirty simulation of squae matrices
+
+  T error = 0;
+  std::vector<T>& tester = matrixSol.getVectorData();
+  U countTester;;;;;;
+  U countRef = pCoordX + pCoordY*globalDimensionX;
+
+  for (U i=matrixSolcutYstart; i<matrixSolcutYend; i++)
   {
-    delete[] dataA;
+    U saveCountRef = countRef;
+    for (U j=matrixSolcutZstart; j<matrixSolcutZend; j++)
+    {
+      error += abs(tester[countTester] - matrixCforEngine[countRef]);
+      //if (rank == 1) { std::cout << tester[countTester] << " " << matrixCforEngine[countRef] << std::endl;}
+      countRef += pGridDimensionSize;
+      countTester++;
+    }
+    countRef = saveCountRef + pGridDimensionSize*globalDimensionX;
   }
-  if (infoB1 == 2)
-  {
-    delete[] dataB;
-  }
-  if (infoA2 == 2)
-  {
-    delete[] matrixAforEngine;
-  }
-  if (infoB2 == 2)
-  {
-    delete[] matrixBforEngine;
-  }
-*/
+
+  // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating
+  //   a single double primitive type.
+
+  // sizeof trick is risky
+  MPI_Allreduce(MPI_IN_PLACE, &error, sizeof(T), MPI_CHAR, MPI_SUM, sliceComm);
+  return error;
+
 }
