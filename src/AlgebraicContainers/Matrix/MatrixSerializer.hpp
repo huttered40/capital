@@ -1,9 +1,13 @@
 /* Author: Edward Hutter */
 
 /*
-  Note: info 1 -> no memory was allocated for dest
-        info 2 -> memory was allocated for dest
-        info 3 -> memory was not allocated, but dest was changed to point to src
+  Note: For bool dir, if dir == false, we serialize the bigger object into the smaller one, using the necessary indexing
+                      if dir == true, we serialize the smaller object into the bigger one, using the opposite indexing as above
+
+                      Both directions use source and dest buffers as the name suggests
+
+	Also, we assume that the source bufer is allocated properly. But, the destination buffer is checked for appropriate size to prevent seg faults
+              ans also to aid the user of thi Policy if he doesn't know the correct number of elements given th complicated Structure Policy abstraction.
 */
 
 
@@ -19,7 +23,7 @@ static void fillZerosContig(T* addr, U size)
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
 {
   assert(dimensionX == dimensionY);
 
@@ -29,12 +33,14 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(std
   {
     dest.resize(numElems);
   }
+
+  // direction doesn't matter here since no indexing here
   memcpy(&dest[0], &src[0], sizeof(T)*numElems);
   return;
 }
   
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
@@ -42,28 +48,30 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(std
   assert(rangeX == rangeY);
   assert(dimensionX == dimensionY);
 
-  U numElems = rangeX*rangeY;
+  U numElems = (dir ? dimensionX*dimensionY : rangeX*rangeY);
   if (dest.size() < numElems)
   {
     dest.resize(numElems);
   }
 
-  U destIndex = 0;
-  U srcIndexSave = cutDimensionYstart*dimensionX+cutDimensionXstart;
-  for (U i=0; i<rangeY; i++)
+  U destIndex = (dir ? cutDimensionYstart*dimensionX+cutDimensionXstart : 0);
+  U srcIndex = (dir ? 0 : cutDimensionYstart*dimensionX+cutDimensionXstart);
+  U srcCounter = (dir ? rangeX : dimensionX);
+  U destCounter = (dir ? dimensionX : rangeX);
+  for (U i=0; i<rangeY; i++)					// rangeY is fine.
   {
-    memcpy(&dest[destIndex], &src[srcIndexSave], sizeof(T)*rangeX);
-    destIndex += rangeX;
-    srcIndexSave += dimensionX;
+    memcpy(&dest[destIndex], &src[srcIndex], sizeof(T)*rangeX);		// rangeX is fine. blocks of size rangeX are still being copied.
+    destIndex += destCounter;
+    srcIndex += srcCounter;
   }
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
 {
   assert(dimensionX == dimensionY);
 
-  U numElems = ((dimensionX*(dimensionX+1))>>1);
+  U numElems = (dir ? dimensionX*dimensionX : ((dimensionX*(dimensionX+1))>>1));
   if (dest.size() < numElems)
   {
     dest.resize(numElems);
@@ -73,19 +81,25 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
   U srcOffset{0};
   U destOffset{0};
   U counter2{dimensionX+1};
+
   for (U i=0; i<dimensionY; i++)
   {
     memcpy(&dest[destOffset], &src[srcOffset], counter*sizeof(T));
-    srcOffset += counter2;
-    destOffset += counter;
+    srcOffset += (dir ? counter : counter2);
+    destOffset += (dir ? counter2 : counter);
     counter--;
   }
   return;
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool fillZeros)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool fillZeros, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   assert(dimensionX == dimensionY);
 
   U numElems = dimensionX*dimensionX;
@@ -112,8 +126,13 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -139,8 +158,13 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -170,8 +194,13 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   assert(dimensionX == dimensionY);
 
   U numElems = ((dimensionX*(dimensionX+1))>>1);
@@ -195,8 +224,13 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool fillZeros)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool fillZeros, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   assert(dimensionX == dimensionY);
 
   U numElems = dimensionX*dimensionX;
@@ -223,8 +257,13 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -250,8 +289,13 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -281,8 +325,13 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   assert(dimensionX == dimensionY);
 
   U numElems = dimensionX*dimensionX;
@@ -310,8 +359,13 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -340,8 +394,13 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -376,8 +435,13 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   assert(dimensionX == dimensionY);
 
   U numElems = ((dimensionX*(dimensionX+1))>>1);
@@ -391,8 +455,13 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -424,8 +493,13 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   assert(dimensionX == dimensionY);
 
   U numElems = dimensionX*dimensionX;
@@ -456,8 +530,13 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -484,8 +563,13 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros)
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -517,8 +601,13 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY)
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
   assert(dimensionX == dimensionY);
 
   U numElems = ((dimensionX*(dimensionX+1))>>1);
@@ -531,8 +620,14 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend)
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  if (dir == true)
+  {
+    std::cout << "Not finished yet. Complete when necessary\n";
+    abort();
+  }
+
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 

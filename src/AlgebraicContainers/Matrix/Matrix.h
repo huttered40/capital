@@ -61,13 +61,13 @@ public:
   inline T& getAccess(U dim1, U dim2) {return this->_matrix[dim1][dim2];}
 
   template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
-  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest);
+  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, bool dir);
 
   template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
-  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend);
+  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir);
 
   template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
-  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros);
+  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir);
 
   // Host method, will call Allocator<T,U,?>::Distribute(...) method
   void DistributeRandom(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY);
