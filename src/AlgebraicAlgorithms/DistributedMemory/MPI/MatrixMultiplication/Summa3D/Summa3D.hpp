@@ -290,6 +290,6 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   std::vector<T>& matrixCsrc = matrixC.getVectorData();
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   Serializer<T,U,MatrixStructureSquare,StructureC>::Serialize(matrixCforEngine, matrixCsrc,
-    matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend);
+    matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
   
 }
