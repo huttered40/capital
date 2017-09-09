@@ -7,7 +7,7 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureC,
   template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
                                                               Matrix<T,U,StructureB,Distribution>& matrixB,
                                                               Matrix<T,U,StructureC,Distribution>& matrixC,
@@ -73,7 +73,6 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
     MPI_Bcast(&foreignB[0], sizeof(T)*sizeB, MPI_CHAR, pGridCoordZ, columnComm);
   }
 
-  // Now need to perform the cblas call via Summa3DEngine (to use the right cblas call based on the structure combo)
   // Need to call serialize blindly, even if we are going from square to square
   //   This is annoyingly required for cblas calls. For now, just abide by the rules.
   // We also must create an interface to serialize from vectors to vectors to avoid instantiating temporary matrices.
@@ -174,7 +173,7 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureC,
   template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
                                                               Matrix<T,U,StructureB,Distribution>& matrixB,
                                                               Matrix<T,U,StructureC,Distribution>& matrixC,

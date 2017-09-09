@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#ifndef SUMMA3D_H_
-#define SUMMA3D_H_
+#ifndef SQUAREMM3D_H_
+#define SQUAREMM3D_H_
 
 // System includes
 #include <iostream>
@@ -26,17 +26,17 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
   template<typename,typename, template<typename,typename,int> class> class StructureC,
   template<typename,typename> class blasEngine>
-class Summa3D
+class SquareMM3D
 {
 
 public:
   // Prevent any instantiation of this class.
-  Summa3D() = delete;
-  Summa3D(const Summa3D& rhs) = delete;
-  Summa3D(Summa3D&& rhs) = delete;
-  Summa3D& operator=(const Summa3D& rhs) = delete;
-  Summa3D& operator=(Summa3D&& rhs) = delete;
-  ~Summa3D() = delete;
+  SquareMM3D() = delete;
+  SquareMM3D(const SquareMM3D& rhs) = delete;
+  SquareMM3D(SquareMM3D&& rhs) = delete;
+  SquareMM3D& operator=(const SquareMM3D& rhs) = delete;
+  SquareMM3D& operator=(SquareMM3D&& rhs) = delete;
+  ~SquareMM3D() = delete;
 
   // Format: matrixA is X x Y
   //         matrixB is Y x Z
@@ -87,6 +87,6 @@ private:
 */
 };
 
-#include "Summa3D.hpp"
+#include "SquareMM3D.hpp"
 
-#endif /* SUMMA3D_H_ */
+#endif /* SQUAREMM3D_H_ */

@@ -7,7 +7,7 @@
 #include <mpi.h>
 
 // Local includes
-#include "Summa3D.h"
+#include "SquareMM3D.h"
 
 using namespace std;
 
@@ -50,7 +50,7 @@ int main(int argc, char** argv)
   blasArgs.order = blasEngineOrder::AblasRowMajor;
   blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-  Summa3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
+  SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
     Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
 
   double error = MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize,
