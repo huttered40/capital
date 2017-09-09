@@ -82,8 +82,24 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
   std::vector<T>& matrixAtoSerialize = isRootRow ? dataA : foreignA;
   std::vector<T>& matrixBtoSerialize = isRootColumn ? dataB : foreignB;
+
+  // Based on whether matrices matrixA and matrixB have square structure or not, we will use a pointer to a T or a vector of T
+  //   In order to utilize the Serializer Policy interface, we need to work with vectors. This gives the policy method the ability to
+  //   resize the vectors to the appropriate size, which is not obvious to this algorithm due to the template structure. If I used a T*
+  //   for the Serializer interface, then the Serializer policy might have needed to dynamically allocate memory for the reasons just described,
+  //   but then the user of the policy would have to explicitely delete that memory that it wasn't even sure was allocated or how much memory
+  //   was allocated. Since the Serializer policy work with static class methods, saing state to call some sort of Serializer policy delete is
+  //   not possible. Therefore, using a binary option for vectors of pointers to avod the copy if the Structue is square is the cheapest way I can
+  //   think of. The only downside is two unused vectors/pointers on the function stack. Seems like a price worth paying.
+  // Also, to be clear, using a vector if we don't need to serialize only has two bad choices: copy that whole thing into the vector, or move the whole
+  //   thing into the vector at the risk of destroying the data in the original matrix parameter, causing terrible conseqences for the caller of this algorithm.
+
+  T* matrixAforEnginePtr = nullptr;
+  T* matrixBforEnginePtr = nullptr;
   std::vector<T> matrixAforEngine;
   std::vector<T> matrixBforEngine;
+  bool matrixAuseVector = true;
+  bool matrixBuseVector = true;
 
   // Now, the trouble here is that we want to make this generic, but we don't want to perform an extra copy/serialization if we don't have to
   // For example, if StructureA == MatrixStructureSquare, we don't want to perform any work, but we want this decision to be made
@@ -95,7 +111,8 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   }
   else
   {
-    matrixAforEngine = std::move(matrixAtoSerialize);
+    matrixAuseVector = false;
+    matrixAforEnginePtr = &matrixAtoSerialize[0];
   }
   if (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)
   {
@@ -103,7 +120,8 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   }
   else
   {
-    matrixBforEngine = std::move(matrixBtoSerialize);
+    matrixBuseVector = false;
+    matrixBforEnginePtr = &matrixBtoSerialize[0];
   }
 
 
@@ -114,18 +132,28 @@ void Summa3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   {
     case blasEngineMethod::AblasGemm:
     {
-      blasEngine<T,U>::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], dimensionX, dimensionY,
+      blasEngine<T,U>::_gemm((matrixAuseVector ? &matrixAforEngine[0] : matrixAforEnginePtr), (matrixBuseVector ? &matrixBforEngine[0] : matrixBforEnginePtr), &matrixCforEngine[0], dimensionX, dimensionY,
         dimensionX, dimensionZ, dimensionY, dimensionZ, 1., 1., dimensionY, dimensionX, dimensionY, srcPackage);
       break;
     }
     case blasEngineMethod::AblasTrmm:
     {
       const blasEngineArgumentPackage_trmm& blasArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
-      blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
+      blasEngine<T,U>::_trmm((matrixAuseVector ? &matrixAforEngine[0] : matrixAforEnginePtr), (matrixBuseVector ? &matrixBforEngine[0] : matrixBforEnginePtr), (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
         (blasArgs.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
         (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY), srcPackage);
-      matrixCforEngine = std::move(matrixBforEngine);	// TRMM doesn't touch matrixC, so the user actually doesn't even have to allocate it, but we
-                                                        //   move data into it before the AllReduce so the user gets back the solution in matrixC
+
+      // Note: the below statement is awkward and should be changed later.
+      // TRMM doesn't touch matrixC, so the user actually doesn't even have to allocate it, but we
+      //   move data into it before the AllReduce so the user gets back the solution in matrixC
+      if (matrixBuseVector)
+      {
+        matrixCforEngine = std::move(matrixBforEngine);
+      }
+      else
+      {
+        memcpy(&matrixCforEngine[0], matrixBforEnginePtr, sizeof(T)*numElems);
+      }
       break;
     }
     default:
