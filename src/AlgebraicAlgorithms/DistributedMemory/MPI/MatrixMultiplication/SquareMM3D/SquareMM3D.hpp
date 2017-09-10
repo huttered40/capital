@@ -79,15 +79,12 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   // These can be made static methods in the Matrix class to the MatrixSerialize class.
   // Its just another option for the user.
 
-  std::vector<T>& matrixAtoSerialize = isRootRow ? dataA : foreignA;
-  std::vector<T>& matrixBtoSerialize = isRootColumn ? dataB : foreignB;
-
   // Based on whether matrices matrixA and matrixB have square structure or not, we will use a pointer to a T or a vector of T
-  //   In order to utilize the Serializer Policy interface, we need to work with vectors. This gives the policy method the ability to
+  //   In order to utilize the Serializer interface, we need to work with vectors. This gives the method the ability to
   //   resize the vectors to the appropriate size, which is not obvious to this algorithm due to the template structure. If I used a T*
-  //   for the Serializer interface, then the Serializer policy might have needed to dynamically allocate memory for the reasons just described,
-  //   but then the user of the policy would have to explicitely delete that memory that it wasn't even sure was allocated or how much memory
-  //   was allocated. Since the Serializer policy work with static class methods, saing state to call some sort of Serializer policy delete is
+  //   for the Serializer interface, then the Serializer might have needed to dynamically allocate memory for the reasons just described,
+  //   but then the user of Serialize would have to explicitely delete that memory that it wasn't even sure was allocated or how much memory
+  //   was allocated. Since the Serializer work with static class methods, saing state to call some sort of Serializer delete is
   //   not possible. Therefore, using a binary option for vectors of pointers to avod the copy if the Structue is square is the cheapest way I can
   //   think of. The only downside is two unused vectors/pointers on the function stack. Seems like a price worth paying.
   // Also, to be clear, using a vector if we don't need to serialize only has two bad choices: copy that whole thing into the vector, or move the whole
@@ -95,10 +92,6 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
   T* matrixAforEnginePtr = nullptr;
   T* matrixBforEnginePtr = nullptr;
-  std::vector<T> matrixAforEngine;
-  std::vector<T> matrixBforEngine;
-  bool matrixAuseVector = true;
-  bool matrixBuseVector = true;
 
   // Now, the trouble here is that we want to make this generic, but we don't want to perform an extra copy/serialization if we don't have to
   // For example, if StructureA == MatrixStructureSquare, we don't want to perform any work, but we want this decision to be made
@@ -106,24 +99,50 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
   if (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)		// compile time if statement. Branch prediction should be correct.
   {
-    Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, dimensionX, dimensionY);
+    // Using the getters from local matrixA, even if it isn't the data that is being stored for this matrix, should still be ok.
+    Matrix<T,U,StructureA,Distribution> matrixAforEngine(std::vector<T>(), matrixA.getNumColumnsLocal(), matrixA.getNumRowsLocal(),
+      matrixA.getNumColumnsGlobal(), matrixA.getNumRowsGlobal());
+    if (!isRootRow)
+    {
+      Matrix<T,U,StructureA,Distribution> matrixAtoSerialize(std::move(foreignA), matrixA.getNumColumnsLocal(), matrixA.getNumRowsLocal(),
+        matrixA.getNumColumnsGlobal(), matrixA.getNumRowsGlobal());
+      Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine);
+    }
+    else
+    {
+      Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixA, matrixAforEngine);
+    }
+
+    matrixAforEnginePtr = matrixAforEngine.getRawData();
   }
   else
   {
-    matrixAuseVector = false;
-    matrixAforEnginePtr = &matrixAtoSerialize[0];
+    matrixAforEnginePtr = &(isRootRow ? dataA : foreignA)[0];
   }
   if (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)
   {
-    Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, dimensionY, dimensionZ);
+    // Using the getters from local matrixA, even if it isn't the data that is being stored for this matrix, should still be ok.
+    Matrix<T,U,StructureB,Distribution> matrixBforEngine(std::vector<T>(), matrixB.getNumColumnsLocal(), matrixB.getNumRowsLocal(),
+      matrixB.getNumColumnsGlobal(), matrixB.getNumRowsGlobal());
+    if (isRootColumn)
+    {
+      Matrix<T,U,StructureB,Distribution> matrixBtoSerialize(std::move(foreignB), matrixB.getNumColumnsLocal(), matrixB.getNumRowsLocal(),
+        matrixB.getNumColumnsGlobal(), matrixB.getNumRowsGlobal());
+      Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine);
+    }
+    else
+    {
+      Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixB, matrixBforEngine);
+    }
+    matrixBforEnginePtr = matrixBforEngine.getRawData();
   }
   else
   {
-    matrixBuseVector = false;
-    matrixBforEnginePtr = &matrixBtoSerialize[0];
+    matrixBforEnginePtr = &(isRootColumn ? dataB : foreignB)[0];
   }
 
 
+  // I guess we are assuming that matrixC has Square Structure and not Triangular? For now, fine.
   std::vector<T>& matrixCforEngine = matrixC.getVectorData();
   U numElems = matrixC.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
@@ -131,28 +150,23 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   {
     case blasEngineMethod::AblasGemm:
     {
-      blasEngine<T,U>::_gemm((matrixAuseVector ? &matrixAforEngine[0] : matrixAforEnginePtr), (matrixBuseVector ? &matrixBforEngine[0] : matrixBforEnginePtr), &matrixCforEngine[0], dimensionX, dimensionY,
+      blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], dimensionX, dimensionY,
         dimensionX, dimensionZ, dimensionY, dimensionZ, 1., 1., dimensionY, dimensionX, dimensionY, srcPackage);
       break;
     }
     case blasEngineMethod::AblasTrmm:
     {
       const blasEngineArgumentPackage_trmm& blasArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
-      blasEngine<T,U>::_trmm((matrixAuseVector ? &matrixAforEngine[0] : matrixAforEnginePtr), (matrixBuseVector ? &matrixBforEngine[0] : matrixBforEnginePtr), (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
+      blasEngine<T,U>::_trmm(matrixAforEnginePtr, matrixBforEnginePtr, (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
         (blasArgs.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
         (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY), srcPackage);
 
       // Note: the below statement is awkward and should be changed later.
       // TRMM doesn't touch matrixC, so the user actually doesn't even have to allocate it, but we
       //   move data into it before the AllReduce so the user gets back the solution in matrixC
-      if (matrixBuseVector)
-      {
-        matrixCforEngine = std::move(matrixBforEngine);
-      }
-      else
-      {
-        memcpy(&matrixCforEngine[0], matrixBforEnginePtr, sizeof(T)*numElems);
-      }
+      
+      // For now, just bite the bullet and incur the copy.
+      memcpy(&matrixCforEngine[0], matrixBforEnginePtr, sizeof(T)*numElems);
       break;
     }
     default:
@@ -201,40 +215,40 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U rangeB_z = matrixBcutZend-matrixBcutZstart;
   U rangeC_y = matrixCcutYend - matrixCcutYstart; 
   U rangeC_z = matrixCcutZend - matrixCcutZstart;
+  U globalDiffA = matrixA.getNumRowsGlobal() / matrixA.getNumRowsLocal();		// picked rows arbitrarily
+  U globalDiffB = matrixB.getNumRowsGlobal() / matrixB.getNumRowsLocal();		// picked rows arbitrarily
+  U globalDiffC = matrixC.getNumRowsGlobal() / matrixC.getNumRowsLocal();		// picked rows arbitrarily
 
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
   U sizeB = matrixB.getNumElems(rangeB_x, rangeB_z);
-  U sizeC = matrixC.getNumElems(rangeC_x, rangeC_z);
+  U sizeC = matrixC.getNumElems(rangeC_y, rangeC_z);
   std::vector<T> dataA(sizeA);
   std::vector<T> dataB(sizeB);
   std::vector<T> dataC(sizeC);
 
   // No clear way to prevent a needless copy if the cut dimensions of a matrix are full.
 
-  std::vector<T>& matAsource = matrixA.getVectorData();
-  Serializer<T,U,StructureA,StructureA>::Serialize(matAsource, dataA, matrixAcutXstart,
+  // For now, matrixA, matrixB, and matrixC MUST be square. Or else compiler error.
+
+  Matrix<T,U,StructureA,Distribution> matrixAtoSerialize(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*globalDiffA, rangeA_y*globalDiffA);
+  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixA, matrixAtoSerialize, matrixAcutXstart,
     matrixAcutXend, matrixAcutYstart, matrixAcutYend);
-  // Now, dataA is set
 
-  std::vector<T>& matBsource = matrixB.getVectorData();
-  Serializer<T,U,StructureB,StructureB>::Serialize(matBsource, dataB, matrixBcutZstart,
+  Matrix<T,U,StructureB,Distribution> matrixBtoSerialize(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*globalDiffB, rangeB_x*globalDiffB);
+  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixB, matrixBtoSerialize, matrixBcutZstart,
     matrixBcutZend, matrixBcutXstart, matrixBcutXend);
-  // Now, dataB is set
 
-  std::vector<T>& matCsource = matrixC.getVectorData();
-  Serializer<T,U,StructureC,MatrixStructureSquare>::Serialize(matCsource, dataC,
+  Matrix<T,U,StructureC,Distribution> matrixCtoSerialize(std::vector<T>(), rangeC_z, rangeC_y, rangeC_z*globalDiffC, rangeC_y*globalDiffC);
+  Serializer<T,U,StructureC,MatrixStructureSquare>::Serialize(matrixC, matrixCtoSerialize,
     matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend);
 
-  // Now we need to "inject" these vectors into marices at minimal cost, so we will use an overloaded Matrix constructor to do so.
-
-
   // Call the SquareMM3D method
+  Multiply(matrixAtoSerialize, matrixBtoSerialize, matrixCtoSerialize, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
 
   //Serialize the correct small matrixC into the big matrix C that is the parameter to this method
 
-  std::vector<T>& matrixCref = matrixC.getVectorData();
   // reverse serialize, to put the solved piece of matrixC into where it should go.
-  Serializer<T,U,MatrixStructureSquare,StructureC>::Serialize(dataC, matrixCref,
+  Serializer<T,U,MatrixStructureSquare,StructureC>::Serialize(matrixCtoSerialize, matrixC,
     matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
   
 }

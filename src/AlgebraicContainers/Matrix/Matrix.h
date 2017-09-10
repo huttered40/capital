@@ -40,7 +40,7 @@ class Matrix
 public:
   explicit Matrix() = delete;
   explicit Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);				// Regular constructor
-  explicit Matrix(std::vector<T>&& data, std::vector<T*>&& positions, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);	// Injection constructor
+  explicit Matrix(std::vector<T>&& data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, bool assemble = false);	// Injection constructor
   Matrix(const Matrix& rhs);
   Matrix(Matrix&& rhs);
   Matrix& operator=(const Matrix& rhs);
@@ -49,6 +49,7 @@ public:
 
   // automatically inlined
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
+  inline T* getRawData() { return &this->_data[0]; }
   inline std::vector<T>& getVectorData() { return this->_data; }
   inline std::vector<T*>& getMatrixData() { return this->_matrix;}
   inline U getNumElems() { return this->_numElems; }

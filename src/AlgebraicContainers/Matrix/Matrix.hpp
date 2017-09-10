@@ -15,7 +15,7 @@ Matrix<T,U,Structure,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDi
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-Matrix<T,U,Structure,Distributer>::Matrix(std::vector<T>&& data, std::vector<T*>&& positions, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY)
+Matrix<T,U,Structure,Distributer>::Matrix(std::vector<T>&& data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, bool assemble)
 {
   // Idea: move the data argument into this_data, and then set up the matrix rows (this_matrix)
   // Note that the owner of data and positions should be aware that the vectors they pass in will be destroyed and the data sucked out upon return.
@@ -24,9 +24,16 @@ Matrix<T,U,Structure,Distributer>::Matrix(std::vector<T>&& data, std::vector<T*>
   this->_dimensionY = {dimensionY};
   this->_globalDimensionX = {globalDimensionX};
   this->_globalDimensionY = {globalDimensionY};
-
-  this->_matrix = std::move(positions);
+  this->_numElems = getNumElems();
   this->_data = std::move(data);
+
+  // Reason: sometimes, I just want to enter in an empty vector that will be filled up in Serializer. Other times, I want to truly
+  //   assemble a vector for use somewhere else.
+  if (assemble)
+  {
+    // Now call the MatrixAssemble method
+    Structure<T,U,Distributer>::AssembleMatrix(this->_data, this->_matrix, dimensionX, dimensionY);
+  }
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
