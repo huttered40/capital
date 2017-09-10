@@ -193,130 +193,48 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               const blasEngineArgumentPackage& srcPackage
                                                             )
 {
-  int rank,size;
-  MPI_Comm_rank(commWorld, &rank);
-  MPI_Comm_size(commWorld, &size);
-
-  int pGridDimensionSize = ceil(pow(size,1./3.));
-  int helper = pGridDimensionSize;
-  helper *= helper;
-  int pGridCoordX = rank%pGridDimensionSize;
-  int pGridCoordY = (rank%helper)/pGridDimensionSize;
-  int pGridCoordZ = rank/helper;
-
-  MPI_Comm rowComm;
-  MPI_Comm columnComm;
-  MPI_Comm sliceComm;
-  MPI_Comm depthComm;
-
-  // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
-  // Then, subdivide further into row groups and column groups
-  MPI_Comm_split(commWorld, pGridCoordY*pGridDimensionSize+pGridCoordX, rank, &depthComm);
-  MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
-  MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
-  MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
+  // We will set up 3 matrices and call the method above.
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
   U rangeA_y = matrixAcutYend-matrixAcutYstart;
   U rangeB_x = matrixBcutXend-matrixBcutXstart;
   U rangeB_z = matrixBcutZend-matrixBcutZstart;
+  U rangeC_y = matrixCcutYend - matrixCcutYstart; 
+  U rangeC_z = matrixCcutZend - matrixCcutZstart;
 
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
   U sizeB = matrixB.getNumElems(rangeB_x, rangeB_z);
+  U sizeC = matrixC.getNumElems(rangeC_x, rangeC_z);
   std::vector<T> dataA(sizeA);
   std::vector<T> dataB(sizeB);
+  std::vector<T> dataC(sizeC);
 
   // No clear way to prevent a needless copy if the cut dimensions of a matrix are full.
+
   std::vector<T>& matAsource = matrixA.getVectorData();
   Serializer<T,U,StructureA,StructureA>::Serialize(matAsource, dataA, matrixAcutXstart,
     matrixAcutXend, matrixAcutYstart, matrixAcutYend);
-  // Now, dataA is set and ready to be communicated
+  // Now, dataA is set
 
   std::vector<T>& matBsource = matrixB.getVectorData();
   Serializer<T,U,StructureB,StructureB>::Serialize(matBsource, dataB, matrixBcutZstart,
     matrixBcutZend, matrixBcutXstart, matrixBcutXend);
-  // Now, dataB is set and ready to be communicated
+  // Now, dataB is set
 
-  std::vector<T> foreignA;
-  std::vector<T> foreignB;
-
-  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
-  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
-
-  // Broadcast
-  if (isRootRow)
-  {
-    MPI_Bcast(&dataA[0], sizeof(T)*sizeA, MPI_CHAR, pGridCoordZ, rowComm);
-  }
-  else
-  {
-    foreignA.resize(sizeA);
-    MPI_Bcast(&foreignA[0], sizeof(T)*sizeA, MPI_CHAR, pGridCoordZ, rowComm);
-  }
-
-  // Broadcast data along columns
-  if (isRootColumn)
-  {
-    MPI_Bcast(&dataB[0], sizeof(T)*sizeB, MPI_CHAR, pGridCoordZ, columnComm);
-  }
-  else
-  {
-    foreignB.resize(sizeB);
-    MPI_Bcast(foreignB, sizeof(T)*sizeB, MPI_CHAR, pGridCoordZ, columnComm);
-  }
-
-  // Now need to perform the cblas call via Summa3DEngine (to use the right cblas call based on the structure combo)
-  // Need to call serialize blindly, even if we are going from square to square
-  //   This is annoyingly required for cblas calls. For now, just abide by the rules.
-  // We also must create an interface to serialize from vectors to vectors to avoid instantiating temporary matrices.
-  // These can be made static methods in the Matrix class to the MatrixSerialize class.
-  // Its just another option for the user.
-
-  std::vector<T>& matrixAtoSerialize = isRootRow ? dataA : foreignA;
-  std::vector<T>& matrixBtoSerialize = isRootColumn ? dataB : foreignB;
-  std::vector<T> matrixAforEngine;
-  std::vector<T> matrixBforEngine;
-  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine, 0, rangeA_x, 0, rangeA_y);
-  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine, 0, rangeB_x, 0, rangeB_z);
-
-  std::vector<T>& matrixCtoSerialize = matrixC.getVectorData();
-  U numElems = matrixC.getNumElems();
-  std::vector<T> matrixCforEngine;
-
-  U rangeC_y = matrixCcutYend - matrixCcutYstart; 
-  U rangeC_z = matrixCcutZend - matrixCcutZstart;
-  Serializer<T,U,StructureC,MatrixStructureSquare>::Serialize(matrixCtoSerialize, matrixCforEngine,
+  std::vector<T>& matCsource = matrixC.getVectorData();
+  Serializer<T,U,StructureC,MatrixStructureSquare>::Serialize(matCsource, dataC,
     matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend);
 
-  switch (srcPackage.method)
-  {
-    case blasEngineMethod::AblasGemm:
-    {
-      blasEngine<T,U>::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], rangeA_x, rangeA_y,
-        rangeB_x, rangeB_z, rangeC_y, rangeC_z, 1., 1., rangeA_y, rangeB_x, rangeC_y, srcPackage);
-      break;
-    }
-    case blasEngineMethod::AblasTrmm:
-    {
-      const blasEngineArgumentPackage_trmm& blasArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
-      blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (blasArgs.side == blasEngineSide::AblasLeft ? rangeB_x : rangeA_y),
-        (blasArgs.side == blasEngineSide::AblasLeft ? rangeB_z : rangeA_x), 1., (blasArgs.side == blasEngineSide::AblasLeft ? rangeA_y : rangeB_x),
-        (blasArgs.side == blasEngineSide::AblasLeft ? rangeB_x : rangeA_y), srcPackage);
-      matrixCforEngine = std::move(matrixBforEngine);			// could be wrong. Might need to be matrixA??
-      break;
-    }
-    default:
-    {
-      std::cout << "Bad BLAS method used in blasEngineArgumentPackage\n";
-      abort();
-    }
-  }
+  // Now we need to "inject" these vectors into marices at minimal cost, so we will use an overloaded Matrix constructor to do so.
 
-  MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], sizeof(T)*numElems, MPI_CHAR, MPI_SUM, depthComm);
 
-  std::vector<T>& matrixCsrc = matrixC.getVectorData();
+  // Call the SquareMM3D method
+
+  //Serialize the correct small matrixC into the big matrix C that is the parameter to this method
+
+  std::vector<T>& matrixCref = matrixC.getVectorData();
   // reverse serialize, to put the solved piece of matrixC into where it should go.
-  Serializer<T,U,MatrixStructureSquare,StructureC>::Serialize(matrixCforEngine, matrixCsrc,
+  Serializer<T,U,MatrixStructureSquare,StructureC>::Serialize(dataC, matrixCref,
     matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
   
 }

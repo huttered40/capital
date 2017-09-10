@@ -4,6 +4,7 @@
 #include <iostream>
 
 // Local includes
+#include "MatrixSerializer.h"
 #include "Matrix.h"
 
 using std::cout;
@@ -14,8 +15,8 @@ int main(void)
   // When we instantiate a template class, we must provide the template parameters so that the compiler can create the corresponding class implementation
   //   from the blueprint we provided.
 
-  using MatrixType1 = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
-  using MatrixType2 = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
+  using MatrixType1 = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixType2 = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
   using MatrixType3 = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
 
 /*
@@ -37,7 +38,7 @@ int main(void)
   MatrixType3 theMatrix1(4,4,16,16);
   MatrixType3 theMatrix2(8,8,16,16);
   theMatrix2.DistributeSymmetric(1,1,2,2, true);
-  theMatrix2.Serialize(theMatrix1,4,8,4,8);	// square to lower triangular
+  Serializer<double,int,MatrixStructureSquare,MatrixStructureSquare>::Serialize(theMatrix2,theMatrix1,4,8,4,8);	// square to lower triangular
   theMatrix1.print();
   cout << "\n\n";
   theMatrix2.print();

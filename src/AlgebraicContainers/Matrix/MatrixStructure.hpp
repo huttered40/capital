@@ -23,6 +23,12 @@ void MatrixStructureSquare<T,U,Distributer>::Assemble(std::vector<T>& data, std:
   matrixNumElems = dimensionX * dimensionX;
   data.resize(matrixNumElems);
   
+  MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(data, matrix, dimensionX, dimensionY);
+}
+
+template<typename T, typename U, template<typename,typename,int> class Distributer>
+void MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY)
+{
   U offset{0};
   for (auto& ptr : matrix)
   {
@@ -106,6 +112,12 @@ void MatrixStructureRectangle<T,U,Distributer>::Assemble(std::vector<T>& data, s
   matrixNumElems = dimensionX * dimensionY;
   data.resize(matrixNumElems);
   
+  MatrixStructureRectangle<T,U,Distributer>::AssembleMatrix(data, matrix, dimensionX, dimensionY);
+}
+
+template<typename T, typename U, template<typename,typename,int> class Distributer>
+void MatrixStructureRectangle<T,U,Distributer>::AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY)
+{
   U offset{0};
   for (auto& ptr : matrix)
   {
@@ -184,7 +196,13 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Assemble(std::vector<T>& d
   matrix.resize(dimensionY);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
   data.resize(matrixNumElems);
-  
+
+  MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(data, matrix, dimensionX, dimensionY);
+}
+
+template<typename T, typename U, template<typename,typename,int> class Distributer>
+void MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY)
+{
   U offset{0};
   U counter{dimensionX};
   for (auto& ptr : matrix)
@@ -272,7 +290,13 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Assemble(std::vector<T>& d
   matrix.resize(dimensionY);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
   data.reize(matrixNumElems);
-  
+
+  MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(data, matrix, dimensionX, dimensionY);
+}
+
+template<typename T, typename U, template<typename,typename,int> class Distributer>
+void MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY)
+{
   U offset{0};
   U counter{1};
   for (auto& ptr : matrix)

@@ -9,7 +9,6 @@
 
 // Local includes -- the policy classes
 #include "MatrixStructure.h"
-#include "MatrixSerializer.h"
 
 /*
   Divide the Matrix class into policies.
@@ -41,7 +40,7 @@ class Matrix
 public:
   explicit Matrix() = delete;
   explicit Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);				// Regular constructor
-  explicit Matrix(std::vector<T>& data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);	// Injection constructor
+  explicit Matrix(std::vector<T>&& data, std::vector<T*>&& positions, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);	// Injection constructor
   Matrix(const Matrix& rhs);
   Matrix(Matrix&& rhs);
   Matrix& operator=(const Matrix& rhs);
@@ -50,24 +49,23 @@ public:
 
   // automatically inlined
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
-  inline T* getRawData() { return this->_matrix[0];}
   inline std::vector<T>& getVectorData() { return this->_data; }
   inline std::vector<T*>& getMatrixData() { return this->_matrix;}
-
   inline U getNumElems() { return this->_numElems; }
   inline U getNumElems(U rangeX, U rangeY) { return Structure<T,U,Distributer>::getNumElems(rangeX, rangeY); }
+  inline U getNumRowsLocal() { return this->_dimensionY; }
+  inline U getNumColumnsLocal() { return this->_dimensionX; }
+  inline U getNumRowsGlobal() { return this->_globalDimensionY; }
+  inline U getNumColumnsGlobal() { return this->_globalDimensionX; }
   
+  inline void setNumRowsLocal(U arg) { this->_dimensionY = arg; }
+  inline void setNumColumnsLocal(U arg) { this->_dimensionX = arg; }
+  inline void setNumRowsGlobal(U arg) { this->_globalDimensionY = arg; }
+  inline void setNumColumnsGlobal(U arg) { this->_globalDimensionX = arg; }
+  inline void setNumElems(U arg) { this->_numElems = arg; }
+
   inline T& operator[](const std::pair<U,U>& dim) {return this->_matrix[dim.first][dim.second];}
   inline T& getAccess(U dim1, U dim2) {return this->_matrix[dim1][dim2];}
-
-  template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
-  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, bool dir = false);
-
-  template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
-  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
-
-  template<template<typename,typename,template<typename,typename,int> class> class StructureDest>
-  void Serialize(Matrix<T,U,StructureDest,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
 
   // Host method, will call Allocator<T,U,?>::Distribute(...) method
   void DistributeRandom(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY);

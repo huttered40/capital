@@ -23,53 +23,92 @@ static void fillZerosContig(T* addr, U size)
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
+  Matrix<T,U,MatrixStructureSquare,Distributer>& dest, bool dir)
 {
-  assert(dimensionX == dimensionY);
+  U srcNumRows = src.getNumRowsLocal();
+  U srcNumColumns = src.getNumColumnsLocal();
+  U srcNumElems = srcNumRows*srcNumColumns;
 
-  // This extra check could be expensive.
-  U numElems = dimensionX*dimensionY;
-  if (dest.size() < numElems)
+  std::vector<T>& srcVectorData = src.getVectorData();
+  std::vector<T*>& srcMatrixData = src.getMatrixData();
+  std::vector<T>& destVectorData = dest.getVectorData();
+  std::vector<T*>& destMatrixData = dest.getMatrixData();
+
+  if (destVectorData.size() < srcNumElems)
   {
-    dest.resize(numElems);
+    destVectorData.resize(srcNumElems);
+  }
+  if (destMatrixData.size() < srcNumRows)
+  {
+    destMatrixData.resize(srcNumRows);
   }
 
+  dest.setNumRowsLocal(srcNumRows);
+  dest.setNumColumnsLocal(srcNumColumns);
+  dest.setNumRowsGlobal(src.getNumRowsGlobal());
+  dest.setNumColumnsGlobal(src.getNumColumnsGlobal());
+  dest.setNumElems(srcNumElems);
+
   // direction doesn't matter here since no indexing here
-  memcpy(&dest[0], &src[0], sizeof(T)*numElems);
+  memcpy(&destVectorData[0], &srcVectorData[0], sizeof(T)*srcNumElems);
+  MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumElems); 
   return;
 }
   
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
+  Matrix<T,U,MatrixStructureSquare,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
-
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
-  U numElems = (dir ? dimensionX*dimensionY : rangeX*rangeY);
-  if (dest.size() < numElems)
+  U srcNumRows = src.getNumRowsLocal();
+  U srcNumColumns = src.getNumColumnsLocal();
+  U destNumRows = dest.getNumRowsLocal();
+  U destNumColumns = dest.getNumColumnsLocal();
+
+  std::vector<T>& srcVectorData = src.getVectorData();
+  std::vector<T*>& srcMatrixData = src.getMatrixData();
+  std::vector<T>& destVectorData = dest.getVectorData();
+  std::vector<T*>& destMatrixData = dest.getMatrixData();
+
+  U numElems = (dir ? destNumRows*destNumColumns : rangeX*rangeY);
+  U numRows = (dir ? destNumRows : rangeY);
+  if (destVectorData.size() < numElems)
   {
-    dest.resize(numElems);
+    destVectorData.resize(numElems);
+  }
+  if (destMatrixData.size() < numRows)
+  {
+    destMatrixData.resize(numRows);
   }
 
-  U destIndex = (dir ? cutDimensionYstart*dimensionX+cutDimensionXstart : 0);
-  U srcIndex = (dir ? 0 : cutDimensionYstart*dimensionX+cutDimensionXstart);
-  U srcCounter = (dir ? rangeX : dimensionX);
-  U destCounter = (dir ? dimensionX : rangeX);
+  U destIndex = (dir ? cutDimensionYstart*destNumColumns+cutDimensionXstart : 0);
+  U srcIndex = (dir ? 0 : cutDimensionYstart*srcNumColumns+cutDimensionXstart);
+  U srcCounter = (dir ? rangeX : srcNumColumns);
+  U destCounter = (dir ? destNumColumns : rangeX);
   for (U i=0; i<rangeY; i++)					// rangeY is fine.
   {
-    memcpy(&dest[destIndex], &src[srcIndex], sizeof(T)*rangeX);		// rangeX is fine. blocks of size rangeX are still being copied.
+    memcpy(&destVectorData[destIndex], &srcVectorData[srcIndex], sizeof(T)*rangeX);		// rangeX is fine. blocks of size rangeX are still being copied.
     destIndex += destCounter;
     srcIndex += srcCounter;
   }
+
+  MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, (dir ? destNumColumns : rangeX), numRows);
 }
 
+/*
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
+  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest, bool dir)
 {
-  assert(dimensionX == dimensionY);
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
 
   U numElems = (dir ? dimensionX*dimensionX : ((dimensionX*(dimensionX+1))>>1));
   if (dest.size() < numElems)
@@ -93,14 +132,17 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool fillZeros, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
+  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest, bool fillZeros, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
     abort();
   }
-  assert(dimensionX == dimensionY);
 
   U numElems = dimensionX*dimensionX;
   if (dest.size() < numElems)
@@ -126,8 +168,12 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
+  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
@@ -137,7 +183,6 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
   U numElems = ((rangeX*(rangeX+1))>>1);
   if (dest.size() < numElems)
@@ -158,8 +203,12 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
+  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
@@ -169,7 +218,6 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
   U numElems = rangeX*rangeX;
   if (dest.size() < numElems)
@@ -194,14 +242,17 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
+  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
     abort();
   }
-  assert(dimensionX == dimensionY);
 
   U numElems = ((dimensionX*(dimensionX+1))>>1);
   if (dest.size() < numElems)
@@ -224,14 +275,17 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool fillZeros, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
+  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest, bool fillZeros, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
     abort();
   }
-  assert(dimensionX == dimensionY);
 
   U numElems = dimensionX*dimensionX;
   if (dest.size() < numElems)
@@ -257,8 +311,12 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
+  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
@@ -268,7 +326,6 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
   U numElems = ((rangeX*(rangeX+1))>>1);
   if (dest.size() < numElems)
@@ -289,8 +346,12 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
+  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
@@ -300,7 +361,6 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
   U numElems = rangeX*rangeX;
   if (dest.size() < numElems)
@@ -325,14 +385,17 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
+  Matrix<T,U,MatrixStructureSquare,Distributer>& dest, U dimensionX, U dimensionY, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
     abort();
   }
-  assert(dimensionX == dimensionY);
 
   U numElems = dimensionX*dimensionX;
   if (dest.size() < numElems)
@@ -359,8 +422,12 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
+  Matrix<T,U,MatrixStructureSquare,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
@@ -370,7 +437,6 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
   U numElems = rangeX*rangeX;
   if (dest.size() < numElems)
@@ -394,8 +460,12 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
+  Matrix<T,U,MatrixStructureSquare,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
@@ -405,7 +475,6 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
   U numElems = rangeX*rangeX;
   if (dest.size() < numElems)
@@ -435,14 +504,17 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
+  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
     abort();
   }
-  assert(dimensionX == dimensionY);
 
   U numElems = ((dimensionX*(dimensionX+1))>>1);
   if (dest.size() < numElems)
@@ -455,8 +527,12 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
+  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
@@ -466,7 +542,6 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
   U numElems = ((rangeX*(rangeX+1))>>1);
   if (dest.size() < numElems)
@@ -493,14 +568,17 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
 
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
+  Matrix<T,U,MatrixStructureSquare,Distributer>& dest, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
     abort();
   }
-  assert(dimensionX == dimensionY);
 
   U numElems = dimensionX*dimensionX;
   if (dest.size() < numElems)
@@ -530,8 +608,12 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
+  Matrix<T,U,MatrixStructureSquare,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
@@ -541,7 +623,6 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
   U numElems = rangeX*rangeX;
   if (dest.size() < numElems)
@@ -563,8 +644,12 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
+  Matrix<T,U,MatrixStructureSquare,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
@@ -574,7 +659,6 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
   U numElems = rangeX*rangeX;
   if (dest.size() < numElems)
@@ -601,14 +685,17 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
+  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
     abort();
   }
-  assert(dimensionX == dimensionY);
 
   U numElems = ((dimensionX*(dimensionX+1))>>1);
   if (dest.size() < numElems)
@@ -620,8 +707,12 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
 }
 
 template<typename T, typename U>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(std::vector<T>& src, std::vector<T>& dest, U dimensionX, U dimensionY, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
+  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  abort();
   if (dir == true)
   {
     std::cout << "Not finished yet. Complete when necessary\n";
@@ -632,7 +723,6 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
   assert(rangeX == rangeY);
-  assert(dimensionX == dimensionY);
 
   U numElems = ((rangeX*(rangeX+1))>>1);
   if (dest.size() < numElems)
@@ -654,3 +744,4 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
     counter2++;
   }
 }
+*/

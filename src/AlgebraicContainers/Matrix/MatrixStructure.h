@@ -37,6 +37,7 @@ public:
   static void Allocate();
   static void Construct();
   static void Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
+  static void AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY);
   static void Deallocate();
   static void Destroy();
   static void Dissamble(std::vector<T*>& matrix);
@@ -64,6 +65,7 @@ public:
   static void Allocate();
   static void Construct();
   static void Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
+  static void AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY);
   static void Deallocate();
   static void Destroy();
   static void Dissamble(std::vector<T*>& matrix);
@@ -89,6 +91,7 @@ public:
   static void Allocate();
   static void Construct();
   static void Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
+  static void AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY);
   static void Deallocate();
   static void Destroy();
   static void Dissamble(std::vector<T*>& matrix);
@@ -114,6 +117,7 @@ public:
   static void Allocate();
   static void Construct();
   static void Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
+  static void AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY);
   static void Deallocate();
   static void Destroy();
   static void Dissamble(std::vector<T*>& matrix);
