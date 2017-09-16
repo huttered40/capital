@@ -14,6 +14,7 @@ Matrix<T,U,Structure,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDi
   return;
 }
 
+// This guy could be changed to use pass-by-value via rvalue constructor
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
 Matrix<T,U,Structure,Distributer>::Matrix(std::vector<T>&& data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, bool assemble)
 {
@@ -25,7 +26,7 @@ Matrix<T,U,Structure,Distributer>::Matrix(std::vector<T>&& data, U dimensionX, U
   this->_globalDimensionX = {globalDimensionX};
   this->_globalDimensionY = {globalDimensionY};
   this->_numElems = getNumElems();
-  this->_data = std::move(data);
+  this->_data = std::move(data);		// suck out the data from the argument into our member variable
 
   // Reason: sometimes, I just want to enter in an empty vector that will be filled up in Serializer. Other times, I want to truly
   //   assemble a vector for use somewhere else.
@@ -114,7 +115,7 @@ void Matrix<T,U,Structure,Distributer>::DistributeRandom(int localPgridX, int lo
 
   // This is a 2-level Policy-class trick due to the lack of orthogonality between the
   //   Structure Policy and the Distributer Policy.
-  
+
   Structure<T,U,Distributer>::DistributeRandom(this->_matrix, this->_dimensionX, this->_dimensionY, this->_globalDimensionX, this->_globalDimensionY, localPgridX, localPgridY, globalPgridX, globalPgridY);
 }
 

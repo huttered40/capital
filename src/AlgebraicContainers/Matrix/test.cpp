@@ -15,7 +15,7 @@ int main(void)
   // When we instantiate a template class, we must provide the template parameters so that the compiler can create the corresponding class implementation
   //   from the blueprint we provided.
 
-  using MatrixType1 = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixType1 = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
   using MatrixType2 = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
   using MatrixType3 = Matrix<double,int,MatrixStructureUpperTriangular,MatrixDistributerCyclic>;
 
@@ -35,12 +35,10 @@ int main(void)
   theMatrixS.print();
 */
 
-  MatrixType3 theMatrix1(4,4,16,16);
-  MatrixType3 theMatrix2(8,8,16,16);
-  std::cout << "here first\n";
+  MatrixType3 theMatrix1(8,8,16,16);
+  MatrixType3 theMatrix2(4,4,16,16);
   theMatrix2.DistributeRandom(0,0,2,2);
-  std::cout << "here second\n";
-  Serializer<double,int,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>::Serialize(theMatrix2,theMatrix1,4,8,4,8);	// square to lower triangular
+  Serializer<double,int,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>::Serialize(theMatrix1,theMatrix2,4,8,4,8,true);
   theMatrix1.print();
   cout << "\n\n";
   theMatrix2.print();

@@ -207,7 +207,7 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(std::vector
   U counter{dimensionX};
   for (auto& ptr : matrix)
   {
-    ptr = &matrix[0][offset];
+    ptr = &data[offset];
     offset += counter;				// Hopefully this doesn't have 64-bit overflow problems :(
     counter--;
   }
@@ -289,7 +289,7 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Assemble(std::vector<T>& d
 
   matrix.resize(dimensionY);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
-  data.reize(matrixNumElems);
+  data.resize(matrixNumElems);
 
   MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(data, matrix, dimensionX, dimensionY);
 }
