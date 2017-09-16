@@ -15,6 +15,8 @@
 
 // Lets use partial template specialization
 // So only declare the fully templated class
+// Why not just use square? Because later on, I may want to experiment with LowerTriangular Structure.
+
 template<typename T, typename U,
   template<typename,typename,template<typename,typename,int> class> class StructureA,
   template<typename,typename,template<typename,typename,int> class> class StructureL>

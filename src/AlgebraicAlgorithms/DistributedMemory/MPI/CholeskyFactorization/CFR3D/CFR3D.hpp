@@ -22,7 +22,9 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::Factor(
   int pGridCoordY = (rank%helper)/pGridDimensionSize;
   int pGridCoordZ = rank/helper;
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
-  U bcDimension = dimension/helper;
+
+  U bcDimension = dimension/helper;		// Can be tuned later.
+
   U globalDimension = dimension*pGridDimensionSize;
 
   rFactor(matrixA, matrixL, matrixLI, dimension, bcDimension, globalDimension,
@@ -59,11 +61,12 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     return;
   }
 
-  U shift = (localDimension>>1);
+  U localShift = (localDimension>>1);
+  U globalShift = (globalDimension>>1);
   rFactor(matrixA, matrixL, matrixLI, shift, bcDimension, (globalDimension>>1),
-    matAstartX, matAstartX+shift, matAstartY, matAstartY+shift,
-    matLstartX, matLstartX+shift, matLstartY, matLstartY+shift,
-    matLIstartX, matLIstartX+shift, matLIstartY, matLIstartY+shift, transposePartner, commWorld);
+    matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
+    matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift,
+    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, commWorld);
 
   T* transposeData;
   int rank;
@@ -72,31 +75,29 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
   // Regardless of whether or not we don't need to communicate, we still need to serialize into a square buffer
   if (rank != transposePartner)
   {
-    U triangleSize = ((shift*(shift+1))>>1);
-    T* dest = new T[triangleSize];
-    T* source = matrixLI.getData(); 
-    int info1 = 0;
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(source, dest, localDimension, localDimension,
-      0, shift, 0, shift, info1);
+    Matric<T,U,MatrixStructureLowerTriangular,Distribution> tempMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, tempMatrix,
+      0, shift, 0, shift);
  
-    MPI_Sendrecv_replace(dest, triangleSize, MPI_DOUBLE, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
- 
+    MPI_Sendrecv_replace(tempMatrix.getRawData(), tempMatrix.getNumElems(), sizeof(T)*MPI_CHAR, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
     // Serialize into square matrix
-    transposeData = new T[shift*shift];
-    int info2 = 0;
-    Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>::Serialize(dest, transposeData, localDimension, localDimension, 0, shift, 0, shift, info2);
-    delete[] dest;
-  }
-  else
-  {
-    // No communication necessary. Serialize into square matrix
-    T* source = matrixLI.getData();
-    transposeData = new T[shift*shift];
-    int info3 = 0;
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(source, transposeData, localDimension, localDimension, 0, shift, 0, shift, info3);
+
+    Matric<T,U,MatrixStructureLowerTriangular,Distribution> CutMatrixL(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+    Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>::Serialize(tempMatrix, CutMatrixL, 0, shift, 0, shift);
   }
 
-  // Note that we aim to "fill up" the top-left part of L and L^{-1} when this returns. 
-  //Summa3D<...>::Multiply(...);
+  // Note that we aim to "fill up" the bottom-right part of L when this returns.
+  // Fil up a BLAS struct
+  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare>::Multiply(...overloaded...);
+
+  // Get set for another SquareMM3D
+
+  // Perform a subtraction
+
+  // perform recursive call
+
+  // Two more instances of SquareMM3D.
+  // Also, we have a use case for adding the constant factor arguments to the BLAS enum struct.
 
 }

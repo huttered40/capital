@@ -39,7 +39,7 @@ public:
   //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
   //   to stand for a template class that takes 3 template parameters as shown above.
   template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest, bool dir = false);
+  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest);
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureSquare, Distributer>& src,Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
@@ -59,20 +59,23 @@ public:
   Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
 
   template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
-     bool dir = false);
+  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest);
 
+/* I am removing this method. It just doesn't make sense. We cannot allow matrices with UT structure to be square. Its no cheaper than square to square anyway
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
     bool fillZeros, bool dir = false);
+*/
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
 
+/*
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
+*/
 };
 
 // Use partial specialization to define certain combinations
@@ -88,20 +91,23 @@ public:
   Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
 
   template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
-    bool dir = false);
+  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest);
 
+/*
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
     bool fillZeros, bool dir = false);
+*/
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
 
+/*
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
+*/
 };
 
 // Use partial specialization to define certain combinations
@@ -117,16 +123,17 @@ public:
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
 
   template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-    bool dir = false);
+  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest);
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
 
+/*
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
+*/
 };
 
 // Use partial specialization to define certain combinations
@@ -142,8 +149,7 @@ public:
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
 
   template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
-    bool dir = false);
+  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest);
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
@@ -163,16 +169,16 @@ public:
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
 
   template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-    bool dir = false);
+  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest);
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
-
+/*
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
+*/
 };
 
 // Use partial specialization to define certain combinations
@@ -188,8 +194,7 @@ public:
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
 
   template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
-    bool dir = false);
+  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest);
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,

@@ -17,7 +17,7 @@ int main(void)
 
   using MatrixType1 = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
   using MatrixType2 = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
-  using MatrixType3 = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixType3 = Matrix<double,int,MatrixStructureUpperTriangular,MatrixDistributerCyclic>;
 
 /*
   MatrixType1 theMatrix(8,8,16,16);
@@ -37,8 +37,10 @@ int main(void)
 
   MatrixType3 theMatrix1(4,4,16,16);
   MatrixType3 theMatrix2(8,8,16,16);
-  theMatrix2.DistributeSymmetric(1,1,2,2, true);
-  Serializer<double,int,MatrixStructureSquare,MatrixStructureSquare>::Serialize(theMatrix2,theMatrix1,4,8,4,8);	// square to lower triangular
+  std::cout << "here first\n";
+  theMatrix2.DistributeRandom(0,0,2,2);
+  std::cout << "here second\n";
+  Serializer<double,int,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>::Serialize(theMatrix2,theMatrix1,4,8,4,8);	// square to lower triangular
   theMatrix1.print();
   cout << "\n\n";
   theMatrix2.print();
