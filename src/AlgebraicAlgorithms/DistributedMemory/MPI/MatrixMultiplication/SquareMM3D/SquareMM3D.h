@@ -73,7 +73,10 @@ public:
                         U matrixCcutYstart,
                         U matrixCcutYend,
                         MPI_Comm commWorld,
-                        const blasEngineArgumentPackage& srcPackage
+                        const blasEngineArgumentPackage& srcPackage,
+                        bool cutA = true,
+                        bool cutB = true,
+                        bool cutC = true
                       );
 
   // Later on, I'd like an overloaded Multiply() method that took parameters to "cut up" the current 3 matrices (so 8 extra arguments)

@@ -119,7 +119,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   {
     matrixAforEnginePtr = &(isRootRow ? dataA : foreignA)[0];
   }
-  if (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)
+  if (!std::is_same<StructureB<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)
   {
     // Using the getters from local matrixA, even if it isn't the data that is being stored for this matrix, should still be ok.
     Matrix<T,U,StructureB,Distribution> matrixBforEngine(std::vector<T>(), matrixB.getNumColumnsLocal(), matrixB.getNumRowsLocal(),
@@ -145,6 +145,8 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   // I guess we are assuming that matrixC has Square Structure and not Triangular? For now, fine.
   std::vector<T>& matrixCforEngine = matrixC.getVectorData();
   U numElems = matrixC.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
+
+  // Does C need to be Square? Big gaping hole in this algorithm right now that will come back to bite us later.
 
   switch (srcPackage.method)
   {
@@ -204,7 +206,10 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               U matrixCcutYstart,
                                                               U matrixCcutYend,
                                                               MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage& srcPackage
+                                                              const blasEngineArgumentPackage& srcPackage,
+                                                              bool cutA,
+                                                              bool cutB,
+                                                              bool cutC
                                                             )
 {
   // We will set up 3 matrices and call the method above.
@@ -222,33 +227,65 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
   U sizeB = matrixB.getNumElems(rangeB_x, rangeB_z);
   U sizeC = matrixC.getNumElems(rangeC_y, rangeC_z);
-  std::vector<T> dataA(sizeA);
-  std::vector<T> dataB(sizeB);
-  std::vector<T> dataC(sizeC);
 
   // No clear way to prevent a needless copy if the cut dimensions of a matrix are full.
 
-  // For now, matrixA, matrixB, and matrixC MUST be square. Or else compiler error.
+  // For now, matrixA, matrixB, and matrixC MUST be square. Or else compiler error. -- wait, why? That means they could
+    // communicate more data than necessary, say if we have a triangular matrix, why would we want to serialize that
+    // into square before MM? Because we immediately broadcast the data, THEN we worry about using square buffers for
+    // BLAS routines. DONT WORRY ABOUT THAT HERE!
 
-  Matrix<T,U,StructureA,Distribution> matrixAtoSerialize(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*globalDiffA, rangeA_y*globalDiffA);
-  Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixA, matrixAtoSerialize, matrixAcutXstart,
-    matrixAcutXend, matrixAcutYstart, matrixAcutYend);
+  // To fix scope problems with if/else, use cheap pointers with outside scope
+    //  that can point to local structures, so no expensive dereference here (But I should check on this locality)
 
-  Matrix<T,U,StructureB,Distribution> matrixBtoSerialize(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*globalDiffB, rangeB_x*globalDiffB);
-  Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixB, matrixBtoSerialize, matrixBcutZstart,
-    matrixBcutZend, matrixBcutXstart, matrixBcutXend);
+  Matrix<T,U,StructureA,Distribution>* ptrA;
+  Matrix<T,U,StructureA,Distribution>* ptrB;
+  Matrix<T,U,StructureA,Distribution>* ptrC;
 
-  Matrix<T,U,StructureC,Distribution> matrixCtoSerialize(std::vector<T>(), rangeC_z, rangeC_y, rangeC_z*globalDiffC, rangeC_y*globalDiffC);
-  Serializer<T,U,StructureC,MatrixStructureSquare>::Serialize(matrixC, matrixCtoSerialize,
-    matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend);
+  if (cutA)
+  {
+    Matrix<T,U,StructureA,Distribution> matrixAtoSerialize(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*globalDiffA, rangeA_y*globalDiffA);
+    Serializer<T,U,StructureA,StructureA>::Serialize(matrixA, matrixAtoSerialize, matrixAcutXstart,
+      matrixAcutXend, matrixAcutYstart, matrixAcutYend);
+    ptrA = &matrixAtoSerialize;
+  }
+  else
+  {
+    ptrA = &matrixA;			// Should be cheap, but verify!
+  }
+
+  if (cutB)
+  {
+    Matrix<T,U,StructureB,Distribution> matrixBtoSerialize(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*globalDiffB, rangeB_x*globalDiffB);
+    Serializer<T,U,StructureB,StructureB>::Serialize(matrixB, matrixBtoSerialize, matrixBcutZstart,
+      matrixBcutZend, matrixBcutXstart, matrixBcutXend);
+    ptrB = &matrixBtoSerialize;			// Should be cheap, but verify!
+  }
+  else
+  {
+    ptrB = &matrixB;
+  }
+
+  if (cutC)
+  {
+    Matrix<T,U,StructureC,Distribution> matrixCtoSerialize(std::vector<T>(), rangeC_z, rangeC_y, rangeC_z*globalDiffC, rangeC_y*globalDiffC);
+    Serializer<T,U,StructureC,StructureC>::Serialize(matrixC, matrixCtoSerialize,
+      matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend);
+    ptrC = &matrixCtoSerialize;			// Should be cheap, but verify!
+  }
+  else
+  {
+    ptrC = &matrixC;
+  }
 
   // Call the SquareMM3D method
-  Multiply(matrixAtoSerialize, matrixBtoSerialize, matrixCtoSerialize, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
+  Multiply(*ptrA, *ptrB, *ptrC, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
 
   //Serialize the correct small matrixC into the big matrix C that is the parameter to this method
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
-  Serializer<T,U,MatrixStructureSquare,StructureC>::Serialize(matrixCtoSerialize, matrixC,
+  // QUESTION: Why do we want matrixC to have Square Structure? Why? Might come back to bite us later. Look into this
+  Serializer<T,U,MatrixStructureSquare,StructureC>::Serialize(*ptrC, matrixC,
     matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
   
 }

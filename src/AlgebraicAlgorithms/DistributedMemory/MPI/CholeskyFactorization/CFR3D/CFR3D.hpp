@@ -68,23 +68,33 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, commWorld);
 
-  T* transposeData;
+  // use a pointer so that we can assign it to the matrix received in the if/else statement, need that extra scope
+    // and dont want to create an extra instance
+  Matrix<T,U,MatrixStructureSquare,Distribution>* transposeData;
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);	// use MPI_COMM_WORLD for this p2p communication, but could use a smaller communicator
+
+  // use MPI_COMM_WORLD for this p2p communication for transpose, but could use a smaller communicator
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   // Regardless of whether or not we don't need to communicate, we still need to serialize into a square buffer
   if (rank != transposePartner)
   {
-    Matric<T,U,MatrixStructureLowerTriangular,Distribution> tempMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, tempMatrix,
+    // Serialize the square matrix into the nonzero lower triangular (so avoid sending the zeros in the upper-triangular part of matrix)
+    Matrix<T,U,MatrixStructureLowerTriangular,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, packedMatrix,
       0, shift, 0, shift);
  
-    MPI_Sendrecv_replace(tempMatrix.getRawData(), tempMatrix.getNumElems(), sizeof(T)*MPI_CHAR, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    // Transfer with transpose rank
+    MPI_Sendrecv_replace(packedMatrix.getRawData(), tempMatrix.getNumElems(), sizeof(T)*MPI_CHAR, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-    // Serialize into square matrix
+    // Now, we want to be able to move this "raw, temporary, and anonymous" buffer into a Matrix structure, to be passed into
+      // MatrixMultiplication at no cost. We definitely do not want to copy, we want to move!
+    // But wait! That buffer is exactly what we need anyway
 
-    Matric<T,U,MatrixStructureLowerTriangular,Distribution> CutMatrixL(std::vector<T>(), localShift, localShift, globalShift, globalShift);
-    Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>::Serialize(tempMatrix, CutMatrixL, 0, shift, 0, shift);
+    Matrix<T,U,MatrixStructureLowerTriangular,Distribution> tempMatrix(std::move(packedMatrix.getVectorData(), 
+
+    // Call matrix multiplication that does not cut up matrix B in C <- AB
+
   }
 
   // Note that we aim to "fill up" the bottom-right part of L when this returns.
