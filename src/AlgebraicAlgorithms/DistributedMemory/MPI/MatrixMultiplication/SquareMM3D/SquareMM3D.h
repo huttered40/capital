@@ -52,7 +52,7 @@ public:
                         U dimensionY,
                         U dimensionZ,
                         MPI_Comm commWorld,
-                        const blasEngineArgumentPackage& srcPackage
+                        const blasEngineArgumentPackage<T>& srcPackage
                       );
 
   template<template<typename,typename,int> class Distribution>
@@ -73,7 +73,7 @@ public:
                         U matrixCcutYstart,
                         U matrixCcutYend,
                         MPI_Comm commWorld,
-                        const blasEngineArgumentPackage& srcPackage,
+                        const blasEngineArgumentPackage<T>& srcPackage,
                         bool cutA = true,
                         bool cutB = true,
                         bool cutC = true

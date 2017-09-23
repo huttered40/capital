@@ -15,7 +15,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               U dimensionY,
                                                               U dimensionZ,
                                                               MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage& srcPackage
+                                                              const blasEngineArgumentPackage<T>& srcPackage
                                                             )
 {
   int rank,size;
@@ -158,7 +158,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
     }
     case blasEngineMethod::AblasTrmm:
     {
-      const blasEngineArgumentPackage_trmm& blasArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
+      const blasEngineArgumentPackage_trmm<T>& blasArgs = static_cast<const blasEngineArgumentPackage_trmm<T>&>(srcPackage);
       blasEngine<T,U>::_trmm(matrixAforEnginePtr, matrixBforEnginePtr, (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
         (blasArgs.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
         (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY), srcPackage);
@@ -206,7 +206,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               U matrixCcutYstart,
                                                               U matrixCcutYend,
                                                               MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage& srcPackage,
+                                                              const blasEngineArgumentPackage<T>& srcPackage,
                                                               bool cutA,
                                                               bool cutB,
                                                               bool cutC

@@ -14,7 +14,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
                         U globalDimensionY,
                         U globalDimensionZ,
                         MPI_Comm comm,
-                        const blasEngineArgumentPackage& srcPackage
+                        const blasEngineArgumentPackage<T>& srcPackage
                       )
 {
   // What I want to do here is generate a full matrix with the correct values
@@ -62,7 +62,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
     }
     case blasEngineMethod::AblasTrmm:
     {
-      const blasEngineArgumentPackage_trmm& blasArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
+      const blasEngineArgumentPackage_trmm<T>& blasArgs = static_cast<const blasEngineArgumentPackage_trmm<T>&>(srcPackage);
       blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY),
         (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionZ : globalDimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionY : globalDimensionX)
 ,
@@ -122,7 +122,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
                         U globalDimensionY,
                         U globalDimensionZ,
                         MPI_Comm comm,
-                        const blasEngineArgumentPackage& srcPackage
+                        const blasEngineArgumentPackage<T>& srcPackage
                       )
 {
   // Note: we will generate the entire global matrix on each layer for each processor for now, but this involves extra work that is not necessary.
@@ -166,7 +166,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
     }
     case blasEngineMethod::AblasTrmm:
     {
-      const blasEngineArgumentPackage_trmm& blasArgs = static_cast<const blasEngineArgumentPackage_trmm&>(srcPackage);
+      const blasEngineArgumentPackage_trmm<T>& blasArgs = static_cast<const blasEngineArgumentPackage_trmm<T>&>(srcPackage);
       blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY),
         (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionZ : globalDimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionY : globalDimensionX)
 ,

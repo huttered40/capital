@@ -45,7 +45,7 @@ public:
                         U globalDimensionY,
                         U globalDimensionZ,
                         MPI_Comm comm,
-                        const blasEngineArgumentPackage& srcPackage
+                        const blasEngineArgumentPackage<T>& srcPackage
                       );
 
   template<
@@ -62,7 +62,7 @@ public:
                         U globalDimensionY,
                         U globalDimensionZ,
                         MPI_Comm comm,
-                        const blasEngineArgumentPackage& srcPackage
+                        const blasEngineArgumentPackage<T>& srcPackage
                       );
 
 

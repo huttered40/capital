@@ -46,10 +46,12 @@ int main(int argc, char** argv)
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
 
-  blasEngineArgumentPackage_gemm blasArgs;
+  blasEngineArgumentPackage_gemm<double> blasArgs;
   blasArgs.order = blasEngineOrder::AblasRowMajor;
   blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+  blasArgs.alpha = 1.;
+  blasArgs.beta = 1.;
   SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
     Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
 

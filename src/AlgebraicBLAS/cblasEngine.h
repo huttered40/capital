@@ -33,8 +33,11 @@ public:
 
 // Make these methods protected so that only the derived classes can access them.
 protected:
-  static void setInfoParameters_gemm(const blasEngineArgumentPackage& srcPackage, CBLAS_ORDER& destArg1, CBLAS_TRANSPOSE& destArg2, CBLAS_TRANSPOSE& destArg3);
-  static void setInfoParameters_trmm(const blasEngineArgumentPackage& srcPackage, CBLAS_ORDER& destArg1, CBLAS_SIDE& destArg2, CBLAS_UPLO& destArg3, CBLAS_TRANSPOSE& destArg4, CBLAS_DIAG& destArg5);
+  template<typename T>
+  static void setInfoParameters_gemm(const blasEngineArgumentPackage<T>& srcPackage, CBLAS_ORDER& destArg1, CBLAS_TRANSPOSE& destArg2, CBLAS_TRANSPOSE& destArg3);
+
+  template<typename T>
+  static void setInfoParameters_trmm(const blasEngineArgumentPackage<T>& srcPackage, CBLAS_ORDER& destArg1, CBLAS_SIDE& destArg2, CBLAS_UPLO& destArg3, CBLAS_TRANSPOSE& destArg4, CBLAS_DIAG& destArg5);
 };
 
 
@@ -57,8 +60,8 @@ public:
 
   // Engine methods
   static void _gemm(float* matrixA, float* matrixB, float* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimZ, U matrixBdimX, U matrixCdimZ, U matrixCdimY,
-                      float alpha, float beta, U lda, U ldb, U ldc, const blasEngineArgumentPackage& srcPackage);
-  static void _trmm(float* matrixA, float* matrixB, U matrixBnumRows, U matrixBnumCols, float alpha, U lda, U ldb, const blasEngineArgumentPackage& srcPackage);
+                      float alpha, float beta, U lda, U ldb, U ldc, const blasEngineArgumentPackage<float>& srcPackage);
+  static void _trmm(float* matrixA, float* matrixB, U matrixBnumRows, U matrixBnumCols, float alpha, U lda, U ldb, const blasEngineArgumentPackage<float>& srcPackage);
 
 };
 
@@ -76,8 +79,8 @@ public:
 
   // Engine methods
   static void _gemm(double* matrixA, double* matrixB, double* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimZ, U matrixBdimX, U matrixCdimZ, U matrixCdimY,
-                      double alpha, double beta, U lda, U ldb, U ldc, const blasEngineArgumentPackage& srcPackage);
-  static void _trmm(double* matrixA, double* matrixB, U matrixBnumRows, U matrixBnumCols, double alpha, U lda, U ldb, const blasEngineArgumentPackage& srcPackage);
+                      double alpha, double beta, U lda, U ldb, U ldc, const blasEngineArgumentPackage<double>& srcPackage);
+  static void _trmm(double* matrixA, double* matrixB, U matrixBnumRows, U matrixBnumCols, double alpha, U lda, U ldb, const blasEngineArgumentPackage<double>& srcPackage);
 
 };
 
@@ -96,9 +99,9 @@ public:
   // Engine methods
   static void _gemm(std::complex<float>* matrixA, std::complex<float>* matrixB, std::complex<float>* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimZ,
                      U matrixBdimX, U matrixCdimZ, U matrixCdimY, std::complex<float> alpha, std::complex<float> beta, U lda, U ldb, U ldc,
-                     const blasEngineArgumentPackage& srcPackage);
+                     const blasEngineArgumentPackage<std::complex<float>>& srcPackage);
   static void _trmm(std::complex<float>* matrixA, std::complex<float>* matrixB, U matrixBnumRows, U matrixBnumCols, std::complex<float> alpha, U lda, U ldb,
-                      const blasEngineArgumentPackage& srcPackage);
+                      const blasEngineArgumentPackage<std::complex<float>>& srcPackage);
 
 };
 
@@ -117,9 +120,9 @@ public:
   // Engine methods
   static void _gemm(std::complex<double>* matrixA, std::complex<double>* matrixB, std::complex<double>* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimZ,
                      U matrixBdimX, U matrixCdimZ, U matrixCdimY, std::complex<double> alpha, std::complex<double> beta, U lda, U ldb, U ldc,
-                     const blasEngineArgumentPackage& srcPackage);
+                     const blasEngineArgumentPackage<std::complex<double>>& srcPackage);
   static void _trmm(std::complex<double>* matrixA, std::complex<double>* matrixB, U matrixBnumRows, U matrixBnumCols, std::complex<double> alpha, U lda, U ldb,
-                      const blasEngineArgumentPackage& srcPackage);
+                      const blasEngineArgumentPackage<std::complex<double>>& srcPackage);
 
 };
 

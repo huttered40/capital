@@ -87,13 +87,34 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     // Transfer with transpose rank
     MPI_Sendrecv_replace(packedMatrix.getRawData(), tempMatrix.getNumElems(), sizeof(T)*MPI_CHAR, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
+    // Note: the received data that now resides in packedMatrix is NOT transposed, and the Matrix structure is LowerTriangular
+    //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
+    //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
+
     // Now, we want to be able to move this "raw, temporary, and anonymous" buffer into a Matrix structure, to be passed into
       // MatrixMultiplication at no cost. We definitely do not want to copy, we want to move!
     // But wait! That buffer is exactly what we need anyway
-
-    Matrix<T,U,MatrixStructureLowerTriangular,Distribution> tempMatrix(std::move(packedMatrix.getVectorData(), 
+    // Wait again!! Why do we need to do this? The structure is already LowerTriangular. Just keep it and have the non-transpose processor
+    //   serialize his Square matrix structure into a lower triangular
 
     // Call matrix multiplication that does not cut up matrix B in C <- AB
+    //    Need to set up the struct that has useful BLAS info
+
+    // I am using gemm right now, but I might want to use dtrtri or something due to B being triangular at heart
+    blasEngineArgumentPackage_gemm blasArgs;
+    blasArgs.order = blasEngineOrder::AblasRowMajor;
+    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+    blasArgs.transposeB = blasEngineTranspose::AblasTrans;
+    SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
+      Multiply(matrixA, packedMatrix, matrixL, matrixAstartX, matrixAstartX+shift, matrixAstartY+shift, matrixAendY,
+        0, shift, 0, shift, matrixLstartX, matrixLstartX+shift, matrixLstartY+shift, matrixLendY, MPI_COMM_WORLD, blasArgs, true, false, true);
+    
+  }
+  else
+  {
+    // For processors that are their own transpose within the slice they are on in a 3D processor grid.
+    // We want to serialize LI from Square into LowerTriangular so it can match the "transposed" processors that did it to send half the words for one reason
+
 
   }
 
