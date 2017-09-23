@@ -85,7 +85,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
       matAendX, matAstartY, matAendY);
 
     std::vector<T> blockedBaseCaseData(bcDimension*bcDimension);
-    std::vector<T>cyclicBaseCasedata(bcDimension*bcDimension);
+    std::vector<T>cyclicBaseCaseData(bcDimension*bcDimension);
     MPI_Allgather(baseCaseMatrixA.getRawData(), sizeof(T)*baseCaseMatrixA.getNumElems(), MPI_CHAR,
       &blockedBaseCaseData[0], sizeof(T)*baseCaseMatrixA.getNumElems(), MPI_CHAR, slice2D);
 
@@ -93,11 +93,35 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     //   then we will need to change this.
     //   Note: this operation is just not cache efficient due to hopping around blockedBaseCaseData. Locality is not what we would like,
     //     but not sure it can really be improved here. Something to look into later.
-    
+    //   Also: Although (for LAPACKE_dpotrf), we need to allocate a square buffer and fill in (only) the lower (or upper) triangular portion,
+    //     in the future, we might want to try different storage patterns from that one paper by Gustavsson
 
     // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
     //   I want to be able to mix and match.
-    
+
+    // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
+    LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', bcDimension, &cyclicBaseCaseData[0], bcDimension);
+
+    // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
+    //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
+    //   Only then, can we call Serializer into the real matrixL.
+    // Finally, we need that data for calling the triangular inverse.
+
+    Matrix<T,U,MatrixStructureSquare,Distribution> storeL(std::move(cyclicBaseCaseData), localDimension, localDimension, localDimension, localDimension);
+    Matrix<T,U,MatrixStructureSquare,Distribution> storeLI = storeL;		// Matrix copy constructor should be called.
+
+    // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
+    LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', bcDimension, storeLI.getRawData(), bcDimension);
+
+    // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
+
+    // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
+    // Only then can we serialize.
+
+    .. Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
+
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(storeL, matrixL, matLstartX, matLendX, matLstartY, matLendY, true);
+
     return;
   }
 
