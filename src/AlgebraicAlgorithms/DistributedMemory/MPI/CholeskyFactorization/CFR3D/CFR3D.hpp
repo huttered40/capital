@@ -94,6 +94,9 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     //   Note: this operation is just not cache efficient due to hopping around blockedBaseCaseData. Locality is not what we would like,
     //     but not sure it can really be improved here. Something to look into later.
     
+
+    // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
+    //   I want to be able to mix and match.
     
     return;
   }
