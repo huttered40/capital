@@ -63,16 +63,12 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
 
   U localShift = (localDimension>>1);
   U globalShift = (globalDimension>>1);
-  rFactor(matrixA, matrixL, matrixLI, shift, bcDimension, (globalDimension>>1),
+  rFactor(matrixA, matrixL, matrixLI, localShift, bcDimension, (globalDimension>>1),
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, commWorld);
 
-  // use a pointer so that we can assign it to the matrix received in the if/else statement, need that extra scope
-    // and dont want to create an extra instance
-  Matrix<T,U,MatrixStructureSquare,Distribution>* transposeData;
   int rank;
-
   // use MPI_COMM_WORLD for this p2p communication for transpose, but could use a smaller communicator
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -82,10 +78,10 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     // Serialize the square matrix into the nonzero lower triangular (so avoid sending the zeros in the upper-triangular part of matrix)
     Matrix<T,U,MatrixStructureLowerTriangular,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
     Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, packedMatrix,
-      0, shift, 0, shift);
+      0, localShift, 0, localShift);
  
     // Transfer with transpose rank
-    MPI_Sendrecv_replace(packedMatrix.getRawData(), tempMatrix.getNumElems(), sizeof(T)*MPI_CHAR, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Sendrecv_replace(packedMatrix.getRawData(), packedMatrix.getNumElems(), sizeof(T)*MPI_CHAR, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
     // Note: the received data that now resides in packedMatrix is NOT transposed, and the Matrix structure is LowerTriangular
     //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
@@ -101,34 +97,35 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     //    Need to set up the struct that has useful BLAS info
 
     // I am using gemm right now, but I might want to use dtrtri or something due to B being triangular at heart
-    blasEngineArgumentPackage_gemm blasArgs;
+    blasEngineArgumentPackage_gemm<double> blasArgs;
     blasArgs.order = blasEngineOrder::AblasRowMajor;
     blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
     blasArgs.transposeB = blasEngineTranspose::AblasTrans;
+    blasArgs.alpha = 1.;
+    blasArgs.beta = 1.;
     SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
-      Multiply(matrixA, packedMatrix, matrixL, matrixAstartX, matrixAstartX+shift, matrixAstartY+shift, matrixAendY,
-        0, shift, 0, shift, matrixLstartX, matrixLstartX+shift, matrixLstartY+shift, matrixLendY, MPI_COMM_WORLD, blasArgs, true, false, true);
-    
+      Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+        0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, MPI_COMM_WORLD, blasArgs, true, false, true);
   }
   else
   {
     // For processors that are their own transpose within the slice they are on in a 3D processor grid.
     // We want to serialize LI from Square into LowerTriangular so it can match the "transposed" processors that did it to send half the words for one reason
+    Matrix<T,U,MatrixStructureLowerTriangular,Distribution> tempLI(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, tempLI, 0, localShift, 0, localShift);
 
-
+    // I am using gemm right now, but I might want to use dtrtri or something due to B being triangular at heart
+    blasEngineArgumentPackage_gemm<double> blasArgs;
+    blasArgs.order = blasEngineOrder::AblasRowMajor;
+    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+    blasArgs.transposeB = blasEngineTranspose::AblasTrans;
+    blasArgs.alpha = 1.;
+    blasArgs.beta = 1.;
+    SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
+      Multiply(matrixA, tempLI, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+        0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, MPI_COMM_WORLD, blasArgs, true, false, true);
   }
 
-  // Note that we aim to "fill up" the bottom-right part of L when this returns.
-  // Fil up a BLAS struct
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare>::Multiply(...overloaded...);
-
-  // Get set for another SquareMM3D
-
-  // Perform a subtraction
-
-  // perform recursive call
-
-  // Two more instances of SquareMM3D.
-  // Also, we have a use case for adding the constant factor arguments to the BLAS enum struct.
+  // Note that we aim to "fill up" the bottom-left part of L when this returns.
 
 }

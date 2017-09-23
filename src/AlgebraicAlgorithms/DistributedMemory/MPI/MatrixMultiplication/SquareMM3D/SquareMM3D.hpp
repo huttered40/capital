@@ -100,12 +100,12 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   if (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)		// compile time if statement. Branch prediction should be correct.
   {
     // Using the getters from local matrixA, even if it isn't the data that is being stored for this matrix, should still be ok.
-    Matrix<T,U,StructureA,Distribution> matrixAforEngine(std::vector<T>(), matrixA.getNumColumnsLocal(), matrixA.getNumRowsLocal(),
+    Matrix<T,U,MatrixStructureSquare,Distribution> matrixAforEngine(std::vector<T>(), matrixA.getNumColumnsLocal(), matrixA.getNumRowsLocal(),
       matrixA.getNumColumnsGlobal(), matrixA.getNumRowsGlobal());
     if (!isRootRow)
     {
       Matrix<T,U,StructureA,Distribution> matrixAtoSerialize(std::move(foreignA), matrixA.getNumColumnsLocal(), matrixA.getNumRowsLocal(),
-        matrixA.getNumColumnsGlobal(), matrixA.getNumRowsGlobal());
+        matrixA.getNumColumnsGlobal(), matrixA.getNumRowsGlobal());		// add a "true" argument at the end here? Might need to if there is a bug
       Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine);
     }
     else
@@ -122,7 +122,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   if (!std::is_same<StructureB<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)
   {
     // Using the getters from local matrixA, even if it isn't the data that is being stored for this matrix, should still be ok.
-    Matrix<T,U,StructureB,Distribution> matrixBforEngine(std::vector<T>(), matrixB.getNumColumnsLocal(), matrixB.getNumRowsLocal(),
+    Matrix<T,U,MatrixStructureSquare,Distribution> matrixBforEngine(std::vector<T>(), matrixB.getNumColumnsLocal(), matrixB.getNumRowsLocal(),
       matrixB.getNumColumnsGlobal(), matrixB.getNumRowsGlobal());
     if (isRootColumn)
     {
@@ -239,8 +239,8 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
     //  that can point to local structures, so no expensive dereference here (But I should check on this locality)
 
   Matrix<T,U,StructureA,Distribution>* ptrA;
-  Matrix<T,U,StructureA,Distribution>* ptrB;
-  Matrix<T,U,StructureA,Distribution>* ptrC;
+  Matrix<T,U,StructureB,Distribution>* ptrB;
+  Matrix<T,U,StructureC,Distribution>* ptrC;
 
   if (cutA)
   {
