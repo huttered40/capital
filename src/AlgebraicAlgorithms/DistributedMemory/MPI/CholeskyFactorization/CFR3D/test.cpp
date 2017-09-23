@@ -44,6 +44,7 @@ int main(int argc, char** argv)
   int pCoordZ = rank/helper;
 
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, true);
+  std::cout << "Print matrix A's first values - " << matA.getRawData()[0] << ", " << matA.getRawData()[1] << ", " << matA.getRawData()[2] << std::endl;
 
   cout << "Processor " << rank << " has dimensions - (" << pCoordX << "," << pCoordY << "," << pCoordZ << ")\n";
 
