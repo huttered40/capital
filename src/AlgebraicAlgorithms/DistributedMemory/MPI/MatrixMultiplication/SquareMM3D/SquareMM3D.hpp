@@ -105,7 +105,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
     if (!isRootRow)
     {
       Matrix<T,U,StructureA,Distribution> matrixAtoSerialize(std::move(foreignA), matrixA.getNumColumnsLocal(), matrixA.getNumRowsLocal(),
-        matrixA.getNumColumnsGlobal(), matrixA.getNumRowsGlobal());		// add a "true" argument at the end here? Might need to if there is a bug
+        matrixA.getNumColumnsGlobal(), matrixA.getNumRowsGlobal(), true);
       Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine);
     }
     else
@@ -119,15 +119,16 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   {
     matrixAforEnginePtr = &(isRootRow ? dataA : foreignA)[0];
   }
+
   if (!std::is_same<StructureB<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)
   {
     // Using the getters from local matrixA, even if it isn't the data that is being stored for this matrix, should still be ok.
     Matrix<T,U,MatrixStructureSquare,Distribution> matrixBforEngine(std::vector<T>(), matrixB.getNumColumnsLocal(), matrixB.getNumRowsLocal(),
       matrixB.getNumColumnsGlobal(), matrixB.getNumRowsGlobal());
-    if (isRootColumn)
+    if (!isRootColumn)
     {
       Matrix<T,U,StructureB,Distribution> matrixBtoSerialize(std::move(foreignB), matrixB.getNumColumnsLocal(), matrixB.getNumRowsLocal(),
-        matrixB.getNumColumnsGlobal(), matrixB.getNumRowsGlobal());
+        matrixB.getNumColumnsGlobal(), matrixB.getNumRowsGlobal(), true);
       Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine);
     }
     else
@@ -140,7 +141,6 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   {
     matrixBforEnginePtr = &(isRootColumn ? dataB : foreignB)[0];
   }
-
 
   // I guess we are assuming that matrixC has Square Structure and not Triangular? For now, fine.
   std::vector<T>& matrixCforEngine = matrixC.getVectorData();
@@ -225,7 +225,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U globalDiffC = matrixC.getNumRowsGlobal() / matrixC.getNumRowsLocal();		// picked rows arbitrarily
 
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
-  U sizeB = matrixB.getNumElems(rangeB_x, rangeB_z);
+  U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
   U sizeC = matrixC.getNumElems(rangeC_y, rangeC_z);
 
   // No clear way to prevent a needless copy if the cut dimensions of a matrix are full.

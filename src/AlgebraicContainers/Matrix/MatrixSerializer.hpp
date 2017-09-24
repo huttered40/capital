@@ -725,7 +725,6 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& big,
   Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
-  std::cout << "here\n";
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -794,6 +793,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
   Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
 {
+  std::cout << "I am in LT to Square\n";
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -838,6 +838,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 
   if (assembleFinder)
   {
+    std::cout << "I am in AssembleFinder\n";
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     dest.setNumRowsLocal(srcNumRows);

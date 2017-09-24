@@ -29,12 +29,14 @@ void MatrixStructureSquare<T,U,Distributer>::Assemble(std::vector<T>& data, std:
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
+  std::cout << "In Square Assemble matrix with data size - " << data.size() << " and matrix size - " << matrix.size() << "\n";
   U offset{0};
   for (auto& ptr : matrix)
   {
     ptr = &data[offset];
     offset += dimensionX;
   }
+  std::cout << "DONE\n";
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>

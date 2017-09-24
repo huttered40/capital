@@ -9,13 +9,13 @@ OBJS4 = testSequentialValidationCut.o
 all: test testSequentialValidation testSequentialValidationCut
 
 test: $(OBJS2)
-	$(CCMPI) $(CFLAGS) -o test $(OBJS2) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a
+	$(CCMPI) $(CFLAGS) -o test $(OBJS2) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
 testSequentialValidation: $(OBJS3)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidation $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a
+	$(CCMPI) $(CFLAGS) -o testSequentialValidation $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
 testSequentialValidationCut: $(OBJS4)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationCut $(OBJS4) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a
+	$(CCMPI) $(CFLAGS) -o testSequentialValidationCut $(OBJS4) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
 test.o: test.cpp SquareMM3D.h
 	$(CCMPI) $(CFLAGS) -o test.o -c test.cpp

@@ -231,9 +231,9 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     blasArgs.transposeB = blasEngineTranspose::AblasTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 1.;
-//    SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
-//      Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
-//        0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, MPI_COMM_WORLD, blasArgs, true, false, true);
+    SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
+      Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+        0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
   }
   else
   {
@@ -250,11 +250,13 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     blasArgs.transposeB = blasEngineTranspose::AblasTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 1.;
-//    SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
-//      Multiply(matrixA, tempLI, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
-//        0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, MPI_COMM_WORLD, blasArgs, true, false, true);
+    SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
+      Multiply(matrixA, tempLI, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+        0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
   }
 
   // Note that we aim to "fill up" the bottom-left part of L when this returns.
 
+  std::cout << "I am rank - " << rank << " and am done with a CFR3D\n";
+  MPI_Barrier(MPI_COMM_WORLD);		// for debugging
 }
