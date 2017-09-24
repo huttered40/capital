@@ -66,18 +66,21 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
     // Fourth: Save the data that each processor owns according to the cyclic rule.
 
-    int rank,size;
+    int rankWorld, rankSlice;
+    int sizeWorld, sizeSlice;
     MPI_Comm slice2D;
-    MPI_Comm_rank(commWorld, &rank);
-    MPI_Comm_size(commWorld, &size);
+    MPI_Comm_rank(commWorld, &rankWorld);
+    MPI_Comm_size(commWorld, &sizeWorld);
 
-    int pGridDimensionSize = ceil(pow(size,1./3.));
-    int helper = pGridDimensionSize;
+    U pGridDimensionSize = ceil(pow(sizeWorld,1./3.));
+    U helper = pGridDimensionSize;
     helper *= helper;
-    int pGridCoordZ = rank/helper;
+    int pGridCoordZ = rankWorld/helper;
 
     // Attain the communicator with only processors on the same 2D slice
-    MPI_Comm_split(commWorld, pGridCoordZ, rank, &slice2D);
+    MPI_Comm_split(commWorld, pGridCoordZ, rankWorld, &slice2D);
+    MPI_Comm_rank(slice2D, &rankSlice);
+    MPI_Comm_size(slice2D, &sizeSlice);
 
     Matrix<T,U,MatrixStructureSquare,Distribution> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension,
       globalDimension, globalDimension);
@@ -96,31 +99,91 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     //   Also: Although (for LAPACKE_dpotrf), we need to allocate a square buffer and fill in (only) the lower (or upper) triangular portion,
     //     in the future, we might want to try different storage patterns from that one paper by Gustavsson
 
+
+    // Strategy: We will write to cyclicBaseCaseData in proper order BUT will have to hop around blockedBaseCaseData. This should be ok since
+    //   reading on modern computer architectures is less expensive via cache misses than writing, and we should not have any compulsory cache misses
+
+    U numCyclicBlocksPerRowCol = bcDimension/pGridDimensionSize;
+    U writeIndex = 0;
+    U recvDataOffset = localDimension*localDimension;
+    // MACRO loop over all cyclic "blocks"
+    for (U i=0; i<numCyclicBlocksPerRowCol; i++)
+    {
+      // Inner loop over all rows in a cyclic "block"
+      for (U j=0; j<pGridDimensionSize; j++)
+      {
+        // Inner loop over all cyclic "blocks" partitioning up the columns
+        for (U k=0; k<numCyclicBlocksPerRowCol; k++)
+        {
+          // Inner loop over all elements within a row of a cyclic "block"
+          for (U z=0; z<pGridDimensionSize; z++)
+          {
+            U readIndex = i*numCyclicBlocksPerRowCol + j*recvDataOffset*pGridDimensionSize + k + z*recvDataOffset;
+            cyclicBaseCaseData[writeIndex++] = blockedBaseCaseData[readIndex];
+          }
+        }
+      }
+    }
+
+
+
     // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
     //   I want to be able to mix and match.
 
+    std::vector<T>& storeL = cyclicBaseCaseData;
+    std::vector<T> storeLI = storeL;
+
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-    LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', bcDimension, &cyclicBaseCaseData[0], bcDimension);
+    //LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', bcDimension, &cyclicBaseCaseData[0], bcDimension);
 
     // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
     //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
-    //   Only then, can we call Serializer into the real matrixL.
+    //   Only then, can we call Serializer into the real matrixL. WRONG! We need to find the data we own according to the cyclic rule first!
+    //    So it doesn't make any sense to "move" these into Matrices yet.
     // Finally, we need that data for calling the triangular inverse.
 
-    Matrix<T,U,MatrixStructureSquare,Distribution> storeL(std::move(cyclicBaseCaseData), localDimension, localDimension, localDimension, localDimension);
-    Matrix<T,U,MatrixStructureSquare,Distribution> storeLI = storeL;		// Matrix copy constructor should be called.
-
     // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
-    LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', bcDimension, storeLI.getRawData(), bcDimension);
+    //LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', bcDimension, storeLI.getRawData(), bcDimension);
 
     // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 
     // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
     // Only then can we serialize.
 
-    .. Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
+    // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
+    //   Use the "overwrite" trick that I have used in CASI code, as well as other places
 
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(storeL, matrixL, matLstartX, matLendX, matLstartY, matLendY, true);
+    // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
+    //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
+
+    writeIndex = 0;
+    U rowOffsetWithinBlock = rankSlice / pGridDimensionSize;
+    U columnOffsetWithinBlock = rankSlice % pGridDimensionSize;
+    // MACRO loop over all cyclic "blocks"
+    for (U i=0; i<numCyclicBlocksPerRowCol; i++)
+    {
+      // We know which row corresponds to our processor in each cyclic "block"
+      // Inner loop over all cyclic "blocks" partitioning up the columns
+      for (U j=0; j<numCyclicBlocksPerRowCol; j++)
+      {
+        // We know which column corresponds to our processor in each cyclic "block"
+        U readIndex = j*pGridDimensionSize + columnOffsetWithinBlock + i*(bcDimension*pGridDimensionSize) + rowOffsetWithinBlock*bcDimension;
+        storeL[writeIndex] = cyclicBaseCaseData[readIndex];
+        storeLI[writeIndex] = cyclicBaseCaseData[readIndex];
+        writeIndex++;
+      }
+    }
+
+    // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
+    //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
+    //    variables, this should be ok.
+
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempL(std::move(storeL), localDimension, localDimension, globalDimension, globalDimension, true);
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempLI(std::move(storeLI), localDimension, localDimension, globalDimension, globalDimension, true);
+
+    // Serialize into the existing Matrix data structures owned by the user
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, tempL, matLstartX, matLendX, matLstartY, matLendY, true);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempLI, matLstartX, matLendX, matLstartY, matLendY, true);
 
     return;
   }

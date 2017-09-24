@@ -59,11 +59,11 @@ void MatrixStructureSquare<T,U,Distributer>::Dissamble(std::vector<T*>& matrix)
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureSquare<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
+void MatrixStructureSquare<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY)
 {
   U numElems = 0;		// Just choose one dimension.
   Assemble(data, matrix, numElems, dimensionX, dimensionX);	// Just choose one dimension.
-  std::memcpy(matrix[0], source[0], numElems*sizeof(T));
+  std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -148,11 +148,11 @@ void MatrixStructureRectangle<T,U,Distributer>::Dissamble(std::vector<T*>& matri
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureRectangle<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
+void MatrixStructureRectangle<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY)
 {
   int numElems = 0;
   Assemble(data, matrix, numElems, dimensionX, dimensionY);
-  std::memcpy(matrix[0], source[0], numElems*sizeof(T));
+  std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -235,11 +235,11 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Dissamble(std::vector<T*>&
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureUpperTriangular<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
+void MatrixStructureUpperTriangular<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY)
 {
   U numElems = 0;
   Assemble(data, matrix, numElems, dimensionX, dimensionY);
-  std::memcpy(matrix[0], source[0], numElems*sizeof(T));
+  std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -329,11 +329,11 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Dissamble(std::vector<T*>&
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-void MatrixStructureLowerTriangular<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T*>& source, U dimensionX, U dimensionY)
+void MatrixStructureLowerTriangular<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY)
 {
   U numElems = 0;
   Assemble(data, matrix, numElems, dimensionX, dimensionY);
-  std::memcpy(matrix[0], source[0], numElems*sizeof(T));
+  std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>

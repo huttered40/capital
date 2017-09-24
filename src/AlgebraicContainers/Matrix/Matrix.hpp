@@ -25,7 +25,7 @@ Matrix<T,U,Structure,Distributer>::Matrix(std::vector<T>&& data, U dimensionX, U
   this->_dimensionY = {dimensionY};
   this->_globalDimensionX = {globalDimensionX};
   this->_globalDimensionY = {globalDimensionY};
-  this->_numElems = getNumElems();
+  this->_numElems = getNumElems(dimensionX, dimensionY);
   this->_data = std::move(data);		// suck out the data from the argument into our member variable
 
   // Reason: sometimes, I just want to enter in an empty vector that will be filled up in Serializer. Other times, I want to truly
@@ -89,7 +89,7 @@ void Matrix<T,U,Structure,Distributer>::copy(const Matrix& rhs)
   this->_numElems = {rhs._numElems};
   this->_globalDimensionX = {rhs._globalDimensionX};
   this->_globalDimensionY = {rhs._globalDimensionY};
-  Structure<T,U,Distributer>::Copy(this->_data, this->_matrix, rhs._matrix, this->_dimensionX, this->_dimensionY);
+  Structure<T,U,Distributer>::Copy(this->_data, this->_matrix, rhs._data, this->_dimensionX, this->_dimensionY);
   return;
 }
 

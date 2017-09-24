@@ -51,11 +51,7 @@ int main(int argc, char** argv)
   CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare>::
     Factor(matA, matL, matLI, localMatrixSize, MPI_COMM_WORLD);
 
-  int count = 0;
-  for (int i=0; i<1000000; i++)
-  {
-    count++;
-  }
+  MPI_Barrier(MPI_COMM_WORLD);		// for debugging
 
   if (rank == 0)
   //matL.print();
