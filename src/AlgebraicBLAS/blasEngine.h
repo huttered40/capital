@@ -50,7 +50,8 @@ enum class blasEngineDiag : unsigned char
 enum class blasEngineMethod : unsigned char
 {
   AblasGemm = 0x0,
-  AblasTrmm = 0x1
+  AblasTrmm = 0x1,
+  AblasSyrk = 0x10
 };
 
 // Empty Base class for generic BLAS method arguments -- this is to prevent another template overload that is unnecessary
@@ -69,7 +70,9 @@ public:
 //   specified by the user
 
 
-// See comment below
+// We assume that the user will use T = float, double, complex<float>, or complex<double>
+	// We could declare this template class, and then use full template specialization to just implement
+	// those 4 cases, but the BLAS compiler will catch it anyways, but the first option is always on the table
 template<typename T>
 class blasEngineArgumentPackage_gemm : public blasEngineArgumentPackage<T>
 {
@@ -83,9 +86,6 @@ public:
   T beta;
 };
 
-// As above, we assume that the user will use T = float, double, complex<float>, or complex<double>
-	// We could declare this template class, and then use full template specialization to just implement
-	// those 4 cases, but the BLAS compiler will catch it anyways, but the first option is always on the table
 template<typename T>
 class blasEngineArgumentPackage_trmm : public blasEngineArgumentPackage<T>
 {
@@ -98,6 +98,19 @@ public:
   blasEngineTranspose transposeA;
   blasEngineDiag diag;
   T alpha;					// Added this constant
+};
+
+template<typename T>
+class blasEngineArgumentPackage_syrk : public blasEngineArgumentPackage<T>
+{
+public:
+  blasEngineArgumentPackage_syrk() { this->method = blasEngineMethod::AblasSyrk; }
+
+  blasEngineOrder order;
+  blasEngineUpLo uplo;
+  blasEngineTranspose transposeA;
+  T alpha;					// Added this constant
+  T beta;					// Added this constant
 };
 
 // Local includes -- include the possible BLAS libraries

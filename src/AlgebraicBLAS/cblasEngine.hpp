@@ -35,6 +35,20 @@ void cblasHelper::setInfoParameters_trmm(
   destArg5 = (srcArgs.diag == blasEngineDiag::AblasUnit ? CblasUnit : CblasNonUnit);
 }
 
+template<typename T>
+void cblasHelper::setInfoParameters_syrk(
+                                          const blasEngineArgumentPackage<T>& srcPackage,
+                                          CBLAS_ORDER& destArg1,
+                                          CBLAS_UPLO& destArg2,
+                                          CBLAS_TRANSPOSE& destArg3
+                                        )
+{
+  const blasEngineArgumentPackage_syrk<T>& srcArgs = static_cast<const blasEngineArgumentPackage_syrk<T>&>(srcPackage);
+  destArg1 = (srcArgs.order == blasEngineOrder::AblasRowMajor ? CblasRowMajor : CblasColMajor);
+  destArg2 = (srcArgs.uplo == blasEngineUpLo::AblasLower ? CblasLower : CblasUpper);
+  destArg2 = (srcArgs.transposeA == blasEngineTranspose::AblasTrans ? CblasTrans : CblasNoTrans);
+}
+
 template<typename U>
 void cblasEngine<float,U>::_gemm(
             float* matrixA,
@@ -86,6 +100,27 @@ void cblasEngine<float,U>::_trmm(
 
   cblas_strmm(arg1, arg2, arg3, arg4, arg5, matrixBnumRows, matrixBnumCols, static_cast<const blasEngineArgumentPackage_trmm<float>&>(srcPackage).alpha, matrixA,
     lda, matrixB, ldb);
+}
+
+template<typename U>
+void cblasEngine<float,U>::_syrk(
+            float* matrixA,
+            float* matrixC,
+            U matrixAnumColumns,
+            U matrixCnumRows,
+            U lda,
+            U ldc,
+            const blasEngineArgumentPackage<float>& srcPackage
+          )
+{
+  // First, unpack the info parameter
+  CBLAS_ORDER arg1;
+  CBLAS_UPLO arg2;
+  CBLAS_TRANSPOSE arg3;
+  setInfoParameters_syrk(srcPackage, arg1, arg2, arg3);
+
+  cblas_ssyrk(arg1, arg2, arg3, matrixCnumRows, matrixAnumColumns, static_cast<const blasEngineArgumentPackage_syrk<float>&>(srcPackage).alpha, matrixA,
+    lda, static_cast<const blasEngineArgumentPackage_syrk<float>&>(srcPackage).beta, matrixC, ldc);
 }
 
 template<typename U>
@@ -142,6 +177,27 @@ void cblasEngine<double,U>::_trmm(
 }
 
 template<typename U>
+void cblasEngine<double,U>::_syrk(
+            double* matrixA,
+            double* matrixC,
+            U matrixAnumColumns,
+            U matrixCnumRows,
+            U lda,
+            U ldc,
+            const blasEngineArgumentPackage<double>& srcPackage
+          )
+{
+  // First, unpack the info parameter
+  CBLAS_ORDER arg1;
+  CBLAS_UPLO arg2;
+  CBLAS_TRANSPOSE arg3;
+  setInfoParameters_syrk(srcPackage, arg1, arg2, arg3);
+
+  cblas_dsyrk(arg1, arg2, arg3, matrixCnumRows, matrixAnumColumns, static_cast<const blasEngineArgumentPackage_syrk<double>&>(srcPackage).alpha, matrixA,
+    lda, static_cast<const blasEngineArgumentPackage_syrk<double>&>(srcPackage).beta, matrixC, ldc);
+}
+
+template<typename U>
 void cblasEngine<std::complex<float>,U>::_gemm(
             std::complex<float>* matrixA,
             std::complex<float>* matrixB,
@@ -195,6 +251,27 @@ void cblasEngine<std::complex<float>,U>::_trmm(
 }
 
 template<typename U>
+void cblasEngine<std::complex<float>,U>::_syrk(
+            std::complex<float>* matrixA,
+            std::complex<float>* matrixC,
+            U matrixAnumColumns,
+            U matrixCnumRows,
+            U lda,
+            U ldc,
+            const blasEngineArgumentPackage<std::complex<float>>& srcPackage
+          )
+{
+  // First, unpack the info parameter
+  CBLAS_ORDER arg1;
+  CBLAS_UPLO arg2;
+  CBLAS_TRANSPOSE arg3;
+  setInfoParameters_syrk(srcPackage, arg1, arg2, arg3);
+
+  cblas_csyrk(arg1, arg2, arg3, matrixCnumRows, matrixAnumColumns, static_cast<const blasEngineArgumentPackage_syrk<std::complex<float>>&>(srcPackage).alpha, matrixA,
+    lda, static_cast<const blasEngineArgumentPackage_syrk<std::complex<float>>&>(srcPackage).beta, matrixC, ldc);
+}
+
+template<typename U>
 void cblasEngine<std::complex<double>,U>::_gemm(
             std::complex<double>* matrixA,
             std::complex<double>* matrixB,
@@ -245,4 +322,25 @@ void cblasEngine<std::complex<double>,U>::_trmm(
 
   cblas_ztrmm(arg1, arg2, arg3, arg4, arg5, matrixBnumRows, matrixBnumCols, static_cast<const blasEngineArgumentPackage_trmm<std::complex<double>>&>(srcPackage).alpha, matrixA,
     lda, matrixB, ldb);
+}
+
+template<typename U>
+void cblasEngine<std::complex<double>,U>::_syrk(
+            std::complex<double>* matrixA,
+            std::complex<double>* matrixC,
+            U matrixAnumColumns,
+            U matrixCnumRows,
+            U lda,
+            U ldc,
+            const blasEngineArgumentPackage<std::complex<double>>& srcPackage
+          )
+{
+  // First, unpack the info parameter
+  CBLAS_ORDER arg1;
+  CBLAS_UPLO arg2;
+  CBLAS_TRANSPOSE arg3;
+  setInfoParameters_syrk(srcPackage, arg1, arg2, arg3);
+
+  cblas_zsyrk(arg1, arg2, arg3, matrixCnumRows, matrixAnumColumns, static_cast<const blasEngineArgumentPackage_syrk<std::complex<double>>&>(srcPackage).alpha, matrixA,
+    lda, static_cast<const blasEngineArgumentPackage_syrk<std::complex<double>>&>(srcPackage).beta, matrixC, ldc);
 }

@@ -259,4 +259,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
 
   std::cout << "I am rank - " << rank << " and am done with a CFR3D\n";
   MPI_Barrier(MPI_COMM_WORLD);		// for debugging
+
+  // Now we need to perform L_{21}L_{21}^T
+
 }
