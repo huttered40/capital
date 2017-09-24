@@ -134,7 +134,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     std::vector<T> storeLI = storeL;
 
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-    //LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', bcDimension, &cyclicBaseCaseData[0], bcDimension);
+    LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', bcDimension, &storeL[0], bcDimension);
 
     // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
     //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
@@ -143,7 +143,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     // Finally, we need that data for calling the triangular inverse.
 
     // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
-    //LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', bcDimension, storeLI.getRawData(), bcDimension);
+    LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', bcDimension, &storeLI[0], bcDimension);
 
     // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 
