@@ -7,6 +7,8 @@
 #include <iostream>
 #include <complex>
 #include <vector>
+#include <utility>
+#include <tuple>
 #include <mpi.h>
 
 // Local includes

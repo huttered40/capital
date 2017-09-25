@@ -1,6 +1,39 @@
 /* Author: Edward Hutter */
 
 
+static std::tuple<MPI_Comm,
+                  MPI_Comm,
+                  MPI_Comm,
+                  MPI_Comm,
+                  int,
+                  int,
+                  int>
+                      setUpCommunicators(MPI_Comm commWorld)
+{
+  int rank,size;
+  MPI_Comm_rank(commWorld, &rank);
+  MPI_Comm_size(commWorld, &size);
+
+  int pGridDimensionSize = ceil(pow(size,1./3.));
+  int helper = pGridDimensionSize;
+  helper *= helper;
+  int pGridCoordX = rank%pGridDimensionSize;
+  int pGridCoordY = (rank%helper)/pGridDimensionSize;
+  int pGridCoordZ = rank/helper;
+
+  MPI_Comm rowComm, columnComm, sliceComm, depthComm;
+
+  // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
+  // Then, subdivide further into row groups and column groups
+  MPI_Comm_split(commWorld, pGridCoordY*pGridDimensionSize+pGridCoordX, rank, &depthComm);
+  MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
+  MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
+  MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
+
+  return std::make_tuple(rowComm, columnComm, sliceComm, depthComm, pGridCoordX, pGridCoordY, pGridCoordZ);
+}
+
+
 template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureA,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
@@ -18,28 +51,19 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               const blasEngineArgumentPackage<T>& srcPackage
                                                             )
 {
-  int rank,size;
-  MPI_Comm_rank(commWorld, &rank);
-  MPI_Comm_size(commWorld, &size);
+  // Use tuples so we don't have to pass multiple things by reference.
+  // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
-  int pGridDimensionSize = ceil(pow(size,1./3.));
-  int helper = pGridDimensionSize;
-  helper *= helper;
-  int pGridCoordX = rank%pGridDimensionSize;
-  int pGridCoordY = (rank%helper)/pGridDimensionSize;
-  int pGridCoordZ = rank/helper;
+  auto commInfo3D = setUpCommunicators(commWorld);
 
-  MPI_Comm rowComm;
-  MPI_Comm columnComm;
-  MPI_Comm sliceComm;
-  MPI_Comm depthComm;
-
-  // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
-  // Then, subdivide further into row groups and column groups
-  MPI_Comm_split(commWorld, pGridCoordY*pGridDimensionSize+pGridCoordX, rank, &depthComm);
-  MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
-  MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
-  MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm columnComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
 
   std::vector<T>& dataA = matrixA.getVectorData(); 
   std::vector<T>& dataB = matrixB.getVectorData();
@@ -47,7 +71,6 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U sizeB = matrixB.getNumElems();
   std::vector<T> foreignA;
   std::vector<T> foreignB;
-
   bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
