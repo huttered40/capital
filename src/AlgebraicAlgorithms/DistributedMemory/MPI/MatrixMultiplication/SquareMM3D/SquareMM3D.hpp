@@ -141,18 +141,21 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   // Right now, foreignA and/or foreignB might be empty if this processor is the rowRoot or the columnRoot
 
   T* matrixAforEnginePtr = getEnginePtr(matrixA, (isRootRow ? dataA : foreignA), isRootRow);
-  T* matrixBforEnginePtr = getEnginePtr(matrixB, (isRootColumn ? dataB : foreignB), isRootColumn);
+
+  // We assume that matrixB is Square for now. No reason to believe otherwise
+  std::vector<T>& matrixBforEngine = matrixB.getVectorData();
+  U numElems = matrixB.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
   // Now at this point we have a choice. SquareMM3D template class accepts 3 template parameters for the Matrix Structures of matrixA, matrixB, and matrixC
   //   But, trmm only deals with 2 matrices matrixA and matrixB, and stores the result in matrixB.
   //   Should the user just deal with this? And how do we deal with a template parameter that doesn't need to exist?
 
   const blasEngineArgumentPackage_trmm<T>& blasArgs = static_cast<const blasEngineArgumentPackage_trmm<T>&>(srcPackage);
-  blasEngine<T,U>::_trmm(matrixAforEnginePtr, matrixBforEnginePtr, (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
+  blasEngine<T,U>::_trmm(matrixAforEnginePtr, &matrixBforEngine[0], (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
     (srcPackage.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX), (srcPackage.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
     (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY), srcPackage);
 
-  MPI_Allreduce(MPI_IN_PLACE, matrixBforEnginePtr, sizeof(T)*sizeB, MPI_CHAR, MPI_SUM, depthComm);
+  MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], sizeof(T)*sizeB, MPI_CHAR, MPI_SUM, depthComm);
 }
 
 template<typename T, typename U,
@@ -198,9 +201,9 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
   // Right now, foreignA and/or foreignAtrans might be empty if this processor is the rowRoot or the transRoot
   T* matrixAforEnginePtr = getEnginePtr(matrixA, (isRootRow ? dataA : foreignA), isRootRow);
-  T* matrixATforEnginePtr = getEnginePtr(matrixA, (isRootTrans ? dataAtrans : foreignAtrans), isRootTrans);
 
-  // Assume, for now, that matrixC has Square Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
+  // We assume that matrixB is Square for now. No reason to believe otherwise
+
   std::vector<T>& matrixBforEngine = matrixB.getVectorData();
   U numElems = matrixB.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
@@ -256,15 +259,115 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U sizeC = matrixC.getNumElems(rangeC_y, rangeC_z);
 
   Matrix<T,U,StructureA,Distribution>* ptrA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
-  Matrix<T,U,StructureB,Distribution>* ptrB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutC);
+  Matrix<T,U,StructureB,Distribution>* ptrB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
   Matrix<T,U,StructureC,Distribution>* ptrC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, globalDiffC, cutC);
 
   Multiply(*ptrA, *ptrB, *ptrC, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
-  // QUESTION: Why do we want matrixC to have Square Structure? Why? Might come back to bite us later. Look into this
-  Serializer<T,U,MatrixStructureSquare,StructureC>::Serialize(*ptrC, matrixC,
-    matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
+  if (cutC)
+  {
+    Serializer<T,U,StructureC,StructureC>::Serialize(*ptrC, matrixC,
+      matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
+  }
+}
+
+
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<template<typename,typename,int> class Distribution>
+void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+                                                              Matrix<T,U,StructureA,Distribution>& matrixA,
+                                                              Matrix<T,U,StructureB,Distribution>& matrixB,
+                                                              U matrixAcutXstart,
+                                                              U matrixAcutXend,
+                                                              U matrixAcutYstart,
+                                                              U matrixAcutYend,
+                                                              U matrixBcutZstart,
+                                                              U matrixBcutZend,
+                                                              U matrixBcutXstart,
+                                                              U matrixBcutXend,
+                                                              MPI_Comm commWorld,
+                                                              const blasEngineArgumentPackage_trmm<T>& srcPackage,
+                                                              bool cutA,
+                                                              bool cutB
+                                                            )
+{
+  // We will set up 3 matrices and call the method above.
+
+  U rangeA_x = matrixAcutXend-matrixAcutXstart;
+  U rangeA_y = matrixAcutYend-matrixAcutYstart;
+  U rangeB_x = matrixBcutXend-matrixBcutXstart;
+  U rangeB_z = matrixBcutZend-matrixBcutZstart;
+  U globalDiffA = matrixA.getNumRowsGlobal() / matrixA.getNumRowsLocal();		// picked rows arbitrarily
+  U globalDiffB = matrixB.getNumRowsGlobal() / matrixB.getNumRowsLocal();		// picked rows arbitrarily
+
+  U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
+  U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
+
+  Matrix<T,U,StructureA,Distribution>* ptrA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
+  Matrix<T,U,StructureB,Distribution>* ptrB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
+
+  Multiply(*ptrA, *ptrB, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
+
+  // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
+  if (cutB)
+  {
+    Serializer<T,U,StructureB,StructureB>::Serialize(*ptrB, matrixB,
+      matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
+  }
+}
+
+
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<template<typename,typename,int> class Distribution>
+void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+                                                              Matrix<T,U,StructureA,Distribution>& matrixA,
+                                                              Matrix<T,U,StructureB,Distribution>& matrixB,
+                                                              U matrixAcutXstart,
+                                                              U matrixAcutXend,
+                                                              U matrixAcutYstart,
+                                                              U matrixAcutYend,
+                                                              U matrixBcutZstart,
+                                                              U matrixBcutZend,
+                                                              U matrixBcutXstart,
+                                                              U matrixBcutXend,
+                                                              MPI_Comm commWorld,
+                                                              const blasEngineArgumentPackage_syrk<T>& srcPackage,
+                                                              bool cutA,
+                                                              bool cutB
+                                                            )
+{
+  // We will set up 3 matrices and call the method above.
+
+  U rangeA_x = matrixAcutXend-matrixAcutXstart;
+  U rangeA_y = matrixAcutYend-matrixAcutYstart;
+  U rangeB_x = matrixBcutXend-matrixBcutXstart;
+  U rangeB_z = matrixBcutZend-matrixBcutZstart;
+  U globalDiffA = matrixA.getNumRowsGlobal() / matrixA.getNumRowsLocal();		// picked rows arbitrarily
+  U globalDiffB = matrixB.getNumRowsGlobal() / matrixB.getNumRowsLocal();		// picked rows arbitrarily
+
+  U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
+  U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
+
+  Matrix<T,U,StructureA,Distribution>* ptrA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
+  Matrix<T,U,StructureB,Distribution>* ptrB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
+
+  Multiply(*ptrA, *ptrB, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
+
+  // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
+  if (cutB)
+  {
+    Serializer<T,U,StructureB,StructureB>::Serialize(*ptrB, matrixB,
+      matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
+  }
 }
 
 

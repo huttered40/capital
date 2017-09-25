@@ -117,15 +117,10 @@ public:
                         U matrixBcutZend,
                         U matrixBcutXstart,
                         U matrixBcutXend,
-                        U matrixCcutZstart,
-                        U matrixCcutZend,
-                        U matrixCcutYstart,
-                        U matrixCcutYend,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
                         bool cutA = true,
-                        bool cutB = true,
-                        bool cutC = true
+                        bool cutB = true
                       );
 
   template<template<typename,typename,int> class Distribution>
@@ -140,15 +135,10 @@ public:
                         U matrixBcutZend,
                         U matrixBcutXstart,
                         U matrixBcutXend,
-                        U matrixCcutZstart,
-                        U matrixCcutZend,
-                        U matrixCcutYstart,
-                        U matrixCcutYend,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_syrk<T>& srcPackage,
                         bool cutA = true,
-                        bool cutB = true,
-                        bool cutC = true
+                        bool cutB = true
                       );
 
 private:
