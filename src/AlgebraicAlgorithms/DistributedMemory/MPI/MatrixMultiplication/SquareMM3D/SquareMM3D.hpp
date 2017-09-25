@@ -79,7 +79,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
   BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
-  BroadcastPanels((isRootRow ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+  BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
 
   T* matrixAforEnginePtr = getEnginePtr(matrixA, (isRootRow ? dataA : foreignA), isRootRow);
   T* matrixBforEnginePtr = getEnginePtr(matrixB, (isRootColumn ? dataB : foreignB), isRootColumn);
@@ -136,7 +136,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
   BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
-  BroadcastPanels((isRootRow ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+  BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
 
   // Right now, foreignA and/or foreignB might be empty if this processor is the rowRoot or the columnRoot
 

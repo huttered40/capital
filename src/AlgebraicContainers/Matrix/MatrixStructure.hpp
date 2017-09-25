@@ -36,7 +36,6 @@ void MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(std::vector<T>& data
     ptr = &data[offset];
     offset += dimensionX;
   }
-  std::cout << "DONE\n";
 }
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
