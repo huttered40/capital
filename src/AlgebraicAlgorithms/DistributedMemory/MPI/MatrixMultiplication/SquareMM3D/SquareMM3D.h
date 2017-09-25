@@ -26,8 +26,8 @@
 template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureA,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,
-  template<typename,typename> class blasEngine>
+  template<typename,typename, template<typename,typename,int> class> class StructureC = MatrixStructureSquare,
+  template<typename,typename> class blasEngine = cblasEngine>
 class SquareMM3D
 {
 
@@ -44,6 +44,8 @@ public:
   //         matrixB is Y x Z
   //         matrixC is X x Z
 
+  // New design: user will specify via an argument to the overloaded Multiply() method what underlying BLAS routine he wants called.
+  //             I think this is a reasonable assumption to make and will allow me to optimize each routine.
 
   template<template<typename,typename,int> class Distribution>
   static void Multiply(
@@ -54,7 +56,29 @@ public:
                         U dimensionY,
                         U dimensionZ,
                         MPI_Comm commWorld,
-                        const blasEngineArgumentPackage<T>& srcPackage
+                        const blasEngineArgumentPackage_gemm<T>& srcPackage
+                      );
+
+  template<template<typename,typename,int> class Distribution>
+  static void Multiply(
+                        Matrix<T,U,StructureA,Distribution>& matrixA,
+                        Matrix<T,U,StructureB,Distribution>& matrixB,
+                        U dimensionX,
+                        U dimensionY,
+                        U dimensionZ,
+                        MPI_Comm commWorld,
+                        const blasEngineArgumentPackage_trmm<T>& srcPackage
+                      );
+
+  template<template<typename,typename,int> class Distribution>
+  static void Multiply(
+                        Matrix<T,U,StructureA,Distribution>& matrixA,
+                        Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
+                        U dimensionX,
+                        U dimensionY,
+                        U dimensionZ,
+                        MPI_Comm commWorld,
+                        const blasEngineArgumentPackage_syrk<T>& srcPackage
                       );
 
   template<template<typename,typename,int> class Distribution>
@@ -75,17 +99,88 @@ public:
                         U matrixCcutYstart,
                         U matrixCcutYend,
                         MPI_Comm commWorld,
-                        const blasEngineArgumentPackage<T>& srcPackage,
+                        const blasEngineArgumentPackage_gemm<T>& srcPackage,
                         bool cutA = true,
                         bool cutB = true,
                         bool cutC = true
                       );
 
-  // Later on, I'd like an overloaded Multiply() method that took parameters to "cut up" the current 3 matrices (so 8 extra arguments)
-  // This will require more Serialize methods, but the engine should remain the same, so I don't want that to change. Only at this 1st
-  // level should anything be different.
+  template<template<typename,typename,int> class Distribution>
+  static void Multiply(
+                        Matrix<T,U,StructureA,Distribution>& matrixA,
+                        Matrix<T,U,StructureB,Distribution>& matrixB,
+                        U matrixAcutXstart,
+                        U matrixAcutXend,
+                        U matrixAcutYstart,
+                        U matrixAcutYend,
+                        U matrixBcutZstart,
+                        U matrixBcutZend,
+                        U matrixBcutXstart,
+                        U matrixBcutXend,
+                        U matrixCcutZstart,
+                        U matrixCcutZend,
+                        U matrixCcutYstart,
+                        U matrixCcutYend,
+                        MPI_Comm commWorld,
+                        const blasEngineArgumentPackage_trmm<T>& srcPackage,
+                        bool cutA = true,
+                        bool cutB = true,
+                        bool cutC = true
+                      );
+
+  template<template<typename,typename,int> class Distribution>
+  static void Multiply(
+                        Matrix<T,U,StructureA,Distribution>& matrixA,
+                        Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
+                        U matrixAcutXstart,
+                        U matrixAcutXend,
+                        U matrixAcutYstart,
+                        U matrixAcutYend,
+                        U matrixBcutZstart,
+                        U matrixBcutZend,
+                        U matrixBcutXstart,
+                        U matrixBcutXend,
+                        U matrixCcutZstart,
+                        U matrixCcutZend,
+                        U matrixCcutYstart,
+                        U matrixCcutYend,
+                        MPI_Comm commWorld,
+                        const blasEngineArgumentPackage_syrk<T>& srcPackage,
+                        bool cutA = true,
+                        bool cutB = true,
+                        bool cutC = true
+                      );
 
 private:
+
+  static void BroadcastPanels(
+				std::vector<T>& data,
+				U size,
+				bool isRoot,
+				int pGridCoordZ,
+				MPI_Comm panelComm
+			     );
+
+  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
+  static T* getEnginePtr(
+				Matrix<T,U,StructureArg, Distribution>& matrixArg,
+				std::vector<T>& data,
+				bool isRoot
+                          );
+
+  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
+  static T* getSubMatrix(
+				Matrix<T,U,StructureArg, Distribution>& matrixArg,
+				U matrixArgColumnStart,
+				U matrixArgColumnEnd,
+				U matrixArgRowStart,
+				U matrixArgRowEnd,
+				U globalDiff,
+				bool getSub
+			  );
+
 /*
   There is no reason to store state here. All we need this to do is to act as an interface. Nothing more.
   MatrixMultiplicationEngine will take over from here. Storing state here would make no sense.

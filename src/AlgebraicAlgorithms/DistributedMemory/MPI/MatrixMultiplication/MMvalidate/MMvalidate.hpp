@@ -57,14 +57,14 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
     {
       // Later on, may want to resize matrixCforEngine in here to avoid needless memory allocation in TRMM cases
       blasEngine<T,U>::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], globalDimensionX, globalDimensionY,
-        globalDimensionX, globalDimensionZ, globalDimensionY, globalDimensionZ, 1., 1., globalDimensionY, globalDimensionX, globalDimensionY, srcPackage);
+        globalDimensionX, globalDimensionZ, globalDimensionY, globalDimensionZ, globalDimensionY, globalDimensionX, globalDimensionY, srcPackage);
       break;
     }
     case blasEngineMethod::AblasTrmm:
     {
       const blasEngineArgumentPackage_trmm<T>& blasArgs = static_cast<const blasEngineArgumentPackage_trmm<T>&>(srcPackage);
       blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY),
-        (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionZ : globalDimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionY : globalDimensionX)
+        (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionZ : globalDimensionX), (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionY : globalDimensionX)
 ,
         (blasArgs.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY), srcPackage);
       matrixCforEngine = matrixBforEngine;// Dont move right now. Im worried about corrupting data in matrixB. Look into this!! std::move(matrixBforEngine;...

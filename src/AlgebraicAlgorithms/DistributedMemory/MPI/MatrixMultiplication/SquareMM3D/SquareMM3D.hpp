@@ -5,7 +5,7 @@ static std::tuple<MPI_Comm,
                   MPI_Comm,
                   MPI_Comm,
                   MPI_Comm,
-                  int,
+		  int,
                   int,
                   int>
                       setUpCommunicators(MPI_Comm commWorld)
@@ -34,11 +34,15 @@ static std::tuple<MPI_Comm,
 }
 
 
+// This algorithm with underlying gemm BLAS routine will allow any Matrix Structure.
+//   Of course we will serialize into Square Structure if not in Square Structure already in order to be compatible
+//   with BLAS-3 routines.
+
 template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureA,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,
-  template<typename,typename> class blasEngine>
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename,int> class Distribution>
 void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
@@ -48,7 +52,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               U dimensionY,
                                                               U dimensionZ,
                                                               MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage<T>& srcPackage
+                                                              const blasEngineArgumentPackage_gemm<T>& srcPackage
                                                             )
 {
   // Use tuples so we don't have to pass multiple things by reference.
@@ -74,132 +78,18 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
-  // Broadcast
-  if (isRootRow)
-  {
-    MPI_Bcast(&dataA[0], sizeof(T)*sizeA, MPI_CHAR, pGridCoordZ, rowComm);
-  }
-  else
-  {
-    foreignA.resize(sizeA);
-    MPI_Bcast(&foreignA[0], sizeof(T)*sizeA, MPI_CHAR, pGridCoordZ, rowComm);
-  }
+  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
+  BroadcastPanels((isRootRow ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
 
-  // Broadcast data along columns
-  if (isRootColumn)
-  {
-    MPI_Bcast(&dataB[0], sizeof(T)*sizeB, MPI_CHAR, pGridCoordZ, columnComm);
-  }
-  else
-  {
-    foreignB.resize(sizeB);
-    MPI_Bcast(&foreignB[0], sizeof(T)*sizeB, MPI_CHAR, pGridCoordZ, columnComm);
-  }
+  T* matrixAforEnginePtr = getEnginePtr(matrixA, (isRootRow ? dataA : foreignA), isRootRow);
+  T* matrixBforEnginePtr = getEnginePtr(matrixB, (isRootColumn ? dataB : foreignB), isRootColumn);
 
-  // Need to call serialize blindly, even if we are going from square to square
-  //   This is annoyingly required for cblas calls. For now, just abide by the rules.
-  // We also must create an interface to serialize from vectors to vectors to avoid instantiating temporary matrices.
-  // These can be made static methods in the Matrix class to the MatrixSerialize class.
-  // Its just another option for the user.
-
-  // Based on whether matrices matrixA and matrixB have square structure or not, we will use a pointer to a T or a vector of T
-  //   In order to utilize the Serializer interface, we need to work with vectors. This gives the method the ability to
-  //   resize the vectors to the appropriate size, which is not obvious to this algorithm due to the template structure. If I used a T*
-  //   for the Serializer interface, then the Serializer might have needed to dynamically allocate memory for the reasons just described,
-  //   but then the user of Serialize would have to explicitely delete that memory that it wasn't even sure was allocated or how much memory
-  //   was allocated. Since the Serializer work with static class methods, saing state to call some sort of Serializer delete is
-  //   not possible. Therefore, using a binary option for vectors of pointers to avod the copy if the Structue is square is the cheapest way I can
-  //   think of. The only downside is two unused vectors/pointers on the function stack. Seems like a price worth paying.
-  // Also, to be clear, using a vector if we don't need to serialize only has two bad choices: copy that whole thing into the vector, or move the whole
-  //   thing into the vector at the risk of destroying the data in the original matrix parameter, causing terrible conseqences for the caller of this algorithm.
-
-  T* matrixAforEnginePtr = nullptr;
-  T* matrixBforEnginePtr = nullptr;
-
-  // Now, the trouble here is that we want to make this generic, but we don't want to perform an extra copy/serialization if we don't have to
-  // For example, if StructureA == MatrixStructureSquare, we don't want to perform any work, but we want this decision to be made
-  // by the library in Serializer, not here. Well, I guess I just make the distinction here. Good enough
-
-  if (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)		// compile time if statement. Branch prediction should be correct.
-  {
-    // Using the getters from local matrixA, even if it isn't the data that is being stored for this matrix, should still be ok.
-    Matrix<T,U,MatrixStructureSquare,Distribution> matrixAforEngine(std::vector<T>(), matrixA.getNumColumnsLocal(), matrixA.getNumRowsLocal(),
-      matrixA.getNumColumnsGlobal(), matrixA.getNumRowsGlobal());
-    if (!isRootRow)
-    {
-      Matrix<T,U,StructureA,Distribution> matrixAtoSerialize(std::move(foreignA), matrixA.getNumColumnsLocal(), matrixA.getNumRowsLocal(),
-        matrixA.getNumColumnsGlobal(), matrixA.getNumRowsGlobal(), true);
-      Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixAtoSerialize, matrixAforEngine);
-    }
-    else
-    {
-      Serializer<T,U,StructureA,MatrixStructureSquare>::Serialize(matrixA, matrixAforEngine);
-    }
-
-    matrixAforEnginePtr = matrixAforEngine.getRawData();
-  }
-  else
-  {
-    matrixAforEnginePtr = &(isRootRow ? dataA : foreignA)[0];
-  }
-
-  if (!std::is_same<StructureB<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)
-  {
-    // Using the getters from local matrixA, even if it isn't the data that is being stored for this matrix, should still be ok.
-    Matrix<T,U,MatrixStructureSquare,Distribution> matrixBforEngine(std::vector<T>(), matrixB.getNumColumnsLocal(), matrixB.getNumRowsLocal(),
-      matrixB.getNumColumnsGlobal(), matrixB.getNumRowsGlobal());
-    if (!isRootColumn)
-    {
-      Matrix<T,U,StructureB,Distribution> matrixBtoSerialize(std::move(foreignB), matrixB.getNumColumnsLocal(), matrixB.getNumRowsLocal(),
-        matrixB.getNumColumnsGlobal(), matrixB.getNumRowsGlobal(), true);
-      Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixBtoSerialize, matrixBforEngine);
-    }
-    else
-    {
-      Serializer<T,U,StructureB,MatrixStructureSquare>::Serialize(matrixB, matrixBforEngine);
-    }
-    matrixBforEnginePtr = matrixBforEngine.getRawData();
-  }
-  else
-  {
-    matrixBforEnginePtr = &(isRootColumn ? dataB : foreignB)[0];
-  }
-
-  // I guess we are assuming that matrixC has Square Structure and not Triangular? For now, fine.
+  // Assume, for now, that matrixC has Square Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
   std::vector<T>& matrixCforEngine = matrixC.getVectorData();
   U numElems = matrixC.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
-  // Does C need to be Square? Big gaping hole in this algorithm right now that will come back to bite us later.
-
-  switch (srcPackage.method)
-  {
-    case blasEngineMethod::AblasGemm:
-    {
-      blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], dimensionX, dimensionY,
-        dimensionX, dimensionZ, dimensionY, dimensionZ, 1., 1., dimensionY, dimensionX, dimensionY, srcPackage);
-      break;
-    }
-    case blasEngineMethod::AblasTrmm:
-    {
-      const blasEngineArgumentPackage_trmm<T>& blasArgs = static_cast<const blasEngineArgumentPackage_trmm<T>&>(srcPackage);
-      blasEngine<T,U>::_trmm(matrixAforEnginePtr, matrixBforEnginePtr, (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
-        (blasArgs.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX), 1., (blasArgs.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
-        (blasArgs.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY), srcPackage);
-
-      // Note: the below statement is awkward and should be changed later.
-      // TRMM doesn't touch matrixC, so the user actually doesn't even have to allocate it, but we
-      //   move data into it before the AllReduce so the user gets back the solution in matrixC
-      
-      // For now, just bite the bullet and incur the copy.
-      memcpy(&matrixCforEngine[0], matrixBforEnginePtr, sizeof(T)*numElems);
-      break;
-    }
-    default:
-    {
-      std::cout << "Invalid BLAS method used in blasEngineArgumentPackage\n";
-      abort();
-    }
-  }
+  blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], dimensionX, dimensionY,
+    dimensionX, dimensionZ, dimensionY, dimensionZ, dimensionY, dimensionX, dimensionY, srcPackage);
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], sizeof(T)*numElems, MPI_CHAR, MPI_SUM, depthComm);
 
@@ -209,8 +99,122 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureA,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,
-  template<typename,typename> class blasEngine>
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<template<typename,typename,int> class Distribution>
+void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+                                                              Matrix<T,U,StructureA,Distribution>& matrixA,
+                                                              Matrix<T,U,StructureB,Distribution>& matrixB,
+                                                              U dimensionX,
+                                                              U dimensionY,
+                                                              U dimensionZ,
+                                                              MPI_Comm commWorld,
+                                                              const blasEngineArgumentPackage_trmm<T>& srcPackage
+                                                            )
+{
+  // Use tuples so we don't have to pass multiple things by reference.
+  // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
+
+  auto commInfo3D = setUpCommunicators(commWorld);
+
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm columnComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
+
+  std::vector<T>& dataA = matrixA.getVectorData(); 
+  std::vector<T>& dataB = matrixB.getVectorData();
+  U sizeA = matrixA.getNumElems();
+  U sizeB = matrixB.getNumElems();
+  std::vector<T> foreignA;
+  std::vector<T> foreignB;
+  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
+  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
+
+  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
+  BroadcastPanels((isRootRow ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+
+  // Right now, foreignA and/or foreignB might be empty if this processor is the rowRoot or the columnRoot
+
+  T* matrixAforEnginePtr = getEnginePtr(matrixA, (isRootRow ? dataA : foreignA), isRootRow);
+  T* matrixBforEnginePtr = getEnginePtr(matrixB, (isRootColumn ? dataB : foreignB), isRootColumn);
+
+  // Now at this point we have a choice. SquareMM3D template class accepts 3 template parameters for the Matrix Structures of matrixA, matrixB, and matrixC
+  //   But, trmm only deals with 2 matrices matrixA and matrixB, and stores the result in matrixB.
+  //   Should the user just deal with this? And how do we deal with a template parameter that doesn't need to exist?
+
+  const blasEngineArgumentPackage_trmm<T>& blasArgs = static_cast<const blasEngineArgumentPackage_trmm<T>&>(srcPackage);
+  blasEngine<T,U>::_trmm(matrixAforEnginePtr, matrixBforEnginePtr, (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
+    (srcPackage.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX), (srcPackage.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
+    (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY), srcPackage);
+
+  MPI_Allreduce(MPI_IN_PLACE, matrixBforEnginePtr, sizeof(T)*sizeB, MPI_CHAR, MPI_SUM, depthComm);
+}
+
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<template<typename,typename,int> class Distribution>
+void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+                                                              Matrix<T,U,StructureA,Distribution>& matrixA,
+                                                              Matrix<T,U,StructureB,Distribution>& matrixB,
+                                                              U dimensionX,
+                                                              U dimensionY,
+                                                              U dimensionZ,
+                                                              MPI_Comm commWorld,
+                                                              const blasEngineArgumentPackage_syrk<T>& srcPackage
+                                                            )
+{
+  // Use tuples so we don't have to pass multiple things by reference.
+  // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
+
+  auto commInfo3D = setUpCommunicators(commWorld);
+
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm transComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
+
+  std::vector<T>& dataA = matrixA.getVectorData(); 
+  std::vector<T> dataAtrans = dataA;			// need to make a copy here I think
+  U sizeA = matrixA.getNumElems();
+  std::vector<T> foreignA;
+  std::vector<T> foreignAtrans;
+  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
+  bool isRootTrans = ((pGridCoordY == pGridCoordZ) ? true : false);
+
+  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
+  BroadcastPanels((isRootTrans ? dataAtrans : foreignAtrans), sizeA, isRootTrans, pGridCoordZ, transComm);
+
+  // Right now, foreignA and/or foreignAtrans might be empty if this processor is the rowRoot or the transRoot
+  T* matrixAforEnginePtr = getEnginePtr(matrixA, (isRootRow ? dataA : foreignA), isRootRow);
+  T* matrixATforEnginePtr = getEnginePtr(matrixA, (isRootTrans ? dataAtrans : foreignAtrans), isRootTrans);
+
+  // Assume, for now, that matrixC has Square Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
+  std::vector<T>& matrixBforEngine = matrixB.getVectorData();
+  U numElems = matrixB.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
+
+  blasEngine<T,U>::_syrk(matrixAforEnginePtr, &matrixBforEngine[0], dimensionX, dimensionY,
+    dimensionX, dimensionY, srcPackage);
+
+  MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], sizeof(T)*numElems, MPI_CHAR, MPI_SUM, depthComm);
+}
+
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename,int> class Distribution>
 void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
@@ -229,7 +233,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               U matrixCcutYstart,
                                                               U matrixCcutYend,
                                                               MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage<T>& srcPackage,
+                                                              const blasEngineArgumentPackage_gemm<T>& srcPackage,
                                                               bool cutA,
                                                               bool cutB,
                                                               bool cutC
@@ -251,64 +255,108 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
   U sizeC = matrixC.getNumElems(rangeC_y, rangeC_z);
 
-  // No clear way to prevent a needless copy if the cut dimensions of a matrix are full.
+  Matrix<T,U,StructureA,Distribution>* ptrA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
+  Matrix<T,U,StructureB,Distribution>* ptrB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutC);
+  Matrix<T,U,StructureC,Distribution>* ptrC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, globalDiffC, cutC);
 
-  // For now, matrixA, matrixB, and matrixC MUST be square. Or else compiler error. -- wait, why? That means they could
-    // communicate more data than necessary, say if we have a triangular matrix, why would we want to serialize that
-    // into square before MM? Because we immediately broadcast the data, THEN we worry about using square buffers for
-    // BLAS routines. DONT WORRY ABOUT THAT HERE!
-
-  // To fix scope problems with if/else, use cheap pointers with outside scope
-    //  that can point to local structures, so no expensive dereference here (But I should check on this locality)
-
-  Matrix<T,U,StructureA,Distribution>* ptrA;
-  Matrix<T,U,StructureB,Distribution>* ptrB;
-  Matrix<T,U,StructureC,Distribution>* ptrC;
-
-  if (cutA)
-  {
-    Matrix<T,U,StructureA,Distribution> matrixAtoSerialize(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*globalDiffA, rangeA_y*globalDiffA);
-    Serializer<T,U,StructureA,StructureA>::Serialize(matrixA, matrixAtoSerialize, matrixAcutXstart,
-      matrixAcutXend, matrixAcutYstart, matrixAcutYend);
-    ptrA = &matrixAtoSerialize;
-  }
-  else
-  {
-    ptrA = &matrixA;			// Should be cheap, but verify!
-  }
-
-  if (cutB)
-  {
-    Matrix<T,U,StructureB,Distribution> matrixBtoSerialize(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*globalDiffB, rangeB_x*globalDiffB);
-    Serializer<T,U,StructureB,StructureB>::Serialize(matrixB, matrixBtoSerialize, matrixBcutZstart,
-      matrixBcutZend, matrixBcutXstart, matrixBcutXend);
-    ptrB = &matrixBtoSerialize;			// Should be cheap, but verify!
-  }
-  else
-  {
-    ptrB = &matrixB;
-  }
-
-  if (cutC)
-  {
-    Matrix<T,U,StructureC,Distribution> matrixCtoSerialize(std::vector<T>(), rangeC_z, rangeC_y, rangeC_z*globalDiffC, rangeC_y*globalDiffC);
-    Serializer<T,U,StructureC,StructureC>::Serialize(matrixC, matrixCtoSerialize,
-      matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend);
-    ptrC = &matrixCtoSerialize;			// Should be cheap, but verify!
-  }
-  else
-  {
-    ptrC = &matrixC;
-  }
-
-  // Call the SquareMM3D method
   Multiply(*ptrA, *ptrB, *ptrC, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
-
-  //Serialize the correct small matrixC into the big matrix C that is the parameter to this method
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   // QUESTION: Why do we want matrixC to have Square Structure? Why? Might come back to bite us later. Look into this
   Serializer<T,U,MatrixStructureSquare,StructureC>::Serialize(*ptrC, matrixC,
     matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
-  
+}
+
+
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+void SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::BroadcastPanels(
+											std::vector<T>& data,
+											U size,
+											bool isRoot,
+											int pGridCoordZ,
+											MPI_Comm panelComm
+										    )
+{
+  if (isRoot)
+  {
+    MPI_Bcast(&data[0], sizeof(T)*size, MPI_CHAR, pGridCoordZ, panelComm);
+  }
+  else
+  {
+    data.resize(size);
+    MPI_Bcast(&data[0], sizeof(T)*size, MPI_CHAR, pGridCoordZ, panelComm);
+  }
+}
+
+
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
+T* SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
+											Matrix<T,U,StructureArg, Distribution>& matrixArg,
+											std::vector<T>& data,
+											bool isRoot
+									       )
+{
+  if (!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)		// compile time if statement. Branch prediction should be correct.
+  {
+    Matrix<T,U,MatrixStructureSquare,Distribution> matrixForEngine(std::vector<T>(), matrixArg.getNumColumnsLocal(), matrixArg.getNumRowsLocal(),
+      matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal());
+    if (!isRoot)
+    {
+      Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::move(data), matrixArg.getNumColumnsLocal(), matrixArg.getNumRowsLocal(),
+        matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal(), true);
+      Serializer<T,U,StructureArg,MatrixStructureSquare>::Serialize(matrixToSerialize, matrixForEngine);
+    }
+    else
+    {
+      Serializer<T,U,StructureArg,MatrixStructureSquare>::Serialize(matrixArg, matrixForEngine);
+    }
+    return matrixForEngine.getRawData();
+  }
+  else
+  {
+    return &data[0];
+  }
+}
+
+
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
+T* SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getSubMatrix(
+											Matrix<T,U,StructureArg, Distribution>& matrixArg,
+											U matrixArgColumnStart,
+											U matrixArgColumnEnd,
+											U matrixArgRowStart,
+											U matrixArgRowEnd,
+											U globalDiff,
+											bool getSub
+									       )
+{
+  if (getSub)
+  {
+    U rangeC_column = matrixArgColumnEnd - matrixArgColumnStart;
+    U rangeC_row = matrixArgRowEnd - matrixArgRowStart;
+    Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::vector<T>(), rangeC_column, rangeC_row, rangeC_column*globalDiff, rangeC_row*globalDiff);
+    Serializer<T,U,StructureArg,StructureArg>::Serialize(matrixArg, matrixToSerialize,
+      matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
+    return &matrixToSerialize;			// Should be cheap, but verify!
+  }
+  else
+  {
+    return &matrixArg;
+  }
 }
