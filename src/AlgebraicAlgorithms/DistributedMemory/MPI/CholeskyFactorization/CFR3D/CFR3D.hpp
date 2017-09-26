@@ -287,4 +287,9 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     }
   }
 
+  // Only need to change the argument for matrixA
+  rFactor(matrixAquadrant4, matrixL, matrixLI, localShift, bcDimension, globalShift,
+    0, localShift, 0, localShift, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY,
+    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, commWorld);
+
 }
