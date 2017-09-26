@@ -61,7 +61,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
     globalDimensionY, globalDimensionZ, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
-  MPI_Allreduce(MPI_IN_PLACE, &error, sizeof(T), MPI_CHAR, MPI_SUM, sliceComm);
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   return error;
 }
 
@@ -83,7 +83,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
 
-  std::tuple<MPI_Comm, int, int, int> commInfo = getCommunicatorSlice(commWorld);
+  std::tuple<MPI_Comm, int, int, int, int> commInfo = getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
 
   using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
@@ -100,11 +100,11 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
     (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY), srcPackage);
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualSquare(matrixSol, matrixBforEngine, localDimensionX, localDimensionY, localDimensionZ, globalDimensionX,
+  T error = getResidualSquare(matrixSol.getVectorData(), matrixBforEngine, localDimensionX, localDimensionY, localDimensionZ, globalDimensionX,
     globalDimensionY, globalDimensionZ, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
-  MPI_Allreduce(MPI_IN_PLACE, &error, sizeof(T), MPI_CHAR, MPI_SUM, sliceComm);
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   return error;
 }
 
@@ -126,7 +126,7 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
 
-  std::tuple<MPI_Comm, int, int, int> commInfo = getCommunicatorSlice(commWorld);
+  std::tuple<MPI_Comm, int, int, int, int> commInfo = getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
 
   using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
@@ -141,11 +141,11 @@ T MMvalidate<T,U,blasEngine>::validateLocal(
     globalDimensionX, globalDimensionY, srcPackage);
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualSquare(matrixSol, matrixBforEngine, localDimensionX, localDimensionY, localDimensionZ, globalDimensionX,
+  T error = getResidualSquare(matrixSol.getVectorData(), matrixBforEngine, localDimensionX, localDimensionY, localDimensionZ, globalDimensionX,
     globalDimensionY, globalDimensionZ, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
-  MPI_Allreduce(MPI_IN_PLACE, &error, sizeof(T), MPI_CHAR, MPI_SUM, sliceComm);
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   return error;
 }
   
@@ -175,7 +175,7 @@ T MMvalidate<T,U,blasEngine>::getResidualSquare(
     for (U j=0; j<localDimensionZ; j++)
     {
       T errorSquare = abs(myValues[countMyValues] - blasValues[countBlasValues]);
-      //std::cout << errorSquare << " " << myValues[countMyValues] << " " << blasValues[countBlasValues] << std::endl;
+      std::cout << errorSquare << " " << myValues[countMyValues] << " " << blasValues[countBlasValues] << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       countBlasValues += pGridDimensionSize;
@@ -184,5 +184,7 @@ T MMvalidate<T,U,blasEngine>::getResidualSquare(
     countBlasValues = saveCountRef + pGridDimensionSize*globalDimensionX;
   }
 
-  return sqrt(error);		// return 2-norm
+  error = std::sqrt(error);
+  std::cout << "Total error - " << error << std::endl;
+  return error;		// return 2-norm
 }

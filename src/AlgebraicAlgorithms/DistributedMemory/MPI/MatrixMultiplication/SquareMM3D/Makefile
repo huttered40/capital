@@ -3,25 +3,39 @@ CFLAGS = -g -Wall -O0 -std=c++11
 
 OBJS1 = SquareMM3D.o
 OBJS2 = test.o
-OBJS3 = testSequentialValidation.o
-OBJS4 = testSequentialValidationCut.o
+OBJS3 = testSequentialValidationGemm.o
+OBJS4 = testSequentialValidationTrmm.o
+OBJS5 = testSequentialValidationSyrk.o
+OBJS6 = testSequentialValidationCut.o
 
-all: test testSequentialValidation testSequentialValidationCut
+all: test testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk testSequentialValidationCut
 
 test: $(OBJS2)
 	$(CCMPI) $(CFLAGS) -o test $(OBJS2) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
-testSequentialValidation: $(OBJS3)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidation $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
+testSequentialValidationGemm: $(OBJS3)
+	$(CCMPI) $(CFLAGS) -o testSequentialValidationGemm $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
-testSequentialValidationCut: $(OBJS4)
+testSequentialValidationTrmm: $(OBJS4)
+	$(CCMPI) $(CFLAGS) -o testSequentialValidationTrmm $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
+
+testSequentialValidationSyrk: $(OBJS5)
+	$(CCMPI) $(CFLAGS) -o testSequentialValidationSyrk $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
+
+testSequentialValidationCut: $(OBJS6)
 	$(CCMPI) $(CFLAGS) -o testSequentialValidationCut $(OBJS4) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
 test.o: test.cpp SquareMM3D.h
 	$(CCMPI) $(CFLAGS) -o test.o -c test.cpp
 
-testSequentialValidation.o: testSequentialValidation.cpp SquareMM3D.h
-	$(CCMPI) $(CFLAGS) -o testSequentialValidation.o -c testSequentialValidation.cpp
+testSequentialValidationGemm.o: testSequentialValidationGemm.cpp SquareMM3D.h
+	$(CCMPI) $(CFLAGS) -o testSequentialValidationGemm.o -c testSequentialValidationGemm.cpp
+
+testSequentialValidationTrmm.o: testSequentialValidationTrmm.cpp SquareMM3D.h
+	$(CCMPI) $(CFLAGS) -o testSequentialValidationTrmm.o -c testSequentialValidationTrmm.cpp
+
+testSequentialValidationSyrk.o: testSequentialValidationSyrk.cpp SquareMM3D.h
+	$(CCMPI) $(CFLAGS) -o testSequentialValidationSyrk.o -c testSequentialValidationSyrk.cpp
 
 testSequentialValidationCut.o: testSequentialValidationCut.cpp SquareMM3D.h
 	$(CCMPI) $(CFLAGS) -o testSequentialValidationCut.o -c testSequentialValidationCut.cpp

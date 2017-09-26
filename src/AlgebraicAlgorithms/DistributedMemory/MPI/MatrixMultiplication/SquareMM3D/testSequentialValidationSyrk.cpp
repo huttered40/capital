@@ -33,8 +33,7 @@ int main(int argc, char** argv)
   uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
   uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
   
-  MatrixTypeLT matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeS matB(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+  MatrixTypeS matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
   MatrixTypeS matC(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
 
   int helper = pGridDimensionSize;
@@ -44,34 +43,23 @@ int main(int argc, char** argv)
   int pCoordZ = rank/helper;
 
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
-  matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
 
-/* GEMM test code
-  blasEngineArgumentPackage_gemm<double> blasArgs;
+  blasEngineArgumentPackage_syrk<double> blasArgs;
   blasArgs.order = blasEngineOrder::AblasRowMajor;
-  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-  blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-  blasArgs.alpha = 1.;
-  blasArgs.beta = 1.;
-  SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
-    Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
-*/
-
-  blasEngineArgumentPackage_trmm<double> blasArgs;
-  blasArgs.order = blasEngineOrder::AblasRowMajor;
-  blasArgs.side = blasEngineSide::AblasRight;
   blasArgs.uplo = blasEngineUpLo::AblasLower;
   blasArgs.transposeA = blasEngineTranspose::AblasTrans;
-  blasArgs.diag =blasEngineDiag::AblasNonUnit;
   blasArgs.alpha = 1.;
-  SquareMM3D<double,int,MatrixStructureLowerTriangular,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
-    Multiply(matA, matB, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
+  blasArgs.beta = 1.;
+
+  SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
+    Multiply(matA, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
+
   if (rank == 0)
-  std::cout << "Rank 0 first 3 values - " << (matB.getRawData())[0] << " " << (matB.getRawData())[1] << " " << (matB.getRawData())[2] << std::endl;
+  std::cout << "Rank 0 first 3 values - " << (matC.getRawData())[0] << " " << (matC.getRawData())[1] << " " << (matC.getRawData())[2] << std::endl;
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  double error = MMvalidate<double,int,cblasEngine>::validateLocal(matB, localMatrixSize, localMatrixSize, localMatrixSize,
+  double error = MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize,
     globalMatrixSize, globalMatrixSize, globalMatrixSize, MPI_COMM_WORLD, blasArgs);
 
   std::cout << "Error for procesor " << rank << " = " << error << std::endl;

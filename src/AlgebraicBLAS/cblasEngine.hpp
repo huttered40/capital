@@ -46,7 +46,7 @@ void cblasHelper::setInfoParameters_syrk(
   const blasEngineArgumentPackage_syrk<T>& srcArgs = static_cast<const blasEngineArgumentPackage_syrk<T>&>(srcPackage);
   destArg1 = (srcArgs.order == blasEngineOrder::AblasRowMajor ? CblasRowMajor : CblasColMajor);
   destArg2 = (srcArgs.uplo == blasEngineUpLo::AblasLower ? CblasLower : CblasUpper);
-  destArg2 = (srcArgs.transposeA == blasEngineTranspose::AblasTrans ? CblasTrans : CblasNoTrans);
+  destArg3 = (srcArgs.transposeA == blasEngineTranspose::AblasTrans ? CblasTrans : CblasNoTrans);
 }
 
 template<typename U>
