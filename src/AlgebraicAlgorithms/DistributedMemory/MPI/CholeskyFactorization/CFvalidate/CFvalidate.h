@@ -28,16 +28,9 @@ public:
   CFvalidate& operator=(CFvalidate&& rhs) = delete;
 
   template<template<typename,typename,int> class Distribution>
-  static T validateCF_Local(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol,
-                        U localDimension,
-                        U globalDimension,
-                        MPI_Comm commWorld
-                      );
-
-  template<template<typename,typename,int> class Distribution>
-  static T validateTI_Local(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol,
+  static std::pair<T,T> validateCF_Local(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
                         U localDimension,
                         U globalDimension,
                         MPI_Comm commWorld

@@ -131,7 +131,6 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     //   I want to be able to mix and match.
 
     std::vector<T>& storeL = cyclicBaseCaseData;
-    std::vector<T> storeLI = storeL;
 
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
     LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', bcDimension, &storeL[0], bcDimension);
@@ -143,6 +142,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     // Finally, we need that data for calling the triangular inverse.
 
     // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
+    std::vector<T> storeLI = storeL;
     LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', bcDimension, &storeLI[0], bcDimension);
 
     // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
@@ -164,12 +164,13 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     {
       // We know which row corresponds to our processor in each cyclic "block"
       // Inner loop over all cyclic "blocks" partitioning up the columns
+      // Future improvement: only need to iterate over lower triangular.
       for (U j=0; j<numCyclicBlocksPerRowCol; j++)
       {
         // We know which column corresponds to our processor in each cyclic "block"
         U readIndex = j*pGridDimensionSize + columnOffsetWithinBlock + i*(bcDimension*pGridDimensionSize) + rowOffsetWithinBlock*bcDimension;
-        storeL[writeIndex] = cyclicBaseCaseData[readIndex];
-        storeLI[writeIndex] = cyclicBaseCaseData[readIndex];
+        storeL[writeIndex] = storeL[readIndex];
+        storeLI[writeIndex] = storeLI[readIndex];
         writeIndex++;
       }
     }
@@ -183,7 +184,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
 
     // Serialize into the existing Matrix data structures owned by the user
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, tempL, matLstartX, matLendX, matLstartY, matLendY, true);
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempLI, matLstartX, matLendX, matLstartY, matLendY, true);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempLI, matLIstartX, matLIendX, matLIstartY, matLIendY, true);
 
     return;
   }
@@ -199,8 +200,6 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
   // use MPI_COMM_WORLD for this p2p communication for transpose, but could use a smaller communicator
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  std::cout << "I am rank " << rank << " and Local dimension - " << localDimension << std::endl;
-
   // Regardless of whether or not we don't need to communicate, we still need to serialize into a square buffer
   if (rank != transposePartner)
   {
@@ -211,7 +210,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
       matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
  
     // Transfer with transpose rank
-    MPI_Sendrecv_replace(packedMatrix.getRawData(), sizeof(T)*packedMatrix.getNumElems(), MPI_CHAR, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Sendrecv_replace(packedMatrix.getRawData(), packedMatrix.getNumElems(), MPI_DOUBLE, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
     // Note: the received data that now resides in packedMatrix is NOT transposed, and the Matrix structure is LowerTriangular
     //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
@@ -226,7 +225,8 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     // Call matrix multiplication that does not cut up matrix B in C <- AB
     //    Need to set up the struct that has useful BLAS info
 
-    // I am using gemm right now, but I might want to use dtrtri or something due to B being triangular at heart
+    // I am using gemm right now, but I might want to use dtrmm or something due to B being triangular at heart
+    //   but note that trmm will write the output matrix to matrix B. So that is not something we want here.
     blasEngineArgumentPackage_gemm<T> blasArgs;
     blasArgs.order = blasEngineOrder::AblasRowMajor;
     blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;

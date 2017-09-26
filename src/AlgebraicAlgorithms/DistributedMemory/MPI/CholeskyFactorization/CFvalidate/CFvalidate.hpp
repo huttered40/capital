@@ -25,8 +25,9 @@ static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm co
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-T CFvalidate<T,U>::validateCF_Local(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol,
+std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
                         U localDimension,
                         U globalDimension,
                         MPI_Comm commWorld
@@ -47,12 +48,18 @@ T CFvalidate<T,U>::validateCF_Local(
   LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', globalDimension, globalMatrixA.getRawData(), globalDimension);
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualTriangle(matrixSol.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
+  T error = getResidualTriangle(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
+
+  LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', globalDimension, globalMatrixA.getRawData(), globalDimension);
+
+  // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
+  T error2 = getResidualTriangle(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  return error;
+  return std::make_pair(error, error2);
 }
+
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
 template<typename T, typename U>
@@ -95,7 +102,7 @@ T CFvalidate<T,U>::getResidualTriangle(
   }
 
   error = std::sqrt(error);
-  std::cout << "Total error - " << error << std::endl;
+  if (isRank0) std::cout << "Total error - " << error << "\n\n\n";
   return error;		// return 2-norm
 }
 

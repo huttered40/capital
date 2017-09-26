@@ -3,6 +3,7 @@
 // System includes
 #include <iostream>
 #include <cstdlib>
+#include <utility>
 #include <cmath>
 #include <mpi.h>
 
@@ -51,9 +52,9 @@ int main(int argc, char** argv)
 
   MPI_Barrier(MPI_COMM_WORLD);		// for debugging
 
-  double error = CFvalidate<double,int>::validateCF_Local(matL, localMatrixSize, globalMatrixSize, MPI_COMM_WORLD);
+  std::pair<double,double> error = CFvalidate<double,int>::validateCF_Local(matL, matLI, localMatrixSize, globalMatrixSize, MPI_COMM_WORLD);
 
-  std::cout << "Rank " << rank << " has error " << error << std::endl;
+  //std::cout << "Rank " << rank << " has CF error " << error.first << " and TI error - " << error.second << std::endl;
 
   MPI_Finalize();
 
