@@ -8,6 +8,7 @@
 
 // Local includes
 #include "CFR3D.h"
+#include "../CFvalidate/CFvalidate.h"
 
 using namespace std;
 
@@ -50,8 +51,9 @@ int main(int argc, char** argv)
 
   MPI_Barrier(MPI_COMM_WORLD);		// for debugging
 
-  if (rank == 0)
-  //matL.print();
+  double error = CFvalidate<double,int>::validateCF_Local(matL, localMatrixSize, globalMatrixSize, MPI_COMM_WORLD);
+
+  std::cout << "Rank " << rank << " has error " << error << std::endl;
 
   MPI_Finalize();
 
