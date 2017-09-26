@@ -245,10 +245,10 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
   U rangeA_y = matrixAcutYend-matrixAcutYstart;
-  U rangeB_x = matrixBcutXend-matrixBcutXstart;
   U rangeB_z = matrixBcutZend-matrixBcutZstart;
-  U rangeC_y = matrixCcutYend - matrixCcutYstart; 
+  U rangeB_x = matrixBcutXend-matrixBcutXstart;
   U rangeC_z = matrixCcutZend - matrixCcutZstart;
+  U rangeC_y = matrixCcutYend - matrixCcutYstart; 
   U globalDiffA = matrixA.getNumRowsGlobal() / matrixA.getNumRowsLocal();		// picked rows arbitrarily
   U globalDiffB = matrixB.getNumRowsGlobal() / matrixB.getNumRowsLocal();		// picked rows arbitrarily
   U globalDiffC = matrixC.getNumRowsGlobal() / matrixC.getNumRowsLocal();		// picked rows arbitrarily
@@ -257,16 +257,25 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
   U sizeC = matrixC.getNumElems(rangeC_y, rangeC_z);
 
-  Matrix<T,U,StructureA,Distribution>* ptrA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
-  Matrix<T,U,StructureB,Distribution>* ptrB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
-  Matrix<T,U,StructureC,Distribution>* ptrC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, globalDiffC, cutC);
+  // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
+  Matrix<T,U,StructureA,Distribution> subMatrixA(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*globalDiffA, rangeA_y*globalDiffA);
+  Matrix<T,U,StructureB,Distribution> subMatrixB(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*globalDiffB, rangeB_x*globalDiffB);
+  Matrix<T,U,StructureC,Distribution> subMatrixC(std::vector<T>(), rangeC_z, rangeC_y, rangeC_z*globalDiffC, rangeC_y*globalDiffC);
+  Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
+  Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
+  Matrix<T,U,StructureC,Distribution>& matC = getSubMatrix(matrixC, subMatrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, globalDiffC, cutC);
 
-  Multiply(*ptrA, *ptrB, *ptrC, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
+  std::cout << "START MULTIPLY\n";
+  MPI_Barrier(commWorld);
+  Multiply(matA, matB, matC, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
+
+  std::cout << "DONE WITH MULTIPLY\n";
+  MPI_Barrier(commWorld);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC)
   {
-    Serializer<T,U,StructureC,StructureC>::Serialize(*ptrC, matrixC,
+    Serializer<T,U,StructureC,StructureC>::Serialize(matrixC, matC,
       matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
   }
 }
@@ -307,15 +316,18 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
   U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
 
-  Matrix<T,U,StructureA,Distribution>* ptrA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
-  Matrix<T,U,StructureB,Distribution>* ptrB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
+  // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
+  Matrix<T,U,StructureA,Distribution> subMatrixA(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*globalDiffA, rangeA_y*globalDiffA);
+  Matrix<T,U,StructureB,Distribution> subMatrixB(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*globalDiffB, rangeB_x*globalDiffB);
+  Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
+  Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
 
-  Multiply(*ptrA, *ptrB, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
+  Multiply(matA, matB, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
   if (cutB)
   {
-    Serializer<T,U,StructureB,StructureB>::Serialize(*ptrB, matrixB,
+    Serializer<T,U,StructureB,StructureB>::Serialize(matrixB, matB,
       matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
   }
 }
@@ -356,15 +368,18 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
   U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
 
-  Matrix<T,U,StructureA,Distribution>* ptrA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
-  Matrix<T,U,StructureB,Distribution>* ptrB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
+  // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
+  Matrix<T,U,StructureA,Distribution> subMatrixA(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*globalDiffA, rangeA_y*globalDiffA);
+  Matrix<T,U,StructureB,Distribution> subMatrixB(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*globalDiffB, rangeB_x*globalDiffB);
+  Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
+  Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
 
-  Multiply(*ptrA, *ptrB, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
+  Multiply(matA, matB, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
   if (cutB)
   {
-    Serializer<T,U,StructureB,StructureB>::Serialize(*ptrB, matrixB,
+    Serializer<T,U,StructureB,StructureB>::Serialize(matrixB, matB,
       matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
   }
 }
@@ -438,8 +453,9 @@ template<typename T, typename U,
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-Matrix<T,U,StructureArg,Distribution>* SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getSubMatrix(
-											Matrix<T,U,StructureArg, Distribution>& matrixArg,
+Matrix<T,U,StructureArg,Distribution>& SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getSubMatrix(
+											Matrix<T,U,StructureArg, Distribution>& srcMatrix,	// pass by value via move constructor
+											Matrix<T,U,StructureArg, Distribution>& fillMatrix,	// pass by value via move constructor
 											U matrixArgColumnStart,
 											U matrixArgColumnEnd,
 											U matrixArgRowStart,
@@ -452,13 +468,12 @@ Matrix<T,U,StructureArg,Distribution>* SquareMM3D<T,U,StructureA, StructureB, St
   {
     U rangeC_column = matrixArgColumnEnd - matrixArgColumnStart;
     U rangeC_row = matrixArgRowEnd - matrixArgRowStart;
-    Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::vector<T>(), rangeC_column, rangeC_row, rangeC_column*globalDiff, rangeC_row*globalDiff);
-    Serializer<T,U,StructureArg,StructureArg>::Serialize(matrixArg, matrixToSerialize,
+    Serializer<T,U,StructureArg,StructureArg>::Serialize(srcMatrix, fillMatrix,
       matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
-    return &matrixToSerialize;			// Should be cheap, but verify!
+    return fillMatrix;			// I am returning a lvalue reference to a lvalue reference
   }
   else
   {
-    return &matrixArg;
+    return srcMatrix;
   }
 }

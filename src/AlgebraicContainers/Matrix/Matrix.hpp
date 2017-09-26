@@ -48,6 +48,7 @@ Matrix<T,U,Structure,Distributer>::Matrix(const Matrix& rhs)
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
 Matrix<T,U,Structure,Distributer>::Matrix(Matrix&& rhs)
 {
+  std::cout << "IN MATRIX MOVE CONSTRUCTOR\n";
   // Use std::forward in the future.
   mover(std::move(rhs));
   return;

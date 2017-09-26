@@ -199,6 +199,8 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
   // use MPI_COMM_WORLD for this p2p communication for transpose, but could use a smaller communicator
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+  std::cout << "I am rank " << rank << " and Local dimension - " << localDimension << std::endl;
+
   // Regardless of whether or not we don't need to communicate, we still need to serialize into a square buffer
   if (rank != transposePartner)
   {
@@ -257,7 +259,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
 
   // Note that we aim to "fill up" the bottom-left part of L when this returns.
 
-  std::cout << "I am rank - " << rank << " and am done with a CFR3D\n";
+  std::cout << "I am rank - " << rank << " and am done with a CFR3D with localDimension - " << localDimension << "\n";
   MPI_Barrier(MPI_COMM_WORLD);		// for debugging
 
   // Now we need to perform L_{21}L_{21}^T via syrk
