@@ -360,8 +360,8 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
   U rangeA_y = matrixAcutYend-matrixAcutYstart;
-  U rangeB_x = matrixBcutXend-matrixBcutXstart;
   U rangeB_z = matrixBcutZend-matrixBcutZstart;
+  U rangeB_x = matrixBcutXend-matrixBcutXstart;
   U globalDiffA = matrixA.getNumRowsGlobal() / matrixA.getNumRowsLocal();		// picked rows arbitrarily
   U globalDiffB = matrixB.getNumRowsGlobal() / matrixB.getNumRowsLocal();		// picked rows arbitrarily
 

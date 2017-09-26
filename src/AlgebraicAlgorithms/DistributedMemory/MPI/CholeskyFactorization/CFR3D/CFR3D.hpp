@@ -227,13 +227,13 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     //    Need to set up the struct that has useful BLAS info
 
     // I am using gemm right now, but I might want to use dtrtri or something due to B being triangular at heart
-    blasEngineArgumentPackage_gemm<double> blasArgs;
+    blasEngineArgumentPackage_gemm<T> blasArgs;
     blasArgs.order = blasEngineOrder::AblasRowMajor;
     blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
     blasArgs.transposeB = blasEngineTranspose::AblasTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 1.;
-    SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
+    SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare,blasEngine>::
       Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
         0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
   }
@@ -246,20 +246,45 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
       matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
 
     // I am using gemm right now, but I might want to use dtrtri or something due to B being triangular at heart
-    blasEngineArgumentPackage_gemm<double> blasArgs;
+    blasEngineArgumentPackage_gemm<T> blasArgs;
     blasArgs.order = blasEngineOrder::AblasRowMajor;
     blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
     blasArgs.transposeB = blasEngineTranspose::AblasTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 1.;
-    SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
+    SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare,blasEngine>::
       Multiply(matrixA, tempLI, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
         0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
   }
 
   // Now we need to perform L_{21}L_{21}^T via syrk
 
-  //Matrix<T,U,MatrixStructureSquare,Distribution> holdLsyrk(std::vector<T>(), localShift, localShift, globalShift, globalShift);
-  //SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>
+  Matrix<T,U,MatrixStructureSquare,Distribution> holdLsyrk(std::vector<T>(localShift*localShift), localShift, localShift, globalShift, globalShift, true);
+  blasEngineArgumentPackage_syrk<T> syrkPackage;
+  syrkPackage.order = blasEngineOrder::AblasRowMajor;
+  syrkPackage.uplo = blasEngineUpLo::AblasLower;
+  syrkPackage.transposeA = blasEngineTranspose::AblasNoTrans;
+  syrkPackage.alpha = 1.;
+  syrkPackage.beta = 1.;
+  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixL, holdLsyrk,
+    matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, 0, localShift, 0, localShift, commWorld, syrkPackage, true, false);
+
+  // Next step: A_{22} - holdLsyrk.
+  Matrix<T,U,MatrixStructureSquare,Distribution> holdSum(std::vector<T>(localShift*localShift), localShift, localShift, globalShift, globalShift, true);
+  Matrix<T,U,MatrixStructureSquare,Distribution> matrixAquadrant4(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixAquadrant4, matAstartX+localShift,
+    matAendX, matAstartY+localShift, matAendY);
+  
+  std::vector<T>& syrkVec = holdLsyrk.getVectorData();
+  std::vector<T>& matAVec = matrixAquadrant4.getVectorData();
+  std::vector<T>& holdVec = holdSum.getVectorData();
+  for (U i=0; i<localShift; i++)
+  {
+    for (U j=0; j<localShift; j++)
+    {
+      U index = i*localShift+j;
+      holdVec[index] = matAVec[index] - syrkVec[index];
+    }
+  }
 
 }
