@@ -5,6 +5,8 @@
 
 // System includes
 #include <iostream>
+#include <tuple>
+#include <cmath>
 
 // Local includes
 #include "./../../../../../AlgebraicContainers/Matrix/Matrix.h"
@@ -32,40 +34,58 @@ public:
   // However, we still need to template this method because the method needs to be aware of the Matrix's template parameters
   //   in order to use it as a method argument.
 
-  template<
-            template<typename,typename, template<typename,typename,int> class> class Structure,
-            template<typename,typename,int> class Distribution
-          >
+  template<template<typename,typename,int> class Distribution>
   static T validateLocal(
-                        Matrix<T,U,Structure,Distribution>& matrixSol,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol,
                         U localDimensionX,
                         U localDimensionY,
                         U localDimensionZ,
                         U globalDimensionX,
                         U globalDimensionY,
                         U globalDimensionZ,
-                        MPI_Comm comm,
-                        const blasEngineArgumentPackage<T>& srcPackage
+                        MPI_Comm commWorld,
+                        const blasEngineArgumentPackage_gemm<T>& srcPackage
                       );
 
-  template<
-            template<typename,typename, template<typename,typename,int> class> class Structure,
-            template<typename,typename,int> class Distribution
-          >
+  template<template<typename,typename,int> class Distribution>
   static T validateLocal(
-                        Matrix<T,U,Structure,Distribution>& matrixSol,
-                        U matrixSolcutYstart,
-                        U matrixSolcutYend,
-                        U matrixSolcutZstart,
-                        U matrixSolcutZend,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol,
+                        U localDimensionX,
+                        U localDimensionY,
+                        U localDimensionZ,
                         U globalDimensionX,
                         U globalDimensionY,
                         U globalDimensionZ,
-                        MPI_Comm comm,
-                        const blasEngineArgumentPackage<T>& srcPackage
+                        MPI_Comm commWorld,
+                        const blasEngineArgumentPackage_trmm<T>& srcPackage
                       );
 
+  template<template<typename,typename,int> class Distribution>
+  static T validateLocal(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol,
+                        U localDimensionX,
+                        U localDimensionY,
+                        U localDimensionZ,
+                        U globalDimensionX,
+                        U globalDimensionY,
+                        U globalDimensionZ,
+                        MPI_Comm commWorld,
+                        const blasEngineArgumentPackage_syrk<T>& srcPackage
+                      );
 
+private:
+
+  static T getResidualSquare(
+				std::vector<T>& myValues,
+				std::vector<T>& blasValues,
+				U localDimensionX,
+				U localDimensionY,
+				U localDimensionZ,
+				U globalDimensionX,
+				U globalDimensionY,
+				U globalDimensionZ,
+		                std::tuple<MPI_Comm, int, int, int, int> commInfo
+			    );
 };
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)

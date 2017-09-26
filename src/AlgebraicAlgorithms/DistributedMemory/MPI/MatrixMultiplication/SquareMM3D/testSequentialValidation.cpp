@@ -55,6 +55,11 @@ int main(int argc, char** argv)
   SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
     Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
 
+  if (rank == 0)
+  std::cout << "Rank 0 first 3 values - " << (matC.getRawData())[0] << " " << (matC.getRawData())[1] << " " << (matC.getRawData())[2] << std::endl;
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
   double error = MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize,
     globalMatrixSize, globalMatrixSize, globalMatrixSize, MPI_COMM_WORLD, blasArgs);
 

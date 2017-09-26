@@ -91,7 +91,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], dimensionX, dimensionY,
     dimensionX, dimensionZ, dimensionY, dimensionZ, dimensionY, dimensionX, dimensionY, srcPackage);
 
-  MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], sizeof(T)*numElems, MPI_CHAR, MPI_SUM, depthComm);
+  MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
   // Unlike before when I had explicit new calls, the memory will get deleted automatically since the vectors will go out of scope
 }
@@ -150,12 +150,11 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   //   But, trmm only deals with 2 matrices matrixA and matrixB, and stores the result in matrixB.
   //   Should the user just deal with this? And how do we deal with a template parameter that doesn't need to exist?
 
-  const blasEngineArgumentPackage_trmm<T>& blasArgs = static_cast<const blasEngineArgumentPackage_trmm<T>&>(srcPackage);
   blasEngine<T,U>::_trmm(matrixAforEnginePtr, &matrixBforEngine[0], (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
     (srcPackage.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX), (srcPackage.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
     (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY), srcPackage);
 
-  MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], sizeof(T)*sizeB, MPI_CHAR, MPI_SUM, depthComm);
+  MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], sizeB, MPI_DOUBLE, MPI_SUM, depthComm);
 }
 
 template<typename T, typename U,
@@ -210,7 +209,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   blasEngine<T,U>::_syrk(matrixAforEnginePtr, &matrixBforEngine[0], dimensionX, dimensionY,
     dimensionX, dimensionY, srcPackage);
 
-  MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], sizeof(T)*numElems, MPI_CHAR, MPI_SUM, depthComm);
+  MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 }
 
 template<typename T, typename U,
