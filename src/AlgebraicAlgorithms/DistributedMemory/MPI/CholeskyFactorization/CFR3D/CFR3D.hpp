@@ -292,4 +292,18 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     0, localShift, 0, localShift, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY,
     matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, commWorld);
 
+  // Next step : temp <- L_{21}*LI_{11}
+  // We can re-use holdLsyrk as our temporary output matrix.
+
+  Matrix<T,U,MatrixStructureSquare,Distribution>& tempInverse = holdLsyrk;
+  
+  blasEngineArgumentPackage_gemm<T> invPackage1;
+  invPackage1.order = blasEngineOrder::AblasRowMajor;
+  invPackage1.transposeA = blasEngineTranspose::AblasNoTrans;
+  invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
+  invPackage1.alpha = 1.;
+  invPackage1.beta = 1.;
+  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixL, matrixLI,
+    tempInverse, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, matLIstartX, matLIstartX+localShift, matLIstartY,
+      matLIstartY+localShift, 0, localShift, 0, localShift, commWorld, invPackage1, true, true, false);
 }
