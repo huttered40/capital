@@ -161,7 +161,7 @@ private:
 
   template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-  static T* getSubMatrix(
+  static Matrix<T,U,StructureArg,Distribution>* getSubMatrix(
 				Matrix<T,U,StructureArg, Distribution>& matrixArg,
 				U matrixArgColumnStart,
 				U matrixArgColumnEnd,

@@ -438,7 +438,7 @@ template<typename T, typename U,
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-T* SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getSubMatrix(
+Matrix<T,U,StructureArg,Distribution>* SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getSubMatrix(
 											Matrix<T,U,StructureArg, Distribution>& matrixArg,
 											U matrixArgColumnStart,
 											U matrixArgColumnEnd,
