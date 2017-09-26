@@ -18,23 +18,26 @@
 // Lets use partial template specialization
 // So only declare the fully templated class
 // Why not just use square? Because later on, I may want to experiment with LowerTriangular Structure.
+// Also note, we do not need an extra template parameter for L-inverse. Presumably if the user wants L to be LowerTriangular, then he wants L-inverse
+//   to be LowerTriangular as well
 
 template<typename T, typename U,
   template<typename,typename,template<typename,typename,int> class> class StructureA,
-  template<typename,typename,template<typename,typename,int> class> class StructureL>
+  template<typename,typename,template<typename,typename,int> class> class StructureL,
+  template<typename, typename> class blasEngine>
 class CFR3D;
 
 // Partial specialization of CFR3D algorithm class
-template<typename T, typename U>
-class CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>
+template<typename T, typename U, template<typename, typename> class blasEngine>
+class CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare, blasEngine>
 {
 public:
   // Prevent instantiation of this class
   CFR3D() = delete;
   CFR3D(const CFR3D& rhs) = delete;
   CFR3D(CFR3D&& rhs) = delete;
-  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>& operator=(const CFR3D& rhs) = delete;
-  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>& operator=(CFR3D&& rhs) = delete;
+  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>& operator=(const CFR3D& rhs) = delete;
+  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>& operator=(CFR3D&& rhs) = delete;
 
   template<template<typename,typename,int> class Distribution>
   static void Factor(

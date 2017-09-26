@@ -48,7 +48,7 @@ int main(int argc, char** argv)
 
   cout << "Processor " << rank << " has dimensions - (" << pCoordX << "," << pCoordY << "," << pCoordZ << ")\n";
 
-  CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare>::
+  CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
     Factor(matA, matL, matLI, localMatrixSize, MPI_COMM_WORLD);
 
   MPI_Barrier(MPI_COMM_WORLD);		// for debugging

@@ -1,9 +1,9 @@
 /* Author: Edward Hutter */
 
 
-template<typename T, typename U>
+template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::Factor(
+void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
@@ -30,9 +30,9 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::Factor(
     0, dimension, 0, dimension, 0, dimension, 0, dimension, 0, dimension, 0, dimension, transposePartner, commWorld);
 }
 
-template<typename T, typename U>
+template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
+void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
@@ -233,7 +233,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     blasArgs.transposeB = blasEngineTranspose::AblasTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 1.;
-    SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
+    SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
       Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
         0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
   }
@@ -252,16 +252,14 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare>::rFactor(
     blasArgs.transposeB = blasEngineTranspose::AblasTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 1.;
-    SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
+    SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare, cblasEngine>::
       Multiply(matrixA, tempLI, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
         0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
   }
 
-  // Note that we aim to "fill up" the bottom-left part of L when this returns.
-
-  std::cout << "I am rank - " << rank << " and am done with a CFR3D with localDimension - " << localDimension << "\n";
-  MPI_Barrier(MPI_COMM_WORLD);		// for debugging
-
   // Now we need to perform L_{21}L_{21}^T via syrk
+
+  //Matrix<T,U,MatrixStructureSquare,Distribution> holdLsyrk(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+  //SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>
 
 }
