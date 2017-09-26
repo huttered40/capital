@@ -67,6 +67,13 @@ T CFvalidate<T,U>::getResidualTriangle(
   T error = 0;
   int pCoordX = std::get<1>(commInfo);
   int pCoordY = std::get<2>(commInfo);
+  int pCoordZ = std::get<3>(commInfo);
+  bool isRank0 = false;
+  if ((pCoordX == pCoordY) && (pCoordX == 0) && (pCoordZ == 0))
+  {
+    isRank0 = true;
+  }
+
   int pGridDimensionSize = std::get<4>(commInfo);
   U countMyValues = 0;
   U countLapackValues = pCoordX + pCoordY*globalDimension;
@@ -77,13 +84,14 @@ T CFvalidate<T,U>::getResidualTriangle(
     for (U j=0; j<=i; j++)
     {
       T errorSquare = abs(myValues[countMyValues] - lapackValues[countLapackValues]);
-      std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
+      if (isRank0) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       countLapackValues += pGridDimensionSize;
       countMyValues++;
     }
     countLapackValues = saveCountRef + pGridDimensionSize*globalDimension;
+    countMyValues += (localDimension - i-1);
   }
 
   error = std::sqrt(error);
