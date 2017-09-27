@@ -232,7 +232,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
     blasArgs.transposeB = blasEngineTranspose::AblasTrans;
     blasArgs.alpha = 1.;
-    blasArgs.beta = 1.;
+    blasArgs.beta = 0.;
     SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare,blasEngine>::
       Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
         0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
@@ -251,7 +251,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
     blasArgs.transposeB = blasEngineTranspose::AblasTrans;
     blasArgs.alpha = 1.;
-    blasArgs.beta = 1.;
+    blasArgs.beta = 0.;
     SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare,blasEngine>::
       Multiply(matrixA, tempLI, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
         0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
@@ -265,7 +265,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
   syrkPackage.uplo = blasEngineUpLo::AblasLower;
   syrkPackage.transposeA = blasEngineTranspose::AblasNoTrans;
   syrkPackage.alpha = 1.;
-  syrkPackage.beta = 1.;
+  syrkPackage.beta = 0.;
   SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixL, holdLsyrk,
     matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, 0, localShift, 0, localShift, commWorld, syrkPackage, true, false);
 
@@ -302,7 +302,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
   invPackage1.transposeA = blasEngineTranspose::AblasNoTrans;
   invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
   invPackage1.alpha = 1.;
-  invPackage1.beta = 1.;
+  invPackage1.beta = 0.;
   SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixL, matrixLI,
     tempInverse, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, matLIstartX, matLIstartX+localShift, matLIstartY,
       matLIstartY+localShift, 0, localShift, 0, localShift, commWorld, invPackage1, true, true, false);

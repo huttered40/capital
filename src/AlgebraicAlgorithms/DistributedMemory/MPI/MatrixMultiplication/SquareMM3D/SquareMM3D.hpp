@@ -265,12 +265,25 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
   Matrix<T,U,StructureC,Distribution>& matC = getSubMatrix(matrixC, subMatrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, globalDiffC, cutC);
 
-  std::cout << "START MULTIPLY\n";
-  MPI_Barrier(commWorld);
   Multiply(matA, matB, matC, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
 
-  std::cout << "DONE WITH MULTIPLY\n";
-  MPI_Barrier(commWorld);
+
+  // for debugging
+  int rank;
+  MPI_Comm_rank(commWorld, &rank);
+  if (rank == 0)
+  {
+    for (int i=0; i<sizeA; i++)
+    {
+      std::cout << matA.getRawData()[i] << " ";
+    }
+    std::cout << "\n\n";
+    std::cout << "first 4 values - " << matC.getRawData()[0] << " " << matC.getRawData()[1] << " " << matC.getRawData()[2] << " " << matC.getRawData()[3] << std::endl;
+    for (int i=0; i<sizeB; i++)
+    {
+      std::cout << matB.getRawData()[i] << " ";
+    }
+  }
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC)
@@ -400,12 +413,12 @@ void SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::BroadcastPa
 {
   if (isRoot)
   {
-    MPI_Bcast(&data[0], sizeof(T)*size, MPI_CHAR, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, MPI_DOUBLE, pGridCoordZ, panelComm);
   }
   else
   {
     data.resize(size);
-    MPI_Bcast(&data[0], sizeof(T)*size, MPI_CHAR, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, MPI_DOUBLE, pGridCoordZ, panelComm);
   }
 }
 
@@ -429,8 +442,8 @@ T* SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
       matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal());
     if (!isRoot)
     {
-      Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::move(data), matrixArg.getNumColumnsLocal(), matrixArg.getNumRowsLocal(),
-        matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal(), true);
+      Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::vector<T>(matrixArg.getNumColumnsLocal()*matrixArg.getNumRowsLocal())
+        , matrixArg.getNumColumnsLocal(), matrixArg.getNumRowsLocal(), matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal(), true);
       Serializer<T,U,StructureArg,MatrixStructureSquare>::Serialize(matrixToSerialize, matrixForEngine);
     }
     else

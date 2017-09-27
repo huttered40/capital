@@ -33,7 +33,8 @@ int main(int argc, char** argv)
   cout << "global matrix size - " << globalMatrixSize << ", local Matrix size - " << localMatrixSize;
   cout << ", rank - " << rank << ", size - " << size << ", one dimension of the 3D grid's size - " << pGridDimensionSize << endl;
 
-  MatrixTypeA matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+  MatrixTypeA matA(8,8,16,16);
+  MatrixTypeA matAcheck(16,16,16,16);
   MatrixTypeL matL(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
   MatrixTypeL matLI(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
 
@@ -43,12 +44,34 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
-  matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, true);
+  //matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, true);
 
-  CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
-    Factor(matA, matL, matLI, localMatrixSize, MPI_COMM_WORLD);
+  matA.DistributeSymmetric(0, 1, 2, 2, true);
+  matAcheck.DistributeSymmetric(0, 0, 1, 1, true);
 
-  MPI_Barrier(MPI_COMM_WORLD);		// for debugging
+  for (int i=0; i<8; i++)
+  {
+    for (int j=0; j<8; j++)
+    {
+      std::cout << matA.getRawData()[i*8+j] << " ";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n\n\n";
+  for (int i=0; i<16; i++)
+  {
+    for (int j=0; j<16; j++)
+    {
+      std::cout << matAcheck.getRawData()[i*16+j] << " ";
+    }
+    std::cout << "\n";
+  }
+
+
+  //CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
+    //Factor(matA, matL, matLI, localMatrixSize, MPI_COMM_WORLD);
+
+  //MPI_Barrier(MPI_COMM_WORLD);		// for debugging
 
   if (rank == 0)
   //matL.print();
