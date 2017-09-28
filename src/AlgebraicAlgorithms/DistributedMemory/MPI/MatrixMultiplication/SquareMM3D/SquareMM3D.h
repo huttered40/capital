@@ -155,6 +155,7 @@ private:
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static T* getEnginePtr(
 				Matrix<T,U,StructureArg, Distribution>& matrixArg,
+				Matrix<T,U,MatrixStructureSquare, Distribution>& matrixDest,
 				std::vector<T>& data,
 				bool isRoot
                           );

@@ -73,6 +73,14 @@ private:
                        MPI_Comm commWorld
                      );
 
+  template<template<typename,typename,template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution>
+  static void transposeSwap(
+				Matrix<T,U,StructureArg,Distribution>& mat,
+				int myRank,
+				int transposeRank
+			   );
+
 };
 
 #include "CFR3D.hpp"

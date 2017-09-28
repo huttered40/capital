@@ -199,6 +199,9 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     return;
   }
 
+  int rank;
+  // use MPI_COMM_WORLD for this p2p communication for transpose, but could use a smaller communicator
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   U localShift = (localDimension>>1);
   U globalShift = (globalDimension>>1);
   rFactor(matrixA, matrixL, matrixLI, localShift, bcDimension, globalShift,
@@ -206,78 +209,39 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, commWorld);
 
-  int rank;
-  // use MPI_COMM_WORLD for this p2p communication for transpose, but could use a smaller communicator
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a square buffer
+  Matrix<T,U,MatrixStructureLowerTriangular,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+  // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, packedMatrix,
+    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
 
-  // Regardless of whether or not we don't need to communicate, we still need to serialize into a square buffer
-  if (rank != transposePartner)
-  {
-    // Serialize the square matrix into the nonzero lower triangular (so avoid sending the zeros in the upper-triangular part of matrix)
-    Matrix<T,U,MatrixStructureLowerTriangular,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
-    // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, packedMatrix,
-      matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
+  transposeSwap(packedMatrix, rank, transposePartner);
  
-    // Transfer with transpose rank
-    MPI_Sendrecv_replace(packedMatrix.getRawData(), packedMatrix.getNumElems(), MPI_DOUBLE, transposePartner, 0, transposePartner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  blasEngineArgumentPackage_gemm<T> blasArgs;
+  blasArgs.order = blasEngineOrder::AblasRowMajor;
+  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+  blasArgs.transposeB = blasEngineTranspose::AblasTrans;
+  blasArgs.alpha = 1.;
+  blasArgs.beta = 0.;
+  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare,blasEngine>::
+    Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
 
-    // Note: the received data that now resides in packedMatrix is NOT transposed, and the Matrix structure is LowerTriangular
-    //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
-    //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
-
-    // Now, we want to be able to move this "raw, temporary, and anonymous" buffer into a Matrix structure, to be passed into
-      // MatrixMultiplication at no cost. We definitely do not want to copy, we want to move!
-    // But wait! That buffer is exactly what we need anyway
-    // Wait again!! Why do we need to do this? The structure is already LowerTriangular. Just keep it and have the non-transpose processor
-    //   serialize his Square matrix structure into a lower triangular
-
-    // Call matrix multiplication that does not cut up matrix B in C <- AB
-    //    Need to set up the struct that has useful BLAS info
-
-    // I am using gemm right now, but I might want to use dtrmm or something due to B being triangular at heart
-    //   but note that trmm will write the output matrix to matrix B. So that is not something we want here.
-    blasEngineArgumentPackage_gemm<T> blasArgs;
-    blasArgs.order = blasEngineOrder::AblasRowMajor;
-    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-    blasArgs.transposeB = blasEngineTranspose::AblasTrans;
-    blasArgs.alpha = 1.;
-    blasArgs.beta = 0.;
-    SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare,blasEngine>::
-      Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
-        0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
-  }
-  else
-  {
-    // For processors that are their own transpose within the slice they are on in a 3D processor grid.
-    // We want to serialize LI from Square into LowerTriangular so it can match the "transposed" processors that did it to send half the words for one reason
-    Matrix<T,U,MatrixStructureLowerTriangular,Distribution> tempLI(std::vector<T>(), localShift, localShift, globalShift, globalShift);
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, tempLI, matLIstartX,
-      matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
-
-    // I am using gemm right now, but I might want to use dtrtri or something due to B being triangular at heart
-    blasEngineArgumentPackage_gemm<T> blasArgs;
-    blasArgs.order = blasEngineOrder::AblasRowMajor;
-    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-    blasArgs.transposeB = blasEngineTranspose::AblasTrans;
-    blasArgs.alpha = 1.;
-    blasArgs.beta = 0.;
-    SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare,blasEngine>::
-      Multiply(matrixA, tempLI, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
-        0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
-  }
 
   // Now we need to perform L_{21}L_{21}^T via syrk
-
+  //   Actually, I am havin trouble with SYRK, lets try gemm instead
   Matrix<T,U,MatrixStructureSquare,Distribution> holdLsyrk(std::vector<T>(localShift*localShift), localShift, localShift, globalShift, globalShift, true);
-  blasEngineArgumentPackage_syrk<T> syrkPackage;
-  syrkPackage.order = blasEngineOrder::AblasRowMajor;
-  syrkPackage.uplo = blasEngineUpLo::AblasLower;
-  syrkPackage.transposeA = blasEngineTranspose::AblasNoTrans;
-  syrkPackage.alpha = 1.;
-  syrkPackage.beta = 0.;
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixL, holdLsyrk,
-    matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, 0, localShift, 0, localShift, commWorld, syrkPackage, true, false);
+
+  Matrix<T,U,MatrixStructureSquare,Distribution> squareL(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, squareL,
+    matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY);
+  Matrix<T,U,MatrixStructureSquare,Distribution> squareLSwap = squareL;
+
+  transposeSwap(squareLSwap, rank, transposePartner);
+
+  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
+    Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
+      0, localShift, 0, localShift, commWorld, blasArgs, false, false, false);
 
   // Next step: A_{22} - holdLsyrk.
   Matrix<T,U,MatrixStructureSquare,Distribution> holdSum(std::vector<T>(localShift*localShift), localShift, localShift, globalShift, globalShift, true);
@@ -323,4 +287,27 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     matrixLI, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY, 0, localShift, 0, localShift,
       matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, true, true, true);
   
+}
+  
+
+template<typename T, typename U, template<typename, typename> class blasEngine>
+template<
+  template<typename,typename,template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution>
+void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::transposeSwap(
+											Matrix<T,U,StructureArg,Distribution>& mat,
+											int myRank,
+											int transposeRank
+										     )
+{
+  if (myRank != transposeRank)
+  {
+    // Transfer with transpose rank
+    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), MPI_DOUBLE, transposeRank, 0, transposeRank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
+    //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
+    //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
+
+  }
 }

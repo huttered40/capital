@@ -35,10 +35,10 @@ int main(void)
   theMatrixS.print();
 */
 
-  MatrixType3 theMatrix1(8,8,16,16);
-  MatrixType3 theMatrix2(4,4,16,16);
-  theMatrix2.DistributeRandom(0,0,2,2);
-  Serializer<double,int,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>::Serialize(theMatrix1,theMatrix2,4,8,4,8,true);
+  MatrixType1 theMatrix1(8,8,16,16);
+  MatrixType2 theMatrix2(8,8,16,16);
+  theMatrix1.DistributeRandom(0,0,2,2);
+  Serializer<double,int,MatrixStructureLowerTriangular,MatrixStructureSquare>::Serialize(theMatrix1,theMatrix2);
   theMatrix1.print();
   cout << "\n\n";
   theMatrix2.print();

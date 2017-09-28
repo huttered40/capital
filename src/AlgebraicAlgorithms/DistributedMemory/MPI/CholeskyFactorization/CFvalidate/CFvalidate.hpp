@@ -95,7 +95,7 @@ T CFvalidate<T,U>::getResidualTriangle(
   int pCoordY = std::get<2>(commInfo);
   int pCoordZ = std::get<3>(commInfo);
   bool isRank1 = false;
-  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 1))
+  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 0))
   {
     isRank1 = true;
   }
