@@ -88,6 +88,24 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   std::vector<T>& matrixCforEngine = matrixC.getVectorData();
   U numElems = matrixC.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
+  // debugging
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (rank == 2)
+  {
+    for (int i=0; i<dimensionX*dimensionX; i++)
+    {
+      std::cout << matrixAforEnginePtr[i] << " ";
+    }
+    std::cout << "\n $$$$$$$$$$$ \n";
+    for (int i=0; i<dimensionX*dimensionX; i++)
+    {
+      std::cout << matrixBforEnginePtr[i] << " ";
+    }
+    std::cout << "\n\n %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% \n\n";
+  }
+
+
   blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], dimensionX, dimensionY,
     dimensionX, dimensionZ, dimensionY, dimensionZ, dimensionY, dimensionX, dimensionY, srcPackage);
 
@@ -267,23 +285,25 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
   Multiply(matA, matB, matC, rangeA_y, rangeA_x, rangeB_x, commWorld, srcPackage);
 
-
+/*
   // for debugging
   int rank;
   MPI_Comm_rank(commWorld, &rank);
-  if (rank == 0)
+  if (rank == 2)
   {
     for (int i=0; i<sizeA; i++)
     {
       std::cout << matA.getRawData()[i] << " ";
     }
-    std::cout << "\n\n";
-    std::cout << "first 4 values - " << matC.getRawData()[0] << " " << matC.getRawData()[1] << " " << matC.getRawData()[2] << " " << matC.getRawData()[3] << std::endl;
+    std::cout << "\n $$$$$$$$$$$$$$$$ \n";
+    //std::cout << "first 4 values - " << matC.getRawData()[0] << " " << matC.getRawData()[1] << " " << matC.getRawData()[2] << " " << matC.getRawData()[3] << std::endl;
     for (int i=0; i<sizeB; i++)
     {
       std::cout << matB.getRawData()[i] << " ";
     }
+    std::cout << "\n\n &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& \n\n";
   }
+*/
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC)
@@ -442,8 +462,8 @@ T* SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
       matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal());
     if (!isRoot)
     {
-      Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::vector<T>(matrixArg.getNumColumnsLocal()*matrixArg.getNumRowsLocal())
-        , matrixArg.getNumColumnsLocal(), matrixArg.getNumRowsLocal(), matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal(), true);
+      Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::move(data), matrixArg.getNumColumnsLocal(),
+        matrixArg.getNumRowsLocal(), matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal(), true);
       Serializer<T,U,StructureArg,MatrixStructureSquare>::Serialize(matrixToSerialize, matrixForEngine);
     }
     else

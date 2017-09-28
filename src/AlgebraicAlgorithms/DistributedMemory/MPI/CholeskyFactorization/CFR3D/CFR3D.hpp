@@ -56,7 +56,6 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
 {
   if (globalDimension == bcDimension)
   {
-    std::cout << "Base case has been reached with " << globalDimension << " " << localDimension << " " << bcDimension << "\n";
 
     // First: AllGather matrix A so that every processor has the same replicated diagonal square partition of matrix A of dimension bcDimension
     //          Note that processors only want to communicate with those on their same 2D slice, since the matrices are replicated on every slice
@@ -89,8 +88,8 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
 
     std::vector<T> blockedBaseCaseData(bcDimension*bcDimension);
     std::vector<T>cyclicBaseCaseData(bcDimension*bcDimension);
-    MPI_Allgather(baseCaseMatrixA.getRawData(), sizeof(T)*baseCaseMatrixA.getNumElems(), MPI_CHAR,
-      &blockedBaseCaseData[0], sizeof(T)*baseCaseMatrixA.getNumElems(), MPI_CHAR, slice2D);
+    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DOUBLE,
+      &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DOUBLE, slice2D);
 
     // Right now, we assume matrixA has Square Structure, if we want to let the user pass in just the unique part via a Triangular Structure,
     //   then we will need to change this.
@@ -142,7 +141,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     // Finally, we need that data for calling the triangular inverse.
 
     // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
-    std::vector<T> storeLI = storeL;
+    std::vector<T> storeLI = storeL;		// true copy because we have to, unless we want to iterate (see below) two different times
     LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', bcDimension, &storeLI[0], bcDimension);
 
     // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
@@ -168,9 +167,20 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
       for (U j=0; j<numCyclicBlocksPerRowCol; j++)
       {
         // We know which column corresponds to our processor in each cyclic "block"
-        U readIndex = j*pGridDimensionSize + columnOffsetWithinBlock + i*(bcDimension*pGridDimensionSize) + rowOffsetWithinBlock*bcDimension;
-        storeL[writeIndex] = storeL[readIndex];
-        storeLI[writeIndex] = storeLI[readIndex];
+        // Future improvement: get rid of the inner if statement and separate out this inner loop into 2 loops
+        // Further improvement: use only triangular matrices and then Serialize into a square later?
+        U readIndexCol = j*pGridDimensionSize + columnOffsetWithinBlock;
+        U readIndexRow = i*pGridDimensionSize + rowOffsetWithinBlock;
+        if (readIndexCol <= readIndexRow)
+        {
+          storeL[writeIndex] = storeL[readIndexCol + readIndexRow*bcDimension];
+          storeLI[writeIndex] = storeLI[readIndexCol + readIndexRow*bcDimension];
+        }
+        else
+        {
+          storeL[writeIndex] = 0.;
+          storeLI[writeIndex] = 0.;
+        }
         writeIndex++;
       }
     }

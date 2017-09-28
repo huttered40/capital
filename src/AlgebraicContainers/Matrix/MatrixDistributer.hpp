@@ -66,7 +66,7 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
     {
       srand48(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
-      if ((diagonallyDominant) && (trackX==trackY) && (i==j))
+      if ((diagonallyDominant) && (trackX == trackY) && (i==j))
       {
         matrix[i][j] += globalDimensionX;		// X or Y, should not matter
       }

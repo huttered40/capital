@@ -44,11 +44,30 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
   globalMatrixType globalMatrixA(globalDimension,globalDimension,globalDimension,globalDimension);
   globalMatrixA.DistributeSymmetric(0, 0, 1, 1, true);		// Hardcode so that the Distributer thinks we own the entire matrix.
 
+  // just for debugging
+  for (U i=0; i<globalDimension; i++)
+  {
+    for (U j=0; j<globalDimension; j++)
+    {
+      if (j>i) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
+    }
+  }
+
+  // for debuggging
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (rank == 0)
+  {
+    std::cout << "print out first 4 values of real A - " << globalMatrixA.getRawData()[16*globalDimension] << " " << globalMatrixA.getRawData()[16*globalDimension+2] << " " << globalMatrixA.getRawData()[16*globalDimension+4] << " " << globalMatrixA.getRawData()[16*globalDimension+6] << "\n\n";
+  }
+
   // Assume row-major
   LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', globalDimension, globalMatrixA.getRawData(), globalDimension);
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
   T error = getResidualTriangle(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
+
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
 
   LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', globalDimension, globalMatrixA.getRawData(), globalDimension);
 
@@ -56,7 +75,7 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
   T error2 = getResidualTriangle(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
-  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
+  MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   return std::make_pair(error, error2);
 }
 
@@ -75,10 +94,10 @@ T CFvalidate<T,U>::getResidualTriangle(
   int pCoordX = std::get<1>(commInfo);
   int pCoordY = std::get<2>(commInfo);
   int pCoordZ = std::get<3>(commInfo);
-  bool isRank0 = false;
-  if ((pCoordX == pCoordY) && (pCoordX == 0) && (pCoordZ == 0))
+  bool isRank1 = false;
+  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 1))
   {
-    isRank0 = true;
+    isRank1 = true;
   }
 
   int pGridDimensionSize = std::get<4>(commInfo);
@@ -90,8 +109,8 @@ T CFvalidate<T,U>::getResidualTriangle(
     U saveCountRef = countLapackValues;
     for (U j=0; j<=i; j++)
     {
-      T errorSquare = abs(myValues[countMyValues] - lapackValues[countLapackValues]);
-      if (isRank0) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
+      T errorSquare = std::abs(myValues[countMyValues] - lapackValues[countLapackValues]);
+      if (isRank1) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       countLapackValues += pGridDimensionSize;
@@ -102,7 +121,7 @@ T CFvalidate<T,U>::getResidualTriangle(
   }
 
   error = std::sqrt(error);
-  if (isRank0) std::cout << "Total error - " << error << "\n\n\n";
+  if (isRank1) std::cout << "Total error - " << error << "\n\n\n";
   return error;		// return 2-norm
 }
 
