@@ -5,11 +5,13 @@
 #include <cstdlib>
 #include <utility>
 #include <cmath>
+#include <string>
 #include <mpi.h>
 
 // Local includes
 #include "CFR3D.h"
 #include "../CFvalidate/CFvalidate.h"
+#include "../../../../../Timer/Timer.h"
 
 using namespace std;
 
@@ -47,14 +49,16 @@ int main(int argc, char** argv)
 
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, true);
 
+  pTimer myTimer;
+  myTimer.setStartTime();
   CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
     Factor(matA, matL, matLI, localMatrixSize, MPI_COMM_WORLD);
-
-  MPI_Barrier(MPI_COMM_WORLD);		// for debugging
+  myTimer.setEndTime();
+  myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D");
 
   std::pair<double,double> error = CFvalidate<double,int>::validateCF_Local(matL, matLI, localMatrixSize, globalMatrixSize, MPI_COMM_WORLD);
 
-  //std::cout << "Rank " << rank << " has CF error " << error.first << " and TI error - " << error.second << std::endl;
+  std::cout << "Rank " << rank << " has CF error " << error.first << " and TI error - " << error.second << std::endl;
 
   MPI_Finalize();
 

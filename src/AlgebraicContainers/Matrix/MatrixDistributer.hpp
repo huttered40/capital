@@ -54,7 +54,6 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
   // Note: this is not fully implemented yet, as I have not decided on whether I need to perform a local transpose
   //       or local (but distributed based on the values each processor gets) transpose.
 
-  std::cout << "HEREHEREHERE\n";
 
   U saveGlobalPosition = localPgridY*globalDimensionX+localPgridX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   U trackX = localPgridX;

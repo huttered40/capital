@@ -25,9 +25,9 @@ static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm co
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
+std::pair<T,T> QRvalidate<T,U>::validateCF_Local(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_Q,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_R,
                         U localDimension,
                         U globalDimension,
                         MPI_Comm commWorld
@@ -44,32 +44,15 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
   globalMatrixType globalMatrixA(globalDimension,globalDimension,globalDimension,globalDimension);
   globalMatrixA.DistributeSymmetric(0, 0, 1, 1, true);		// Hardcode so that the Distributer thinks we own the entire matrix.
 
-
-  // for ease in finding Frobenius Norm
-  for (U i=0; i<globalDimension; i++)
-  {
-    for (U j=0; j<globalDimension; j++)
-    {
-      if (j>i) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
-    }
-  }
-
   // Assume row-major
-  pTimer myTimer;
-  myTimer.setStartTime();
   LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', globalDimension, globalMatrixA.getRawData(), globalDimension);
-  myTimer.setEndTime();
-  myTimer.printParallelTime(1e-9, MPI_COMM_WORLD, "LAPACK Cholesky Factorization (dpotrf)");
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
   T error = getResidualTriangle(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
 
-  myTimer.setStartTime();
   LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', globalDimension, globalMatrixA.getRawData(), globalDimension);
-  myTimer.setEndTime();
-  myTimer.printParallelTime(1e-9, MPI_COMM_WORLD, "LAPACK Triangular Inverse (dtrtri)");
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
   T error2 = getResidualTriangle(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
@@ -82,7 +65,7 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
 template<typename T, typename U>
-T CFvalidate<T,U>::getResidualTriangle(
+T QRvalidate<T,U>::getResidualTriangle(
 		     std::vector<T>& myValues,
 		     std::vector<T>& lapackValues,
 		     U localDimension,
@@ -110,7 +93,7 @@ T CFvalidate<T,U>::getResidualTriangle(
     for (U j=0; j<=i; j++)
     {
       T errorSquare = std::abs(myValues[countMyValues] - lapackValues[countLapackValues]);
-      //if (isRank1) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
+      if (isRank1) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       countLapackValues += pGridDimensionSize;
@@ -121,7 +104,7 @@ T CFvalidate<T,U>::getResidualTriangle(
   }
 
   error = std::sqrt(error);
-  //if (isRank1) std::cout << "Total error - " << error << "\n\n\n";
+  if (isRank1) std::cout << "Total error - " << error << "\n\n\n";
   return error;		// return 2-norm
 }
 

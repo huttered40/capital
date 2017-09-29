@@ -81,43 +81,10 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
   BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
 
-/*
-  // debugging
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  if (rank == 0)
-  {
-    for (int i=0; i<sizeA; i++)
-    {
-      std::cout << (isRootRow ? dataA[i] : foreignA[i]) << " ";
-    }
-    std::cout << "\n $$$$$$$$$$$ \n";
-    for (int i=0; i<sizeB; i++)
-    {
-      std::cout << (isRootColumn ? dataB[i] : foreignB[i]) << " ";
-    }
-    std::cout << "\n\n %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% \n\n";
-  }
-*/
-
   Matrix<T,U,MatrixStructureSquare,Distribution> helperA(std::vector<T>(), dimensionX, dimensionY, dimensionX, dimensionY);
   T* matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
   Matrix<T,U,MatrixStructureSquare,Distribution> helperB(std::vector<T>(), dimensionZ, dimensionX, dimensionX, dimensionY);
   T* matrixBforEnginePtr = getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
-
-
-   // debugging
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  if (rank == 0)
-  {
-    std::cout << "ERGSGSTGTG - " << matrixBforEnginePtr[0] << "\n";
-    for (int i=0; i<dimensionX*dimensionX; i++)
-    {
-      std::cout << matrixBforEnginePtr[i] << " ";
-    }
-    std::cout << "\n\n %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% \n\n";
-  }
 
   // Assume, for now, that matrixC has Square Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
   std::vector<T>& matrixCforEngine = matrixC.getVectorData();
@@ -125,29 +92,6 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
   blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], dimensionX, dimensionY,
     dimensionX, dimensionZ, dimensionY, dimensionZ, dimensionY, dimensionX, dimensionY, srcPackage);
-/*
-  // debugging
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  if (rank == 0)
-  {
-    for (int i=0; i<dimensionX*dimensionX; i++)
-    {
-      std::cout << matrixAforEnginePtr[i] << " ";
-    }
-    std::cout << "\n $$$$$$$$$$$ \n";
-    for (int i=0; i<dimensionX*dimensionX; i++)
-    {
-      std::cout << matrixBforEnginePtr[i] << " ";
-    }
-    std::cout << "\n $$$$$$$$$$$ \n";
-    for (int i=0; i<dimensionX*dimensionX; i++)
-    {
-      std::cout << matrixCforEngine[i] << " ";
-    }
-    std::cout << "\n\n %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% \n\n";
-  }
-*/
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
@@ -325,25 +269,6 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
   Matrix<T,U,StructureC,Distribution>& matC = getSubMatrix(matrixC, subMatrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, globalDiffC, cutC);
 
-/*
-  // for debugging
-  int rank;
-  MPI_Comm_rank(commWorld, &rank);
-  if (rank == 0)
-  {
-    for (int i=0; i<sizeA; i++)
-    {
-      std::cout << matA.getRawData()[i] << " ";
-    }
-    std::cout << "\n $$$$$$$$$$$$$$$$ \n";
-    for (int i=0; i<sizeB; i++)
-    {
-      std::cout << matB.getRawData()[i] << " ";
-    }
-    std::cout << "\n\n &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& \n\n";
-  }
-*/
-
   Multiply(matA, matB, matC, rangeA_x, rangeA_y, rangeB_z, commWorld, srcPackage);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
@@ -512,7 +437,6 @@ T* SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
       // debugging
       int rank;
       MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-      if (rank == 0) std::cout << "I AM RANK 0 AND I AM IN HERE, check value - " << matrixDest.getRawData()[0] << "\n";
     }
     return matrixDest.getRawData();		// this is being deleted off the stack! It is a local variable!!!!!!
   }
