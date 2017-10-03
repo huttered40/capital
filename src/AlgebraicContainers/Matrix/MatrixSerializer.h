@@ -44,6 +44,9 @@ public:
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureSquare, Distributer>& src,Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+
+
+private:
 };
 
 // Use partial specialization to define certain combinations
@@ -76,6 +79,9 @@ public:
   static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
 */
+
+
+private:
 };
 
 // Use partial specialization to define certain combinations
@@ -108,6 +114,9 @@ public:
   static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
 */
+
+
+private:
 };
 
 // Use partial specialization to define certain combinations
@@ -134,6 +143,9 @@ public:
   static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
 */
+
+
+private:
 };
 
 // Use partial specialization to define certain combinations
@@ -154,6 +166,9 @@ public:
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+
+
+private:
 };
 
 // Use partial specialization to define certain combinations
@@ -179,6 +194,9 @@ public:
   static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
 */
+
+
+private:
 };
 
 // Use partial specialization to define certain combinations
@@ -199,6 +217,9 @@ public:
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+
+
+private:
 };
 
 #include "MatrixSerializer.hpp"
