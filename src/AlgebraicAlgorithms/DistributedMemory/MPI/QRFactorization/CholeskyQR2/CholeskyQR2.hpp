@@ -12,13 +12,32 @@ template<template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureQ,Distribution>& matrixQ,
     Matrix<T,U,StructureR,Distribution>& matrixR, U dimensionX, U dimensionY, MPI_Comm commWorld)
 {
-  // we basically allow both Rectangular and Square structures
+  // We assume data is owned relative to a 1D processor grid, so every processor owns a chunk of data consisting of
+  //   all columns and a block of rows.
 
-  // Also note, we need a helper routine for the CholeskyQR stuff. We want these methods to be the CholeskyQR2 routines.
+  // Decision, does user pass in just the local dimensions, or both the local X and Y, as well as the global?
+  //   Note that that info exists in the matrix structures themselves, so we can take advantage of that and
+  //   for now, just not use those arguments. Maybe we will get of them later.
 
-  // set up a syrk
-  // MPI_AllReduce
-  // Sequential calls to blas and lapack
+  Matrix<T,U,StructureQ,Distribution> matrixQ2(std::vector<T>(dimensionX*dimensionY), dimensionX, dimensionY, matrixQ.getNumColumnsGlobal(),
+    matrixR.getNumRowsGlobal(), true);
+  Matrix<T,U,StructureR,Distribution> matrixR1(std::vector<T>(dimensionX*dimensionX), dimensionX, dimensionX, matrixR.getNumColumnsGlobal(),
+    matrixR.getNumRowsGlobal(), true);
+  Matrix<T,U,StructureR,Distribution> matrixR2(std::vector<T>(dimensionX*dimensionX), dimensionX, dimensionX, matrixR.getNumColumnsGlobal(),
+    matrixR.getNumRowsGlobal(), true);
+  Factor1D_cqr(matrixA, matrixQ2, matrixR1, dimensionX, dimensionY, commWorld);
+  Factor1D_cqr(matrixQ, matrixQ, matrixR2, dimensionX, dimensionY, commWorld);
+
+  // Try gemm first, then try trmm later.
+  std::vector<T> finalR(dimensionX*dimensionX);
+  blasEngineArgumentPackage_gemm<T> gemmPack1;
+  gemmPack1.order = blasEngineOrder::AblasRowMajor;
+  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
+  gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
+  gemmPack1.alpha = 1.;
+  gemmPack1.beta = 0.;
+  blasEngine<T,U>::_gemm(matrixR2.getRawData(), matrixR1.getRawData(), matrixR.getRawData(), dimensionX, dimensionX,
+    dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, gemmPack1);
 }
 
 template<typename T,typename U,
@@ -55,7 +74,20 @@ template<template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureQ,Distribution>& matrixQ,
     Matrix<T,U,StructureR,Distribution>& matrixR, U dimensionX, U dimensionY, MPI_Comm commWorld)
 {
-  std::cout << "I am in Factor1D_cqr\n";
+  // Try gemm first, then try syrk later.
+  std::vector<T> localMMvec(dimensionX*dimensionX);
+  blasEngineArgumentPackage_gemm<T> gemmPack1;
+  gemmPack1.order = blasEngineOrder::AblasRowMajor;
+  gemmPack1.transposeA = blasEngineTranspose::AblasTrans;
+  gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
+  gemmPack1.alpha = 1.;
+  gemmPack1.beta = 0.;
+  blasEngine<T,U>::_gemm(matrixA.getRawData(), matrixA.getRawData(), &localMMvec[0], dimensionX, dimensionY,
+    dimensionX, dimensionY, dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, gemmPack1);
+
+  // MPI_Allreduce first to replicate the dimensionY x dimensionY matrix on each processor
+  MPI_Allreduce(MPI_IN_PLACE, &localMMvec[0], localMMvec.size(), MPI_DOUBLE, MPI_SUM, commWorld);
+
 }
 
 template<typename T,typename U,
