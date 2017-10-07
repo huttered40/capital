@@ -80,52 +80,6 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     MPI_Comm_split(commWorld, pGridCoordZ, rankWorld, &slice2D);
     MPI_Comm_rank(slice2D, &rankSlice);
     MPI_Comm_size(slice2D, &sizeSlice);
-/*
-    Matrix<T,U,MatrixStructureSquare,Distribution> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension,
-      globalDimension, globalDimension);
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, baseCaseMatrixA, matAstartX,
-      matAendX, matAstartY, matAendY);
-
-    std::vector<T> blockedBaseCaseData(bcDimension*bcDimension);
-    std::vector<T>cyclicBaseCaseData(bcDimension*bcDimension);
-    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DOUBLE,
-      &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DOUBLE, slice2D);
-
-    // Right now, we assume matrixA has Square Structure, if we want to let the user pass in just the unique part via a Triangular Structure,
-    //   then we will need to change this.
-    //   Note: this operation is just not cache efficient due to hopping around blockedBaseCaseData. Locality is not what we would like,
-    //     but not sure it can really be improved here. Something to look into later.
-    //   Also: Although (for LAPACKE_dpotrf), we need to allocate a square buffer and fill in (only) the lower (or upper) triangular portion,
-    //     in the future, we might want to try different storage patterns from that one paper by Gustavsson
-
-
-    // Strategy: We will write to cyclicBaseCaseData in proper order BUT will have to hop around blockedBaseCaseData. This should be ok since
-    //   reading on modern computer architectures is less expensive via cache misses than writing, and we should not have any compulsory cache misses
-
-    U numCyclicBlocksPerRowCol = bcDimension/pGridDimensionSize;
-    U writeIndex = 0;
-    U recvDataOffset = localDimension*localDimension;
-    // MACRO loop over all cyclic "blocks"
-    for (U i=0; i<numCyclicBlocksPerRowCol; i++)
-    {
-      // Inner loop over all rows in a cyclic "block"
-      for (U j=0; j<pGridDimensionSize; j++)
-      {
-        // Inner loop over all cyclic "blocks" partitioning up the columns
-        for (U k=0; k<numCyclicBlocksPerRowCol; k++)
-        {
-          // Inner loop over all elements within a row of a cyclic "block"
-          for (U z=0; z<pGridDimensionSize; z++)
-          {
-            U readIndex = i*numCyclicBlocksPerRowCol + j*recvDataOffset*pGridDimensionSize + k + z*recvDataOffset;
-            cyclicBaseCaseData[writeIndex++] = blockedBaseCaseData[readIndex];
-          }
-        }
-      }
-    }
-
-    .. above should be put into its own class method since it depends not on 'L' or 'R'
-*/
 
     // Should be fast pass-by-value via move semantics
     std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(matrixA, localDimension, globalDimension, bcDimension, matAstartX, matAendX,
