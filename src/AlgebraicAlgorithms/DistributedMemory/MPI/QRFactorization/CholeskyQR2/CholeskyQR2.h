@@ -45,16 +45,23 @@ public:
 private:
   template<template<typename,typename,int> class Distribution>
   static void Factor1D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureQ,Distribution>& matrixQ,
-    Matrix<T,U,StructureR,Distribution>& matrixR, U dimensionX, U dimensionY, MPI_Comm commWorld);
+    Matrix<T,U,StructureR,Distribution>& matrixR, U localDimensionX, U localDimensionY, MPI_Comm commWorld);
 
   template<template<typename,typename,int> class Distribution>
   static void Factor3D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureQ,Distribution>& matrixQ,
-    Matrix<T,U,StructureR,Distribution>& matrixR, U dimensionX, U dimensionY, MPI_Comm commWorld);
+    Matrix<T,U,StructureR,Distribution>& matrixR, U localDimensionX, U localDimensionY, MPI_Comm commWorld);
 
   template<template<typename,typename,int> class Distribution>
   static void FactorTunable_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureQ,Distribution>& matrixQ,
-    Matrix<T,U,StructureR,Distribution>& matrixR, U dimensionX, U dimensionY, MPI_Comm commWorld);
+    Matrix<T,U,StructureR,Distribution>& matrixR, U localDimensionX, U localDimensionY, MPI_Comm commWorld);
   
+  static void BroadcastPanels(
+				std::vector<T>& data,
+				U size,
+				bool isRoot,
+				int pGridCoordZ,
+				MPI_Comm panelComm
+			      );
 };
 
 #include "CholeskyQR2.hpp"
