@@ -91,18 +91,28 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   std::vector<T>& local = matrixA.getVectorData();
   std::cout << "Size - " << local.size() << " and dimensionX - " << dimensionX << " and localDimensionY - " << localDimensionY << std::endl;
 
-  blasEngine<T,U>::_gemm(matrixA.getRawData(), matrixA.getRawData(), &localMMvec[0], localDimensionY, dimensionX,
+  blasEngine<T,U>::_gemm(matrixA.getRawData(), matrixA.getRawData(), matrixR.getRawData(), localDimensionY, dimensionX,
     dimensionX, localDimensionY, dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, gemmPack1);
 
   // MPI_Allreduce first to replicate the dimensionY x dimensionY matrix on each processor
-  MPI_Allreduce(MPI_IN_PLACE, &localMMvec[0], localMMvec.size(), MPI_DOUBLE, MPI_SUM, commWorld);
+  // Optimization potential: only allReduce half of this matrix because its symmetric
+  //   but only try this later to see if it actually helps, because to do this, I will have to serialize and re-serialize. Would only make sense if dimensionX is huge.
+  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), dimensionX*dimensionX, MPI_DOUBLE, MPI_SUM, commWorld);
 
   // Now, localMMvec is replicated on every processor in commWorld
-  LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', bcDimension, &storeL[0], bcDimension);
+  LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'U', dimensionX, matrixR.getRawData(), dimensionX);
+
+  // Need a true copy to avoid corrupting R-inverse.
+  std::vector<T> RI = matrixR.getVectorData();
 
   // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
-  LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', bcDimension, &storeLI[0], bcDimension);
+  LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'U', 'N', dimensionX, &RI[0], dimensionX);
 
+  // Finish by performing local matrix multiplication Q = A*R^{-1}
+  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
+  blasEngine<T,U>::_gemm(matrixA.getRawData(), &RI[0], matrixQ.getRawData(), dimensionX, localDimensionY,
+    dimensionX, dimensionX, dimensionX, localDimensionY, localDimensionY, dimensionX, dimensionX, gemmPack1);
+   
 }
 
 template<typename T,typename U,
