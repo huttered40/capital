@@ -42,15 +42,17 @@ public:
   template<template<typename,typename,int> class Distribution>
   static void Factor(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
+                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
+                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
                       U dimension,
+                      char dir,
                       MPI_Comm commWorld
                     );
 
+
 private:
   template<template<typename,typename,int> class Distribution>
-  static void rFactor(
+  static void rFactorLower(
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
@@ -70,6 +72,30 @@ private:
                        U matLIstartY,
                        U matLIendY,
                        U tranposePartner,
+                       MPI_Comm commWorld
+                     );
+
+  template<template<typename,typename,int> class Distribution>
+  static void rFactorUpper(
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
+                       U dimension,
+                       U bcDimension,
+                       U globalDimension,
+                       U matAstartX,
+                       U matAendX,
+                       U matAstartY,
+                       U matAendY,
+                       U matRstartX,
+                       U matRendX,
+                       U matRstartY,
+                       U matRendY,
+                       U matRIstartX,
+                       U matRIendX,
+                       U matRIstartY,
+                       U matRIendY,
+                       U transposePartner,
                        MPI_Comm commWorld
                      );
 
@@ -94,6 +120,17 @@ private:
 							int pGridDimensionSize,
 							MPI_Comm slice2Dcomm
 						     );
+
+  static void cyclicToLocalTransformation(
+						std::vector<T>& storeT,
+						std::vector<T>& storeTI,
+						U localDimension,
+						U globalDimension,
+						U bcDimension,
+						int pGridDimensionSize,
+						int rankSlice,
+						char dir
+					 );
 
 };
 
