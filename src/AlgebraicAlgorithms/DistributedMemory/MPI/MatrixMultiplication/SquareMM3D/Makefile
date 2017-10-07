@@ -1,5 +1,5 @@
 CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
-CFLAGS = -g -Wall -O0 -std=c++11
+CFLAGS = -g -Wall -O3 -std=c++11
 
 OBJS1 = SquareMM3D.o
 OBJS2 = test.o

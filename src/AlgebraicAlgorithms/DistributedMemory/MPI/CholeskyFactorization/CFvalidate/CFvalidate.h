@@ -35,12 +35,21 @@ public:
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
                         U localDimension,
                         U globalDimension,
+			char dir,
                         MPI_Comm commWorld
                       );
 
 private:
 
-  static T getResidualTriangle(
+  static T getResidualTriangleLower(
+				std::vector<T>& myValues,
+				std::vector<T>& lapackValues,
+				U localDimension,
+				U globalDimension,
+		                std::tuple<MPI_Comm, int, int, int, int> commInfo
+			    );
+
+  static T getResidualTriangleUpper(
 				std::vector<T>& myValues,
 				std::vector<T>& lapackValues,
 				U localDimension,

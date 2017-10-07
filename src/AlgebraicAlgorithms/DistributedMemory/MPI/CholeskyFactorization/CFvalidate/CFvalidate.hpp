@@ -30,6 +30,7 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
                         U localDimension,
                         U globalDimension,
+                        char dir,
                         MPI_Comm commWorld
                       )
 {
@@ -50,29 +51,32 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
   {
     for (U j=0; j<globalDimension; j++)
     {
-      if (j>i) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
+      if ((dir == 'L') && (j>i)) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
+      if ((dir == 'U') && (j<i)) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
     }
   }
 
   // Assume row-major
   pTimer myTimer;
   myTimer.setStartTime();
-  LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', globalDimension, globalMatrixA.getRawData(), globalDimension);
+  LAPACKE_dpotrf(LAPACK_ROW_MAJOR, dir, globalDimension, globalMatrixA.getRawData(), globalDimension);
   myTimer.setEndTime();
   myTimer.printParallelTime(1e-9, MPI_COMM_WORLD, "LAPACK Cholesky Factorization (dpotrf)");
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualTriangle(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
+  T error = (dir == 'L' ? getResidualTriangleLower(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo)
+              : getResidualTriangleUpper(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo));
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
 
   myTimer.setStartTime();
-  LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', globalDimension, globalMatrixA.getRawData(), globalDimension);
+  LAPACKE_dtrtri(LAPACK_ROW_MAJOR, dir, 'N', globalDimension, globalMatrixA.getRawData(), globalDimension);
   myTimer.setEndTime();
   myTimer.printParallelTime(1e-9, MPI_COMM_WORLD, "LAPACK Triangular Inverse (dtrtri)");
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error2 = getResidualTriangle(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
+  T error2 = (dir == 'L' ? getResidualTriangleLower(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo)
+               : getResidualTriangleUpper(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo));
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
@@ -82,7 +86,7 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
 template<typename T, typename U>
-T CFvalidate<T,U>::getResidualTriangle(
+T CFvalidate<T,U>::getResidualTriangleLower(
 		     std::vector<T>& myValues,
 		     std::vector<T>& lapackValues,
 		     U localDimension,
@@ -117,7 +121,7 @@ T CFvalidate<T,U>::getResidualTriangle(
       countMyValues++;
     }
     countLapackValues = saveCountRef + pGridDimensionSize*globalDimension;
-    countMyValues += (localDimension - i-1);
+    countMyValues += (localDimension - i - 1);
   }
 
   error = std::sqrt(error);
@@ -125,3 +129,47 @@ T CFvalidate<T,U>::getResidualTriangle(
   return error;		// return 2-norm
 }
 
+// We only test the lower triangular for now. The matrices are stored with square structure though.
+template<typename T, typename U>
+T CFvalidate<T,U>::getResidualTriangleUpper(
+		     std::vector<T>& myValues,
+		     std::vector<T>& lapackValues,
+		     U localDimension,
+		     U globalDimension,
+		     std::tuple<MPI_Comm, int, int, int, int> commInfo
+		   )
+{
+  T error = 0;
+  int pCoordX = std::get<1>(commInfo);
+  int pCoordY = std::get<2>(commInfo);
+  int pCoordZ = std::get<3>(commInfo);
+  bool isRank1 = false;
+  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 0))
+  {
+    isRank1 = true;
+  }
+
+  int pGridDimensionSize = std::get<4>(commInfo);
+  U countMyValues = 0;
+  U countLapackValues = pCoordX + pCoordY*globalDimension;
+
+  for (U i=0; i<localDimension; i++)
+  {
+    U saveCountRef = countLapackValues;
+    for (U j=i; j<localDimension; j++)
+    {
+      T errorSquare = std::abs(myValues[countMyValues] - lapackValues[countLapackValues]);
+      //if (isRank1) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
+      errorSquare *= errorSquare;
+      error += errorSquare;
+      countLapackValues += pGridDimensionSize;
+      countMyValues++;
+    }
+    countLapackValues = saveCountRef + pGridDimensionSize*globalDimension;
+    countMyValues += (i+1);
+  }
+
+  error = std::sqrt(error);
+  //if (isRank1) std::cout << "Total error - " << error << "\n\n\n";
+  return error;		// return 2-norm
+}

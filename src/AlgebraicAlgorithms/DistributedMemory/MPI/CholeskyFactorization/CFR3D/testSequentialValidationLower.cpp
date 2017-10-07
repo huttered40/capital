@@ -56,7 +56,7 @@ int main(int argc, char** argv)
   myTimer.setEndTime();
   myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D");
 
-  std::pair<double,double> error = CFvalidate<double,int>::validateCF_Local(matL, matLI, localMatrixSize, globalMatrixSize, MPI_COMM_WORLD);
+  std::pair<double,double> error = CFvalidate<double,int>::validateCF_Local(matL, matLI, localMatrixSize, globalMatrixSize, 'L', MPI_COMM_WORLD);
 
   std::cout << "Rank " << rank << " has CF error " << error.first << " and TI error - " << error.second << std::endl;
 
@@ -64,3 +64,4 @@ int main(int argc, char** argv)
 
   return 0;
 }
+
