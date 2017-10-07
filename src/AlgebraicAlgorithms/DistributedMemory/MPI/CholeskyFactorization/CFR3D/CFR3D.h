@@ -81,6 +81,20 @@ private:
 				int transposeRank
 			   );
 
+  template<template<typename,typename,int> class Distribution>
+  static std::vector<T> blockedToCyclicTransformation(
+							Matrix<T,U,MatrixStructureSquare,Distribution>& matA,
+							U localDimension,
+							U globalDimension,
+							U bcDimension,
+							U matAstartX,
+							U matAendX,
+							U matAstartY,
+							U matAendY,
+							int pGridDimensionSize,
+							MPI_Comm slice2Dcomm
+						     );
+
 };
 
 #include "CFR3D.hpp"

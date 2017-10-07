@@ -97,6 +97,12 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   // MPI_Allreduce first to replicate the dimensionY x dimensionY matrix on each processor
   MPI_Allreduce(MPI_IN_PLACE, &localMMvec[0], localMMvec.size(), MPI_DOUBLE, MPI_SUM, commWorld);
 
+  // Now, localMMvec is replicated on every processor in commWorld
+  LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', bcDimension, &storeL[0], bcDimension);
+
+  // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
+  LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', bcDimension, &storeLI[0], bcDimension);
+
 }
 
 template<typename T,typename U,

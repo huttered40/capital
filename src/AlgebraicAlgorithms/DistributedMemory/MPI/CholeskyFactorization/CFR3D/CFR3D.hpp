@@ -80,7 +80,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     MPI_Comm_split(commWorld, pGridCoordZ, rankWorld, &slice2D);
     MPI_Comm_rank(slice2D, &rankSlice);
     MPI_Comm_size(slice2D, &sizeSlice);
-
+/*
     Matrix<T,U,MatrixStructureSquare,Distribution> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension,
       globalDimension, globalDimension);
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, baseCaseMatrixA, matAstartX,
@@ -124,7 +124,12 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
       }
     }
 
+    .. above should be put into its own class method since it depends not on 'L' or 'R'
+*/
 
+    // Should be fast pass-by-value via move semantics
+    std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(matrixA, localDimension, globalDimension, bcDimension, matAstartX, matAendX,
+      matAstartY, matAendY, pGridDimensionSize, slice2D);
 
     // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
     //   I want to be able to mix and match.
@@ -155,9 +160,10 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactor(
     // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
     //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
 
-    writeIndex = 0;
+    U writeIndex = 0;
     U rowOffsetWithinBlock = rankSlice / pGridDimensionSize;
     U columnOffsetWithinBlock = rankSlice % pGridDimensionSize;
+    U numCyclicBlocksPerRowCol = bcDimension/pGridDimensionSize;
     // MACRO loop over all cyclic "blocks"
     for (U i=0; i<numCyclicBlocksPerRowCol; i++)
     {
@@ -310,4 +316,68 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::transpos
     //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
 
   }
+}
+
+
+template<typename T, typename U, template<typename, typename> class blasEngine>
+template<template<typename,typename,int> class Distribution>
+std::vector<T> CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::blockedToCyclicTransformation(
+											Matrix<T,U,MatrixStructureSquare,Distribution>& matA,
+										        U localDimension,
+											U globalDimension,
+											U bcDimension,
+											U matAstartX,
+											U matAendX,
+											U matAstartY,
+											U matAendY,
+											int pGridDimensionSize,
+											MPI_Comm slice2Dcomm
+										     )
+{
+  Matrix<T,U,MatrixStructureSquare,Distribution> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension,
+    globalDimension, globalDimension);
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matA, baseCaseMatrixA, matAstartX,
+    matAendX, matAstartY, matAendY);
+
+  std::vector<T> blockedBaseCaseData(bcDimension*bcDimension);
+  std::vector<T>cyclicBaseCaseData(bcDimension*bcDimension);
+  MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DOUBLE,
+    &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DOUBLE, slice2Dcomm);
+
+  // Right now, we assume matrixA has Square Structure, if we want to let the user pass in just the unique part via a Triangular Structure,
+  //   then we will need to change this.
+  //   Note: this operation is just not cache efficient due to hopping around blockedBaseCaseData. Locality is not what we would like,
+  //     but not sure it can really be improved here. Something to look into later.
+  //   Also: Although (for LAPACKE_dpotrf), we need to allocate a square buffer and fill in (only) the lower (or upper) triangular portion,
+  //     in the future, we might want to try different storage patterns from that one paper by Gustavsson
+
+
+  // Strategy: We will write to cyclicBaseCaseData in proper order BUT will have to hop around blockedBaseCaseData. This should be ok since
+  //   reading on modern computer architectures is less expensive via cache misses than writing, and we should not have any compulsory cache misses
+
+  U numCyclicBlocksPerRowCol = bcDimension/pGridDimensionSize;
+  U writeIndex = 0;
+  U recvDataOffset = localDimension*localDimension;
+  // MACRO loop over all cyclic "blocks"
+  for (U i=0; i<numCyclicBlocksPerRowCol; i++)
+  {
+    // Inner loop over all rows in a cyclic "block"
+    for (U j=0; j<pGridDimensionSize; j++)
+    {
+      // Inner loop over all cyclic "blocks" partitioning up the columns
+      for (U k=0; k<numCyclicBlocksPerRowCol; k++)
+      {
+        // Inner loop over all elements within a row of a cyclic "block"
+        for (U z=0; z<pGridDimensionSize; z++)
+        {
+          U readIndex = i*numCyclicBlocksPerRowCol + j*recvDataOffset*pGridDimensionSize + k + z*recvDataOffset;
+          cyclicBaseCaseData[writeIndex++] = blockedBaseCaseData[readIndex];
+        }
+      }
+    }
+  }
+
+  // Should be quick pass-by-value via move semantics, since we are effectively returning a localvariable that is going to lose its scope anyways,
+  //   so the compiler should be smart enough to use the move constructor for the vector in the caller function.
+  return cyclicBaseCaseData;
 }
