@@ -1,8 +1,6 @@
 /* Author: Edward Hutter */
 
 
-
-
 template<typename T,typename U,
   template<typename,typename,template<typename,typename,int> class> class StructureA,		// Note: this vould be either rectangular or square.
   template<typename,typename,template<typename,typename,int> class> class StructureQ,		// Note: this vould be either rectangular or square.
@@ -19,17 +17,20 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D(Matr
   //   Note that that info exists in the matrix structures themselves, so we can take advantage of that and
   //   for now, just not use those arguments. Maybe we will get of them later.
 
-  Matrix<T,U,StructureQ,Distribution> matrixQ2(std::vector<T>(dimensionX*dimensionY), dimensionX, dimensionY, matrixQ.getNumColumnsGlobal(),
-    matrixR.getNumRowsGlobal(), true);
-  Matrix<T,U,StructureR,Distribution> matrixR1(std::vector<T>(dimensionX*dimensionX), dimensionX, dimensionX, matrixR.getNumColumnsGlobal(),
-    matrixR.getNumRowsGlobal(), true);
-  Matrix<T,U,StructureR,Distribution> matrixR2(std::vector<T>(dimensionX*dimensionX), dimensionX, dimensionX, matrixR.getNumColumnsGlobal(),
-    matrixR.getNumRowsGlobal(), true);
+  int numPEs;
+  MPI_Comm_size(commWorld, &numPEs);
+  U localDimensionY = dimensionY/numPEs;		// no error check here, but hopefully 
+
+  Matrix<T,U,StructureQ,Distribution> matrixQ2(std::vector<T>(dimensionX*localDimensionY), dimensionX, localDimensionY, dimensionX,
+    dimensionY, true);
+  Matrix<T,U,StructureR,Distribution> matrixR1(std::vector<T>(dimensionX*dimensionX), dimensionX, dimensionX, dimensionX,
+    dimensionX, true);
+  Matrix<T,U,StructureR,Distribution> matrixR2(std::vector<T>(dimensionX*dimensionX), dimensionX, dimensionX, dimensionX,
+    dimensionX, true);
   Factor1D_cqr(matrixA, matrixQ2, matrixR1, dimensionX, dimensionY, commWorld);
-  Factor1D_cqr(matrixQ, matrixQ, matrixR2, dimensionX, dimensionY, commWorld);
+  Factor1D_cqr(matrixQ2, matrixQ, matrixR2, dimensionX, dimensionY, commWorld);
 
   // Try gemm first, then try trmm later.
-  std::vector<T> finalR(dimensionX*dimensionX);
   blasEngineArgumentPackage_gemm<T> gemmPack1;
   gemmPack1.order = blasEngineOrder::AblasRowMajor;
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
@@ -74,6 +75,10 @@ template<template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureQ,Distribution>& matrixQ,
     Matrix<T,U,StructureR,Distribution>& matrixR, U dimensionX, U dimensionY, MPI_Comm commWorld)
 {
+  int numPEs;
+  MPI_Comm_size(commWorld, &numPEs);
+  U localDimensionY = dimensionY/numPEs;
+
   // Try gemm first, then try syrk later.
   std::vector<T> localMMvec(dimensionX*dimensionX);
   blasEngineArgumentPackage_gemm<T> gemmPack1;
