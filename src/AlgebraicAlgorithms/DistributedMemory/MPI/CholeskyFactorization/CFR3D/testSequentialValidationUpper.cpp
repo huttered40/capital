@@ -53,7 +53,7 @@ int main(int argc, char** argv)
   pTimer myTimer;
   myTimer.setStartTime();
   CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
-    Factor(matA, matR, matRI, localMatrixSize, 'R', MPI_COMM_WORLD);
+    Factor(matA, matR, matRI, localMatrixSize, 'U', MPI_COMM_WORLD);
   myTimer.setEndTime();
   myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D");
 

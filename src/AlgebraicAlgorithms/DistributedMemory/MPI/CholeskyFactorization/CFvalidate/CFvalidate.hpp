@@ -159,14 +159,14 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
     for (U j=i; j<localDimension; j++)
     {
       T errorSquare = std::abs(myValues[countMyValues] - lapackValues[countLapackValues]);
-      //if (isRank1) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
+      //if (isRank1) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       countLapackValues += pGridDimensionSize;
       countMyValues++;
     }
     countLapackValues = saveCountRef + pGridDimensionSize*globalDimension;
-    countMyValues += (i+1);
+    countMyValues += i;
   }
 
   error = std::sqrt(error);

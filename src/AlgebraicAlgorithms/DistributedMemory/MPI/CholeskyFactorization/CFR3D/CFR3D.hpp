@@ -32,7 +32,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(
     rFactorLower(matrixA, matrixT, matrixTI, dimension, bcDimension, globalDimension,
       0, dimension, 0, dimension, 0, dimension, 0, dimension, 0, dimension, 0, dimension, transposePartner, commWorld);
   }
-  else if (dir == 'R')
+  else if (dir == 'U')
   {
     rFactorUpper(matrixA, matrixT, matrixTI, dimension, bcDimension, globalDimension,
       0, dimension, 0, dimension, 0, dimension, 0, dimension, 0, dimension, 0, dimension, transposePartner, commWorld);
@@ -315,7 +315,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
     // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
     //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
 
-    cyclicToLocalTransformation(storeR, storeRI, localDimension, globalDimension, bcDimension, pGridDimensionSize, rankSlice, 'R');
+    cyclicToLocalTransformation(storeR, storeRI, localDimension, globalDimension, bcDimension, pGridDimensionSize, rankSlice, 'U');
 
     // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
     //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
@@ -541,7 +541,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::cyclicTo
       // Further improvement: use only triangular matrices and then Serialize into a square later?
       U readIndexCol = j*pGridDimensionSize + columnOffsetWithinBlock;
       U readIndexRow = i*pGridDimensionSize + rowOffsetWithinBlock;
-      if (((dir == 'L') && (readIndexCol <= readIndexRow)) ||  ((dir == 'R') && (readIndexCol >= readIndexRow)))
+      if (((dir == 'L') && (readIndexCol <= readIndexRow)) ||  ((dir == 'U') && (readIndexCol >= readIndexRow)))
       {
         storeT[writeIndex] = storeT[readIndexCol + readIndexRow*bcDimension];
         storeTI[writeIndex] = storeTI[readIndexCol + readIndexRow*bcDimension];
