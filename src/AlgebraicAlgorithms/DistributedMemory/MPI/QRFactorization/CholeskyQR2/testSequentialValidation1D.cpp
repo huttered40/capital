@@ -41,6 +41,8 @@ int main(int argc, char** argv)
 
   matA.DistributeRandom(0, rank, 1, size);
 
+  cout << "Rank " << rank << " has local dimensionX - " << localMatrixDimensionX << ", localDimensionY - " << localMatrixDimensionY << endl;
+
   CholeskyQR2<double,int,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureSquare,cblasEngine>::
     Factor1D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
 
