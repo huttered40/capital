@@ -3,11 +3,13 @@
 // System includes
 #include <iostream>
 #include <cstdlib>
+#include <utility>
 #include <cmath>
 #include <mpi.h>
 
 // Local includes
 #include "CholeskyQR2.h"
+#include "./../QRvalidate/QRvalidate.h"
 
 using namespace std;
 
@@ -29,10 +31,10 @@ int main(int argc, char** argv)
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   // size -- total number of processors in the 1D grid
 
-  uint64_t globalMatrixDimensionY = (1<<(atoi(argv[1])));
-  uint64_t globalMatrixDimensionX = (1<<(atoi(argv[2])));
-  uint64_t localMatrixDimensionY = globalMatrixDimensionY/size;
-  uint64_t localMatrixDimensionX = globalMatrixDimensionX;
+  int globalMatrixDimensionY = (1<<(atoi(argv[1])));
+  int globalMatrixDimensionX = (1<<(atoi(argv[2])));
+  int localMatrixDimensionY = globalMatrixDimensionY/size;
+  int localMatrixDimensionX = globalMatrixDimensionX;
   
   MatrixTypeR matA(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
   MatrixTypeR matQ(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
@@ -45,10 +47,9 @@ int main(int argc, char** argv)
   CholeskyQR2<double,int,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureSquare,cblasEngine>::
     Factor1D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
 
-//  double error = MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize,
-//    globalMatrixSize, globalMatrixSize, globalMatrixSize, MPI_COMM_WORLD, blasArgs);
+  std::pair<double,double> error = QRvalidate<double,int>::validateLocal1D(matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
 
-//  std::cout << "Error for procesor " << rank << " = " << error << std::endl;
+  std::cout << "Error for procesor " << rank << " = " << error.first << std::endl;
 
   MPI_Finalize();
 

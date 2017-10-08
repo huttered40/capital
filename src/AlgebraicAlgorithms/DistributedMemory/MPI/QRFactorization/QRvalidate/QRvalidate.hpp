@@ -21,15 +21,14 @@ static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm co
 }
 */
 
-// We enforce that matrixSol must have Square Structure.
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-std::pair<T,T> QRvalidate<T,U>::validateCF_Local(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_Q,
+std::pair<T,T> QRvalidate<T,U>::validateLocal1D(
+                        Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixSol_Q,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_R,
-                        U localDimension,
-                        U globalDimension,
+                        U globalDimensionX,
+                        U globalDimensionY,
                         MPI_Comm commWorld
                       )
 {
@@ -40,28 +39,43 @@ std::pair<T,T> QRvalidate<T,U>::validateCF_Local(
   auto commInfo = getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
 
-  using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
-  globalMatrixType globalMatrixA(globalDimension,globalDimension,globalDimension,globalDimension);
-  globalMatrixA.DistributeSymmetric(0, 0, 1, 1, true);		// Hardcode so that the Distributer thinks we own the entire matrix.
+  using globalMatrixType = Matrix<T,U,MatrixStructureRectangle,Distribution>;
+  globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
+  globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
 
   // Assume row-major
-  LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'L', globalDimension, globalMatrixA.getRawData(), globalDimension);
+  std::vector<T> tau(globalDimensionX);
+  LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, globalDimensionY, globalDimensionX, globalMatrixA.getRawData(), globalDimensionX, &tau[0]);
+  LAPACKE_dorgqr(LAPACK_ROW_MAJOR, globalDimensionY, globalDimensionX, globalDimensionX,globalMatrixA.getRawData(),
+    globalDimensionX, &tau[0]);
+
+  // Q is in globalMatrixA now
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualTriangle(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
+  T error = 0;//getResidualTriangle(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
 
-  LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'L', 'N', globalDimension, globalMatrixA.getRawData(), globalDimension);
-
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error2 = getResidualTriangle(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
+  T error2 = 0;//getResidualTriangle(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   return std::make_pair(error, error2);
 }
 
+template<typename T, typename U>
+template<template<typename,typename,int> class Distribution>
+std::pair<T,T> QRvalidate<T,U>::validateLocal3D(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_Q,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_R,
+                        U globalDimensionX,
+                        U globalDimensionY,
+                        MPI_Comm commWorld
+                      )
+{
+  // Fill in later after 1D is correct
+}
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
 template<typename T, typename U>
