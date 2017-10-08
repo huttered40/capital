@@ -7,6 +7,7 @@
 #include <mpi.h>
 
 // Local includes
+#include "../../../../../Timer/Timer.h"
 #include "SquareMM3D.h"
 
 using namespace std;
@@ -47,19 +48,24 @@ int main(int argc, char** argv)
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
 
-  cout << "Processor " << rank << " has dimensions - (" << pCoordX << "," << pCoordY << "," << pCoordZ << ")\n";
-
   blasEngineArgumentPackage_gemm<double> blasArgs;
   blasArgs.order = blasEngineOrder::AblasRowMajor;
   blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   blasArgs.alpha = 1.;
-  blasArgs.beta = 1.;
-  SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
-    Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
+  blasArgs.beta = 0.;
 
-  if (rank == 0)
-  matC.print();
+  pTimer myTimer;
+
+  // Loop for getting a good range of results.
+  for (int i=0; i<10; i++)
+  {
+    myTimer.setStartTime();
+    SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
+      Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
+    myTimer.setEndTime();
+    myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D iteration", i);
+  }
 
   MPI_Finalize();
 

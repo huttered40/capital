@@ -2,16 +2,16 @@ CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
 CFLAGS = -g -Wall -O3 -std=c++11
 
 OBJS1 = SquareMM3D.o
-OBJS2 = test.o
+OBJS2 = testPerformance.o
 OBJS3 = testSequentialValidationGemm.o
 OBJS4 = testSequentialValidationTrmm.o
 OBJS5 = testSequentialValidationSyrk.o
 OBJS6 = testSequentialValidationCut.o
 
-all: test testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk testSequentialValidationCut
+all: testPerformance testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk testSequentialValidationCut
 
-test: $(OBJS2)
-	$(CCMPI) $(CFLAGS) -o test $(OBJS2) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
+testPerformance: $(OBJS2)
+	$(CCMPI) $(CFLAGS) -o testPerformance $(OBJS2) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
 testSequentialValidationGemm: $(OBJS3)
 	$(CCMPI) $(CFLAGS) -o testSequentialValidationGemm $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
@@ -25,8 +25,8 @@ testSequentialValidationSyrk: $(OBJS5)
 testSequentialValidationCut: $(OBJS6)
 	$(CCMPI) $(CFLAGS) -o testSequentialValidationCut $(OBJS4) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
-test.o: test.cpp SquareMM3D.h
-	$(CCMPI) $(CFLAGS) -o test.o -c test.cpp
+testPerformance.o: testPerformance.cpp SquareMM3D.h
+	$(CCMPI) $(CFLAGS) -o testPerformance.o -c testPerformance.cpp
 
 testSequentialValidationGemm.o: testSequentialValidationGemm.cpp SquareMM3D.h
 	$(CCMPI) $(CFLAGS) -o testSequentialValidationGemm.o -c testSequentialValidationGemm.cpp
@@ -44,4 +44,4 @@ Summa3D.o: SquareMM3D.h SquareMM3D.hpp
 	$(CCMPI) $(CFLAGS) -o SquareMM3D.o -c SquareMM3D.h
 
 clean:
-	-rm -f *.o *.gch test testSequentialValidation testSequentialValidationCut
+	-rm -f *.o *.gch test testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk testSequentialValidationCut
