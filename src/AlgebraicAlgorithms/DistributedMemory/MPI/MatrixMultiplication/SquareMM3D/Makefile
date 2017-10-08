@@ -44,4 +44,4 @@ Summa3D.o: SquareMM3D.h SquareMM3D.hpp
 	$(CCMPI) $(CFLAGS) -o SquareMM3D.o -c SquareMM3D.h
 
 clean:
-	-rm -f *.o *.gch test testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk testSequentialValidationCut
+	-rm -f *.o *.gch testPerformance testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk testSequentialValidationCut

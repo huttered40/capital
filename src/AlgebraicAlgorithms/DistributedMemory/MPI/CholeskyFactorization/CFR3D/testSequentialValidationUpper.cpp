@@ -35,9 +35,6 @@ int main(int argc, char** argv)
   uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
   uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
   
-  cout << "global matrix size - " << globalMatrixSize << ", local Matrix size - " << localMatrixSize;
-  cout << ", rank - " << rank << ", size - " << size << ", one dimension of the 3D grid's size - " << pGridDimensionSize << endl;
-
   MatrixTypeA matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
   MatrixTypeR matR(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
   MatrixTypeR matRI(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
@@ -50,12 +47,8 @@ int main(int argc, char** argv)
 
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, true);
 
-  pTimer myTimer;
-  myTimer.setStartTime();
   CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
     Factor(matA, matR, matRI, localMatrixSize, 'U', MPI_COMM_WORLD);
-  myTimer.setEndTime();
-  myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D");
 
   std::pair<double,double> error = CFvalidate<double,int>::validateCF_Local(matR, matRI, localMatrixSize, globalMatrixSize, 'U', MPI_COMM_WORLD);
 
