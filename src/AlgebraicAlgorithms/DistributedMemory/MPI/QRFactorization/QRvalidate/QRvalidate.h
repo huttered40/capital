@@ -50,6 +50,8 @@ public:
 
 private:
 
+  static T getResidual1D(std::vector<T>& myQ, std::vector<T>& solQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
+
   static T getResidualTriangle(
 				std::vector<T>& myValues,
 				std::vector<T>& lapackValues,

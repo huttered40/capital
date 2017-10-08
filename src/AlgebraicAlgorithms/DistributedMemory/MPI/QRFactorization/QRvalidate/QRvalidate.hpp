@@ -36,12 +36,12 @@ std::pair<T,T> QRvalidate<T,U>::validateLocal1D(
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
 
-  auto commInfo = getCommunicatorSlice(commWorld);
-  MPI_Comm sliceComm = std::get<0>(commInfo);
-
   using globalMatrixType = Matrix<T,U,MatrixStructureRectangle,Distribution>;
   globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
   globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
+
+  auto commInfo = getCommunicatorSlice(commWorld);
+  MPI_Comm sliceComm = std::get<0>(commInfo);
 
   // Assume row-major
   std::vector<T> tau(globalDimensionX);
@@ -52,15 +52,12 @@ std::pair<T,T> QRvalidate<T,U>::validateLocal1D(
   // Q is in globalMatrixA now
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = 0;//getResidualTriangle(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
+  T error = getResidual1D(matrixSol_Q.getVectorData(), globalMatrixA.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
 
-  // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error2 = 0;//getResidualTriangle(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo);
-
-  // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
-  MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
+  // Need to set up error2 for matrix R, but do that later
+  T error2 = 0;
   return std::make_pair(error, error2);
 }
 
@@ -76,6 +73,34 @@ std::pair<T,T> QRvalidate<T,U>::validateLocal3D(
 {
   // Fill in later after 1D is correct
 }
+
+
+template<typename T, typename U>
+T QRvalidate<T,U>::getResidual1D(std::vector<T>& myQ, std::vector<T>& solQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+{
+  int numPEs, myRank;
+  MPI_Comm_size(commWorld, &numPEs);
+  MPI_Comm_rank(commWorld, &myRank);
+  U localDimensionY = globalDimensionY/numPEs;
+
+  T error = 0;
+  for (U i=0; i<localDimensionY; i++)
+  {
+    for (U j=0; j<globalDimensionX; j++)
+    {
+      U myIndex = i*globalDimensionX+j;
+      U solIndex = (i+localDimensionY*myRank)*globalDimensionX+j;
+      T errorSquare = std::abs(myQ[myIndex] - solQ[solIndex]);
+      if (myRank==0) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[solIndex] << " i - " << i << ", j - " << j << std::endl;
+      errorSquare *= errorSquare;
+      error += errorSquare;
+    }
+  }
+
+  error = std::sqrt(error);
+  return error;
+}
+
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
 template<typename T, typename U>
