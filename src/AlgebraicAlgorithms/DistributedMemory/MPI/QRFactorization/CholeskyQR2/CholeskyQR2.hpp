@@ -154,7 +154,7 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
 {
   int numPEs, myRank, pGridDimensionSize;
   MPI_Comm_size(commWorld, &numPEs);
-  MPI_Comm_size(commWorld, &myRank);
+  MPI_Comm_rank(commWorld, &myRank);
   auto commInfo3D = setUpCommunicators(commWorld);
 
   MPI_Comm rowComm = std::get<0>(commInfo3D);
@@ -189,7 +189,7 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
   MPI_Reduce((isRootColumn ? MPI_IN_PLACE : &localB[0]), &localB[0], localDimensionX*localDimensionX, MPI_DOUBLE,
     MPI_SUM, pGridCoordZ, columnComm);
 
-  MPI_Bcast(&localB[0], localDimensionX*localDimensionX, MPI_DOUBLE, pGridCoordZ, depthComm);
+  MPI_Bcast(&localB[0], localDimensionX*localDimensionX, MPI_DOUBLE, pGridCoordY, depthComm);
 
   // Stuff localB vector into its own matrix so that we can pass it into CFR3D
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixB(std::move(localB), localDimensionX, localDimensionX,
@@ -198,9 +198,10 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
   // Create an extra matrix for R-inverse
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionX*localDimensionX), localDimensionX, localDimensionX,
     localDimensionX*pGridDimensionSize, localDimensionX*pGridDimensionSize, true);
+
   CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionX, 'R', commWorld);
 
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixA, matrixRI,
+  SquareMM3D<T,U,StructureA,MatrixStructureSquare,StructureQ,blasEngine>::Multiply(matrixA, matrixRI,
     matrixQ, localDimensionX, localDimensionY, localDimensionX, commWorld, gemmPack1);
 }
 
