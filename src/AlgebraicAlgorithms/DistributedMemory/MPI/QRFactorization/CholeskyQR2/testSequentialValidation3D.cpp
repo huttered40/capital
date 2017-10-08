@@ -20,23 +20,15 @@ int main(int argc, char** argv)
   using MatrixTypeLT = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
   using MatrixTypeUT = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
 
-  // argv[1] - Matrix size x where x represents 2^x.
-  // So in future, we might want t way to test non power of 2 dimension matrices
+  // argv[1] - Rectangular matrix dimension y (numRows)
+  // argv[2] - Rectangular matrix dimension x (numColumns)
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-  // size -- total number of processors in the 3D grid
-
   int pGridDimensionSize = ceil(pow(size,1./3.));
-  uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
-  uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
-  
-  MatrixTypeS matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeS matQ(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeS matR(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+  // size -- total number of processors in the 3D grid
 
   int helper = pGridDimensionSize;
   helper *= helper;
@@ -44,10 +36,21 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
+  uint64_t globalMatrixDimensionY = (1<<(atoi(argv[1])));
+  uint64_t globalMatrixDimensionX = (1<<(atoi(argv[2])));
+  uint64_t localMatrixDimensionY = globalMatrixDimensionY/pGridDimensionSize;
+  uint64_t localMatrixDimensionX = globalMatrixDimensionX/pGridDimensionSize;
+  
+  MatrixTypeR matA(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
+  MatrixTypeR matQ(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
+  MatrixTypeS matR(localMatrixDimensionX,localMatrixDimensionX,globalMatrixDimensionX,globalMatrixDimensionX);
+
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
 
-  CholeskyQR2<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
-    Factor3D(matA, matQ, matR, localMatrixSize, localMatrixSize, MPI_COMM_WORLD);
+  cout << "Rank " << rank << " has local dimensionX - " << localMatrixDimensionX << ", localDimensionY - " << localMatrixDimensionY << endl;
+
+  CholeskyQR2<double,int,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureSquare,cblasEngine>::
+    Factor1D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
 
 //  double error = MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize,
 //    globalMatrixSize, globalMatrixSize, globalMatrixSize, MPI_COMM_WORLD, blasArgs);

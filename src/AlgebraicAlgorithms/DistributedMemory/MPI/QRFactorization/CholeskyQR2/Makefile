@@ -30,4 +30,4 @@ Summa3D.o: CholeskyQR2.h CholeskyQR2.hpp
 	$(CCMPI) $(CFLAGS) -o CholeskyQR2.o -c CholeskyQR2.h
 
 clean:
-	-rm -f *.o *.gch
+	-rm -f *.o *.gch testSequentialValidation1D testSequentialValidation3D testSequentialValidationTunable

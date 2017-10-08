@@ -139,7 +139,7 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   // Finish by performing local matrix multiplication Q = A*R^{-1}
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
   blasEngine<T,U>::_gemm(matrixA.getRawData(), &RI[0], matrixQ.getRawData(), localDimensionX, localDimensionY,
-    localDimensionX, localDimensionX, localDimensionX, localDimensionY, localDimensionY, localDimensionX, localDimensionX, gemmPack1);
+    localDimensionX, localDimensionX, localDimensionX, localDimensionY, localDimensionX, localDimensionX, localDimensionX, gemmPack1);
    
 }
 

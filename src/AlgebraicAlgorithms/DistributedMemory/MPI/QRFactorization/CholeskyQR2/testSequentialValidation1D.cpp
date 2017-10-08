@@ -27,8 +27,7 @@ int main(int argc, char** argv)
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-  // size -- total number of processors in the 3D grid
+  // size -- total number of processors in the 1D grid
 
   uint64_t globalMatrixDimensionY = (1<<(atoi(argv[1])));
   uint64_t globalMatrixDimensionX = (1<<(atoi(argv[2])));
