@@ -89,9 +89,9 @@ T QRvalidate<T,U>::getResidual1D(std::vector<T>& myQ, std::vector<T>& solQ, U gl
     for (U j=0; j<globalDimensionX; j++)
     {
       U myIndex = i*globalDimensionX+j;
-      U solIndex = (i+localDimensionY*myRank)*globalDimensionX+j;
+      U solIndex = (i*numPEs+myRank)*globalDimensionX+j;
       T errorSquare = std::abs(myQ[myIndex] - solQ[solIndex]);
-      if (myRank==0) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[solIndex] << " i - " << i << ", j - " << j << std::endl;
+      if (myRank==3) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[solIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
     }

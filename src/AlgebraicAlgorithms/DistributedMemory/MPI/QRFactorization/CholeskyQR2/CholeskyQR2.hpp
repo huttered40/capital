@@ -36,7 +36,7 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D(Matr
   gemmPack1.beta = 0.;
   blasEngine<T,U>::_gemm(matrixR2.getRawData(), matrixR1.getRawData(), matrixR.getRawData(), dimensionX, dimensionX,
     dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, gemmPack1);
-
+/*
   // debugging
   int myRank;
   MPI_Comm_rank(commWorld, &myRank);
@@ -50,6 +50,7 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D(Matr
       }
     }
   }
+*/
 }
 
 template<typename T,typename U,
@@ -123,16 +124,15 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   int numPEs;
   MPI_Comm_size(commWorld, &numPEs);
 
-  // Try gemm first, then try syrk later.
+  // Changed from syrk to gemm
   std::vector<T> localMMvec(localDimensionX*localDimensionX);
-  blasEngineArgumentPackage_gemm<T> gemmPack1;
-  gemmPack1.order = blasEngineOrder::AblasRowMajor;
-  gemmPack1.transposeA = blasEngineTranspose::AblasTrans;
-  gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
-  gemmPack1.alpha = 1.;
-  gemmPack1.beta = 0.;
+  blasEngineArgumentPackage_syrk<T> syrkPack;
+  syrkPack.order = blasEngineOrder::AblasRowMajor;
+  syrkPack.uplo = blasEngineUpLo::AblasUpper;
+  syrkPack.transposeA = blasEngineTranspose::AblasTrans;
+  syrkPack.alpha = 1.;
+  syrkPack.beta = 0.;
 
-  std::vector<T>& local = matrixA.getVectorData();
 /*
   // debugging
   int myRank;
@@ -146,8 +146,8 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   }
 */
 
-  blasEngine<T,U>::_gemm(matrixA.getRawData(), matrixA.getRawData(), matrixR.getRawData(), localDimensionY, localDimensionX,
-    localDimensionX, localDimensionY, localDimensionX, localDimensionX, localDimensionX, localDimensionX, localDimensionX, gemmPack1);
+  blasEngine<T,U>::_syrk(matrixA.getRawData(), matrixR.getRawData(), localDimensionY, localDimensionX,
+    localDimensionX, localDimensionX, syrkPack);
 
   // MPI_Allreduce first to replicate the dimensionY x dimensionY matrix on each processor
   // Optimization potential: only allReduce half of this matrix because its symmetric
@@ -199,9 +199,14 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   }
 
   // Finish by performing local matrix multiplication Q = A*R^{-1}
-  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
+  blasEngineArgumentPackage_gemm<T> gemmPack;
+  gemmPack.order = blasEngineOrder::AblasRowMajor;
+  gemmPack.transposeA = blasEngineTranspose::AblasNoTrans;
+  gemmPack.transposeB = blasEngineTranspose::AblasNoTrans;
+  gemmPack.alpha = 1.;
+  gemmPack.beta = 0.;
   blasEngine<T,U>::_gemm(matrixA.getRawData(), &RI[0], matrixQ.getRawData(), localDimensionX, localDimensionY,
-    localDimensionX, localDimensionX, localDimensionX, localDimensionY, localDimensionX, localDimensionX, localDimensionX, gemmPack1);
+    localDimensionX, localDimensionX, localDimensionX, localDimensionY, localDimensionX, localDimensionX, localDimensionX, gemmPack);
 /*
   // debugging
   int myRank;

@@ -49,6 +49,8 @@ int main(int argc, char** argv)
 
   std::pair<double,double> error = QRvalidate<double,int>::validateLocal1D(matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
 
+  MPI_Barrier(MPI_COMM_WORLD);
+
   std::cout << "Error for procesor " << rank << " = " << error.first << std::endl;
 
   MPI_Finalize();
