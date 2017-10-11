@@ -38,8 +38,10 @@ void QRvalidate<T,U>::validateLocal1D(
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
 
-  int myRank;
+  int myRank,numPEs;
+  MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
+  U localDimensionY = globalDimensionY/numPEs;
 
   using globalMatrixType = Matrix<T,U,MatrixStructureRectangle,Distribution>;
   globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
@@ -71,15 +73,17 @@ void QRvalidate<T,U>::validateLocal1D(
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myR - solR is " << error2 << std::endl;}
 
-  // Now, we should check my original A against computed QR and use the getResidual1D_Q to check, since A and Q are of same shape
+  // Now, we should check my QR against A
+/* Below is if we wanted to multiply the LAPACK-generated matrices Q and R to reform A, but now I don't think that test is useful.
   std::vector<T> matrixAtemp(globalDimensionX*globalDimensionY);
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, globalDimensionY, globalDimensionX, globalDimensionX,
     1., &matrixQ[0], globalDimensionX, &matrixR[0], globalDimensionX, 0., &matrixAtemp[0], globalDimensionX);
+*/
 
-  // Hold on, this is the wrong test. I need to be comparing my QR - LAPACK QR.
-  T error3 = getResidual1D_RowCyclic(matrixA.getVectorData(), matrixAtemp, globalDimensionX, globalDimensionY, commWorld);
+  // generate A_computed = myQ*myR and compare against original A
+  T error3 = getResidual1D(matrixA.getVectorData(), myQ.getVectorData(), myR.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error3, 1, MPI_DOUBLE, MPI_SUM, commWorld);
-  if (myRank == 0) {std::cout << "Total error of myQ - solQ is " << error3 << std::endl;}
+  if (myRank == 0) {std::cout << "Total residual error is " << error3 << std::endl;}
 
   T error4 = testOrthogonality1D(myQ.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error4, 1, MPI_DOUBLE, MPI_SUM, commWorld);
@@ -223,13 +227,20 @@ T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, 
   return error;
 }
 
+
+// generate A_computed = myQ*myR and compare against original A
 template<typename T, typename U>
-T QRvalidate<T,U>::testResidual1D(std::vector<T>& myQ, std::vector<T>& solQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>&myR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
   U localDimensionY = globalDimensionY/numPEs;
+
+  std::vector<T> computedA(globalDimensionX*localDimensionY,0);
+  // Again, for now, lets just use cblas, but I can encapsulate it into blasEngine later
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, localDimensionY, globalDimensionX, globalDimensionX,
+    1., &myQ[0], globalDimensionX, &myR[0], globalDimensionX, 0., &computedA[0], globalDimensionX);
 
   T error = 0;
   for (U i=0; i<localDimensionY; i++)
@@ -237,15 +248,7 @@ T QRvalidate<T,U>::testResidual1D(std::vector<T>& myQ, std::vector<T>& solQ, U g
     for (U j=0; j<globalDimensionX; j++)
     {
       U myIndex = i*globalDimensionX+j;
-      U solIndex = (i*numPEs+myRank)*globalDimensionX+j;
-      if (std::abs(myQ[myIndex] + solQ[solIndex]) <= 1e-12)
-      {
-        T errorSquare = std::abs(myQ[myIndex] + solQ[solIndex]);
-        errorSquare *= errorSquare;
-        //error += errorSquare;
-        continue;
-      }
-      T errorSquare = std::abs(myQ[myIndex] - solQ[solIndex]);
+      T errorSquare = std::abs(myA[myIndex] - computedA[myIndex]);
       //if (myRank==0) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[solIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
@@ -294,5 +297,5 @@ T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& 
 template<typename T, typename U>
 T testComputedQR(std::vector<T>& myR, std::vector<T>& solR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
-
+  // Add if needed. This would be myQ*myR - LAPACK-generated Q*R. Talk to Edgar about this on Friday.
 }
