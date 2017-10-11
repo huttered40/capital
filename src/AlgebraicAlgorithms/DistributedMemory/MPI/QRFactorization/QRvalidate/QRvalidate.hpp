@@ -111,12 +111,7 @@ void QRvalidate<T,U>::validateLocal3D(
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   int pGridDimensionSize;
   MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm columnComm = std::get<1>(commInfo3D);
   MPI_Comm sliceComm = std::get<2>(commInfo3D);
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
-  int pGridCoordX = std::get<4>(commInfo3D);
-  int pGridCoordY = std::get<5>(commInfo3D);
-  int pGridCoordZ = std::get<6>(commInfo3D);
   MPI_Comm_size(rowComm, &pGridDimensionSize);
 
   U localDimensionY = globalDimensionY/pGridDimensionSize;
@@ -129,12 +124,12 @@ void QRvalidate<T,U>::validateLocal3D(
   // For now, until I talk with Edgar, lets just have a residual test and an orthogonality test
 
   // generate A_computed = myQ*myR and compare against original A
-  T error1 = getResidual3D(matrixA.getVectorData(), myQ.getVectorData(), myR.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
-  MPI_Allreduce(MPI_IN_PLACE, &error1, 1, MPI_DOUBLE, MPI_SUM, commWorld);
+  T error1 = getResidual3D(matrixA, myQ, myR, globalDimensionX, globalDimensionY, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, &error1, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total residual error is " << error1 << std::endl;}
 
-  T error2 = testOrthogonality3D(myQ.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
-  MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, commWorld);
+  T error2 = testOrthogonality3D(myQ, globalDimensionX, globalDimensionY, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error2 << std::endl;}
 
   return;
@@ -286,7 +281,7 @@ T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& 
 
 
 template<typename T, typename U>
-T testComputedQR(std::vector<T>& myR, std::vector<T>& solR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+T QRvalidate<T,U>::testComputedQR(std::vector<T>& myR, std::vector<T>& solR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
   // Add if needed. This would be myQ*myR - LAPACK-generated Q*R. Talk to Edgar about this on Friday.
   // Now, we should check my QR against A
@@ -299,14 +294,41 @@ T testComputedQR(std::vector<T>& myR, std::vector<T>& solR, U globalDimensionX, 
 
 
 template<typename T, typename U>
-T getResidual3D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>& myR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+template<template<typename,typename,int> class Distribution>
+T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureSquare,Distribution>& myA,
+                         Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
+                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
+                         U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
-
+  // Fill in
 }
 
-
 template<typename T, typename U>
-T testOrthogonality3D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+template<template<typename,typename,int> class Distribution>
+T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
+                               U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
+  auto commInfo3D = setUpCommunicators(commWorld);
+
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  int pGridDimensionSize;
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm columnComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
+  MPI_Comm_size(rowComm, &pGridDimensionSize);
+
+  U localDimensionY = globalDimensionY/pGridDimensionSize;
+  U localDimensionX = globalDimensionX/pGridDimensionSize;
+  // Need to multiply Q^T by Q, then we get back the result, and we compare against an implicit Identity matrix
+  
+  // First, I need to reform these matrices in order to call MM3D
+  Matrix<T,U,MatrixStructureSquare,Distribution> myI(std::vector<T>(localDimensionX*localDimensionY,0), localDimensionX, localDimensionY,
+    globalDimensionX, globalDimensionY, true);
+
+  //Square3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::Multiply(.....);
 
 }

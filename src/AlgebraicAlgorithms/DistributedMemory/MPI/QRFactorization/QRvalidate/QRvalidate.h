@@ -60,8 +60,15 @@ private:
   static T testComputedQR(std::vector<T>& myR, std::vector<T>& solR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
 
   // 3D helper routines
-  static T getResidual3D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>& myR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
-  static T testOrthogonality3D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
+  template<template<typename,typename,int> class Distribution>
+  static T getResidual3D(Matrix<T,U,MatrixStructureSquare,Distribution>& myA,
+                         Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
+                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
+                         U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
+
+  template<template<typename,typename,int> class Distribution>
+  static T testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
+                               U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
 };
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)
