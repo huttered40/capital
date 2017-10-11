@@ -36,21 +36,6 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D(Matr
   gemmPack1.beta = 0.;
   blasEngine<T,U>::_gemm(matrixR2.getRawData(), matrixR1.getRawData(), matrixR.getRawData(), dimensionX, dimensionX,
     dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, gemmPack1);
-/*
-  // debugging
-  int myRank;
-  MPI_Comm_rank(commWorld, &myRank);
-  for (U i=0; i<localDimensionY; i++)
-  {
-    for (U j=0; j<dimensionX; j++)
-    {
-      if (myRank == 0)
-      {
-//        std::cout << matrixQ.getRawData()[i*dimensionX+j] << std::endl;
-      }
-    }
-  }
-*/
 }
 
 template<typename T,typename U,
@@ -133,19 +118,6 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   syrkPack.alpha = 1.;
   syrkPack.beta = 0.;
 
-/*
-  // debugging
-  int myRank;
-  MPI_Comm_rank(commWorld, &myRank);
-  if (myRank == 0)
-  {
-    for (U i=0; i<(localDimensionX*localDimensionX); i++)
-    {
-      std::cout << matrixA.getRawData()[i] << std::endl;
-    }
-  }
-*/
-
   blasEngine<T,U>::_syrk(matrixA.getRawData(), matrixR.getRawData(), localDimensionY, localDimensionX,
     localDimensionX, localDimensionX, syrkPack);
 
@@ -153,19 +125,6 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   // Optimization potential: only allReduce half of this matrix because its symmetric
   //   but only try this later to see if it actually helps, because to do this, I will have to serialize and re-serialize. Would only make sense if dimensionX is huge.
   MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionX*localDimensionX, MPI_DOUBLE, MPI_SUM, commWorld);
-
-/*
-  // debugging
-  int myRank;
-  MPI_Comm_rank(commWorld, &myRank);
-  if (myRank == 0)
-  {
-    for (U i=0; i<(localDimensionX*localDimensionX); i++)
-    {
-      std::cout << matrixR.getRawData()[i] << std::endl;
-    }
-  }
-*/
 
   // For correctness, because we are storing R and RI as square matrices AND using GEMM later on for Q=A*RI, lets manually set the lower-triangular portion of R to zeros
   //   Note that we could also do this before the AllReduce, but it wouldnt affect the cost
@@ -187,17 +146,6 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
   LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'U', 'N', localDimensionX, &RI[0], localDimensionX);
 
-  // debugging
-  int myRank;
-  MPI_Comm_rank(commWorld, &myRank);
-  if (myRank == 0)
-  {
-    for (U i=0; i<(localDimensionX*localDimensionX); i++)
-    {
-      std::cout << RI[i] << std::endl;
-    }
-  }
-
   // Finish by performing local matrix multiplication Q = A*R^{-1}
   blasEngineArgumentPackage_gemm<T> gemmPack;
   gemmPack.order = blasEngineOrder::AblasRowMajor;
@@ -207,18 +155,6 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   gemmPack.beta = 0.;
   blasEngine<T,U>::_gemm(matrixA.getRawData(), &RI[0], matrixQ.getRawData(), localDimensionX, localDimensionY,
     localDimensionX, localDimensionX, localDimensionX, localDimensionY, localDimensionX, localDimensionX, localDimensionX, gemmPack);
-/*
-  // debugging
-  int myRank;
-  MPI_Comm_rank(commWorld, &myRank);
-  if (myRank == 0)
-  {
-    for (U i=0; i<(localDimensionX*localDimensionX); i++)
-    {
-      std::cout << matrixQ.getRawData()[i] << std::endl;
-    }
-  }
-*/ 
 }
 
 template<typename T,typename U,

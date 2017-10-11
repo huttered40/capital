@@ -25,6 +25,7 @@ static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm co
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 std::pair<T,T> QRvalidate<T,U>::validateLocal1D(
+                        Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixSol_Q,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_R,
                         U globalDimensionX,
@@ -45,25 +46,41 @@ std::pair<T,T> QRvalidate<T,U>::validateLocal1D(
 
   // Assume row-major
   std::vector<T> tau(globalDimensionX);
-  LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, globalDimensionY, globalDimensionX, globalMatrixA.getRawData(), globalDimensionX, &tau[0]);
-  LAPACKE_dorgqr(LAPACK_ROW_MAJOR, globalDimensionY, globalDimensionX, globalDimensionX,globalMatrixA.getRawData(),
+  std::vector<T> matrixQ = globalMatrixA.getVectorData();		// true copy
+  LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, globalDimensionY, globalDimensionX, &matrixQ[0], globalDimensionX, &tau[0]);
+  LAPACKE_dorgqr(LAPACK_ROW_MAJOR, globalDimensionY, globalDimensionX, globalDimensionX, &matrixQ[0],
     globalDimensionX, &tau[0]);
 
   // Q is in globalMatrixA now
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidual1D(matrixSol_Q.getVectorData(), globalMatrixA.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
+  T error = getResidual1D_Q(matrixSol_Q.getVectorData(), matrixQ, globalDimensionX, globalDimensionY, commWorld);
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
 
+  // Now generate R using Q and A
+  std::vector<T> matrixR(globalDimensionX*globalDimensionX,0);
+  // For right now, I will just use cblas, but Note that I should template this class with blasEngine
+  cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, globalDimensionX, globalDimensionX, globalDimensionY,
+    1., &matrixQ[0], globalDimensionX, globalMatrixA.getRawData(), globalDimensionX, 0., &matrixR[0], globalDimensionX);
+
   // Need to set up error2 for matrix R, but do that later
-  T error2 = 0;
-  return std::make_pair(error, error2);
+  T error2 = getResidual1D_R(matrixSol_R.getVectorData(), matrixR, globalDimensionX, globalDimensionY, commWorld);
+
+  // Now, we should check my original A against computed QR and use the getResidual1D_Q to check, since A and Q are of same shape
+  std::vector<T> matrixAtemp(globalDimensionX*globalDimensionY);
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, globalDimensionY, globalDimensionX, globalDimensionX,
+    1., &matrixQ[0], globalDimensionX, &matrixR[0], globalDimensionX, 0., &matrixAtemp[0], globalDimensionX);
+
+  T error3 = getResidual1D_Q(matrixA.getVectorData(), matrixAtemp, globalDimensionX, globalDimensionY, commWorld);
+
+  return std::make_pair(error2, error3);
 }
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 std::pair<T,T> QRvalidate<T,U>::validateLocal3D(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_Q,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_R,
                         U globalDimensionX,
@@ -76,7 +93,7 @@ std::pair<T,T> QRvalidate<T,U>::validateLocal3D(
 
 
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D(std::vector<T>& myQ, std::vector<T>& solQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+T QRvalidate<T,U>::getResidual1D_Q(std::vector<T>& myQ, std::vector<T>& solQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
@@ -90,8 +107,47 @@ T QRvalidate<T,U>::getResidual1D(std::vector<T>& myQ, std::vector<T>& solQ, U gl
     {
       U myIndex = i*globalDimensionX+j;
       U solIndex = (i*numPEs+myRank)*globalDimensionX+j;
+      if (std::abs(myQ[myIndex] + solQ[solIndex]) <= 1e-7)
+      {
+        T errorSquare = std::abs(myQ[myIndex] + solQ[solIndex]);
+        errorSquare *= errorSquare;
+        error += errorSquare;
+        continue;
+      }
       T errorSquare = std::abs(myQ[myIndex] - solQ[solIndex]);
-      if (myRank==3) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[solIndex] << " i - " << i << ", j - " << j << std::endl;
+      //if (myRank==0) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[solIndex] << " i - " << i << ", j - " << j << std::endl;
+      errorSquare *= errorSquare;
+      error += errorSquare;
+    }
+  }
+
+  error = std::sqrt(error);
+  return error;
+}
+
+template<typename T, typename U>
+T QRvalidate<T,U>::getResidual1D_R(std::vector<T>& myQ, std::vector<T>& solQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+{
+  // Matrix R is owned by every processor
+  int numPEs, myRank;
+  MPI_Comm_size(commWorld, &numPEs);
+  MPI_Comm_rank(commWorld, &myRank);
+
+  T error = 0;
+  for (U i=0; i<globalDimensionX; i++)
+  {
+    for (U j=i; j<globalDimensionX; j++)
+    {
+      U myIndex = i*globalDimensionX+j;
+      if (std::abs(myQ[myIndex] + solQ[myIndex]) <= 1e-7)
+      {
+        T errorSquare = std::abs(myQ[myIndex] + solQ[myIndex]);
+        errorSquare *= errorSquare;
+        error += errorSquare;
+        continue;
+      }
+      T errorSquare = std::abs(myQ[myIndex] - solQ[myIndex]);
+      //if (myRank==0) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[myIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
     }
@@ -132,7 +188,7 @@ T QRvalidate<T,U>::getResidualTriangle(
     for (U j=0; j<=i; j++)
     {
       T errorSquare = std::abs(myValues[countMyValues] - lapackValues[countLapackValues]);
-      if (isRank1) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
+      //if (isRank1) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       countLapackValues += pGridDimensionSize;
@@ -143,7 +199,7 @@ T QRvalidate<T,U>::getResidualTriangle(
   }
 
   error = std::sqrt(error);
-  if (isRank1) std::cout << "Total error - " << error << "\n\n\n";
+  //if (isRank1) std::cout << "Total error - " << error << "\n\n\n";
   return error;		// return 2-norm
 }
 
