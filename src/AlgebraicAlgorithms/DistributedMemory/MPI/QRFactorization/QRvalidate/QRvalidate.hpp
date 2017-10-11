@@ -306,7 +306,7 @@ T getResidual3D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>& myR, U
 
 
 template<typename T, typename U>
-T testOrthogonality3D(std::vector<T>& myQ, U globalDimensionX, globalDimensionY, MPI_Comm commWorld)
+T testOrthogonality3D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
 
 }
