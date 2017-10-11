@@ -27,8 +27,8 @@ template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void QRvalidate<T,U>::validateLocal1D(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
-                        Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixSol_Q,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_R,
+                        Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
                         U globalDimensionX,
                         U globalDimensionY,
                         MPI_Comm commWorld
@@ -45,9 +45,6 @@ void QRvalidate<T,U>::validateLocal1D(
   globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
   globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
 
-  auto commInfo = getCommunicatorSlice(commWorld);
-  MPI_Comm sliceComm = std::get<0>(commInfo);
-
   // Assume row-major
   std::vector<T> tau(globalDimensionX);
   std::vector<T> matrixQ = globalMatrixA.getVectorData();		// true copy
@@ -58,7 +55,7 @@ void QRvalidate<T,U>::validateLocal1D(
   // Q is in globalMatrixA now
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidual1D_RowCyclic(matrixSol_Q.getVectorData(), matrixQ, globalDimensionX, globalDimensionY, commWorld);
+  T error = getResidual1D_RowCyclic(myQ.getVectorData(), matrixQ, globalDimensionX, globalDimensionY, commWorld);
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myQ - solQ is " << error << std::endl;}
@@ -70,7 +67,7 @@ void QRvalidate<T,U>::validateLocal1D(
     1., &matrixQ[0], globalDimensionX, globalMatrixA.getRawData(), globalDimensionX, 0., &matrixR[0], globalDimensionX);
 
   // Need to set up error2 for matrix R, but do that later
-  T error2 = getResidual1D_Full(matrixSol_R.getVectorData(), matrixR, globalDimensionX, globalDimensionY, commWorld);
+  T error2 = getResidual1D_Full(myR.getVectorData(), matrixR, globalDimensionX, globalDimensionY, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myR - solR is " << error2 << std::endl;}
 
@@ -84,8 +81,13 @@ void QRvalidate<T,U>::validateLocal1D(
   MPI_Allreduce(MPI_IN_PLACE, &error3, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of my - solQ is " << error3 << std::endl;}
 
+  T error4 = testOrthogonality1D(myQ.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, &error4, 1, MPI_DOUBLE, MPI_SUM, commWorld);
+  if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error4 << std::endl;}
+
   return;
 }
+
 
 /* Validation against sequential BLAS/LAPACK constructs */
 template<typename T, typename U>
@@ -178,30 +180,37 @@ T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector
   return error;
 }
 
+
 template<typename T, typename U>
-T QRvalidate<T,U>::testOrthgonality(std::vector<T>& myQ, std::vector<T>& solQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
   U localDimensionY = globalDimensionY/numPEs;
 
+  // generate Q^T*Q and the compare against 0s and 1s, implicely forming the Identity matrix
+  std::vector<T> myI(globalDimensionX*globalDimensionX,0);
+  // Again, for now, lets just use cblas, but I can encapsulate it into blasEngine later
+  cblas_dsyrk(CblasRowMajor, CblasUpper, CblasTrans, globalDimensionX, globalDimensionY, 1., &myQ[0],
+    globalDimensionX, 0., &myI[0], globalDimensionX);
+
   T error = 0;
-  for (U i=0; i<localDimensionY; i++)
+  for (U i=0; i<globalDimensionX; i++)
   {
     for (U j=0; j<globalDimensionX; j++)
     {
       U myIndex = i*globalDimensionX+j;
-      U solIndex = (i*numPEs+myRank)*globalDimensionX+j;
-      if (std::abs(myQ[myIndex] + solQ[solIndex]) <= 1e-12)
+      T errorSquare = 0;
+      // To avoid inner-loop if statements, I could separate out this inner loop, but its not necessary right now
+      if (i==j)
       {
-        T errorSquare = std::abs(myQ[myIndex] + solQ[solIndex]);
-        errorSquare *= errorSquare;
-        //error += errorSquare;
-        continue;
+        errorSquare = std::abs(myI[myIndex] - 1.);
       }
-      T errorSquare = std::abs(myQ[myIndex] - solQ[solIndex]);
-      //if (myRank==0) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[solIndex] << " i - " << i << ", j - " << j << std::endl;
+      else
+      {
+        errorSquare = std::abs(myI[myIndex] - 0.);
+      }
       errorSquare *= errorSquare;
       error += errorSquare;
     }
@@ -212,7 +221,7 @@ T QRvalidate<T,U>::testOrthgonality(std::vector<T>& myQ, std::vector<T>& solQ, U
 }
 
 template<typename T, typename U>
-T QRvalidate<T,U>::testResidual(std::vector<T>& myQ, std::vector<T>& solQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+T QRvalidate<T,U>::testResidual1D(std::vector<T>& myQ, std::vector<T>& solQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
@@ -277,7 +286,8 @@ T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& 
   error = std::sqrt(error);
   return error;
 }
-  
+
+
 template<typename T, typename U>
 T testComputedQR(std::vector<T>& myR, std::vector<T>& solR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
