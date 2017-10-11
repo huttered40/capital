@@ -79,7 +79,7 @@ void QRvalidate<T,U>::validateLocal1D(
   // Hold on, this is the wrong test. I need to be comparing my QR - LAPACK QR.
   T error3 = getResidual1D_RowCyclic(matrixA.getVectorData(), matrixAtemp, globalDimensionX, globalDimensionY, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error3, 1, MPI_DOUBLE, MPI_SUM, commWorld);
-  if (myRank == 0) {std::cout << "Total error of my - solQ is " << error3 << std::endl;}
+  if (myRank == 0) {std::cout << "Total error of myQ - solQ is " << error3 << std::endl;}
 
   T error4 = testOrthogonality1D(myQ.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error4, 1, MPI_DOUBLE, MPI_SUM, commWorld);
@@ -192,8 +192,11 @@ T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, 
   // generate Q^T*Q and the compare against 0s and 1s, implicely forming the Identity matrix
   std::vector<T> myI(globalDimensionX*globalDimensionX,0);
   // Again, for now, lets just use cblas, but I can encapsulate it into blasEngine later
-  cblas_dsyrk(CblasRowMajor, CblasUpper, CblasTrans, globalDimensionX, globalDimensionY, 1., &myQ[0],
+  cblas_dsyrk(CblasRowMajor, CblasUpper, CblasTrans, globalDimensionX, localDimensionY, 1., &myQ[0],
     globalDimensionX, 0., &myI[0], globalDimensionX);
+
+  // To complete the sum (rightward movement of Matvecs), perform an AllReduce
+  MPI_Allreduce(MPI_IN_PLACE, &myI[0], globalDimensionX*globalDimensionX, MPI_DOUBLE, MPI_SUM, commWorld);
 
   T error = 0;
   for (U i=0; i<globalDimensionX; i++)
