@@ -44,21 +44,24 @@ public:
   template<template<typename,typename,int> class Distribution>
   static void validateLocal3D(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_Q,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_R,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
                         U globalDimensionX,
                         U globalDimensionY,
                         MPI_Comm commWorld
                       );
 
 private:
-
+  // 1D helper routines
   static T getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
   static T getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
   static T testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
   static T getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>& myR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
   static T testComputedQR(std::vector<T>& myR, std::vector<T>& solR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
 
+  // 3D helper routines
+  static T getResidual3D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>& myR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
+  static T testOrthogonality3D(std::vector<T>& myQ, U globalDimensionX, globalDimensionY, MPI_Comm commWorld);
 };
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)

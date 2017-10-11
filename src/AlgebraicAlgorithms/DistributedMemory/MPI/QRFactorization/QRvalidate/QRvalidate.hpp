@@ -73,13 +73,6 @@ void QRvalidate<T,U>::validateLocal1D(
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myR - solR is " << error2 << std::endl;}
 
-  // Now, we should check my QR against A
-/* Below is if we wanted to multiply the LAPACK-generated matrices Q and R to reform A, but now I don't think that test is useful.
-  std::vector<T> matrixAtemp(globalDimensionX*globalDimensionY);
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, globalDimensionY, globalDimensionX, globalDimensionX,
-    1., &matrixQ[0], globalDimensionX, &matrixR[0], globalDimensionX, 0., &matrixAtemp[0], globalDimensionX);
-*/
-
   // generate A_computed = myQ*myR and compare against original A
   T error3 = getResidual1D(matrixA.getVectorData(), myQ.getVectorData(), myR.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error3, 1, MPI_DOUBLE, MPI_SUM, commWorld);
@@ -98,8 +91,8 @@ template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void QRvalidate<T,U>::validateLocal3D(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_Q,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_R,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
                         U globalDimensionX,
                         U globalDimensionY,
                         MPI_Comm commWorld
@@ -109,42 +102,40 @@ void QRvalidate<T,U>::validateLocal3D(
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
 
-  using globalMatrixType = Matrix<T,U,MatrixStructureRectangle,Distribution>;
+  int myRank,numPEs;
+  MPI_Comm_size(commWorld, &numPEs);
+  MPI_Comm_rank(commWorld, &myRank);
+
+  auto commInfo3D = setUpCommunicators(commWorld);
+
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  int pGridDimensionSize;
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm columnComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
+  MPI_Comm_size(rowComm, &pGridDimensionSize);
+
+  U localDimensionY = globalDimensionY/pGridDimensionSize;
+  U localDimensionX = globalDimensionX/pGridDimensionSize;
+
+  using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
   globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
   globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
 
-  auto commInfo = getCommunicatorSlice(commWorld);
-  MPI_Comm sliceComm = std::get<0>(commInfo);
+  // For now, until I talk with Edgar, lets just have a residual test and an orthogonality test
 
-  // Assume row-major
-  std::vector<T> tau(globalDimensionX);
-  std::vector<T> matrixQ = globalMatrixA.getVectorData();		// true copy
-  LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, globalDimensionY, globalDimensionX, &matrixQ[0], globalDimensionX, &tau[0]);
-  LAPACKE_dorgqr(LAPACK_ROW_MAJOR, globalDimensionY, globalDimensionX, globalDimensionX, &matrixQ[0],
-    globalDimensionX, &tau[0]);
+  // generate A_computed = myQ*myR and compare against original A
+  T error1 = getResidual3D(matrixA.getVectorData(), myQ.getVectorData(), myR.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, &error1, 1, MPI_DOUBLE, MPI_SUM, commWorld);
+  if (myRank == 0) {std::cout << "Total residual error is " << error1 << std::endl;}
 
-  // Q is in globalMatrixA now
-
-  // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidual1D_Q(matrixSol_Q.getVectorData(), matrixQ, globalDimensionX, globalDimensionY, commWorld);
-
-  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-
-  // Now generate R using Q and A
-  std::vector<T> matrixR(globalDimensionX*globalDimensionX,0);
-  // For right now, I will just use cblas, but Note that I should template this class with blasEngine
-  cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, globalDimensionX, globalDimensionX, globalDimensionY,
-    1., &matrixQ[0], globalDimensionX, globalMatrixA.getRawData(), globalDimensionX, 0., &matrixR[0], globalDimensionX);
-
-  // Need to set up error2 for matrix R, but do that later
-  T error2 = getResidual1D_R(matrixSol_R.getVectorData(), matrixR, globalDimensionX, globalDimensionY, commWorld);
-
-  // Now, we should check my original A against computed QR and use the getResidual1D_Q to check, since A and Q are of same shape
-  std::vector<T> matrixAtemp(globalDimensionX*globalDimensionY);
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, globalDimensionY, globalDimensionX, globalDimensionX,
-    1., &matrixQ[0], globalDimensionX, &matrixR[0], globalDimensionX, 0., &matrixAtemp[0], globalDimensionX);
-
-  T error3 = getResidual1D_Q(matrixA.getVectorData(), matrixAtemp, globalDimensionX, globalDimensionY, commWorld);
+  T error2 = testOrthogonality3D(myQ.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, commWorld);
+  if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error2 << std::endl;}
 
   return;
 }
@@ -298,4 +289,24 @@ template<typename T, typename U>
 T testComputedQR(std::vector<T>& myR, std::vector<T>& solR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
   // Add if needed. This would be myQ*myR - LAPACK-generated Q*R. Talk to Edgar about this on Friday.
+  // Now, we should check my QR against A
+/* Below is if we wanted to multiply the LAPACK-generated matrices Q and R to reform A, but now I don't think that test is useful.
+  std::vector<T> matrixAtemp(globalDimensionX*globalDimensionY);
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, globalDimensionY, globalDimensionX, globalDimensionX,
+    1., &matrixQ[0], globalDimensionX, &matrixR[0], globalDimensionX, 0., &matrixAtemp[0], globalDimensionX);
+*/
+}
+
+
+template<typename T, typename U>
+T getResidual3D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>& myR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+{
+
+}
+
+
+template<typename T, typename U>
+T testOrthogonality3D(std::vector<T>& myQ, U globalDimensionX, globalDimensionY, MPI_Comm commWorld)
+{
+
 }
