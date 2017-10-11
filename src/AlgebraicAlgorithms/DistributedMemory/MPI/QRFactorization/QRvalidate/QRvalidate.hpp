@@ -114,9 +114,6 @@ void QRvalidate<T,U>::validateLocal3D(
   MPI_Comm sliceComm = std::get<2>(commInfo3D);
   MPI_Comm_size(rowComm, &pGridDimensionSize);
 
-  U localDimensionY = globalDimensionY/pGridDimensionSize;
-  U localDimensionX = globalDimensionX/pGridDimensionSize;
-
   using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
   globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
   globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
@@ -300,8 +297,25 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureSquare,Distribution>&
                          Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
                          U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
-  // Fill in
+  auto commInfo3D = setUpCommunicators(commWorld);
+
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  int pGridDimensionSize;
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm columnComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
+  MPI_Comm_size(rowComm, &pGridDimensionSize);
+
+  U localDimensionY = globalDimensionY/pGridDimensionSize;
+  U localDimensionX = globalDimensionX/pGridDimensionSize;
+
+  return 0;  
 }
+
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
@@ -329,6 +343,49 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
   Matrix<T,U,MatrixStructureSquare,Distribution> myI(std::vector<T>(localDimensionX*localDimensionY,0), localDimensionX, localDimensionY,
     globalDimensionX, globalDimensionY, true);
 
-  //Square3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::Multiply(.....);
+  blasEngineArgumentPackage_gemm<double> blasArgs;
+  blasArgs.order = blasEngineOrder::AblasRowMajor;
+  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+  blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+  blasArgs.alpha = 1.;
+  blasArgs.beta = 0.;
 
+  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::Multiply(myQ, myQ, myI, localDimensionX, localDimensionY, localDimensionX, commWorld, blasArgs);
+
+  // for debugging
+  MPI_Barrier(commWorld);
+
+  T error = 0;
+  U myIndex = 0;
+  U implicitIndexX = pGridCoordX;
+  U implicitIndexY = pGridCoordY*globalDimensionX;
+
+  for (U i=0; i<localDimensionX; i++)
+  {
+    U saveCountRef = implicitIndexX;
+    for (U j=0; j<localDimensionX; j++)
+    {
+      T errorSquare = 0;
+      if (implicitIndexX == implicitIndexY)
+      {
+        T errorSquare = abs(myI.getRawData()[myIndex] - 1);
+        if ((pGridCoordX == 0) && (pGridCoordY == 0) && (pGridCoordZ == 0)) {std::cout << myI.getRawData()[myIndex] << " " << 1 << std::endl;}
+      }
+      else
+      {
+        T errorSquare = abs(myI.getRawData()[myIndex] - 0);
+        if ((pGridCoordX == 0) && (pGridCoordY == 0) && (pGridCoordZ == 0)) {std::cout << myI.getRawData()[myIndex] << " " << 0 << std::endl;}
+      }
+      errorSquare *= errorSquare;
+      error += errorSquare;
+      implicitIndexX += pGridDimensionSize;
+      myIndex++;
+    }
+    implicitIndexX = saveCountRef;
+    implicitIndexY += pGridDimensionSize;
+  }
+
+  std::cout << "Total error - " << error << std::endl;
+  error = std::sqrt(error);
+  return error;		// return 2-norm
 }

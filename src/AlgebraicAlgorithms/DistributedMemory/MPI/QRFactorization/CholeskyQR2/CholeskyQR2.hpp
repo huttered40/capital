@@ -61,11 +61,11 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D(Matr
   U localDimensionX = dimensionX/pGridDimensionSize;		// no error check here, but hopefully 
   U localDimensionY = dimensionY/pGridDimensionSize;		// no error check here, but hopefully 
 
-  Matrix<T,U,StructureQ,Distribution> matrixQ2(std::vector<T>(localDimensionX*localDimensionY), localDimensionX, localDimensionY, dimensionX,
+  Matrix<T,U,StructureQ,Distribution> matrixQ2(std::vector<T>(localDimensionX*localDimensionY,0), localDimensionX, localDimensionY, dimensionX,
     dimensionY, true);
-  Matrix<T,U,StructureR,Distribution> matrixR1(std::vector<T>(localDimensionX*localDimensionX), localDimensionX, localDimensionX, dimensionX,
+  Matrix<T,U,StructureR,Distribution> matrixR1(std::vector<T>(localDimensionX*localDimensionX,0), localDimensionX, localDimensionX, dimensionX,
     dimensionX, true);
-  Matrix<T,U,StructureR,Distribution> matrixR2(std::vector<T>(localDimensionX*localDimensionX), localDimensionX, localDimensionX, dimensionX,
+  Matrix<T,U,StructureR,Distribution> matrixR2(std::vector<T>(localDimensionX*localDimensionX,0), localDimensionX, localDimensionX, dimensionX,
     dimensionX, true);
   Factor3D_cqr(matrixA, matrixQ2, matrixR1, localDimensionX, localDimensionY, commWorld);
   Factor3D_cqr(matrixQ2, matrixQ, matrixR2, localDimensionX, localDimensionY, commWorld);
@@ -216,11 +216,13 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionX*localDimensionX,0), localDimensionX, localDimensionX,
     localDimensionX*pGridDimensionSize, localDimensionX*pGridDimensionSize, true);
 
-  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionX, 'R', commWorld);
+  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionX, 'U', commWorld);
 
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
   SquareMM3D<T,U,StructureA,MatrixStructureSquare,StructureQ,blasEngine>::Multiply(matrixA, matrixRI,
     matrixQ, localDimensionX, localDimensionY, localDimensionX, commWorld, gemmPack1);
+
+  //if (myRank == 0){ matrixQ.print(); std::cout << "\n\n\n";}
 }
 
 template<typename T,typename U,
