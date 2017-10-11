@@ -188,6 +188,7 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
   bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
+  // No optimization here I am pretty sure due to final result being symmetric, as it is cyclic and transpose isnt true as I have painfully found out before.
   BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
 
   std::vector<T> localB(localDimensionX*localDimensionX);
@@ -197,6 +198,8 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
   gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
   gemmPack1.alpha = 1.;
   gemmPack1.beta = 0.;
+
+  // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
   blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], &localB[0], localDimensionY, localDimensionX,
     localDimensionX, localDimensionY, localDimensionX, localDimensionX, localDimensionX, localDimensionX, localDimensionX, gemmPack1);
 
@@ -210,11 +213,12 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
     localDimensionX*pGridDimensionSize, localDimensionX*pGridDimensionSize, true);
 
   // Create an extra matrix for R-inverse
-  Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionX*localDimensionX), localDimensionX, localDimensionX,
+  Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionX*localDimensionX,0), localDimensionX, localDimensionX,
     localDimensionX*pGridDimensionSize, localDimensionX*pGridDimensionSize, true);
 
   CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionX, 'R', commWorld);
 
+  // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
   SquareMM3D<T,U,StructureA,MatrixStructureSquare,StructureQ,blasEngine>::Multiply(matrixA, matrixRI,
     matrixQ, localDimensionX, localDimensionY, localDimensionX, commWorld, gemmPack1);
 }

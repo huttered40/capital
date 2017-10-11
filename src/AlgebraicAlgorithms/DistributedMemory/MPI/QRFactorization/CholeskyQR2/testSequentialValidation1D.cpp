@@ -47,11 +47,7 @@ int main(int argc, char** argv)
   CholeskyQR2<double,int,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureSquare,cblasEngine>::
     Factor1D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
 
-  std::pair<double,double> error = QRvalidate<double,int>::validateLocal1D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
-
-  MPI_Barrier(MPI_COMM_WORLD);
-
-  std::cout << "Error for procesor " << rank << " = " << error.first << " " << error.second << std::endl;
+  QRvalidate<double,int>::validateLocal1D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
 
   MPI_Finalize();
 
