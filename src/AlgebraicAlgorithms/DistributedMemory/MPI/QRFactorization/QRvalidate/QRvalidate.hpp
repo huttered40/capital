@@ -58,7 +58,7 @@ void QRvalidate<T,U>::validateLocal1D(
   // Q is in globalMatrixA now
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidual1D_Q(matrixSol_Q.getVectorData(), matrixQ, globalDimensionX, globalDimensionY, commWorld);
+  T error = getResidual1D_RowCyclic(matrixSol_Q.getVectorData(), matrixQ, globalDimensionX, globalDimensionY, commWorld);
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myQ - solQ is " << error << std::endl;}
@@ -70,7 +70,7 @@ void QRvalidate<T,U>::validateLocal1D(
     1., &matrixQ[0], globalDimensionX, globalMatrixA.getRawData(), globalDimensionX, 0., &matrixR[0], globalDimensionX);
 
   // Need to set up error2 for matrix R, but do that later
-  T error2 = getResidual1D_R(matrixSol_R.getVectorData(), matrixR, globalDimensionX, globalDimensionY, commWorld);
+  T error2 = getResidual1D_Full(matrixSol_R.getVectorData(), matrixR, globalDimensionX, globalDimensionY, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myR - solR is " << error2 << std::endl;}
 
@@ -80,7 +80,7 @@ void QRvalidate<T,U>::validateLocal1D(
     1., &matrixQ[0], globalDimensionX, &matrixR[0], globalDimensionX, 0., &matrixAtemp[0], globalDimensionX);
 
   // Hold on, this is the wrong test. I need to be comparing my QR - LAPACK QR.
-  T error3 = getResidual1D_Q(matrixA.getVectorData(), matrixAtemp, globalDimensionX, globalDimensionY, commWorld);
+  T error3 = getResidual1D_RowCyclic(matrixA.getVectorData(), matrixAtemp, globalDimensionX, globalDimensionY, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error3, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of my - solQ is " << error3 << std::endl;}
 
@@ -144,8 +144,9 @@ void QRvalidate<T,U>::validateLocal3D(
 }
 
 
+/* Used for comparing a matrix owned among processors in a 1D row-cyclic manner to a full matrix */
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D_Q(std::vector<T>& myQ, std::vector<T>& solQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
@@ -159,15 +160,15 @@ T QRvalidate<T,U>::getResidual1D_Q(std::vector<T>& myQ, std::vector<T>& solQ, U 
     {
       U myIndex = i*globalDimensionX+j;
       U solIndex = (i*numPEs+myRank)*globalDimensionX+j;
-      if (std::abs(myQ[myIndex] + solQ[solIndex]) <= 1e-12)
+      if (std::abs(myMatrix[myIndex] + solutionMatrix[solIndex]) <= 1e-12)
       {
-        T errorSquare = std::abs(myQ[myIndex] + solQ[solIndex]);
+        T errorSquare = std::abs(myMatrix[myIndex] + solutionMatrix[solIndex]);
         errorSquare *= errorSquare;
         //error += errorSquare;
         continue;
       }
-      T errorSquare = std::abs(myQ[myIndex] - solQ[solIndex]);
-      //if (myRank==0) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[solIndex] << " i - " << i << ", j - " << j << std::endl;
+      T errorSquare = std::abs(myMatrix[myIndex] - solutionMatrix[solIndex]);
+      //if (myRank==0) std::cout << errorSquare << " " << myMatrix[myIndex] << " " << solutionMatrix[solIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
     }
@@ -243,8 +244,10 @@ T QRvalidate<T,U>::testResidual(std::vector<T>& myQ, std::vector<T>& solQ, U glo
   return error;
 }
 
+
+/* Used for comparing a full matrix to a full matrix */
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D_R(std::vector<T>& myR, std::vector<T>& solR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
   // Matrix R is owned by every processor
   int numPEs, myRank;
@@ -257,15 +260,15 @@ T QRvalidate<T,U>::getResidual1D_R(std::vector<T>& myR, std::vector<T>& solR, U 
     for (U j=i; j<globalDimensionX; j++)
     {
       U myIndex = i*globalDimensionX+j;
-      if (std::abs(myR[myIndex] + solR[myIndex]) <= 1e-12)
+      if (std::abs(myMatrix[myIndex] + solutionMatrix[myIndex]) <= 1e-12)
       {
-        T errorSquare = std::abs(myR[myIndex] + solR[myIndex]);
+        T errorSquare = std::abs(myMatrix[myIndex] + solutionMatrix[myIndex]);
         errorSquare *= errorSquare;
         error += errorSquare;
         continue;
       }
-      T errorSquare = std::abs(myR[myIndex] - solR[myIndex]);
-      //if (myRank==0) std::cout << errorSquare << " " << myR[myIndex] << " " << solR[myIndex] << " i - " << i << ", j - " << j << std::endl;
+      T errorSquare = std::abs(myMatrix[myIndex] - solutionMatrix[myIndex]);
+      //if (myRank==0) std::cout << errorSquare << " " << myMatrix[myIndex] << " " << solutionMatrix[myIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
     }
