@@ -42,10 +42,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
     assembleFinder = true;
     destVectorData.resize(srcNumElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumRows)
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
   {
     assembleFinder = true;
-    destMatrixData.resize(srcNumRows);
+    destMatrixData.resize(srcNumColumns);
   }
 
   // direction doesn't matter here since no indexing here
@@ -62,7 +62,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
   }
   return;
 }
-  
+
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& big,
@@ -87,28 +87,28 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
   // In most cases, the lae matri will be known and we are simply trying to fill in the smaller into the existing bigger
 
   U numElems = (dir ? bigNumRows*bigNumColumns : rangeX*rangeY);
-  U numRows = (dir ? bigNumRows : rangeY);
+  U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
   if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
   {
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numRows)
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
   {
     assembleFinder = true;
-    dir ? bigMatrixData.resize(numRows) : smallMatrixData.resize(numRows);
+    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
 
-  U destIndex = (dir ? cutDimensionYstart*bigNumColumns+cutDimensionXstart : 0);
-  U srcIndex = (dir ? 0 : cutDimensionYstart*bigNumColumns+cutDimensionXstart);
-  U srcCounter = (dir ? rangeX : bigNumColumns);
-  U destCounter = (dir ? bigNumColumns : rangeX);
+  U destIndex = (dir ? cutDimensionYstart+bigNumRows*cutDimensionXstart : 0);
+  U srcIndex = (dir ? 0 : cutDimensionYstart+bigNumRows*cutDimensionXstart);
+  U srcCounter = (dir ? rangeY : bigNumRows);
+  U destCounter = (dir ? bigNumRows : rangeY);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeY; i++)					// rangeY is fine.
+  for (U i=0; i<rangeX; i++)
   {
-    memcpy(&destVectorData[destIndex], &srcVectorData[srcIndex], sizeof(T)*rangeX);		// rangeX is fine. blocks of size rangeX are still being copied.
+    memcpy(&destVectorData[destIndex], &srcVectorData[srcIndex], sizeof(T)*rangeY);		// rangeX is fine. blocks of size rangeX are still being copied.
     destIndex += destCounter;
     srcIndex += srcCounter;
   }
@@ -117,10 +117,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
   {
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(numRows);
-    small.setNumColumnsLocal(rangeX);
+    small.setNumRowsLocal(rangeY);
+    small.setNumColumnsLocal(numColumns);
     small.setNumElems(numElems);
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, rangeX, numRows);
+    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
 }
 
@@ -153,17 +153,17 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
     destMatrixData.resize(srcNumRows);
   }
 
-  U counter{srcNumColumns};
+  U counter{1};
   U srcOffset{0};
   U destOffset{0};
-  U counter2{srcNumColumns+1};
+  U counter2{srcNumColumns};
 
-  for (U i=0; i<srcNumRows; i++)
+  for (U i=0; i<srcNumColumns; i++)
   {
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
     srcOffset += counter2;
     destOffset += counter;
-    counter--;
+    counter++;
   }
 
   if (assembleFinder)
@@ -240,41 +240,41 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
   // In most cases, the lae matri will be known and we are simply trying to fill in the smaller into the existing bigger
 
   U numElems = (dir ? bigNumRows*bigNumRows : ((rangeX*(rangeX+1))>>1));
-  U numRows = (dir ? bigNumRows : rangeX);
+  U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
   if ((dir ? bigVectorData.size() : smallVectorData.size()) < numElems)
   {
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if ((dir ? bigMatrixData.size() : smallMatrixData.size()) < numRows)
+  if ((dir ? bigMatrixData.size() : smallMatrixData.size()) < numColumns)
   {
     assembleFinder = true;
-    dir ? bigMatrixData.resize(numRows) : smallMatrixData.resize(numRows);
+    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
 
-  U destIndex = (dir ? cutDimensionYstart*bigNumColumns+cutDimensionXstart : 0);
-  U counter{rangeX};
-  U srcIndexSave = (dir ? 0 : cutDimensionYstart*bigNumColumns+cutDimensionXstart);
+  U destIndex = (dir ? cutDimensionYstart+bigNumRows*cutDimensionXstart : 0);
+  U counter{1};
+  U srcIndexSave = (dir ? 0 : cutDimensionYstart+bigNumRows*cutDimensionXstart);
   auto& destVectorData = (dir ? bigVectorData : smallVectorData);
   auto& srcVectorData = (dir ? smallVectorData : bigVectorData);
-  for (U i=0; i<rangeY; i++)
+  for (U i=0; i<rangeX; i++)
   {
     memcpy(&destVectorData[destIndex], &srcVectorData[srcIndexSave], sizeof(T)*counter);
-    destIndex += (dir ? (bigNumColumns+1) : counter);
-    srcIndexSave += (dir ? counter : (bigNumColumns+1));
-    counter--;
+    destIndex += (dir ? bigNumRows : counter);
+    srcIndexSave += (dir ? counter : bigNumRows);
+    counter++;
   }
 
   if (assembleFinder)
   {
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(numRows);
-    small.setNumColumnsLocal(rangeX);
+    small.setNumRowsLocal(rangeY);
+    small.setNumColumnsLocal(numColumns);
     small.setNumElems(numElems);
     // I am only providing UT here, not square, because if square, it would have aborted
-    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, rangeX, numRows);
+    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
 }
 
@@ -341,22 +341,22 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
     assembleFinder = true;
     destVectorData.resize(numElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumRows)
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
   {
     assembleFinder = true;
-    destMatrixData.resize(srcNumRows);
+    destMatrixData.resize(srcNumColumns);
   }
 
-  U counter{1};
+  U counter{srcNumRows};
   U srcOffset{0};
   U destOffset{0};
-  U counter2{srcNumColumns};
-  for (U i=0; i<srcNumRows; i++)
+  U counter2{srcNumRows+1};
+  for (U i=0; i<srcNumColumns; i++)
   {
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
     srcOffset += counter2;
     destOffset += counter;
-    counter++;
+    counter--;
   }
 
   if (assembleFinder)
@@ -433,41 +433,41 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
   // In most cases, the lae matri will be known and we are simply trying to fill in the smaller into the existing bigger
 
   U numElems = (dir ? bigNumRows*bigNumRows : ((rangeX*(rangeX+1))>>1));
-  U numRows = (dir ? bigNumRows : rangeX);
+  U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
   if ((dir ? bigVectorData.size() : smallVectorData.size()) < numElems)
   {
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if ((dir ? bigMatrixData.size() : smallMatrixData.size()) < numRows)
+  if ((dir ? bigMatrixData.size() : smallMatrixData.size()) < numColumns)
   {
     assembleFinder = true;
-    dir ? bigMatrixData.resize(numRows) : smallMatrixData.resize(numRows);
+    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
 
-  U counter{1};
-  U srcOffset = (dir ? 0 : cutDimensionYstart*bigNumColumns+cutDimensionXstart);
-  U destOffset = (dir ? cutDimensionYstart*bigNumColumns+cutDimensionXstart  : 0);
+  U counter{rangeY};
+  U srcOffset = (dir ? 0 : cutDimensionYstart+bigNumRows*cutDimensionXstart);
+  U destOffset = (dir ? cutDimensionYstart+bigNumRows*cutDimensionXstart  : 0);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeY; i++)
+  for (U i=0; i<rangeX; i++)
   {
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*counter);
-    destOffset += (dir ? bigNumColumns : counter);
-    srcOffset += (dir ? counter : bigNumColumns);
-    counter++;
+    destOffset += (dir ? bigNumRows+1 : counter);
+    srcOffset += (dir ? counter : bigNumRows+1);
+    counter--;
   }
 
   if (assembleFinder)
   {
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(numRows);
-    small.setNumColumnsLocal(rangeX);
+    small.setNumRowsLocal(rangeY);
+    small.setNumColumnsLocal(numColumns);
     small.setNumElems(numElems);
     // I am only providing UT here, not square, because if square, it would have aborted
-    MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, rangeX, numRows);
+    MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
 }
 
@@ -534,26 +534,26 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
     assembleFinder = true;
     destVectorData.resize(numElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumRows)
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
   {
     assembleFinder = true;
     destMatrixData.resize(srcNumRows);
   }
 
-  U counter{srcNumColumns};
+  U counter{1};
   U srcOffset{0};
   U destOffset{0};
-  U zeroOffset{0};
-  U counter2{srcNumColumns+1};
+  U counter2{srcNumRows};
   for (U i=0; i<srcNumRows; i++)
   {
-    U fillZeros = srcNumColumns-counter;
-    fillZerosContig(&destVectorData[zeroOffset], fillZeros);
+    std::cout << "destOffset - " << destOffset << std::endl;
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
+    U fillZeros = srcNumRows-counter;
+    std::cout << "fillZeros - " << fillZeros << std::endl;
+    fillZerosContig(&destVectorData[destOffset+counter], fillZeros);
     srcOffset += counter;
     destOffset += counter2;
-    zeroOffset += srcNumColumns;
-    counter--;
+    counter++;
   }
 
   if (assembleFinder)
@@ -587,47 +587,43 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   std::vector<T*>& smallMatrixData = small.getMatrixData();
 
   U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeX);
-  U numRows = (dir ? bigNumRows : rangeY);
+  U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
   if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
   {
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallVectorData.size())) < numRows)
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallVectorData.size())) < numColumns)
   {
     assembleFinder = true;
-    dir ? bigMatrixData.resize(numRows) : smallMatrixData.resize(numRows);
+    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
 
-  U bigMatrixCounter = bigNumColumns-cutDimensionYstart-1;
-  U counter = (dir ? rangeX : bigMatrixCounter);
-  U bigMatrixOffset = ((bigNumColumns*(bigNumColumns+1))>>1);
-  U helper = bigNumColumns - cutDimensionYstart;
-  bigMatrixOffset -= ((helper*(helper+1))>>1);		// Watch out for 64-bit rvalue implicit cast problems!
-  bigMatrixOffset += (cutDimensionXstart-cutDimensionYstart);
-  U srcOffset = (dir ? 0 : bigMatrixOffset);
-  U destOffset = (dir ? bigMatrixOffset : 0);
+  U bigMatOffset = ((cutDimensionXstart*(cutDimensionXstart+1))>>1);
+  bigMatOffset += cutDimensionYstart;
+  U bigMatCounter = cutDimensionXstart;
+  U srcOffset = (dir ? 0 : bigMatOffset);
+  U destOffset = (dir ? bigMatOffset : 0);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeY; i++)
+  for (U i=0; i<rangeX; i++)
   {
-    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeX);
-    destOffset += (dir ? bigMatrixCounter : rangeX);
-    srcOffset += counter;
-    counter = (dir ? counter : counter-1);
-    bigMatrixCounter--;					// Just do this regardless of dir
+    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
+    destOffset += (dir ? (bigMatCounter+1) : rangeY);
+    srcOffset += (dir ? rangeY : (bigMatCounter+1));
+    bigMatCounter++;
   }
 
   if (assembleFinder)
   {
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(numRows);
-    small.setNumColumnsLocal(rangeX);
+    small.setNumRowsLocal(numColumns);
+    small.setNumColumnsLocal(rangeY);
     small.setNumElems(numElems);
     // I am only providing Square here, not UT, because if UT, it would have aborted
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, rangeX, numRows);
+    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
 }
 
@@ -697,10 +693,10 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
     assembleFinder = true;
     destVectorData.resize(srcNumElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumRows)
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
   {
     assembleFinder = true;
-    destMatrixData.resize(srcNumRows);
+    destMatrixData.resize(srcNumColumns);
   }
 
   // direction doesn't matter here since no indexing here
@@ -740,37 +736,35 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
   std::vector<T*>& smallMatrixData = small.getMatrixData();
 
   U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : ((rangeX*(rangeX+1))>>1));
-  U numRows = (dir ? bigNumRows : rangeY);
+  U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
   if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
   {
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numRows)
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
   {
     assembleFinder = true;
-    dir ? bigMatrixData.resize(numRows) : smallMatrixData.resize(numRows);
+    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
 
-  U bigMatrixCounter = bigNumColumns -cutDimensionYstart;		// should be right
-  U smallMatrixCounter{rangeX};
-  U smallMatrixOffset = 0;
-  U bigMatrixOffset = ((bigNumColumns*(bigNumColumns+1))>>1);
-  U helper = bigNumColumns  - cutDimensionYstart;
-  bigMatrixOffset -= ((helper*(helper+1))>>1);		// Watch out for 64-bit rvalue implicit cast problems!
-  bigMatrixOffset += (cutDimensionXstart-cutDimensionYstart);
-  U srcOffset = (dir ? smallMatrixOffset : bigMatrixOffset);
-  U destOffset = (dir ? bigMatrixOffset : smallMatrixOffset);
+  U bigMatOffset = ((cutDimensionXstart*(cutDimensionXstart+1))>>1);
+  bigMatOffset += cutDimensionYstart;
+  U bigMatCounter = cutDimensionXstart;
+  U smallMatOffset = 0;
+  U smallMatCounter{1};
+  U srcOffset = (dir ? smallMatOffset : bigMatOffset);
+  U destOffset = (dir ? bigMatOffset : smallMatOffset);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeY; i++)
+  for (U i=0; i<rangeX; i++)
   {
-    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*smallMatrixCounter);
-    destOffset += (dir ? bigMatrixCounter : smallMatrixCounter);
-    srcOffset += (dir ? smallMatrixCounter : bigMatrixCounter);
-    bigMatrixCounter--;
-    smallMatrixCounter--;
+    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*smallMatCounter);
+    destOffset += (dir ? (bigMatCounter+1) : smallMatCounter);
+    srcOffset += (dir ? smallMatCounter : (bigMatCounter+1));
+    bigMatCounter++;
+    smallMatCounter++;
   }
 
   if (assembleFinder)
@@ -778,10 +772,10 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
     if (dir) {abort();}
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    small.setNumRowsLocal(numRows);
-    small.setNumColumnsLocal(rangeX);	// no dir needed here due to abort above
+    small.setNumRowsLocal(rangeY);
+    small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
     small.setNumElems(numElems);
-    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, rangeX, numRows);	// again, no dir ? needed here
+    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   return;
 }
@@ -809,29 +803,23 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
     assembleFinder = true;
     destVectorData.resize(numElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumRows)
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
   {
     assembleFinder = true;
-    destMatrixData.resize(srcNumRows);
+    destMatrixData.resize(srcNumColumns);
   }
 
-  U counter{1};
+  U counter{srcNumRows};
   U srcOffset{0};
   U destOffset{0};
-  U zeroOffset{1};
   U counter2{srcNumColumns};
-  for (U i=0; i<srcNumRows; i++)
+  for (U i=0; i<srcNumColumns; i++)
   {
-    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
-    U zeroIter = srcNumColumns-counter;
-    for (U j=0; j<zeroIter; j++)
-    {
-      destVectorData[zeroOffset+j] = 0;
-    }
+    fillZerosContig(&destVectorData[destOffset], i);
+    memcpy(&destVectorData[destOffset+i], &srcVectorData[srcOffset], counter*sizeof(T));
     srcOffset += counter;
-    destOffset += counter2;
-    zeroOffset += (srcNumColumns+1);
-    counter++;
+    destOffset += srcNumRows;
+    counter--;
   }
 
   if (assembleFinder)
@@ -868,44 +856,46 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   std::vector<T*>& smallMatrixData = small.getMatrixData();
 
   U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeX);
-  U numRows = (dir ? bigNumRows : rangeY);
+  U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
   if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
   {
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numRows)
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
   {
     assembleFinder = true;
-    dir ? bigMatrixData.resize(numRows) : smallMatrixData.resize(numRows);
+    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
 
-  U smallMatrixOffset = 0;
-  U smallMatrixCounter = rangeX;
-  U bigMatrixCounter = cutDimensionYstart;
-  U bigMatrixOffset = ((bigMatrixCounter*(bigMatrixCounter+1))>>1);
-  bigMatrixOffset += cutDimensionXstart;
-  U srcOffset = (dir ? smallMatrixOffset : bigMatrixOffset);
-  U destOffset = (dir ? bigMatrixOffset : 0);
+  U smallMatOffset = 0;
+  U smallMatCounter = rangeY;
+  U bigMatOffset = ((bigNumColumns*(bigNumColumns+1))>>1);
+  U helper = bigNumColumns - cutDimensionXstart;
+  bigMatOffset -= ((helper*(helper+1))>>1);
+  bigMatOffset += (cutDimensionYstart-cutDimensionXstart);
+  U bigMatCounter = bigNumRows-cutDimensionXstart;
+  U srcOffset = (dir ? smallMatOffset : bigMatOffset);
+  U destOffset = (dir ? bigMatOffset : smallMatOffset);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeY; i++)
+  for (U i=0; i<rangeX; i++)
   {
-    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeX);
-    destOffset += (dir ? bigMatrixCounter+1 : smallMatrixCounter);
-    srcOffset += (dir ? smallMatrixCounter : bigMatrixCounter+1);
-    bigMatrixCounter++;
+    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
+    destOffset += (dir ? (bigMatCounter-1) : smallMatCounter);
+    srcOffset += (dir ? smallMatCounter : (bigMatCounter-1));
+    bigMatCounter--;
   }
   if (assembleFinder)
   {
     if (dir) {abort();}
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    small.setNumRowsLocal(numRows);
-    small.setNumColumnsLocal(rangeX);	// no dir needed here due to abort above
+    small.setNumRowsLocal(rangeY);
+    small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
     small.setNumElems(numElems);
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, rangeX, numRows);	// again, no dir ? needed here
+    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   return;
 }
@@ -975,10 +965,10 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
     assembleFinder = true;
     destVectorData.resize(srcNumElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumRows)
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
   {
     assembleFinder = true;
-    destMatrixData.resize(srcNumRows);
+    destMatrixData.resize(srcNumColumns);
   }
 
   // direction doesn't matter here since no indexing here
@@ -1016,35 +1006,37 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
   std::vector<T*>& smallMatrixData = small.getMatrixData();
 
   U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : ((rangeX*(rangeX+1))>>1));
-  U numRows = (dir ? bigNumRows : rangeY);
+  U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
   if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
   {
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numRows)
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
   {
     assembleFinder = true;
-    dir ? bigMatrixData.resize(numRows) : smallMatrixData.resize(numRows);
+    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
 
-  U smallMatrixCounter = 1;
-  U bigMatrixCounter = cutDimensionYstart;
-  U smallMatrixOffset = 0;
-  U bigMatrixOffset = ((bigMatrixCounter*(bigMatrixCounter+1))>>1);
-  bigMatrixOffset += cutDimensionXstart;
-  U srcOffset = (dir ? smallMatrixOffset : bigMatrixOffset);
-  U destOffset = (dir ? bigMatrixOffset : smallMatrixOffset);
+  U smallMatOffset = 0;
+  U smallMatCounter = rangeY;
+  U bigMatOffset = ((bigNumColumns*(bigNumColumns+1))>>1);
+  U helper = bigNumColumns - cutDimensionXstart;
+  bigMatOffset -= ((helper*(helper+1))>>1);
+  bigMatOffset += (cutDimensionYstart-cutDimensionXstart);
+  U bigMatCounter = bigNumRows-cutDimensionXstart;
+  U srcOffset = (dir ? smallMatOffset : bigMatOffset);
+  U destOffset = (dir ? bigMatOffset : smallMatOffset);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
   for (U i=0; i<rangeY; i++)
   {
-    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*smallMatrixCounter);
-    destOffset += (dir ? bigMatrixCounter+1 : smallMatrixCounter);
-    srcOffset += (dir ? smallMatrixCounter : bigMatrixCounter+1);
-    bigMatrixCounter++;
-    smallMatrixCounter++;
+    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*smallMatCounter);
+    destOffset += (dir ? bigMatCounter : smallMatCounter);
+    srcOffset += (dir ? smallMatCounter : bigMatCounter);
+    bigMatCounter--;
+    smallMatCounter--;
   }
 
   if (assembleFinder)
@@ -1052,10 +1044,10 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
     if (dir) {abort();}
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    small.setNumRowsLocal(numRows);
-    small.setNumColumnsLocal(rangeX);	// no dir needed here due to abort above
+    small.setNumRowsLocal(rangeY);
+    small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
     small.setNumElems(numElems);
-    MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, rangeX, numRows);	// again, no dir ? needed here
+    MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   return;
 }
