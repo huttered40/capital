@@ -55,26 +55,29 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
   //       or local (but distributed based on the values each processor gets) transpose.
 
 
-  U saveGlobalPosition = localPgridY + localPgridX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
-  U trackX = localPgridX;
-  U trackY = localPgridY;
+  U saveGlobalPositionX = localPgridX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  U saveGlobalPositionY = localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   for (U i=0; i<dimensionX; i++)
   {
-    U globalPosition = saveGlobalPosition;
+    saveGlobalPositionY = localPgridY;
     for (U j=0; j<dimensionY; j++)
     {
-      srand48(globalPosition);
+      if (saveGlobalPositionX > saveGlobalPositionY)
+      {
+        srand48(saveGlobalPositionX + globalDimensionY*saveGlobalPositionY);
+      }
+      else
+      {
+        srand48(saveGlobalPositionY + globalDimensionY*saveGlobalPositionX);
+      }
       matrix[i][j] = drand48();			// Change this later.
-      if ((diagonallyDominant) && (trackX == trackY) && (i==j))
+      if ((diagonallyDominant) && (saveGlobalPositionX == saveGlobalPositionY) && (i==j))
       {
         matrix[i][j] += globalDimensionX;		// X or Y, should not matter
       }
-      globalPosition += globalPgridY;
-      trackY += globalPgridY;
+      saveGlobalPositionY += globalPgridY;
     }
-    saveGlobalPosition += (globalPgridX*globalDimensionY);
-    trackY = localPgridY;		// reset
-    trackX += globalPgridX;
+    saveGlobalPositionX += globalPgridX;
   }
   return;
 }

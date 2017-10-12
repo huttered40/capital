@@ -35,7 +35,7 @@ int main(void)
   theMatrixS.print();
 */
 
-
+/*
   MatrixType1 theMatrix1(8,8,16,16);
   MatrixType1 theMatrix2(2,2,16,16);
   theMatrix2.DistributeRandom(0,0,2,2);
@@ -43,7 +43,24 @@ int main(void)
   theMatrix1.print();
   cout << "\n\n";
   theMatrix2.print();
+*/
 
+  MatrixType2 theMat1(8,8,16,16);
+  MatrixType2 theMat2(8,8,16,16);
+  MatrixType2 theMat3(8,8,16,16);
+  MatrixType2 theMat4(8,8,16,16);
+  theMat1.DistributeSymmetric(0,0,2,2,true);
+  theMat2.DistributeSymmetric(0,1,2,2,true);
+  theMat3.DistributeSymmetric(1,0,2,2,true);
+  theMat4.DistributeSymmetric(1,1,2,2,true);
+  theMat1.print();
+  std::cout << "\n\n";
+  theMat2.print();
+  std::cout << "\n\n";
+  theMat3.print();
+  std::cout << "\n\n";
+  theMat4.print();
+  std::cout << "\n\n";
 
 /*
   MatrixType1 theMatrix1(8,8,16,16);
