@@ -50,9 +50,7 @@ int main(int argc, char** argv)
   CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
     Factor(matA, matL, matLI, localMatrixSize, 'L', MPI_COMM_WORLD);
 
-  std::pair<double,double> error = CFvalidate<double,int>::validateCF_Local(matL, matLI, localMatrixSize, globalMatrixSize, 'L', MPI_COMM_WORLD);
-
-  std::cout << "Rank " << rank << " has CF error " << error.first << " and TI error - " << error.second << std::endl;
+  CFvalidate<double,int>::validateCF_Local(matL, matLI, localMatrixSize, globalMatrixSize, 'L', MPI_COMM_WORLD);
 
   MPI_Finalize();
 

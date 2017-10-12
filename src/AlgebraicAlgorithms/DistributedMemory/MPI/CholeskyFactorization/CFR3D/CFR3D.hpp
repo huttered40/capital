@@ -158,7 +158,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
   transposeSwap(packedMatrix, rank, transposePartner);
  
   blasEngineArgumentPackage_gemm<T> blasArgs;
-  blasArgs.order = blasEngineOrder::AblasRowMajor;
+  blasArgs.order = blasEngineOrder::AblasColumnMajor;
   blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
   blasArgs.transposeB = blasEngineTranspose::AblasTrans;
   blasArgs.alpha = 1.;
@@ -212,7 +212,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
   Matrix<T,U,MatrixStructureSquare,Distribution>& tempInverse = holdLsyrk;
   
   blasEngineArgumentPackage_gemm<T> invPackage1;
-  invPackage1.order = blasEngineOrder::AblasRowMajor;
+  invPackage1.order = blasEngineOrder::AblasColumnMajor;
   invPackage1.transposeA = blasEngineTranspose::AblasNoTrans;
   invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
   invPackage1.alpha = 1.;
@@ -350,7 +350,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
   transposeSwap(packedMatrix, rank, transposePartner);
  
   blasEngineArgumentPackage_gemm<T> blasArgs;
-  blasArgs.order = blasEngineOrder::AblasRowMajor;
+  blasArgs.order = blasEngineOrder::AblasColumnMajor;
   blasArgs.transposeA = blasEngineTranspose::AblasTrans;
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   blasArgs.alpha = 1.;
@@ -403,7 +403,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
   Matrix<T,U,MatrixStructureSquare,Distribution>& tempInverse = holdRsyrk;
   
   blasEngineArgumentPackage_gemm<T> invPackage1;
-  invPackage1.order = blasEngineOrder::AblasRowMajor;
+  invPackage1.order = blasEngineOrder::AblasColumnMajor;
   invPackage1.transposeA = blasEngineTranspose::AblasNoTrans;
   invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
   invPackage1.alpha = 1.;
@@ -483,19 +483,19 @@ std::vector<T> CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>
   U numCyclicBlocksPerRowCol = bcDimension/pGridDimensionSize;
   U writeIndex = 0;
   U recvDataOffset = localDimension*localDimension;
-  // MACRO loop over all cyclic "blocks"
+  // MACRO loop over all cyclic "blocks" (dimensionX direction)
   for (U i=0; i<numCyclicBlocksPerRowCol; i++)
   {
-    // Inner loop over all rows in a cyclic "block"
+    // Inner loop over all columns in a cyclic "block"
     for (U j=0; j<pGridDimensionSize; j++)
     {
-      // Inner loop over all cyclic "blocks" partitioning up the columns
+      // Inner loop over all cyclic "blocks"
       for (U k=0; k<numCyclicBlocksPerRowCol; k++)
       {
-        // Inner loop over all elements within a row of a cyclic "block"
+        // Inner loop over all elements along columns
         for (U z=0; z<pGridDimensionSize; z++)
         {
-          U readIndex = i*numCyclicBlocksPerRowCol + j*recvDataOffset*pGridDimensionSize + k + z*recvDataOffset;
+          U readIndex = i*numCyclicBlocksPerRowCol + j*recvDataOffset + k + z*pGridDimensionSize*recvDataOffset;
           cyclicBaseCaseData[writeIndex++] = blockedBaseCaseData[readIndex];
         }
       }
@@ -539,12 +539,12 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::cyclicTo
       // We know which column corresponds to our processor in each cyclic "block"
       // Future improvement: get rid of the inner if statement and separate out this inner loop into 2 loops
       // Further improvement: use only triangular matrices and then Serialize into a square later?
-      U readIndexCol = j*pGridDimensionSize + columnOffsetWithinBlock;
-      U readIndexRow = i*pGridDimensionSize + rowOffsetWithinBlock;
+      U readIndexCol = i*pGridDimensionSize + columnOffsetWithinBlock;
+      U readIndexRow = j*pGridDimensionSize + rowOffsetWithinBlock;
       if (((dir == 'L') && (readIndexCol <= readIndexRow)) ||  ((dir == 'U') && (readIndexCol >= readIndexRow)))
       {
-        storeT[writeIndex] = storeT[readIndexCol + readIndexRow*bcDimension];
-        storeTI[writeIndex] = storeTI[readIndexCol + readIndexRow*bcDimension];
+        storeT[writeIndex] = storeT[readIndexCol*bcDimension + readIndexRow];
+        storeTI[writeIndex] = storeTI[readIndexCol*bcDimension + readIndexRow];
       }
       else
       {

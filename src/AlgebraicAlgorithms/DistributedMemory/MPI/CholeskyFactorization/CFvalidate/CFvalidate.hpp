@@ -25,7 +25,7 @@ static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm co
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
+void CFvalidate<T,U>::validateCF_Local(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
                         U localDimension,
@@ -37,6 +37,9 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
+
+  int myRank;
+  MPI_Comm_rank(commWorld, &myRank);
 
   auto commInfo = getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
@@ -51,15 +54,15 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
   {
     for (U j=0; j<globalDimension; j++)
     {
-      if ((dir == 'L') && (j>i)) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
-      if ((dir == 'U') && (j<i)) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
+      if ((dir == 'L') && (i>j)) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
+      if ((dir == 'U') && (j>i)) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
     }
   }
 
   // Assume row-major
   pTimer myTimer;
   myTimer.setStartTime();
-  LAPACKE_dpotrf(LAPACK_ROW_MAJOR, dir, globalDimension, globalMatrixA.getRawData(), globalDimension);
+  LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, globalDimension, globalMatrixA.getRawData(), globalDimension);
   myTimer.setEndTime();
   myTimer.printParallelTime(1e-9, MPI_COMM_WORLD, "LAPACK Cholesky Factorization (dpotrf)");
 
@@ -68,9 +71,10 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
               : getResidualTriangleUpper(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo));
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
+  if (myRank == 0) {std::cout << "Total error = " << error << std::endl;}
 
   myTimer.setStartTime();
-  LAPACKE_dtrtri(LAPACK_ROW_MAJOR, dir, 'N', globalDimension, globalMatrixA.getRawData(), globalDimension);
+  LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', globalDimension, globalMatrixA.getRawData(), globalDimension);
   myTimer.setEndTime();
   myTimer.printParallelTime(1e-9, MPI_COMM_WORLD, "LAPACK Triangular Inverse (dtrtri)");
 
@@ -80,7 +84,7 @@ std::pair<T,T> CFvalidate<T,U>::validateCF_Local(
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  return std::make_pair(error, error2);
+  if (myRank == 0) {std::cout << "Total error = " << error2 << std::endl;}
 }
 
 
@@ -105,23 +109,23 @@ T CFvalidate<T,U>::getResidualTriangleLower(
   }
 
   int pGridDimensionSize = std::get<4>(commInfo);
-  U countMyValues = 0;
-  U countLapackValues = pCoordX + pCoordY*globalDimension;
+  U myIndex = 0;
+  U solIndex = pCoordY + pCoordX*globalDimension;
 
   for (U i=0; i<localDimension; i++)
   {
-    U saveCountRef = countLapackValues;
-    for (U j=0; j<=i; j++)
+    U saveCountRef = solIndex;
+    for (U j=0; j<(localDimension-i); j++)
     {
-      T errorSquare = std::abs(myValues[countMyValues] - lapackValues[countLapackValues]);
-      //if (isRank1) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << std::endl;
+      T errorSquare = std::abs(myValues[myIndex] - lapackValues[solIndex]);
+      //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
-      countLapackValues += pGridDimensionSize;
-      countMyValues++;
+      solIndex += pGridDimensionSize;
+      myIndex++;
     }
-    countLapackValues = saveCountRef + pGridDimensionSize*globalDimension;
-    countMyValues += (localDimension - i - 1);
+    solIndex = saveCountRef + pGridDimensionSize*globalDimension;
+    myIndex += i;
   }
 
   error = std::sqrt(error);
@@ -150,23 +154,23 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
   }
 
   int pGridDimensionSize = std::get<4>(commInfo);
-  U countMyValues = 0;
-  U countLapackValues = pCoordX + pCoordY*globalDimension;
+  U myIndex = 0;
+  U solIndex = pCoordX*globalDimension + pCoordY;
 
   for (U i=0; i<localDimension; i++)
   {
-    U saveCountRef = countLapackValues;
-    for (U j=i; j<localDimension; j++)
+    U saveCountRef = solIndex;
+    myIndex = i*localDimension;
+    for (U j=0; j<=i; j++)
     {
-      T errorSquare = std::abs(myValues[countMyValues] - lapackValues[countLapackValues]);
-      //if (isRank1) std::cout << errorSquare << " " << myValues[countMyValues] << " " << lapackValues[countLapackValues] << " i - " << i << ", j - " << j << std::endl;
+      T errorSquare = std::abs(myValues[myIndex] - lapackValues[solIndex]);
+      //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
-      countLapackValues += pGridDimensionSize;
-      countMyValues++;
+      solIndex += pGridDimensionSize;
+      myIndex++;
     }
-    countLapackValues = saveCountRef + pGridDimensionSize*globalDimension;
-    countMyValues += i;
+    solIndex = saveCountRef + pGridDimensionSize*globalDimension;
   }
 
   error = std::sqrt(error);

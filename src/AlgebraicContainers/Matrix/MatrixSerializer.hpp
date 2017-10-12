@@ -546,10 +546,8 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   U counter2{srcNumRows};
   for (U i=0; i<srcNumRows; i++)
   {
-    std::cout << "destOffset - " << destOffset << std::endl;
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
     U fillZeros = srcNumRows-counter;
-    std::cout << "fillZeros - " << fillZeros << std::endl;
     fillZerosContig(&destVectorData[destOffset+counter], fillZeros);
     srcOffset += counter;
     destOffset += counter2;
