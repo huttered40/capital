@@ -90,8 +90,8 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   std::vector<T>& matrixCforEngine = matrixC.getVectorData();
   U numElems = matrixC.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
-  blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], dimensionX, dimensionY,
-    dimensionX, dimensionZ, dimensionY, dimensionZ, dimensionY, dimensionX, dimensionY, srcPackage);
+  blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], dimensionY, dimensionZ,
+    dimensionX, dimensionY, dimensionX, dimensionY, srcPackage);
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
@@ -154,8 +154,10 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   //   Should the user just deal with this? And how do we deal with a template parameter that doesn't need to exist?
 
   blasEngine<T,U>::_trmm(matrixAforEnginePtr, &matrixBforEngine[0], (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
-    (srcPackage.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX), (srcPackage.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
-    (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY), srcPackage);
+    (srcPackage.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX),
+    (srcPackage.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
+    (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
+    srcPackage);
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], sizeB, MPI_DOUBLE, MPI_SUM, depthComm);
 }
@@ -210,8 +212,11 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   std::vector<T>& matrixBforEngine = matrixB.getVectorData();
   U numElems = matrixB.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
-  blasEngine<T,U>::_syrk(matrixAforEnginePtr, &matrixBforEngine[0], dimensionX, dimensionY,
-    dimensionX, dimensionY, srcPackage);
+  blasEngine<T,U>::_syrk(matrixAforEnginePtr, &matrixBforEngine[0], (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? dimensionY : dimensionX),
+    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? dimensionX : dimensionY),
+    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? dimensionY : dimensionX),
+    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? dimensionY : dimensionX),
+    srcPackage);
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 }

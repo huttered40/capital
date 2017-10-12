@@ -35,8 +35,8 @@ public:
   //   in order to use it as a method argument.
 
   template<template<typename,typename,int> class Distribution>
-  static T validateLocal(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol,
+  static void validateLocal(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
                         U localDimensionX,
                         U localDimensionY,
                         U localDimensionZ,
@@ -48,8 +48,8 @@ public:
                       );
 
   template<template<typename,typename,int> class Distribution>
-  static T validateLocal(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol,
+  static void validateLocal(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
                         U localDimensionX,
                         U localDimensionY,
                         U localDimensionZ,
@@ -61,8 +61,8 @@ public:
                       );
 
   template<template<typename,typename,int> class Distribution>
-  static T validateLocal(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol,
+  static void validateLocal(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
                         U localDimensionX,
                         U localDimensionY,
                         U localDimensionZ,

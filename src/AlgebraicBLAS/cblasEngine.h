@@ -62,10 +62,10 @@ public:
   ~cblasEngine() = delete;
 
   // Engine methods
-  static void _gemm(float* matrixA, float* matrixB, float* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimZ, U matrixBdimX, U matrixCdimZ, U matrixCdimY,
+  static void _gemm(float* matrixA, float* matrixB, float* matrixC, U m, U n, U k,
                       U lda, U ldb, U ldc, const blasEngineArgumentPackage_gemm<float>& srcPackage);
-  static void _trmm(float* matrixA, float* matrixB, U matrixBnumRows, U matrixBnumCols, U lda, U ldb, const blasEngineArgumentPackage_trmm<float>& srcPackage);
-  static void _syrk(float* matrixA, float* matrixC, U matrixAnumColumns, U matrixCnumRows, U lda, U ldc, const blasEngineArgumentPackage_syrk<float>& srcPackage);
+  static void _trmm(float* matrixA, float* matrixB, U m, U n, U lda, U ldb, const blasEngineArgumentPackage_trmm<float>& srcPackage);
+  static void _syrk(float* matrixA, float* matrixC, U n, U k, U lda, U ldc, const blasEngineArgumentPackage_syrk<float>& srcPackage);
 };
 
 template<typename U>
@@ -81,10 +81,10 @@ public:
   ~cblasEngine() = delete;
 
   // Engine methods
-  static void _gemm(double* matrixA, double* matrixB, double* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimZ, U matrixBdimX, U matrixCdimZ, U matrixCdimY,
+  static void _gemm(double* matrixA, double* matrixB, double* matrixC, U m, U n, U k,
                       U lda, U ldb, U ldc, const blasEngineArgumentPackage_gemm<double>& srcPackage);
-  static void _trmm(double* matrixA, double* matrixB, U matrixBnumRows, U matrixBnumCols, U lda, U ldb, const blasEngineArgumentPackage_trmm<double>& srcPackage);
-  static void _syrk(double* matrixA, double* matrixC, U matrixAnumColumns, U matrixCnumRows, U lda, U ldc, const blasEngineArgumentPackage_syrk<double>& srcPackage);
+  static void _trmm(double* matrixA, double* matrixB, U m, U n, U lda, U ldb, const blasEngineArgumentPackage_trmm<double>& srcPackage);
+  static void _syrk(double* matrixA, double* matrixC, U n, U k, U lda, U ldc, const blasEngineArgumentPackage_syrk<double>& srcPackage);
 };
 
 template<typename U>
@@ -100,12 +100,11 @@ public:
   ~cblasEngine() = delete;
 
   // Engine methods
-  static void _gemm(std::complex<float>* matrixA, std::complex<float>* matrixB, std::complex<float>* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimZ,
-                     U matrixBdimX, U matrixCdimZ, U matrixCdimY, U lda, U ldb, U ldc,
+  static void _gemm(std::complex<float>* matrixA, std::complex<float>* matrixB, std::complex<float>* matrixC, U m, U n, U k, U lda, U ldb, U ldc,
                      const blasEngineArgumentPackage_gemm<std::complex<float>>& srcPackage);
-  static void _trmm(std::complex<float>* matrixA, std::complex<float>* matrixB, U matrixBnumRows, U matrixBnumCols, U lda, U ldb,
+  static void _trmm(std::complex<float>* matrixA, std::complex<float>* matrixB, U m, U n, U lda, U ldb,
                       const blasEngineArgumentPackage_trmm<std::complex<float>>& srcPackage);
-  static void _syrk(std::complex<float>* matrixA, std::complex<float>* matrixC, U matrixAnumColumns, U matrixCnumRows, U lda, U ldc,
+  static void _syrk(std::complex<float>* matrixA, std::complex<float>* matrixC, U n, U k, U lda, U ldc,
     const blasEngineArgumentPackage_syrk<std::complex<float>>& srcPackage);
 };
 
@@ -122,12 +121,11 @@ public:
   ~cblasEngine() = delete;
 
   // Engine methods
-  static void _gemm(std::complex<double>* matrixA, std::complex<double>* matrixB, std::complex<double>* matrixC, U matrixAdimX, U matrixAdimY, U matrixBdimZ,
-                     U matrixBdimX, U matrixCdimZ, U matrixCdimY, U lda, U ldb, U ldc,
+  static void _gemm(std::complex<double>* matrixA, std::complex<double>* matrixB, std::complex<double>* matrixC, U m, U n, U k, U lda, U ldb, U ldc,
                      const blasEngineArgumentPackage_gemm<std::complex<double>>& srcPackage);
-  static void _trmm(std::complex<double>* matrixA, std::complex<double>* matrixB, U matrixBnumRows, U matrixBnumCols, U lda, U ldb,
+  static void _trmm(std::complex<double>* matrixA, std::complex<double>* matrixB, U m, U n, U lda, U ldb,
                       const blasEngineArgumentPackage_trmm<std::complex<double>>& srcPackage);
-  static void _syrk(std::complex<double>* matrixA, std::complex<double>* matrixC, U matrixAnumColumns, U matrixCnumRows, U lda, U ldc,
+  static void _syrk(std::complex<double>* matrixA, std::complex<double>* matrixC, U n, U k, U lda, U ldc,
     const blasEngineArgumentPackage_syrk<std::complex<double>>& srcPackage);
 };
 

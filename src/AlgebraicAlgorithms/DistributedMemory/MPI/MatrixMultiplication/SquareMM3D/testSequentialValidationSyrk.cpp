@@ -45,24 +45,19 @@ int main(int argc, char** argv)
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
 
   blasEngineArgumentPackage_syrk<double> blasArgs;
-  blasArgs.order = blasEngineOrder::AblasRowMajor;
-  blasArgs.uplo = blasEngineUpLo::AblasLower;
+  blasArgs.order = blasEngineOrder::AblasColumnMajor;
+  blasArgs.uplo = blasEngineUpLo::AblasUpper;
   blasArgs.transposeA = blasEngineTranspose::AblasTrans;
   blasArgs.alpha = 1.;
-  blasArgs.beta = 1.;
+  blasArgs.beta = 0;
 
   SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
     Multiply(matA, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
 
-  if (rank == 0)
-  std::cout << "Rank 0 first 3 values - " << (matC.getRawData())[0] << " " << (matC.getRawData())[1] << " " << (matC.getRawData())[2] << std::endl;
-
   MPI_Barrier(MPI_COMM_WORLD);
 
-  double error = MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize,
+  MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize,
     globalMatrixSize, globalMatrixSize, globalMatrixSize, MPI_COMM_WORLD, blasArgs);
-
-  std::cout << "Error for procesor " << rank << " = " << error << std::endl;
 
   MPI_Finalize();
 
