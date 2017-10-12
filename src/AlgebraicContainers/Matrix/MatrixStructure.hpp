@@ -33,7 +33,7 @@ void MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(std::vector<T>& data
   for (auto& ptr : matrix)
   {
     ptr = &data[offset];
-    offset += dimensionX;
+    offset += dimensionY;
   }
 }
 
@@ -81,11 +81,11 @@ void MatrixStructureSquare<T,U,Distributer>::DistributeSymmetric(std::vector<T*>
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureSquare<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
-  for (const auto& rows : matrix)
+  for (U i=0; i<dimensionY; i++)
   {
-    for (U i=0; i<dimensionX; i++)
+    for (U j=0; j<dimensionX; j++)
     {
-      std::cout << " " << rows[i];
+      std::cout << " " << matrix[j][i];
     }
     std::cout << std::endl;
   }
@@ -108,7 +108,7 @@ void MatrixStructureRectangle<T,U,Distributer>::Construct()
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
-  matrix.resize(dimensionY);
+  matrix.resize(dimensionX);
   matrixNumElems = dimensionX * dimensionY;
   data.resize(matrixNumElems);
   
@@ -122,7 +122,7 @@ void MatrixStructureRectangle<T,U,Distributer>::AssembleMatrix(std::vector<T>& d
   for (auto& ptr : matrix)
   {
     ptr = &data[offset];
-    offset += dimensionX;
+    offset += dimensionY;
   }
 }
 
@@ -164,15 +164,16 @@ void MatrixStructureRectangle<T,U,Distributer>::DistributeRandom(std::vector<T*>
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
-  for (const auto& rows : matrix)
+  for (U i=0; i<dimensionY; i++)
   {
-    for (U i=0; i<dimensionY; i++)
+    for (U j=0; j<dimensionX; j++)
     {
-      std::cout << " " << rows[i];
+      std::cout << " " << matrix[j][i];
     }
     std::cout << std::endl;
   }
 }
+
 
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -194,7 +195,7 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::Assemble(std::vector<T>& d
   assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionY);
-  matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
+  matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
   data.resize(matrixNumElems);
 
   MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(data, matrix, dimensionX, dimensionY);
@@ -204,12 +205,12 @@ template<typename T, typename U, template<typename,typename,int> class Distribut
 void MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
   U offset{0};
-  U counter{dimensionX};
+  U counter{1};
   for (auto& ptr : matrix)
   {
     ptr = &data[offset];
     offset += counter;				// Hopefully this doesn't have 64-bit overflow problems :(
-    counter--;
+    counter++;
   }
 }
 
@@ -251,22 +252,24 @@ void MatrixStructureUpperTriangular<T,U,Distributer>::DistributeRandom(std::vect
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureUpperTriangular<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
-  U counter{dimensionX};
-  for (const auto& rows : matrix)
+  U startIter = 0;
+  for (U i=0; i<dimensionY; i++)
   {
-    U iter{dimensionX-counter};
-    for (U i=0; i<iter; i++)
+    // Print spaces to represent the lower triangular zeros
+    for (U j=0; j<i; j++)
     {
-      std::cout << "  ";
+      std::cout << "    ";
     }
-    for (U i=0; i<counter; i++)
+
+    for (U j=startIter; j<dimensionX; j++)
     {
-      std::cout << " " << rows[i];
+      std::cout << " " << matrix[j][i];
     }
-    counter--;
+    startIter++;
     std::cout << std::endl;
   }
 }
+
 
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
@@ -287,7 +290,7 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::Assemble(std::vector<T>& d
   // dimensionY must be equal to dimensionX
   assert(dimensionX == dimensionY);
 
-  matrix.resize(dimensionY);
+  matrix.resize(dimensionX);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
   data.resize(matrixNumElems);
 
@@ -298,12 +301,12 @@ template<typename T, typename U, template<typename,typename,int> class Distribut
 void MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
   U offset{0};
-  U counter{1};
+  U counter{dimensionY};
   for (auto& ptr : matrix)
   {
     ptr = &data[offset];
     offset += counter;				// Hopefully this doesn't have 64-bit overflow problems :(
-    counter++;
+    counter--;
   }
 }
 
@@ -345,14 +348,12 @@ void MatrixStructureLowerTriangular<T,U,Distributer>::DistributeRandom(std::vect
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureLowerTriangular<T,U,Distributer>::Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 {
-  U counter{1};
-  for (const auto& rows : matrix)
+  for (U i=0; i<dimensionY; i++)
   {
-    for (U i=0; i<counter; i++)
+    for (U j=0; j<=i; j++)
     {
-      std::cout << " " << rows[i];
+      std::cout << matrix[j][i-j] << " ";
     }
-    counter++;
-    std::cout << std::endl;
+    std::cout << "\n";
   }
 }

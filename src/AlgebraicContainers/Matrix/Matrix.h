@@ -65,8 +65,9 @@ public:
   inline void setNumColumnsGlobal(U arg) { this->_globalDimensionX = arg; }
   inline void setNumElems(U arg) { this->_numElems = arg; }
 
+  // dim.first -- column index (X) , dim.second -- row index (Y)
   inline T& operator[](const std::pair<U,U>& dim) {return this->_matrix[dim.first][dim.second];}
-  inline T& getAccess(U dim1, U dim2) {return this->_matrix[dim1][dim2];}
+  inline T& getAccess(U dimX, U dimY) {return this->_matrix[dimX][dimY];}
 
   // Host method, will call Allocator<T,U,?>::Distribute(...) method
   void DistributeRandom(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY);
@@ -84,11 +85,11 @@ private:
   void mover(Matrix&& rhs);		// will need to use std::forward<T> with this I think.
 
   std::vector<T> _data;
-  std::vector<T*> _matrix;
+  std::vector<T*> _matrix;		// Holds offsets into the columns of 1D array of data. So matrix[1] is the pointer to the starting address of the 1st column.
 
   U _numElems;
-  U _dimensionX;
-  U _dimensionY;
+  U _dimensionX;			// Number of columns owned locally
+  U _dimensionY;			// Number of rows owned locally
 
   // This Matrix is most likely a sub-matrix of a global Matrix partitioned among many processors.
   U _globalDimensionX;

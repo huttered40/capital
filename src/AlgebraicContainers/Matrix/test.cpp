@@ -35,6 +35,7 @@ int main(void)
   theMatrixS.print();
 */
 
+/*
   MatrixType1 theMatrix1(8,8,16,16);
   MatrixType2 theMatrix2(8,8,16,16);
   theMatrix1.DistributeRandom(0,0,2,2);
@@ -43,5 +44,18 @@ int main(void)
   cout << "\n\n";
   theMatrix2.print();
   cout << theMatrix2[std::make_pair(0,0)] << endl;
+*/
+
+  MatrixType1 theMatrix1(8,8,16,16);
+  MatrixType2 theMatrix2(8,8,16,16);
+  MatrixType3 theMatrix3(8,8,16,16);
+  theMatrix1.DistributeRandom(1,0,2,2);
+  theMatrix2.DistributeRandom(1,0,2,2);
+  theMatrix3.DistributeRandom(1,0,2,2);
+  theMatrix1.print();
+  cout << "\n\n";
+  theMatrix2.print();
+  cout << "\n\n";
+  theMatrix3.print();
   return 0;
 }

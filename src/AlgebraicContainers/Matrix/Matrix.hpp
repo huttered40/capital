@@ -33,7 +33,7 @@ Matrix<T,U,Structure,Distributer>::Matrix(std::vector<T>&& data, U dimensionX, U
   if (assemble)
   {
     // Now call the MatrixAssemble method
-    this->_matrix.resize(this->_dimensionY);
+    this->_matrix.resize(this->_dimensionX);
     Structure<T,U,Distributer>::AssembleMatrix(this->_data, this->_matrix, dimensionX, dimensionY);
   }
 }
