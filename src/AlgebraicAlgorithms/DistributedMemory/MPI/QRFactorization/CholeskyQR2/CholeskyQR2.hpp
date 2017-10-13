@@ -29,13 +29,13 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D(Matr
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
-  gemmPack1.order = blasEngineOrder::AblasRowMajor;
+  gemmPack1.order = blasEngineOrder::AblasColumnMajor;
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
   gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
   gemmPack1.alpha = 1.;
   gemmPack1.beta = 0.;
   blasEngine<T,U>::_gemm(matrixR2.getRawData(), matrixR1.getRawData(), matrixR.getRawData(), dimensionX, dimensionX,
-    dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, dimensionX, gemmPack1);
+    dimensionX, dimensionX, dimensionX, dimensionX, gemmPack1);
 }
 
 template<typename T,typename U,
@@ -112,14 +112,14 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   // Changed from syrk to gemm
   std::vector<T> localMMvec(localDimensionX*localDimensionX);
   blasEngineArgumentPackage_syrk<T> syrkPack;
-  syrkPack.order = blasEngineOrder::AblasRowMajor;
+  syrkPack.order = blasEngineOrder::AblasColumnMajor;
   syrkPack.uplo = blasEngineUpLo::AblasUpper;
   syrkPack.transposeA = blasEngineTranspose::AblasTrans;
   syrkPack.alpha = 1.;
   syrkPack.beta = 0.;
 
-  blasEngine<T,U>::_syrk(matrixA.getRawData(), matrixR.getRawData(), localDimensionY, localDimensionX,
-    localDimensionX, localDimensionX, syrkPack);
+  blasEngine<T,U>::_syrk(matrixA.getRawData(), matrixR.getRawData(), localDimensionX, localDimensionY,
+    localDimensionY, localDimensionX, syrkPack);
 
   // MPI_Allreduce first to replicate the dimensionY x dimensionY matrix on each processor
   // Optimization potential: only allReduce half of this matrix because its symmetric
@@ -130,31 +130,30 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor1D_cqr(
   //   Note that we could also do this before the AllReduce, but it wouldnt affect the cost
   for (U i=0; i<localDimensionX; i++)
   {
-    for (U j=0; j<i; j++)
+    for (U j=i+1; j<localDimensionX; j++)
     {
       matrixR.getRawData()[i*localDimensionX+j] = 0;
     }
-  }  
-
+  }
 
   // Now, localMMvec is replicated on every processor in commWorld
-  LAPACKE_dpotrf(LAPACK_ROW_MAJOR, 'U', localDimensionX, matrixR.getRawData(), localDimensionX);
+  LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', localDimensionX, matrixR.getRawData(), localDimensionX);
 
   // Need a true copy to avoid corrupting R-inverse.
   std::vector<T> RI = matrixR.getVectorData();
 
   // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
-  LAPACKE_dtrtri(LAPACK_ROW_MAJOR, 'U', 'N', localDimensionX, &RI[0], localDimensionX);
+  LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionX, &RI[0], localDimensionX);
 
   // Finish by performing local matrix multiplication Q = A*R^{-1}
   blasEngineArgumentPackage_gemm<T> gemmPack;
-  gemmPack.order = blasEngineOrder::AblasRowMajor;
+  gemmPack.order = blasEngineOrder::AblasColumnMajor;
   gemmPack.transposeA = blasEngineTranspose::AblasNoTrans;
   gemmPack.transposeB = blasEngineTranspose::AblasNoTrans;
   gemmPack.alpha = 1.;
   gemmPack.beta = 0.;
-  blasEngine<T,U>::_gemm(matrixA.getRawData(), &RI[0], matrixQ.getRawData(), localDimensionX, localDimensionY,
-    localDimensionX, localDimensionX, localDimensionX, localDimensionY, localDimensionX, localDimensionX, localDimensionX, gemmPack);
+  blasEngine<T,U>::_gemm(matrixA.getRawData(), &RI[0], matrixQ.getRawData(), localDimensionY, localDimensionX,
+    localDimensionX, localDimensionY, localDimensionX, localDimensionY, gemmPack);
 }
 
 template<typename T,typename U,
@@ -201,7 +200,7 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
 
   // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
   blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], &localB[0], localDimensionY, localDimensionX,
-    localDimensionX, localDimensionY, localDimensionX, localDimensionX, localDimensionX, localDimensionX, localDimensionX, gemmPack1);
+    localDimensionX, localDimensionY, localDimensionX, localDimensionX, gemmPack1);
 
   MPI_Reduce((isRootColumn ? MPI_IN_PLACE : &localB[0]), &localB[0], localDimensionX*localDimensionX, MPI_DOUBLE,
     MPI_SUM, pGridCoordZ, columnComm);

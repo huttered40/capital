@@ -50,9 +50,9 @@ void QRvalidate<T,U>::validateLocal1D(
   // Assume row-major
   std::vector<T> tau(globalDimensionX);
   std::vector<T> matrixQ = globalMatrixA.getVectorData();		// true copy
-  LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, globalDimensionY, globalDimensionX, &matrixQ[0], globalDimensionX, &tau[0]);
-  LAPACKE_dorgqr(LAPACK_ROW_MAJOR, globalDimensionY, globalDimensionX, globalDimensionX, &matrixQ[0],
-    globalDimensionX, &tau[0]);
+  LAPACKE_dgeqrf(LAPACK_COL_MAJOR, globalDimensionY, globalDimensionX, &matrixQ[0], globalDimensionY, &tau[0]);
+  LAPACKE_dorgqr(LAPACK_COL_MAJOR, globalDimensionY, globalDimensionX, globalDimensionX, &matrixQ[0],
+    globalDimensionY, &tau[0]);
 
   // Q is in globalMatrixA now
 
@@ -65,8 +65,8 @@ void QRvalidate<T,U>::validateLocal1D(
   // Now generate R using Q and A
   std::vector<T> matrixR(globalDimensionX*globalDimensionX,0);
   // For right now, I will just use cblas, but Note that I should template this class with blasEngine
-  cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, globalDimensionX, globalDimensionX, globalDimensionY,
-    1., &matrixQ[0], globalDimensionX, globalMatrixA.getRawData(), globalDimensionX, 0., &matrixR[0], globalDimensionX);
+  cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, globalDimensionX, globalDimensionX, globalDimensionY,
+    1., &matrixQ[0], globalDimensionY, globalMatrixA.getRawData(), globalDimensionY, 0., &matrixR[0], globalDimensionX);
 
   // Need to set up error2 for matrix R, but do that later
   T error2 = getResidual1D_Full(myR.getVectorData(), matrixR, globalDimensionX, globalDimensionY, commWorld);
@@ -143,12 +143,12 @@ T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector
   U localDimensionY = globalDimensionY/numPEs;
 
   T error = 0;
-  for (U i=0; i<localDimensionY; i++)
+  for (U i=0; i<globalDimensionX; i++)
   {
-    for (U j=0; j<globalDimensionX; j++)
+    for (U j=0; j<localDimensionY; j++)
     {
-      U myIndex = i*globalDimensionX+j;
-      U solIndex = (i*numPEs+myRank)*globalDimensionX+j;
+      U myIndex = i*localDimensionY+j;
+      U solIndex = i*globalDimensionY+(j*numPEs+myRank);
       if (std::abs(myMatrix[myIndex] + solutionMatrix[solIndex]) <= 1e-12)
       {
         T errorSquare = std::abs(myMatrix[myIndex] + solutionMatrix[solIndex]);
@@ -179,8 +179,8 @@ T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, 
   // generate Q^T*Q and the compare against 0s and 1s, implicely forming the Identity matrix
   std::vector<T> myI(globalDimensionX*globalDimensionX,0);
   // Again, for now, lets just use cblas, but I can encapsulate it into blasEngine later
-  cblas_dsyrk(CblasRowMajor, CblasUpper, CblasTrans, globalDimensionX, localDimensionY, 1., &myQ[0],
-    globalDimensionX, 0., &myI[0], globalDimensionX);
+  cblas_dsyrk(CblasColMajor, CblasUpper, CblasTrans, globalDimensionX, localDimensionY, 1., &myQ[0],
+    localDimensionY, 0., &myI[0], globalDimensionX);
 
   // To complete the sum (rightward movement of Matvecs), perform an AllReduce
   MPI_Allreduce(MPI_IN_PLACE, &myI[0], globalDimensionX*globalDimensionX, MPI_DOUBLE, MPI_SUM, commWorld);
@@ -222,15 +222,15 @@ T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::
 
   std::vector<T> computedA(globalDimensionX*localDimensionY,0);
   // Again, for now, lets just use cblas, but I can encapsulate it into blasEngine later
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, localDimensionY, globalDimensionX, globalDimensionX,
-    1., &myQ[0], globalDimensionX, &myR[0], globalDimensionX, 0., &computedA[0], globalDimensionX);
+  cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, localDimensionY, globalDimensionX, globalDimensionX,
+    1., &myQ[0], localDimensionY, &myR[0], globalDimensionX, 0., &computedA[0], localDimensionY);
 
   T error = 0;
-  for (U i=0; i<localDimensionY; i++)
+  for (U i=0; i<globalDimensionX; i++)
   {
-    for (U j=0; j<globalDimensionX; j++)
+    for (U j=0; j<localDimensionY; j++)
     {
-      U myIndex = i*globalDimensionX+j;
+      U myIndex = i*localDimensionY+j;
       T errorSquare = std::abs(myA[myIndex] - computedA[myIndex]);
       //if (myRank==0) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[solIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
