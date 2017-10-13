@@ -344,8 +344,8 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
     globalDimensionX, globalDimensionY, true);
 
   blasEngineArgumentPackage_gemm<double> blasArgs;
-  blasArgs.order = blasEngineOrder::AblasRowMajor;
-  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+  blasArgs.order = blasEngineOrder::AblasColumnMajor;
+  blasArgs.transposeA = blasEngineTranspose::AblasTrans;
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
@@ -357,13 +357,13 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
 
   T error = 0;
   U myIndex = 0;
-  U implicitIndexX = pGridCoordX;
-  U implicitIndexY = pGridCoordY*globalDimensionX;
+  U implicitIndexX = pGridCoordX*globalDimensionY;
+  U implicitIndexY = pGridCoordY;
 
   for (U i=0; i<localDimensionX; i++)
   {
-    U saveCountRef = implicitIndexX;
-    for (U j=0; j<localDimensionX; j++)
+    U saveCountRef = implicitIndexY;
+    for (U j=0; j<localDimensionY; j++)
     {
       T errorSquare = 0;
       if (implicitIndexX == implicitIndexY)
@@ -378,11 +378,11 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
       }
       errorSquare *= errorSquare;
       error += errorSquare;
-      implicitIndexX += pGridDimensionSize;
+      implicitIndexY += pGridDimensionSize;
       myIndex++;
     }
-    implicitIndexX = saveCountRef;
-    implicitIndexY += pGridDimensionSize;
+    implicitIndexY = saveCountRef;
+    implicitIndexX += pGridDimensionSize;
   }
 
   std::cout << "Total error - " << error << std::endl;

@@ -72,7 +72,7 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D(Matr
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
-  gemmPack1.order = blasEngineOrder::AblasRowMajor;
+  gemmPack1.order = blasEngineOrder::AblasColumnMajor;
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
   gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
   gemmPack1.alpha = 1.;
@@ -192,15 +192,15 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
 
   std::vector<T> localB(localDimensionX*localDimensionX);
   blasEngineArgumentPackage_gemm<T> gemmPack1;
-  gemmPack1.order = blasEngineOrder::AblasRowMajor;
+  gemmPack1.order = blasEngineOrder::AblasColumnMajor;
   gemmPack1.transposeA = blasEngineTranspose::AblasTrans;
   gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
   gemmPack1.alpha = 1.;
   gemmPack1.beta = 0.;
 
   // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
-  blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], &localB[0], localDimensionY, localDimensionX,
-    localDimensionX, localDimensionY, localDimensionX, localDimensionX, gemmPack1);
+  blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], &localB[0], localDimensionX, localDimensionX,
+    localDimensionY, localDimensionY, localDimensionX, localDimensionX, gemmPack1);
 
   MPI_Reduce((isRootColumn ? MPI_IN_PLACE : &localB[0]), &localB[0], localDimensionX*localDimensionX, MPI_DOUBLE,
     MPI_SUM, pGridCoordZ, columnComm);
