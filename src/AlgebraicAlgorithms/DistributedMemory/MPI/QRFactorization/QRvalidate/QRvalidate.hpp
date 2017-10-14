@@ -112,9 +112,57 @@ void QRvalidate<T,U>::validateLocal3D(
   MPI_Comm sliceComm = std::get<2>(commInfo3D);
   MPI_Comm_size(rowComm, &pGridDimensionSize);
 
-  using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
-  globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
-//  globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
+  auto tup = getCommunicatorSlice(commWorld);
+  int pCoordX = std::get<1>(tup);
+  int pCoordY = std::get<2>(tup);
+  int pCoordZ = std::get<3>(tup);
+  
+
+  // Remember, we are assuming that the matrix is square here
+  U localDimension = globalDimensionX/pGridDimensionSize;
+
+  // Can generate matrix later
+  std::vector<T> globalMatrixA = getReferenceMatrix3D(matrixA, localDimension, globalDimensionY, pCoordX*pGridDimensionSize+pCoordY, tup); 
+  std::vector<T> testMat(globalDimensionX*globalDimensionY,0);
+  cblas_dsyrk(CblasColMajor, CblasUpper, CblasTrans, globalDimensionX, globalDimensionY, 1., &globalMatrixA[0],
+    globalDimensionY, 0., &testMat[0], globalDimensionX);
+  LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', globalDimensionX, &testMat[0], globalDimensionX);
+  LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', globalDimensionX, &testMat[0], globalDimensionX);
+  std::vector<T> testMatQ(globalDimensionX*globalDimensionX);
+  cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, globalDimensionX, globalDimensionX, globalDimensionY,
+    1., &globalMatrixA[0], globalDimensionY, &testMat[0], globalDimensionY, 0., &testMatQ[0], globalDimensionX);
+  cblas_dsyrk(CblasColMajor, CblasUpper, CblasTrans, globalDimensionX, globalDimensionY, 1., &testMatQ[0],
+    globalDimensionY, 0., &testMat[0], globalDimensionX);
+  LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', globalDimensionX, &testMat[0], globalDimensionX);
+  LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', globalDimensionX, &testMat[0], globalDimensionX);
+  std::vector<T> testMatQ2(globalDimensionX*globalDimensionX);
+  cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, globalDimensionX, globalDimensionX, globalDimensionY,
+    1., &testMatQ[0], globalDimensionY, &testMat[0], globalDimensionY, 0., &testMatQ2[0], globalDimensionX);
+  std::vector<T> testMatI(globalDimensionX*globalDimensionX);
+  cblas_dsyrk(CblasColMajor, CblasUpper, CblasTrans, globalDimensionX, globalDimensionY, 1., &testMatQ2[0],
+    globalDimensionY, 0., &testMatI[0], globalDimensionX);
+
+  // Now compare deviation from orthogonality
+  T error = 0;
+  for (int i=0; i<globalDimensionX; i++)
+  {
+    for (int j=0; j<globalDimensionX; j++)
+    {
+      if (i==j) {error += std::abs(testMatI[i*globalDimensionX+j] - 1);}
+      else {error += std::abs(testMatI[i*globalDimensionX+j]);}
+    }
+  }
+
+  if (myRank == 0) std::cout << "True deviation from orthogonality - " << error << std::endl;
+
+  Matrix<T,U,MatrixStructureSquare,Distribution> matI(std::move(testMatI), globalDimensionX, globalDimensionX, globalDimensionX, globalDimensionX, true);
+  if (myRank == 0)
+  {
+    std::cout << "Printing true I\n";
+    matI.print();
+  }
+
+  // Now, for debugging 3D, lets run this into a gemm and see what happens
 
   // For now, until I talk with Edgar, lets just have a residual test and an orthogonality test
 
@@ -320,6 +368,9 @@ template<template<typename,typename,int> class Distribution>
 T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
                                U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
+  int myRank;
+  MPI_Comm_rank(commWorld, &myRank);
+
   auto commInfo3D = setUpCommunicators(commWorld);
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
@@ -348,14 +399,23 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
 
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::Multiply(myQ, myQ, myI, localDimensionX, localDimensionY, localDimensionX, commWorld, blasArgs);
-
-  // for debugging
-  MPI_Barrier(commWorld);
+  // First, we need an explicit transpose
+  int helper = pGridDimensionSize*pGridDimensionSize;
+  int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
+  Matrix<T,U,MatrixStructureSquare,Distribution> QT = myQ;
+  MPI_Sendrecv_replace(QT.getRawData(), localDimensionX*localDimensionY, MPI_DOUBLE, transposePartner, 0,
+    transposePartner, 0, commWorld, MPI_STATUS_IGNORE);
+  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::Multiply(QT, myQ, myI, localDimensionX, localDimensionY, localDimensionX, commWorld, blasArgs);
+/*
+  if (myRank == 3)
+  {
+    myI.print();
+  }
+*/
 
   T error = 0;
   U myIndex = 0;
-  U implicitIndexX = pGridCoordX*globalDimensionY;
+  U implicitIndexX = pGridCoordX;
   U implicitIndexY = pGridCoordY;
 
   for (U i=0; i<localDimensionX; i++)
@@ -366,16 +426,17 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
       T errorSquare = 0;
       if (implicitIndexX == implicitIndexY)
       {
-        T errorSquare = abs(myI.getRawData()[myIndex] - 1);
-        if ((pGridCoordX == 0) && (pGridCoordY == 0) && (pGridCoordZ == 0)) {std::cout << myI.getRawData()[myIndex] << " " << 1 << std::endl;}
+        errorSquare = std::abs(myI.getRawData()[myIndex] - 1);
+        //if (myRank == 6) {std::cout << myI.getRawData()[myIndex] << " " << 1 << std::endl;}
       }
       else
       {
-        T errorSquare = abs(myI.getRawData()[myIndex] - 0);
-        if ((pGridCoordX == 0) && (pGridCoordY == 0) && (pGridCoordZ == 0)) {std::cout << myI.getRawData()[myIndex] << " " << 0 << std::endl;}
+        errorSquare = std::abs(myI.getRawData()[myIndex] - 0);
+        //if (myRank == 6) {std::cout << myI.getRawData()[myIndex] << " " << 0 << std::endl;}
       }
       errorSquare *= errorSquare;
       error += errorSquare;
+      //if (myRank == 6) {std::cout << "current error = " << error << std::endl;}
       implicitIndexY += pGridDimensionSize;
       myIndex++;
     }
@@ -383,8 +444,8 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
     implicitIndexX += pGridDimensionSize;
   }
 
-  std::cout << "Total error - " << error << std::endl;
   error = std::sqrt(error);
+  //std::cout << myRank << " has local error - " << error << std::endl;
   return error;		// return 2-norm
 }
 
@@ -426,6 +487,59 @@ std::vector<T> QRvalidate<T,U>::getReferenceMatrix1D(
       {
         U readIndex = i*localDimensionY + j + k*localSize;
         cyclicMatrix[writeIndex++] = blockedMatrix[readIndex];
+      }
+    }
+  }
+
+  return cyclicMatrix;
+}
+
+
+template<typename T, typename U>
+template<template<typename,typename,int> class Distribution>
+std::vector<T> QRvalidate<T,U>::getReferenceMatrix3D(
+                        				Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+							U localDimension,
+							U globalDimension,
+							U key,
+							std::tuple<MPI_Comm, int, int, int, int> commInfo
+						  )
+{
+  MPI_Comm sliceComm = std::get<0>(commInfo);
+  int pGridCoordX = std::get<1>(commInfo);
+  int pGridCoordY = std::get<2>(commInfo);
+  int pGridCoordZ = std::get<3>(commInfo);
+  int pGridDimensionSize = std::get<4>(commInfo);
+
+  // Remember, assume this algorithm works on square matrices for now
+  using MatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
+  MatrixType localMatrix(localDimension, localDimension, globalDimension, globalDimension);
+  localMatrix.DistributeRandom(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key);
+
+  U globalSize = globalDimension*globalDimension;
+  std::vector<T> blockedMatrix(globalSize);
+  std::vector<T> cyclicMatrix(globalSize);
+  U localSize = localDimension*localDimension;
+  MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
+
+  U numCyclicBlocksPerRow = globalDimension/pGridDimensionSize;
+  U numCyclicBlocksPerCol = globalDimension/pGridDimensionSize;
+  U writeIndex = 0;
+  // MACRO loop over all cyclic "blocks" (dimensionX direction)
+  for (U i=0; i<numCyclicBlocksPerCol; i++)
+  {
+    // Inner loop over all columns in a cyclic "block"
+    for (U j=0; j<pGridDimensionSize; j++)
+    {
+      // Inner loop over all cyclic "blocks"
+      for (U k=0; k<numCyclicBlocksPerRow; k++)
+      {
+        // Inner loop over all elements along columns
+        for (U z=0; z<pGridDimensionSize; z++)
+        {
+          U readIndex = i*numCyclicBlocksPerRow + j*localSize + k + z*pGridDimensionSize*localSize;
+          cyclicMatrix[writeIndex++] = blockedMatrix[readIndex];
+        }
       }
     }
   }

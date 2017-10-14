@@ -25,7 +25,7 @@ static std::tuple<MPI_Comm,
 
   // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
   // Then, subdivide further into row groups and column groups
-  MPI_Comm_split(commWorld, pGridCoordY*pGridDimensionSize+pGridCoordX, rank, &depthComm);
+  MPI_Comm_split(commWorld, pGridCoordY+pGridDimensionSize*pGridCoordX, rank, &depthComm);
   MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
   MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);

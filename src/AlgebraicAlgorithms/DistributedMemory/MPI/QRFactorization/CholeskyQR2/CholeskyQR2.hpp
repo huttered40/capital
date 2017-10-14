@@ -218,10 +218,16 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
   CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionX, 'U', commWorld);
 
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
+  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
   SquareMM3D<T,U,StructureA,MatrixStructureSquare,StructureQ,blasEngine>::Multiply(matrixA, matrixRI,
     matrixQ, localDimensionX, localDimensionY, localDimensionX, commWorld, gemmPack1);
-
-  //if (myRank == 0){ matrixQ.print(); std::cout << "\n\n\n";}
+/*
+  if (myRank == 0)
+  {
+    matrixQ.print();
+    std::cout << "\n\n\n";
+  }
+*/
 }
 
 template<typename T,typename U,

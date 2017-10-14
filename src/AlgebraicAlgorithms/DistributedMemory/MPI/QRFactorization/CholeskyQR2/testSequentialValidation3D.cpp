@@ -54,6 +54,11 @@ int main(int argc, char** argv)
   CholeskyQR2<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
     Factor3D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
 
+  if (rank == 1)
+  {
+    //matQ.print();
+  }
+
   QRvalidate<double,int>::validateLocal3D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
 
   MPI_Finalize();
