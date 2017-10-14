@@ -40,7 +40,7 @@ int main(int argc, char** argv)
   MatrixTypeR matQ(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
   MatrixTypeS matR(localMatrixDimensionX,localMatrixDimensionX,globalMatrixDimensionX,globalMatrixDimensionX);
 
-  matA.DistributeRandom(0, rank, 1, size);
+  matA.DistributeRandom(0, rank, 1, size, rank);
 
   cout << "Rank " << rank << " has local dimensionX - " << localMatrixDimensionX << ", localDimensionY - " << localMatrixDimensionY << endl;
 

@@ -43,13 +43,11 @@ void QRvalidate<T,U>::validateLocal1D(
   MPI_Comm_rank(commWorld, &myRank);
   U localDimensionY = globalDimensionY/numPEs;
 
-  using globalMatrixType = Matrix<T,U,MatrixStructureRectangle,Distribution>;
-  globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
-  globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
+  std::vector<T> globalMatrixA = getReferenceMatrix1D(matrixA, globalDimensionX, globalDimensionY, localDimensionY, myRank, commWorld);
 
   // Assume row-major
   std::vector<T> tau(globalDimensionX);
-  std::vector<T> matrixQ = globalMatrixA.getVectorData();		// true copy
+  std::vector<T> matrixQ = globalMatrixA;		// true copy
   LAPACKE_dgeqrf(LAPACK_COL_MAJOR, globalDimensionY, globalDimensionX, &matrixQ[0], globalDimensionY, &tau[0]);
   LAPACKE_dorgqr(LAPACK_COL_MAJOR, globalDimensionY, globalDimensionX, globalDimensionX, &matrixQ[0],
     globalDimensionY, &tau[0]);
@@ -66,7 +64,7 @@ void QRvalidate<T,U>::validateLocal1D(
   std::vector<T> matrixR(globalDimensionX*globalDimensionX,0);
   // For right now, I will just use cblas, but Note that I should template this class with blasEngine
   cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, globalDimensionX, globalDimensionX, globalDimensionY,
-    1., &matrixQ[0], globalDimensionY, globalMatrixA.getRawData(), globalDimensionY, 0., &matrixR[0], globalDimensionX);
+    1., &matrixQ[0], globalDimensionY, &globalMatrixA[0], globalDimensionY, 0., &matrixR[0], globalDimensionX);
 
   // Need to set up error2 for matrix R, but do that later
   T error2 = getResidual1D_Full(myR.getVectorData(), matrixR, globalDimensionX, globalDimensionY, commWorld);
@@ -116,7 +114,7 @@ void QRvalidate<T,U>::validateLocal3D(
 
   using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
   globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
-  globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
+//  globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
 
   // For now, until I talk with Edgar, lets just have a residual test and an orthogonality test
 
@@ -388,4 +386,49 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
   std::cout << "Total error - " << error << std::endl;
   error = std::sqrt(error);
   return error;		// return 2-norm
+}
+
+
+template<typename T, typename U>
+template<template<typename,typename,int> class Distribution>
+std::vector<T> QRvalidate<T,U>::getReferenceMatrix1D(
+                        				Matrix<T,U,MatrixStructureRectangle,Distribution>& myMatrix,
+							U globalDimensionX,
+							U globalDimensionY,
+							U localDimensionY,
+							U key,
+							MPI_Comm commWorld
+						  )
+{
+  int numPEs, myRank;
+  MPI_Comm_size(commWorld, &numPEs);
+  MPI_Comm_rank(commWorld, &myRank);
+
+  using MatrixType = Matrix<T,U,MatrixStructureRectangle,Distribution>;
+  MatrixType localMatrix(globalDimensionX, localDimensionY, globalDimensionX, globalDimensionY);
+  localMatrix.DistributeRandom(0, myRank, 1, numPEs, key);
+
+  U globalSize = globalDimensionX*globalDimensionY;
+  std::vector<T> blockedMatrix(globalSize);
+  std::vector<T> cyclicMatrix(globalSize);
+  U localSize = globalDimensionX*localDimensionY;
+  MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, commWorld);
+
+  U writeIndex = 0;
+  // MACRO loop over all columns
+  for (U i=0; i<globalDimensionX; i++)
+  {
+    // Inner loop over "block"s
+    for (U j=0; j<localDimensionY; j++)
+    {
+      // Inner loop over all rows in a "block"
+      for (U k=0; k<numPEs; k++)
+      {
+        U readIndex = i*localDimensionY + j + k*localSize;
+        cyclicMatrix[writeIndex++] = blockedMatrix[readIndex];
+      }
+    }
+  }
+
+  return cyclicMatrix;
 }

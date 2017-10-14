@@ -70,6 +70,17 @@ private:
   template<template<typename,typename,int> class Distribution>
   static T testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
                                U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
+
+  template<template<typename,typename,int> class Distribution>
+  static std::vector<T> getReferenceMatrix1D(
+                        			Matrix<T,U,MatrixStructureRectangle,Distribution>& myMatrix,
+						U globalDimensionX,
+						U globalDimensionY,
+						U localDimensionY,
+						U key,
+						MPI_Comm commWorld
+					    );
+
 };
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)

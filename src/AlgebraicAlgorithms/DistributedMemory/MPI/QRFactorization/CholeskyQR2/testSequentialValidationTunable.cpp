@@ -44,7 +44,7 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
-  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
+  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, 0);
 
   CholeskyQR2<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
     FactorTunable(matA, matQ, matR, localMatrixSize, localMatrixSize, MPI_COMM_WORLD);
