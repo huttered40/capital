@@ -95,7 +95,10 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
-  // Unlike before when I had explicit new calls, the memory will get deleted automatically since the vectors will go out of scope
+  MPI_Comm_free(&rowComm);
+  MPI_Comm_free(&columnComm);
+  MPI_Comm_free(&sliceComm);
+  MPI_Comm_free(&depthComm);
 }
 
 template<typename T, typename U,
@@ -160,6 +163,11 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
     srcPackage);
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], sizeB, MPI_DOUBLE, MPI_SUM, depthComm);
+
+  MPI_Comm_free(&rowComm);
+  MPI_Comm_free(&columnComm);
+  MPI_Comm_free(&sliceComm);
+  MPI_Comm_free(&depthComm);
 }
 
 template<typename T, typename U,
@@ -219,6 +227,11 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
     srcPackage);
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
+
+  MPI_Comm_free(&rowComm);
+  MPI_Comm_free(&transComm);
+  MPI_Comm_free(&sliceComm);
+  MPI_Comm_free(&depthComm);
 }
 
 template<typename T, typename U,
