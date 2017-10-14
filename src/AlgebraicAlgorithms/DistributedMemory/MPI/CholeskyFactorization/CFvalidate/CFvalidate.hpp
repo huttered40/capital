@@ -86,6 +86,8 @@ void CFvalidate<T,U>::validateCF_Local(
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total error = " << error2 << std::endl;}
+
+  MPI_Comm_free(&sliceComm);
 }
 
 
