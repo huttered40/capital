@@ -67,6 +67,8 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total error = " << error << std::endl;}
+
+  MPI_Comm_free(&sliceComm);
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
@@ -114,6 +116,8 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total error = " << error << std::endl;}
+
+  MPI_Comm_free(&sliceComm);
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
@@ -160,6 +164,8 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total error = " << error << std::endl;}
+
+  MPI_Comm_free(&sliceComm);
 }
   
 template<typename T, typename U, template<typename,typename> class blasEngine>
