@@ -29,21 +29,59 @@ int main(int argc, char** argv)
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   // size -- total number of processors in the tunable grid
-  int globalMatrixDimensionY = (1<<(atoi(argv[1])));
-  int globalMatrixDimensionX = (1<<(atoi(argv[2])));
+  int exponentY = atoi(argv[1]);
+  int exponentX = atoi(argv[2]);
+  int globalMatrixDimensionY = (1<<exponentY);
+  int globalMatrixDimensionX = (1<<exponentX);
 
   int dimensionC,dimensionD;
   if (argc == 4)
   {
     // Use the grid that the user specifies in the command line
-    dimensionD = (1<<(atoi(argv[3])));
-    dimensionC = (1<<(atoi(argv[4])));
+    int exponentD = atoi(argv[3]);
+    int exponentC = atoi(argv[4]);
+
+    // Do an exponent check, but first we need the log-2 of numPEs(size)
+    int exponentNumPEs = std::nearbyint(std::log2(size));
+
+    int sumExponentsD = (exponentNumPEs+exponentY+exponentY - exponentX - exponentX);
+    int sumExponentsC = (exponentNumPEs+exponentX - exponentY);
+
+    if ((sumExponentsD%3 != 0) || (sumExponentsC%3==0))
+    {
+      std::abort(); 
+    }
+
+    dimensionD = (1<<exponentD);
+    dimensionC = (1<<exponentC);
   }
   else
   {
-    // Find the optimal grid based on the number of processors, size, and the dimensions of matrix A
-    dimensionD = std::nearbyint(std::pow((size*globalMatrixDimensionY*globalMatrixDimensionY)/(globalMatrixDimensionX*globalMatrixDimensionX), 1./3));
-    dimensionC = std::nearbyint(std::pow((size*globalMatrixDimensionX)/globalMatrixDimensionY, 1./3));
+    // Do an exponent check, but first we need the log-2 of numPEs(size)
+    int exponentNumPEs = std::nearbyint(std::log2(size));
+
+    int sumExponentsD = (exponentNumPEs+exponentY+exponentY - exponentX - exponentX);
+    //int sumExponentsC = (exponentNumPEs+exponentX - exponentY);
+
+    int exponentD;
+    //int exponentC;
+    if (sumExponentsD%3 == 0) {exponentD = sumExponentsD/3;}
+    else { exponentD = (sumExponentsD - (sumExponentsD%3))/3;}
+/*
+    if (sumExponentsC <= 0) {exponentC = 0;}
+    else if (sumExponentsC%3==0) {exponentC = sumExponentsC/3;}
+    else {exponentC = (sumExponentsC + (3-(sumExponentsC%3)))/3;}
+*/
+
+// Find the optimal grid based on the number of processors, size, and the dimensions of matrix A
+    dimensionD = std::min(size, (1<<exponentD));
+    dimensionC = std::nearbyint(std::pow(size/dimensionD, 1./2));
+
+    // Extra error check so that we use all of the processors
+    if (dimensionD*dimensionC*dimensionC < size)
+    {
+      dimensionD *= (size / (dimensionD*dimensionC*dimensionC));
+    }
   }
 
   cout << "dimensionD - " << dimensionD << " and dimensionC - " << dimensionC << std::endl;

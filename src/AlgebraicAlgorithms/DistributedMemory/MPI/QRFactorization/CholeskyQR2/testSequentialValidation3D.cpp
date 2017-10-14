@@ -28,7 +28,7 @@ int main(int argc, char** argv)
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-  int pGridDimensionSize = ceil(pow(size,1./3.));
+  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   // size -- total number of processors in the 3D grid
 
   int helper = pGridDimensionSize;
