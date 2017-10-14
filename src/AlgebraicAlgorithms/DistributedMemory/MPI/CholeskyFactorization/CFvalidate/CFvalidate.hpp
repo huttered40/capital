@@ -7,7 +7,7 @@ static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm co
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(commWorld, &size);
 
-  int pGridDimensionSize = ceil(pow(size,1./3.));
+  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   
   int helper = pGridDimensionSize;
   helper *= helper;

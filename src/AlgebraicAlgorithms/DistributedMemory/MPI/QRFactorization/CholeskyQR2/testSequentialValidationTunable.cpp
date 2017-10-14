@@ -28,26 +28,43 @@ int main(int argc, char** argv)
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  // size -- total number of processors in the 3D grid
+  // size -- total number of processors in the tunable grid
+  int globalMatrixDimensionY = (1<<(atoi(argv[1])));
+  int globalMatrixDimensionX = (1<<(atoi(argv[2])));
 
-  int pGridDimensionSize = ceil(pow(size,1./3.));
-  uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
-  uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
-  
-  MatrixTypeS matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeS matQ(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeS matR(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+  int dimensionC,dimensionD;
+  if (argc == 4)
+  {
+    // Use the grid that the user specifies in the command line
+    dimensionD = (1<<(atoi(argv[3])));
+    dimensionC = (1<<(atoi(argv[4])));
+  }
+  else
+  {
+    // Find the optimal grid based on the number of processors, size, and the dimensions of matrix A
+    dimensionD = std::nearbyint(std::pow((size*globalMatrixDimensionY*globalMatrixDimensionY)/(globalMatrixDimensionX*globalMatrixDimensionX), 1./3));
+    dimensionC = std::nearbyint(std::pow((size*globalMatrixDimensionX)/globalMatrixDimensionY, 1./3));
+  }
 
-  int helper = pGridDimensionSize;
-  helper *= helper;
-  int pCoordX = rank%pGridDimensionSize;
-  int pCoordY = (rank%helper)/pGridDimensionSize;
-  int pCoordZ = rank/helper;
+  cout << "dimensionD - " << dimensionD << " and dimensionC - " << dimensionC << std::endl;
 
-  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, 0);
+  int sliceSize = dimensionD*dimensionC;
+  int pCoordX = rank%dimensionC;
+  int pCoordY = (rank%sliceSize)/dimensionC;
+  int pCoordZ = rank/sliceSize;
 
-  CholeskyQR2<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
-    FactorTunable(matA, matQ, matR, localMatrixSize, localMatrixSize, MPI_COMM_WORLD);
+  int localMatrixDimensionY = globalMatrixDimensionY/dimensionD;
+  int localMatrixDimensionX = globalMatrixDimensionX/dimensionC;
+
+  // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
+  MatrixTypeR matA(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
+  MatrixTypeR matQ(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
+  MatrixTypeS matR(localMatrixDimensionX,localMatrixDimensionX,globalMatrixDimensionX,globalMatrixDimensionX);
+
+  matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+
+//  CholeskyQR2<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
+//    FactorTunable(matA, matQ, matR, localMatrixSize, localMatrixSize, MPI_COMM_WORLD);
 
   MPI_Finalize();
 

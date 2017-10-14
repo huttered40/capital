@@ -31,7 +31,7 @@ int main(int argc, char** argv)
 
   // size -- total number of processors in the 3D grid
 
-  int pGridDimensionSize = ceil(pow(size,1./3.));
+  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
   uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
   

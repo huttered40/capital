@@ -15,7 +15,7 @@ testSequentialValidation3D: $(OBJS3)
 	$(CCMPI) $(CFLAGS) -o testSequentialValidation3D $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
 
 testSequentialValidationTunable: $(OBJS4)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationTunable $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+	$(CCMPI) $(CFLAGS) -o testSequentialValidationTunable $(OBJS4) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
 
 testSequentialValidation1D.o: testSequentialValidation1D.cpp CholeskyQR2.h
 	$(CCMPI) $(CFLAGS) -o testSequentialValidation1D.o -c testSequentialValidation1D.cpp
