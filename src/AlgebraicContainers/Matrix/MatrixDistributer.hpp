@@ -16,17 +16,18 @@ void MatrixDistributerCyclic<T,U,0>::DistributeRandom
 		   U localPgridX,
 		   U localPgridY,
 		   U globalPgridX,
-		   U globalPgridY
+		   U globalPgridY,
+		   U key
 		 )
 {
 
+  srand48(key);
   U saveGlobalPosition = localPgridY + localPgridX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   for (U i=0; i<dimensionX; i++)
   {
     U globalPosition = saveGlobalPosition;
     for (U j=0; j<dimensionY; j++)
     {
-      srand48(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
       globalPosition += globalPgridY;
     }
@@ -48,6 +49,7 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
 		   U localPgridY,
 		   U globalPgridX,
 		   U globalPgridY,
+		   U key,
                    bool diagonallyDominant
 		 )
 {
@@ -55,6 +57,7 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
   //       or local (but distributed based on the values each processor gets) transpose.
 
 
+  srand48(key);
   U saveGlobalPositionX = localPgridX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   U saveGlobalPositionY = localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   for (U i=0; i<dimensionX; i++)
@@ -62,6 +65,7 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
     saveGlobalPositionY = localPgridY;
     for (U j=0; j<dimensionY; j++)
     {
+/*
       if (saveGlobalPositionX > saveGlobalPositionY)
       {
         srand48(saveGlobalPositionX + globalDimensionY*saveGlobalPositionY);
@@ -70,6 +74,7 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
       {
         srand48(saveGlobalPositionY + globalDimensionY*saveGlobalPositionX);
       }
+*/
       matrix[i][j] = drand48();			// Change this later.
       if ((diagonallyDominant) && (saveGlobalPositionX == saveGlobalPositionY) && (i==j))
       {
@@ -94,17 +99,18 @@ void MatrixDistributerCyclic<T,U,1>::DistributeRandom
 		   U localPgridX,
 		   U localPgridY,
 		   U globalPgridX,
-		   U globalPgridY
+		   U globalPgridY,
+		   U key
 		 )
 {
 
+  srand48(key);
   U saveGlobalPosition = localPgridY + localPgridX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   for (U i=0; i<dimensionX; i++)
   {
     U globalPosition = saveGlobalPosition;
     for (U j=0; j<dimensionY; j++)
     {
-      srand48(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
       globalPosition += globalPgridY;
     }
@@ -125,9 +131,11 @@ void MatrixDistributerCyclic<T,U,2>::DistributeRandom
 		   U localPgridX,
 		   U localPgridY,
 		   U globalPgridX,
-		   U globalPgridY
+		   U globalPgridY,
+		   U key
 		 )
 {
+  srand48(key);
   U saveGlobalPosition = localPgridY + localPgridX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   U counter{1};
   U startIter;
@@ -139,7 +147,6 @@ void MatrixDistributerCyclic<T,U,2>::DistributeRandom
     endIter = counter;
     for (U j=startIter; j<endIter; j++)
     {
-      srand48(globalPosition);
       matrix[i][j] = drand48();			// Change this later.
       globalPosition += globalPgridY;
     }
@@ -166,9 +173,11 @@ void MatrixDistributerCyclic<T,U,3>::DistributeRandom
 		   U localPgridX,
 		   U localPgridY,
 		   U globalPgridX,
-		   U globalPgridY
+		   U globalPgridY,
+		   U key
 		 )
 {
+  srand48(key);
   U saveGlobalPosX = localPgridX;
   U saveGlobalPosY = localPgridY;
   U counter{0};
@@ -196,7 +205,6 @@ void MatrixDistributerCyclic<T,U,3>::DistributeRandom
       else
       {
         U globalPos = saveGlobalPosY + saveGlobalPosX*globalDimensionY;
-        srand48(globalPos);
         matrix[i][j] = drand48();			// Change this later.
       }
       saveGlobalPosY += globalPgridY;

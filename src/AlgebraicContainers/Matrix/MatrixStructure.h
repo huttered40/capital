@@ -42,8 +42,8 @@ public:
   static void Destroy();
   static void Dissamble(std::vector<T*>& matrix);
   static void Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY);
-  static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
-  static void DistributeSymmetric(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY, bool diagonallyDominant);
+  static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY, U key);
+  static void DistributeSymmetric(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY, U key, bool diagonallyDominant);
   static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
 
   static inline U getNumElems(U rangeX, U rangeY) { return rangeX*rangeY; }
@@ -70,7 +70,7 @@ public:
   static void Destroy();
   static void Dissamble(std::vector<T*>& matrix);
   static void Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY);
-  static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
+  static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY, U key);
   static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
 
   static inline U getNumElems(U rangeX, U rangeY) { return rangeX*rangeY; }
@@ -96,7 +96,7 @@ public:
   static void Destroy();
   static void Dissamble(std::vector<T*>& matrix);
   static void Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY);
-  static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
+  static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY, U key);
   static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
 
   static inline U getNumElems(U rangeX, U rangeY) { return ((rangeX*(rangeX+1))>>1); }
@@ -122,7 +122,7 @@ public:
   static void Destroy();
   static void Dissamble(std::vector<T*>& matrix);
   static void Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY);
-  static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
+  static void DistributeRandom(std::vector<T*>& matrix, U localDimensionX, U localDimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY, U key);
   static void Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
 
   static inline U getNumElems(U rangeX, U rangeY) { return ((rangeX*(rangeX+1))>>1); }

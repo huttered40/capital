@@ -43,8 +43,9 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
-  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
-  matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
+  // Don't use rank. Need to use the rank relative to the slice its on, since each slice will start off with the same matrix
+  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+  matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
 
   blasEngineArgumentPackage_gemm<double> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;

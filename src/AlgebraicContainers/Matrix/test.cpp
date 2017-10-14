@@ -49,10 +49,10 @@ int main(void)
   MatrixType2 theMat2(8,8,16,16);
   MatrixType2 theMat3(8,8,16,16);
   MatrixType2 theMat4(8,8,16,16);
-  theMat1.DistributeSymmetric(0,0,2,2,true);
-  theMat2.DistributeSymmetric(0,1,2,2,true);
-  theMat3.DistributeSymmetric(1,0,2,2,true);
-  theMat4.DistributeSymmetric(1,1,2,2,true);
+  theMat1.DistributeSymmetric(0,0,2,2,0,true);
+  theMat2.DistributeSymmetric(0,1,2,2,0,true);
+  theMat3.DistributeSymmetric(1,0,2,2,0,true);
+  theMat4.DistributeSymmetric(1,1,2,2,0,true);
   theMat1.print();
   std::cout << "\n\n";
   theMat2.print();

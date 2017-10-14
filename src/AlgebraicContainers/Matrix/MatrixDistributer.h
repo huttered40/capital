@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstdlib>
 #include <cassert>
+#include <ctime>
 
 // Local includes -> Note that this class should need to know nothing about the Matrix class.
 
@@ -46,8 +47,10 @@ public:
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
-  static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
-  static void DistributeSymmetric(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY, bool diagonallyDominant);
+  static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX,
+    U localPgridDimY, U globalPgridDimX, U globalPgridDimY, U key);
+  static void DistributeSymmetric(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX,
+    U localPgridDimY, U globalPgridDimX, U globalPgridDimY, U key, bool diagonallyDominant);
 };
 
 // Partially specialized class that will allow us to use the partially specialized method.
@@ -66,7 +69,8 @@ public:
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
-  static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
+  static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX,
+    U localPgridDimY, U globalPgridDimX, U globalPgridDimY, U key);
 };
 
 // Partially specialized class that will allow us to use the partially specialized method.
@@ -85,7 +89,8 @@ public:
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
-  static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
+  static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY,
+    U globalPgridDimX, U globalPgridDimY, U key);
 };
 
 // Partially specialized class that will allow us to use the partially specialized method.
@@ -104,7 +109,8 @@ public:
   ~MatrixDistributerCyclic() = delete;
 
 //protected:
-  static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY, U globalPgridDimX, U globalPgridDimY);
+  static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY,
+    U globalPgridDimX, U globalPgridDimY, U key);
 };
 
 // We must provide the template class definitions below. Read up on why exactly we need to do this.

@@ -56,6 +56,15 @@ private:
 				U globalDimension,
 		                std::tuple<MPI_Comm, int, int, int, int> commInfo
 			    );
+
+  template<template<typename,typename,int> class Distribution>
+  static std::vector<T> getReferenceMatrix(
+                        			Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+						U localDimension,
+						U globalDimension,
+						U key,
+						std::tuple<MPI_Comm, int, int, int, int> commInfo
+					  );
 };
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)

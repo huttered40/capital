@@ -43,44 +43,45 @@ void CFvalidate<T,U>::validateCF_Local(
 
   auto commInfo = getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
+  U pGridCoordX = std::get<1>(commInfo);
+  U pGridCoordY = std::get<2>(commInfo);
+  U pGridCoordZ = std::get<3>(commInfo);
+  U pGridDimensionSize = std::get<4>(commInfo);
 
-  using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
-  globalMatrixType globalMatrixA(globalDimension,globalDimension,globalDimension,globalDimension);
-  globalMatrixA.DistributeSymmetric(0, 0, 1, 1, true);		// Hardcode so that the Distributer thinks we own the entire matrix.
-
+  std::vector<T> globalMatrixA = getReferenceMatrix(matrixSol_CF, localDimension, globalDimension, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
 
   // for ease in finding Frobenius Norm
   for (U i=0; i<globalDimension; i++)
   {
     for (U j=0; j<globalDimension; j++)
     {
-      if ((dir == 'L') && (i>j)) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
-      if ((dir == 'U') && (j>i)) globalMatrixA.getRawData()[i*globalDimension+j] = 0;
+      if ((dir == 'L') && (i>j)) globalMatrixA[i*globalDimension+j] = 0;
+      if ((dir == 'U') && (j>i)) globalMatrixA[i*globalDimension+j] = 0;
     }
   }
 
   // Assume row-major
   pTimer myTimer;
   myTimer.setStartTime();
-  LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, globalDimension, globalMatrixA.getRawData(), globalDimension);
+  LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, globalDimension, &globalMatrixA[0], globalDimension);
   myTimer.setEndTime();
   myTimer.printParallelTime(1e-9, MPI_COMM_WORLD, "LAPACK Cholesky Factorization (dpotrf)");
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = (dir == 'L' ? getResidualTriangleLower(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo)
-              : getResidualTriangleUpper(matrixSol_CF.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo));
+  T error = (dir == 'L' ? getResidualTriangleLower(matrixSol_CF.getVectorData(), globalMatrixA, localDimension, globalDimension, commInfo)
+              : getResidualTriangleUpper(matrixSol_CF.getVectorData(), globalMatrixA, localDimension, globalDimension, commInfo));
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total error = " << error << std::endl;}
 
   myTimer.setStartTime();
-  LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', globalDimension, globalMatrixA.getRawData(), globalDimension);
+  LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', globalDimension, &globalMatrixA[0], globalDimension);
   myTimer.setEndTime();
   myTimer.printParallelTime(1e-9, MPI_COMM_WORLD, "LAPACK Triangular Inverse (dtrtri)");
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error2 = (dir == 'L' ? getResidualTriangleLower(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo)
-               : getResidualTriangleUpper(matrixSol_TI.getVectorData(), globalMatrixA.getVectorData(), localDimension, globalDimension, commInfo));
+  T error2 = (dir == 'L' ? getResidualTriangleLower(matrixSol_TI.getVectorData(), globalMatrixA, localDimension, globalDimension, commInfo)
+               : getResidualTriangleUpper(matrixSol_TI.getVectorData(), globalMatrixA, localDimension, globalDimension, commInfo));
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
@@ -176,4 +177,55 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
   error = std::sqrt(error);
   //if (isRank1) std::cout << "Total error - " << error << "\n\n\n";
   return error;		// return 2-norm
+}
+
+template<typename T, typename U>
+template<template<typename,typename,int> class Distribution>
+std::vector<T> CFvalidate<T,U>::getReferenceMatrix(
+                        				Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+							U localDimension,
+							U globalDimension,
+							U key,
+							std::tuple<MPI_Comm, int, int, int, int> commInfo
+						  )
+{
+  MPI_Comm sliceComm = std::get<0>(commInfo);
+  int pGridCoordX = std::get<1>(commInfo);
+  int pGridCoordY = std::get<2>(commInfo);
+  int pGridCoordZ = std::get<3>(commInfo);
+  int pGridDimensionSize = std::get<4>(commInfo);
+
+  using MatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
+  MatrixType localMatrix(localDimension, localDimension, globalDimension, globalDimension);
+  localMatrix.DistributeSymmetric(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key, true);
+
+  U globalSize = globalDimension*globalDimension;
+  std::vector<T> blockedMatrix(globalSize);
+  std::vector<T> cyclicMatrix(globalSize);
+  U localSize = localDimension*localDimension;
+  MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
+
+  U numCyclicBlocksPerRow = globalDimension/pGridDimensionSize;
+  U numCyclicBlocksPerCol = globalDimension/pGridDimensionSize;
+  U writeIndex = 0;
+  // MACRO loop over all cyclic "blocks" (dimensionX direction)
+  for (U i=0; i<numCyclicBlocksPerCol; i++)
+  {
+    // Inner loop over all columns in a cyclic "block"
+    for (U j=0; j<pGridDimensionSize; j++)
+    {
+      // Inner loop over all cyclic "blocks"
+      for (U k=0; k<numCyclicBlocksPerRow; k++)
+      {
+        // Inner loop over all elements along columns
+        for (U z=0; z<pGridDimensionSize; z++)
+        {
+          U readIndex = i*numCyclicBlocksPerRow + j*localSize + k + z*pGridDimensionSize*localSize;
+          cyclicMatrix[writeIndex++] = blockedMatrix[readIndex];
+        }
+      }
+    }
+  }
+
+  return cyclicMatrix;
 }

@@ -43,8 +43,8 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
-  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
-  matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize);
+  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pGridCoordX*pGridDimensionSize + pGridCoordY);
+  matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pGridCoordX*pGridDimensionSize + pGridCoordY)*(-1));
 
 /* GEMM test code
   blasEngineArgumentPackage_gemm<double> blasArgs;

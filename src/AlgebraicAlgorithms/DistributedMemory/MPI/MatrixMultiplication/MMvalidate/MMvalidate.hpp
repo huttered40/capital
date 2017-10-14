@@ -45,15 +45,15 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 
   std::tuple<MPI_Comm, int, int, int, int> commInfo = getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
+  int pGridCoordX = std::get<1>(commInfo);
+  int pGridCoordY = std::get<2>(commInfo);
+  int pGridCoordZ = std::get<3>(commInfo);
+  int pGridDimensionSize = std::get<4>(commInfo);
 
-  using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
-  globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
-  globalMatrixType globalMatrixB(globalDimensionZ,globalDimensionX,globalDimensionZ,globalDimensionX);
-  globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
-  globalMatrixB.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
-
-  std::vector<T> matrixAforEngine = globalMatrixA.getVectorData();
-  std::vector<T> matrixBforEngine = globalMatrixB.getVectorData();
+  // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
+  // Fast pass-by-value via modern C++ move semantics
+  std::vector<T> matrixAforEngine = getReferenceMatrix(myMatrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
+  std::vector<T> matrixBforEngine = getReferenceMatrix(myMatrix, localDimensionZ, localDimensionX, globalDimensionZ, globalDimensionX, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
   std::vector<T> matrixCforEngine(globalDimensionY*globalDimensionZ, 0);	// No matrix needed for this. Only used in BLAS call
 
   // Assume column-major matrix and no transposes
@@ -92,15 +92,16 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 
   std::tuple<MPI_Comm, int, int, int, int> commInfo = getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
+  int pGridCoordX = std::get<1>(commInfo);
+  int pGridCoordY = std::get<2>(commInfo);
+  int pGridCoordZ = std::get<3>(commInfo);
+  int pGridDimensionSize = std::get<4>(commInfo);
 
-  using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
-  globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
-  globalMatrixType globalMatrixB(globalDimensionZ,globalDimensionX,globalDimensionZ,globalDimensionX);
-  globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
-  globalMatrixB.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
+  // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
+  // Fast pass-by-value via modern C++ move semantics
+  std::vector<T> matrixAforEngine = getReferenceMatrix(myMatrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
+  std::vector<T> matrixBforEngine = getReferenceMatrix(myMatrix, localDimensionZ, localDimensionX, globalDimensionZ, globalDimensionX, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
 
-  std::vector<T> matrixAforEngine = globalMatrixA.getVectorData();
-  std::vector<T> matrixBforEngine = globalMatrixB.getVectorData();
 
   blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY),
     (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionZ : globalDimensionX), (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionY : globalDimensionX),
@@ -138,14 +139,15 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 
   std::tuple<MPI_Comm, int, int, int, int> commInfo = getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
+  int pGridCoordX = std::get<1>(commInfo);
+  int pGridCoordY = std::get<2>(commInfo);
+  int pGridCoordZ = std::get<3>(commInfo);
+  int pGridDimensionSize = std::get<4>(commInfo);
 
-  using globalMatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
-  globalMatrixType globalMatrixA(globalDimensionX,globalDimensionY,globalDimensionX,globalDimensionY);
-  globalMatrixType globalMatrixB(globalDimensionZ,globalDimensionX,globalDimensionZ,globalDimensionX);
-  globalMatrixA.DistributeRandom(0, 0, 1, 1);		// Hardcode so that the Distributer thinks we own the entire matrix.
-
-  std::vector<T> matrixAforEngine = globalMatrixA.getVectorData();
-  std::vector<T> matrixBforEngine = globalMatrixB.getVectorData();	// Instead of using C for output matrix, lets use B as we did in SquareMM3D
+  // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
+  // Fast pass-by-value via modern C++ move semantics
+  std::vector<T> matrixAforEngine = getReferenceMatrix(myMatrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
+  std::vector<T> matrixBforEngine(globalDimensionZ*globalDimensionX);	// Instead of using C for output matrix, lets use B as we did in SquareMM3D
 
   // Assume column major and no transpose and that the matrix A is square.
   blasEngine<T,U>::_syrk(&matrixAforEngine[0], &matrixBforEngine[0], globalDimensionX, globalDimensionY,
@@ -186,7 +188,7 @@ T MMvalidate<T,U,blasEngine>::getResidualSquare(
     for (U j=0; j<localDimensionY; j++)
     {
       T errorSquare = abs(myValues[myIndex] - blasValues[solIndex]);
-      std::cout << errorSquare << " " << myValues[myIndex] << " " << blasValues[solIndex] << std::endl;
+      //std::cout << errorSquare << " " << myValues[myIndex] << " " << blasValues[solIndex] << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       solIndex += pGridDimensionSize;
@@ -197,4 +199,57 @@ T MMvalidate<T,U,blasEngine>::getResidualSquare(
 
   error = std::sqrt(error);
   return error;
+}
+
+
+template<typename T, typename U, template<typename,typename> class blasEngine>
+template<template<typename,typename,int> class Distribution>
+std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
+                        					Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+								U localNumColumns,
+								U localNumRows,
+								U globalNumColumns,
+								U globalNumRows,
+								U key,
+								std::tuple<MPI_Comm, int, int, int, int> commInfo
+							     )
+{
+  MPI_Comm sliceComm = std::get<0>(commInfo);
+  int pGridCoordX = std::get<1>(commInfo);
+  int pGridCoordY = std::get<2>(commInfo);
+  int pGridCoordZ = std::get<3>(commInfo);
+  int pGridDimensionSize = std::get<4>(commInfo);
+
+  using MatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
+  MatrixType localMatrix(localNumColumns, localNumRows, globalNumColumns, globalNumRows);
+  localMatrix.DistributeRandom(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key);
+
+  std::vector<T> blockedMatrix(globalNumColumns*globalNumRows);
+  std::vector<T> cyclicMatrix(globalNumColumns*globalNumRows);
+  U localSize = localNumColumns*localNumRows;
+  MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
+
+  U numCyclicBlocksPerRow = globalNumRows/pGridDimensionSize;
+  U numCyclicBlocksPerCol = globalNumColumns/pGridDimensionSize;
+  U writeIndex = 0;
+  // MACRO loop over all cyclic "blocks" (dimensionX direction)
+  for (U i=0; i<numCyclicBlocksPerCol; i++)
+  {
+    // Inner loop over all columns in a cyclic "block"
+    for (U j=0; j<pGridDimensionSize; j++)
+    {
+      // Inner loop over all cyclic "blocks"
+      for (U k=0; k<numCyclicBlocksPerRow; k++)
+      {
+        // Inner loop over all elements along columns
+        for (U z=0; z<pGridDimensionSize; z++)
+        {
+          U readIndex = i*numCyclicBlocksPerRow + j*localSize + k + z*pGridDimensionSize*localSize;
+          cyclicMatrix[writeIndex++] = blockedMatrix[readIndex];
+        }
+      }
+    }
+  }
+
+  return cyclicMatrix;
 }

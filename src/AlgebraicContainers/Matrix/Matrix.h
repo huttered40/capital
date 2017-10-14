@@ -70,8 +70,8 @@ public:
   inline T& getAccess(U dimX, U dimY) {return this->_matrix[dimX][dimY];}
 
   // Host method, will call Allocator<T,U,?>::Distribute(...) method
-  void DistributeRandom(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY);
-  void DistributeSymmetric(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY, bool diagonallyDominant);
+  void DistributeRandom(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY, U key);
+  void DistributeSymmetric(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY, U key, bool diagonallyDominant);
 
   // Just a local print. For a distributed print, we must implement another class that takes the Matrix and operates on it.
   //   That is not something that this class policy needs to worry about.
