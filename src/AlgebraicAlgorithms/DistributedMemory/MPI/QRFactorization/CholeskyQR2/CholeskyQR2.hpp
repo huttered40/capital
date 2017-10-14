@@ -52,11 +52,10 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D(Matr
   int numPEs, myRank, pGridDimensionSize;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_size(commWorld, &myRank);
-  auto commInfo3D = setUpCommunicators(commWorld);
+  auto commInfo3D = getCommunicatorSlice(commWorld);
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm_size(rowComm, &pGridDimensionSize);
+  pGridDimensionSize = std::get<4>(commInfo3D);
 
   U localDimensionX = dimensionX/pGridDimensionSize;		// no error check here, but hopefully 
   U localDimensionY = dimensionY/pGridDimensionSize;		// no error check here, but hopefully 
@@ -82,6 +81,8 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D(Matr
   //   send half of the data!
   SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixR2, matrixR1,
     matrixR, localDimensionX, localDimensionX, localDimensionX, commWorld, gemmPack1);
+
+  MPI_Comm_free(&std::get<0>(commInfo3D));
 }
 
 template<typename T,typename U,
@@ -221,13 +222,11 @@ void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::Factor3D_cqr(
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
   SquareMM3D<T,U,StructureA,MatrixStructureSquare,StructureQ,blasEngine>::Multiply(matrixA, matrixRI,
     matrixQ, localDimensionX, localDimensionY, localDimensionX, commWorld, gemmPack1);
-/*
-  if (myRank == 0)
-  {
-    matrixQ.print();
-    std::cout << "\n\n\n";
-  }
-*/
+
+  MPI_Comm_free(&rowComm);
+  MPI_Comm_free(&columnComm);
+  MPI_Comm_free(&sliceComm);
+  MPI_Comm_free(&depthComm);
 }
 
 template<typename T,typename U,

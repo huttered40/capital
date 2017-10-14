@@ -104,25 +104,20 @@ void QRvalidate<T,U>::validateLocal3D(
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
 
-  auto commInfo3D = setUpCommunicators(commWorld);
+  auto commInfo3D = getCommunicatorSlice(commWorld);
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  int pGridDimensionSize;
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
-  MPI_Comm_size(rowComm, &pGridDimensionSize);
-
-  auto tup = getCommunicatorSlice(commWorld);
-  int pCoordX = std::get<1>(tup);
-  int pCoordY = std::get<2>(tup);
-  int pCoordZ = std::get<3>(tup);
-  
+  MPI_Comm sliceComm = std::get<0>(commInfo3D);
+  int pCoordX = std::get<1>(commInfo3D);
+  int pCoordY = std::get<2>(commInfo3D);
+  int pCoordZ = std::get<3>(commInfo3D);
+  int pGridDimensionSize = std::get<4>(commInfo3D);
 
   // Remember, we are assuming that the matrix is square here
   U localDimension = globalDimensionX/pGridDimensionSize;
 
   // Can generate matrix later
-  std::vector<T> globalMatrixA = getReferenceMatrix3D(matrixA, localDimension, globalDimensionY, pCoordX*pGridDimensionSize+pCoordY, tup); 
+  std::vector<T> globalMatrixA = getReferenceMatrix3D(matrixA, localDimension, globalDimensionY, pCoordX*pGridDimensionSize+pCoordY, commInfo3D); 
   std::vector<T> testMat(globalDimensionX*globalDimensionY,0);
   cblas_dsyrk(CblasColMajor, CblasUpper, CblasTrans, globalDimensionX, globalDimensionY, 1., &globalMatrixA[0],
     globalDimensionY, 0., &testMat[0], globalDimensionX);
@@ -175,6 +170,7 @@ void QRvalidate<T,U>::validateLocal3D(
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error2 << std::endl;}
 
+  MPI_Comm_free(&sliceComm);
   return;
 }
 
@@ -343,22 +339,20 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureSquare,Distribution>&
                          Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
                          U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
 {
-  auto commInfo3D = setUpCommunicators(commWorld);
+  auto commInfo3D = getCommunicatorSlice(commWorld);
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   int pGridDimensionSize;
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
-  int pGridCoordX = std::get<4>(commInfo3D);
-  int pGridCoordY = std::get<5>(commInfo3D);
-  int pGridCoordZ = std::get<6>(commInfo3D);
-  MPI_Comm_size(rowComm, &pGridDimensionSize);
+  MPI_Comm sliceComm = std::get<0>(commInfo3D);
+  int pGridCoordX = std::get<1>(commInfo3D);
+  int pGridCoordY = std::get<2>(commInfo3D);
+  int pGridCoordZ = std::get<3>(commInfo3D);
+  pGridDimensionSize = std::get<4>(commInfo3D);
 
   U localDimensionY = globalDimensionY/pGridDimensionSize;
   U localDimensionX = globalDimensionX/pGridDimensionSize;
 
+  MPI_Comm_free(&sliceComm);
   return 0;  
 }
 
@@ -371,18 +365,15 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
   int myRank;
   MPI_Comm_rank(commWorld, &myRank);
 
-  auto commInfo3D = setUpCommunicators(commWorld);
+  auto commInfo3D = getCommunicatorSlice(commWorld);
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   int pGridDimensionSize;
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
-  int pGridCoordX = std::get<4>(commInfo3D);
-  int pGridCoordY = std::get<5>(commInfo3D);
-  int pGridCoordZ = std::get<6>(commInfo3D);
-  MPI_Comm_size(rowComm, &pGridDimensionSize);
+  MPI_Comm sliceComm = std::get<0>(commInfo3D);
+  int pGridCoordX = std::get<1>(commInfo3D);
+  int pGridCoordY = std::get<2>(commInfo3D);
+  int pGridCoordZ = std::get<3>(commInfo3D);
+  pGridDimensionSize = std::get<4>(commInfo3D);
 
   U localDimensionY = globalDimensionY/pGridDimensionSize;
   U localDimensionX = globalDimensionX/pGridDimensionSize;
@@ -446,6 +437,8 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
 
   error = std::sqrt(error);
   //std::cout << myRank << " has local error - " << error << std::endl;
+
+  MPI_Comm_free(&sliceComm);
   return error;		// return 2-norm
 }
 
