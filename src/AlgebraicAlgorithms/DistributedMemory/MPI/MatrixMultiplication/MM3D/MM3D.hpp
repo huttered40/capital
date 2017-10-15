@@ -91,7 +91,10 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   U numElemsC = matrixC.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
   blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], localDimensionM, localDimensionN,
-    localDimensionK, localDimensionM, localDimensionK, localDimensionM, srcPackage);
+    localDimensionK,
+    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
+    (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
+    localDimensionM, srcPackage);
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], numElemsC, MPI_DOUBLE, MPI_SUM, depthComm);
 
@@ -117,7 +120,7 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                             )
 {
   // Not correct right now. Will fix later
-  abort();
+  MPI_Abort(commWorld, -1);
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -188,7 +191,7 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                             )
 {
   // Not correct right now. Will fix later
-  abort();
+  MPI_Abort(commWorld, -1);
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient

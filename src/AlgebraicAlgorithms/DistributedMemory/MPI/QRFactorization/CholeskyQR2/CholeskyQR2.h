@@ -34,24 +34,24 @@ public:
 
   template<template<typename,typename,int> class Distribution>
   static void Factor3D(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U dimensionX, U dimensionY, MPI_Comm commWorld);
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U globalDimensionM, U globalDimensionN, MPI_Comm commWorld);
 
   template<template<typename,typename,int> class Distribution>
   static void FactorTunable(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U dimensionX, U dimensionY, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld);
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U globalDimensionM, U globalDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld);
 
 private:
   template<template<typename,typename,int> class Distribution>
   static void Factor1D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionX, U localDimensionY, MPI_Comm commWorld);
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, MPI_Comm commWorld);
 
   template<template<typename,typename,int> class Distribution>
   static void Factor3D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionX, U localDimensionY, MPI_Comm commWorld);
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, MPI_Comm commWorld);
 
   template<template<typename,typename,int> class Distribution>
   static void FactorTunable_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionX, U localDimensionY, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
       std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators);
   
   static void BroadcastPanels(

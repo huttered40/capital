@@ -37,24 +37,25 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
-  uint64_t globalMatrixDimensionY = (1<<(atoi(argv[1])));
-  uint64_t globalMatrixDimensionX = (1<<(atoi(argv[2])));
-  uint64_t localMatrixDimensionY = globalMatrixDimensionY/pGridDimensionSize;
-  uint64_t localMatrixDimensionX = globalMatrixDimensionX/pGridDimensionSize;
+  uint64_t globalMatrixDimensionM = (1<<(atoi(argv[1])));
+  uint64_t globalMatrixDimensionN = (1<<(atoi(argv[2])));
+  uint64_t localMatrixDimensionM = globalMatrixDimensionM/pGridDimensionSize;
+  uint64_t localMatrixDimensionN = globalMatrixDimensionN/pGridDimensionSize;
 
   // New protocol: CholeskyQR_3D only works properly with square matrix A. Rectangular matrices must use CholeskyQR_Tunable
-  MatrixTypeS matA(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
-  MatrixTypeS matQ(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
-  MatrixTypeS matR(localMatrixDimensionX,localMatrixDimensionX,globalMatrixDimensionX,globalMatrixDimensionX);
+  MatrixTypeR matA(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
+  MatrixTypeR matQ(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
+  MatrixTypeS matR(localMatrixDimensionN,localMatrixDimensionN,globalMatrixDimensionN,globalMatrixDimensionN);
 
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
 
-  cout << "Rank " << rank << " has local dimensionX - " << localMatrixDimensionX << ", localDimensionY - " << localMatrixDimensionY << endl;
+  cout << "Rank " << rank << " has local localDimensionN - " << localMatrixDimensionN << ", localDimensionM - " << localMatrixDimensionM << endl;
 
-  CholeskyQR2<double,int,MatrixStructureSquare,cblasEngine>::
-    Factor3D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
+  CholeskyQR2<double,int,MatrixStructureRectangle,cblasEngine>::
+    Factor3D(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, MPI_COMM_WORLD);
 
-  QRvalidate<double,int>::validateLocal3D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
+  if (rank==0) matQ.print();
+  QRvalidate<double,int>::validateLocal3D(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, MPI_COMM_WORLD);
 
   MPI_Finalize();
 

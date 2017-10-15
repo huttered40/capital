@@ -36,19 +36,19 @@ public:
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixSol_Q,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_R,
-                        U globalDimensionX,
-                        U globalDimensionY,
+                        U globalDimensionM,
+                        U globalDimensionN,
                         MPI_Comm commWorld
                       );
 
   // We require that for a 3D algorithm, Q is square and R is square
   template<template<typename,typename,int> class Distribution>
   static void validateLocal3D(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
+                        Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
+                        Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        U globalDimensionX,
-                        U globalDimensionY,
+                        U globalDimensionM,
+                        U globalDimensionN,
                         MPI_Comm commWorld
                       );
 
@@ -62,14 +62,14 @@ private:
 
   // 3D helper routines
   template<template<typename,typename,int> class Distribution>
-  static T getResidual3D(Matrix<T,U,MatrixStructureSquare,Distribution>& myA,
-                         Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
+  static T getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myA,
+                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                          Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                         U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
+                         U globalDimensionM, U globalDimensionN, MPI_Comm commWorld);
 
   template<template<typename,typename,int> class Distribution>
-  static T testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribution>& myQ,
-                               U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
+  static T testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
+                               U globalDimensionM, U globalDimensionN, MPI_Comm commWorld);
 
   template<template<typename,typename,int> class Distribution>
   static std::vector<T> getReferenceMatrix1D(
@@ -84,8 +84,10 @@ private:
   template<template<typename,typename,int> class Distribution>
   static std::vector<T> getReferenceMatrix3D(
                         			Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
-						U localDimension,
-						U globalDimension,
+						U localDimensionN,
+						U localDimensionM,
+						U globalDimensionN,
+						U globalDimensionM,
 						U key,
 						std::tuple<MPI_Comm, int, int, int, int> commInfo
 					    );

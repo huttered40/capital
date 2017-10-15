@@ -106,6 +106,8 @@ int main(int argc, char** argv)
   CholeskyQR2<double,int,MatrixStructureRectangle,cblasEngine>::
     FactorTunable(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, dimensionD, dimensionC, MPI_COMM_WORLD);
 
+  if (rank == 0) matR.print();
+
   MPI_Finalize();
 
   return 0;
