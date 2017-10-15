@@ -164,7 +164,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
   blasArgs.transposeB = blasEngineTranspose::AblasTrans;
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare,blasEngine>::
+  MM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare,blasEngine>::
     Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
       0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
 
@@ -180,7 +180,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
 
   transposeSwap(squareLSwap, rank, transposePartner);
 
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
+  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
     Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
       0, localShift, 0, localShift, commWorld, blasArgs, false, false, false);
 
@@ -218,13 +218,13 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
   invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
   invPackage1.alpha = 1.;
   invPackage1.beta = 0.;
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixL, matrixLI,
+  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixL, matrixLI,
     tempInverse, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, matLIstartX, matLIstartX+localShift, matLIstartY,
       matLIstartY+localShift, 0, localShift, 0, localShift, commWorld, invPackage1, true, true, false);
 
   // Next step: finish the Triangular inverse calculation
   invPackage1.alpha = -1.;
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixLI, tempInverse,
+  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixLI, tempInverse,
     matrixLI, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY, 0, localShift, 0, localShift,
       matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, true, true, true);
   
@@ -357,7 +357,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
-  SquareMM3D<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
+  MM3D<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
     Multiply(packedMatrix, matrixA, matrixR, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
       matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, false, true, true);
 
@@ -372,7 +372,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
 
   transposeSwap(squareRSwap, rank, transposePartner);
 
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
+  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
     Multiply(squareRSwap, squareR, holdRsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
       0, localShift, 0, localShift, commWorld, blasArgs, false, false, false);
 
@@ -410,13 +410,13 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
   invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
   invPackage1.alpha = 1.;
   invPackage1.beta = 0.;
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixR, matrixRI,
+  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixR, matrixRI,
     tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, matRIstartX+localShift, matRIendX,
       matRIstartY+localShift, matRIendY, 0, localShift, 0, localShift, commWorld, invPackage1, true, true, false);
 
   // Next step: finish the Triangular inverse calculation
   invPackage1.alpha = -1.;
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixRI, tempInverse,
+  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixRI, tempInverse,
     matrixRI, matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift, 0, localShift, 0, localShift,
       matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, true, true, true);
 

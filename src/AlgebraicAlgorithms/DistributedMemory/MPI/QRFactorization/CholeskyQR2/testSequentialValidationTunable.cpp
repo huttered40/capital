@@ -29,10 +29,10 @@ int main(int argc, char** argv)
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   // size -- total number of processors in the tunable grid
-  int exponentY = atoi(argv[1]);
-  int exponentX = atoi(argv[2]);
-  int globalMatrixDimensionY = (1<<exponentY);
-  int globalMatrixDimensionX = (1<<exponentX);
+  int exponentM = atoi(argv[1]);
+  int exponentN = atoi(argv[2]);
+  int globalMatrixDimensionM = (1<<exponentM);
+  int globalMatrixDimensionN = (1<<exponentN);
 
   int dimensionC,dimensionD;
   if (argc == 4)
@@ -44,8 +44,8 @@ int main(int argc, char** argv)
     // Do an exponent check, but first we need the log-2 of numPEs(size)
     int exponentNumPEs = std::nearbyint(std::log2(size));
 
-    int sumExponentsD = (exponentNumPEs+exponentY+exponentY - exponentX - exponentX);
-    int sumExponentsC = (exponentNumPEs+exponentX - exponentY);
+    int sumExponentsD = (exponentNumPEs+exponentM+exponentM - exponentN - exponentN);
+    int sumExponentsC = (exponentNumPEs+exponentN - exponentM);
 
     if ((sumExponentsD%3 != 0) || (sumExponentsC%3==0))
     {
@@ -60,8 +60,8 @@ int main(int argc, char** argv)
     // Do an exponent check, but first we need the log-2 of numPEs(size)
     int exponentNumPEs = std::nearbyint(std::log2(size));
 
-    int sumExponentsD = (exponentNumPEs+exponentY+exponentY - exponentX - exponentX);
-    //int sumExponentsC = (exponentNumPEs+exponentX - exponentY);
+    int sumExponentsD = (exponentNumPEs+exponentM+exponentM - exponentN - exponentN);
+    //int sumExponentsC = (exponentNumPEs+exponentN - exponentM);
 
     int exponentD;
     //int exponentC;
@@ -93,18 +93,18 @@ int main(int argc, char** argv)
 
   cout << "rank " << rank << " has: pCoordX - " << pCoordX << ", pCoordY - " << pCoordY << ", pCoordZ - " << pCoordZ << endl;
 
-  int localMatrixDimensionY = globalMatrixDimensionY/dimensionD;
-  int localMatrixDimensionX = globalMatrixDimensionX/dimensionC;
+  int localMatrixDimensionM = globalMatrixDimensionM/dimensionD;
+  int localMatrixDimensionN = globalMatrixDimensionN/dimensionC;
 
   // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
-  MatrixTypeR matA(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
-  MatrixTypeR matQ(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
-  MatrixTypeS matR(localMatrixDimensionX,localMatrixDimensionX,globalMatrixDimensionX,globalMatrixDimensionX);
+  MatrixTypeR matA(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
+  MatrixTypeR matQ(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
+  MatrixTypeS matR(localMatrixDimensionN,localMatrixDimensionN,globalMatrixDimensionN,globalMatrixDimensionN);
 
   matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
 
-  CholeskyQR2<double,int,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureRectangle,cblasEngine>::
-    FactorTunable(matA, matQ, matR, localMatrixSize, localMatrixSize, MPI_COMM_WORLD);
+  CholeskyQR2<double,int,MatrixStructureRectangle,cblasEngine>::
+    FactorTunable(matA, matQ, matR, localMatrixDimensionM, localMatrixDimensionN, MPI_COMM_WORLD);
 
   MPI_Finalize();
 

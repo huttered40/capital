@@ -44,7 +44,7 @@ int main(int argc, char** argv)
 
   cout << "Rank " << rank << " has local dimensionX - " << localMatrixDimensionX << ", localDimensionY - " << localMatrixDimensionY << endl;
 
-  CholeskyQR2<double,int,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureSquare,cblasEngine>::
+  CholeskyQR2<double,int,MatrixStructureRectangle,cblasEngine>::
     Factor1D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
 
   QRvalidate<double,int>::validateLocal1D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);

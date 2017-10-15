@@ -13,7 +13,7 @@
 #include "./../../../../../AlgebraicContainers/Matrix/Matrix.h"
 #include "./../../../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
 #include "./../../../../../AlgebraicBLAS/blasEngine.h"
-#include "./../../MatrixMultiplication/SquareMM3D/SquareMM3D.h"
+#include "./../../MatrixMultiplication/MM3D/MM3D.h"
 
 // Lets use partial template specialization
 // So only declare the fully templated class

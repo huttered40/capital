@@ -396,7 +396,7 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureSquare,Distribu
   Matrix<T,U,MatrixStructureSquare,Distribution> QT = myQ;
   MPI_Sendrecv_replace(QT.getRawData(), localDimensionX*localDimensionY, MPI_DOUBLE, transposePartner, 0,
     transposePartner, 0, commWorld, MPI_STATUS_IGNORE);
-  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::Multiply(QT, myQ, myI, localDimensionX, localDimensionY, localDimensionX, commWorld, blasArgs);
+  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::Multiply(QT, myQ, myI, localDimensionX, localDimensionY, localDimensionX, commWorld, blasArgs);
 /*
   if (myRank == 3)
   {
