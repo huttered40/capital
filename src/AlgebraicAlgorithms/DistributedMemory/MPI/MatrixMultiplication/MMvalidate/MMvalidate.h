@@ -37,12 +37,12 @@ public:
   template<template<typename,typename,int> class Distribution>
   static void validateLocal(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
-                        U localDimensionX,
-                        U localDimensionY,
-                        U localDimensionZ,
-                        U globalDimensionX,
-                        U globalDimensionY,
-                        U globalDimensionZ,
+                        U localDimensionM,
+                        U localDimensionN,
+                        U localDimensionK,
+                        U globalDimensionM,
+                        U globalDimensionN,
+                        U globalDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage
                       );
@@ -50,12 +50,10 @@ public:
   template<template<typename,typename,int> class Distribution>
   static void validateLocal(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
-                        U localDimensionX,
-                        U localDimensionY,
-                        U localDimensionZ,
-                        U globalDimensionX,
-                        U globalDimensionY,
-                        U globalDimensionZ,
+                        U localDimensionM,
+                        U localDimensionN,
+                        U globalDimensionM,
+                        U globalDimensionN,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage
                       );
@@ -63,12 +61,10 @@ public:
   template<template<typename,typename,int> class Distribution>
   static void validateLocal(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
-                        U localDimensionX,
-                        U localDimensionY,
-                        U localDimensionZ,
-                        U globalDimensionX,
-                        U globalDimensionY,
-                        U globalDimensionZ,
+                        U localDimensionN,
+                        U localDimensionK,
+                        U globalDimensionN,
+                        U globalDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                       );
@@ -78,12 +74,10 @@ private:
   static T getResidualSquare(
 				std::vector<T>& myValues,
 				std::vector<T>& blasValues,
-				U localDimensionX,
-				U localDimensionY,
-				U localDimensionZ,
-				U globalDimensionX,
-				U globalDimensionY,
-				U globalDimensionZ,
+				U localDimensionM,
+				U localDimensionN,
+				U globalDimensionM,
+				U globalDimensionN,
 		                std::tuple<MPI_Comm, int, int, int, int> commInfo
 			    );
 

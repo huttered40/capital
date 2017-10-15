@@ -7,7 +7,7 @@
 #include <mpi.h>
 
 // Local includes
-#include "SquareMM3D.h"
+#include "MM3D.h"
 
 using namespace std;
 
@@ -30,12 +30,13 @@ int main(int argc, char** argv)
   // size -- total number of processors in the 3D grid
 
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
-  uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
+  uint64_t globalMatrixSizeM = (1<<(atoi(argv[1])));
+  uint64_t localMatrixSizeM = globalMatrixSizeM/pGridDimensionSize;
+  uint64_t globalMatrixSizeN = (1<<(atoi(argv[2])));
+  uint64_t localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
   
-  MatrixTypeLT matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeS matB(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeS matC(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+  MatrixTypeLT matA(localMatrixSizeN,localMatrixSizeN,globalMatrixSizeN,globalMatrixSizeN);
+  MatrixTypeS matB(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
 
   int helper = pGridDimensionSize;
   helper *= helper;
@@ -50,16 +51,16 @@ int main(int argc, char** argv)
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
   blasArgs.side = blasEngineSide::AblasRight;
   blasArgs.uplo = blasEngineUpLo::AblasLower;
-  blasArgs.transposeA = blasEngineTranspose::AblasTrans;
+  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
   blasArgs.diag =blasEngineDiag::AblasNonUnit;
   blasArgs.alpha = 1.;
-  SquareMM3D<double,int,MatrixStructureLowerTriangular,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
-    Multiply(matA, matB, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
+  MM3D<double,int,MatrixStructureLowerTriangular,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
+    Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  MMvalidate<double,int,cblasEngine>::validateLocal(matB, localMatrixSize, localMatrixSize, localMatrixSize,
-    globalMatrixSize, globalMatrixSize, globalMatrixSize, MPI_COMM_WORLD, blasArgs);
+  MMvalidate<double,int,cblasEngine>::validateLocal(matB, localMatrixSizeM, localMatrixSizeN,
+    globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
 
   MPI_Finalize();
 

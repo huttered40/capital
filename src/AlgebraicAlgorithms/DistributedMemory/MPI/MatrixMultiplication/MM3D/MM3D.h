@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#ifndef SQUAREMM3D_H_
-#define SQUAREMM3D_H_
+#ifndef MM3D_H_
+#define MM3D_H_
 
 // System includes
 #include <iostream>
@@ -28,21 +28,21 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
   template<typename,typename, template<typename,typename,int> class> class StructureC = MatrixStructureSquare,
   template<typename,typename> class blasEngine = cblasEngine>
-class SquareMM3D
+class MM3D
 {
 
 public:
   // Prevent any instantiation of this class.
-  SquareMM3D() = delete;
-  SquareMM3D(const SquareMM3D& rhs) = delete;
-  SquareMM3D(SquareMM3D&& rhs) = delete;
-  SquareMM3D& operator=(const SquareMM3D& rhs) = delete;
-  SquareMM3D& operator=(SquareMM3D&& rhs) = delete;
-  ~SquareMM3D() = delete;
+  MM3D() = delete;
+  MM3D(const MM3D& rhs) = delete;
+  MM3D(MM3D&& rhs) = delete;
+  MM3D& operator=(const MM3D& rhs) = delete;
+  MM3D& operator=(MM3D&& rhs) = delete;
+  ~MM3D() = delete;
 
-  // Format: matrixA is X x Y
-  //         matrixB is Y x Z
-  //         matrixC is X x Z
+  // Format: matrixA is M x K
+  //         matrixB is K x N
+  //         matrixC is M x N
 
   // New design: user will specify via an argument to the overloaded Multiply() method what underlying BLAS routine he wants called.
   //             I think this is a reasonable assumption to make and will allow me to optimize each routine.
@@ -52,9 +52,9 @@ public:
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         Matrix<T,U,StructureC,Distribution>& matrixC,
-                        U dimensionX,
-                        U dimensionY,
-                        U dimensionZ,
+                        U localDimensionM,
+                        U localDimensionN,
+                        U localDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage
                       );
@@ -63,9 +63,8 @@ public:
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
-                        U dimensionX,
-                        U dimensionY,
-                        U dimensionZ,
+                        U localDimensionM,
+                        U localDimensionN,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage
                       );
@@ -74,9 +73,8 @@ public:
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
-                        U dimensionX,
-                        U dimensionY,
-                        U dimensionZ,
+                        U localDimensionN,
+                        U localDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                       );
@@ -179,6 +177,6 @@ private:
 */
 };
 
-#include "SquareMM3D.hpp"
+#include "MM3D.hpp"
 
-#endif /* SQUAREMM3D_H_ */
+#endif /* MM3D_H_ */

@@ -8,7 +8,7 @@
 
 // Local includes
 #include "../../../../../Timer/Timer.h"
-#include "SquareMM3D.h"
+#include "MM3D.h"
 
 using namespace std;
 
@@ -29,15 +29,16 @@ int main(int argc, char** argv)
   // size -- total number of processors in the 3D grid
 
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
-  uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
+  uint64_t globalMatrixSizeM = (1<<(atoi(argv[1])));
+  uint64_t localMatrixSizeM = globalMatrixSizeM/pGridDimensionSize;
+  uint64_t globalMatrixSizeN = (1<<(atoi(argv[2])));
+  uint64_t localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
+  uint64_t globalMatrixSizeK = (1<<(atoi(argv[3])));
+  uint64_t localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
   
-  cout << "global matrix size - " << globalMatrixSize << ", local Matrix size - " << localMatrixSize;
-  cout << ", rank - " << rank << ", size - " << size << ", one dimension of the 3D grid's size - " << pGridDimensionSize << endl;
-
-  MatrixTypeA matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeB matB(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeC matC(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+  MatrixTypeA matA(localMatrixSizeK,localMatrixSizeM,globalMatrixSizeK,globalMatrixSizeM);
+  MatrixTypeB matB(localMatrixSizeN,localMatrixSizeK,globalMatrixSizeN,globalMatrixSizeK);
+  MatrixTypeC matC(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
 
   int helper = pGridDimensionSize;
   helper *= helper;
@@ -49,7 +50,7 @@ int main(int argc, char** argv)
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
 
   blasEngineArgumentPackage_gemm<double> blasArgs;
-  blasArgs.order = blasEngineOrder::AblasRowMajor;
+  blasArgs.order = blasEngineOrder::AblasColumnMajor;
   blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   blasArgs.alpha = 1.;
@@ -61,8 +62,8 @@ int main(int argc, char** argv)
   for (int i=0; i<10; i++)
   {
     myTimer.setStartTime();
-    SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
-      Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
+    MM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
+      Multiply(matA, matB, matC, localMatrixSizeM, localMatrixSizeN, localMatrixSizeK, MPI_COMM_WORLD, blasArgs);
     myTimer.setEndTime();
     myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D iteration", i);
   }

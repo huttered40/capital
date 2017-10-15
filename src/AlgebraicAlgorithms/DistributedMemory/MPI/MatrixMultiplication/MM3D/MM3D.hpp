@@ -44,13 +44,13 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename,int> class Distribution>
-void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
                                                               Matrix<T,U,StructureB,Distribution>& matrixB,
                                                               Matrix<T,U,StructureC,Distribution>& matrixC,
-                                                              U dimensionX,
-                                                              U dimensionY,
-                                                              U dimensionZ,
+                                                              U localDimensionM,
+                                                              U localDimensionN,
+                                                              U localDimensionK,
                                                               MPI_Comm commWorld,
                                                               const blasEngineArgumentPackage_gemm<T>& srcPackage
                                                             )
@@ -81,19 +81,19 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
   BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
 
-  Matrix<T,U,MatrixStructureSquare,Distribution> helperA(std::vector<T>(), dimensionX, dimensionY, dimensionX, dimensionY);
+  Matrix<T,U,MatrixStructureSquare,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
   T* matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
-  Matrix<T,U,MatrixStructureSquare,Distribution> helperB(std::vector<T>(), dimensionZ, dimensionX, dimensionX, dimensionY);
+  Matrix<T,U,MatrixStructureSquare,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
   T* matrixBforEnginePtr = getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
 
   // Assume, for now, that matrixC has Square Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
   std::vector<T>& matrixCforEngine = matrixC.getVectorData();
-  U numElems = matrixC.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
+  U numElemsC = matrixC.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
-  blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], dimensionY, dimensionZ,
-    dimensionX, dimensionY, dimensionX, dimensionY, srcPackage);
+  blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], localDimensionM, localDimensionN,
+    localDimensionK, localDimensionM, localDimensionK, localDimensionM, srcPackage);
 
-  MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
+  MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], numElemsC, MPI_DOUBLE, MPI_SUM, depthComm);
 
   MPI_Comm_free(&rowComm);
   MPI_Comm_free(&columnComm);
@@ -107,16 +107,18 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename,int> class Distribution>
-void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
                                                               Matrix<T,U,StructureB,Distribution>& matrixB,
-                                                              U dimensionX,
-                                                              U dimensionY,
-                                                              U dimensionZ,
+                                                              U localDimensionM,
+                                                              U localDimensionN,
                                                               MPI_Comm commWorld,
                                                               const blasEngineArgumentPackage_trmm<T>& srcPackage
                                                             )
 {
+  // Not correct right now. Will fix later
+  abort();
+
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
@@ -145,21 +147,21 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 
   // Right now, foreignA and/or foreignB might be empty if this processor is the rowRoot or the columnRoot
 
-  Matrix<T,U,MatrixStructureSquare,Distribution> helperA(std::vector<T>(), dimensionX, dimensionY, dimensionX, dimensionY);
+  Matrix<T,U,MatrixStructureSquare,Distribution> helperA(std::vector<T>(), localDimensionN, localDimensionM, localDimensionN, localDimensionM);
   T* matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
 
   // We assume that matrixB is Square for now. No reason to believe otherwise
   std::vector<T>& matrixBforEngine = matrixB.getVectorData();
   U numElems = matrixB.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
-  // Now at this point we have a choice. SquareMM3D template class accepts 3 template parameters for the Matrix Structures of matrixA, matrixB, and matrixC
+  // Now at this point we have a choice. MM3D template class accepts 3 template parameters for the Matrix Structures of matrixA, matrixB, and matrixC
   //   But, trmm only deals with 2 matrices matrixA and matrixB, and stores the result in matrixB.
   //   Should the user just deal with this? And how do we deal with a template parameter that doesn't need to exist?
 
-  blasEngine<T,U>::_trmm(matrixAforEnginePtr, &matrixBforEngine[0], (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
-    (srcPackage.side == blasEngineSide::AblasLeft ? dimensionZ : dimensionX),
-    (srcPackage.side == blasEngineSide::AblasLeft ? dimensionY : dimensionX),
-    (srcPackage.side == blasEngineSide::AblasLeft ? dimensionX : dimensionY),
+  blasEngine<T,U>::_trmm(matrixAforEnginePtr, &matrixBforEngine[0], (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionN : localDimensionM),
+    (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN),
+    (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN),
+    (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionN : localDimensionM),
     srcPackage);
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], sizeB, MPI_DOUBLE, MPI_SUM, depthComm);
@@ -176,16 +178,18 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename,int> class Distribution>
-void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
                                                               Matrix<T,U,StructureB,Distribution>& matrixB,
-                                                              U dimensionX,
-                                                              U dimensionY,
-                                                              U dimensionZ,
+                                                              U localDimensionN,
+                                                              U localDimensionK,
                                                               MPI_Comm commWorld,
                                                               const blasEngineArgumentPackage_syrk<T>& srcPackage
                                                             )
 {
+  // Not correct right now. Will fix later
+  abort();
+
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
@@ -212,7 +216,7 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   BroadcastPanels((isRootTrans ? dataAtrans : foreignAtrans), sizeA, isRootTrans, pGridCoordZ, transComm);
 
   // Right now, foreignA and/or foreignAtrans might be empty if this processor is the rowRoot or the transRoot
-  Matrix<T,U,MatrixStructureSquare,Distribution> helperA(std::vector<T>(), dimensionX, dimensionY, dimensionX, dimensionY);
+  Matrix<T,U,MatrixStructureSquare,Distribution> helperA(std::vector<T>(), localDimensionN, localDimensionN, localDimensionN, localDimensionN);
   T* matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
 
   // We assume that matrixB is Square for now. No reason to believe otherwise
@@ -220,10 +224,10 @@ void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   std::vector<T>& matrixBforEngine = matrixB.getVectorData();
   U numElems = matrixB.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
 
-  blasEngine<T,U>::_syrk(matrixAforEnginePtr, &matrixBforEngine[0], (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? dimensionY : dimensionX),
-    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? dimensionX : dimensionY),
-    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? dimensionY : dimensionX),
-    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? dimensionY : dimensionX),
+  blasEngine<T,U>::_syrk(matrixAforEnginePtr, &matrixBforEngine[0], (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionN : localDimensionK),
+    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionN : localDimensionK),
+    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
+    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
     srcPackage);
 
   MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
@@ -240,7 +244,7 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename,int> class Distribution>
-void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
                                                               Matrix<T,U,StructureB,Distribution>& matrixB,
                                                               Matrix<T,U,StructureC,Distribution>& matrixC,
@@ -304,7 +308,7 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename,int> class Distribution>
-void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
                                                               Matrix<T,U,StructureB,Distribution>& matrixB,
                                                               U matrixAcutXstart,
@@ -356,7 +360,7 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename,int> class Distribution>
-void SquareMM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
+void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               Matrix<T,U,StructureA,Distribution>& matrixA,
                                                               Matrix<T,U,StructureB,Distribution>& matrixB,
                                                               U matrixAcutXstart,
@@ -407,7 +411,7 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
   template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-void SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::BroadcastPanels(
+void MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::BroadcastPanels(
 											std::vector<T>& data,
 											U size,
 											bool isRoot,
@@ -434,15 +438,18 @@ template<typename T, typename U,
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-T* SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
+T* MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
 											Matrix<T,U,StructureArg, Distribution>& matrixArg,
 											Matrix<T,U,MatrixStructureSquare, Distribution>& matrixDest,
 											std::vector<T>& data,
 											bool isRoot
 									       )
 {
-  if (!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)		// compile time if statement. Branch prediction should be correct.
+  if ((!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+    || (!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
+    // Need to separate the below out into its own function that will not get instantied into object code
+    //   unless it passes the test above. This avoids template-enduced template compiler errors
     if (!isRoot)
     {
       Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::move(data), matrixArg.getNumColumnsLocal(),
@@ -451,10 +458,8 @@ T* SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
     }
     else
     {
+      // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangle
       Serializer<T,U,StructureArg,MatrixStructureSquare>::Serialize(matrixArg, matrixDest);
-      // debugging
-      int rank;
-      MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     }
     return matrixDest.getRawData();		// this is being deleted off the stack! It is a local variable!!!!!!
   }
@@ -472,7 +477,7 @@ template<typename T, typename U,
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-Matrix<T,U,StructureArg,Distribution>& SquareMM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getSubMatrix(
+Matrix<T,U,StructureArg,Distribution>& MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getSubMatrix(
 											Matrix<T,U,StructureArg, Distribution>& srcMatrix,	// pass by value via move constructor
 											Matrix<T,U,StructureArg, Distribution>& fillMatrix,	// pass by value via move constructor
 											U matrixArgColumnStart,

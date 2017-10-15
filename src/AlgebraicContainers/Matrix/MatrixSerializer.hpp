@@ -124,6 +124,24 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
   }
 }
 
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureSquare,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureSquare, Distributer>& src,Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
+    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
 
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
@@ -514,6 +532,83 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureRectangle,MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureRectangle,MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
+  U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
+  U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureRectangle,MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureRectangle,MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
+  U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureRectangle,MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureRectangle,MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
+  U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
   Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
 {
@@ -669,6 +764,27 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   }
 }
 */
+  
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
+    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
 
 
 template<typename T, typename U>
@@ -941,6 +1057,26 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   }
 }
 */
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
+
+
+template<typename T, typename U>
+template<template<typename, typename,int> class Distributer>
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
+    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
+{
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  std::cout << "Not fully implemented yet\n";
+  return;
+}
 
 
 template<typename T, typename U>

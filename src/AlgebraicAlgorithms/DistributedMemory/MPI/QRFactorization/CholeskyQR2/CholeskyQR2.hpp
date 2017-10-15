@@ -94,7 +94,42 @@ template<template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,StructureA,StructureQ,StructureR,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureQ,Distribution>& matrixQ,
     Matrix<T,U,StructureR,Distribution>& matrixR, U dimensionX, U dimensionY, MPI_Comm commWorld)
 {
-  std::cout << "In factorTunable\n";
+  // We assume data is owned relative to a 3D processor grid
+
+  int numPEs, myRank, pGridDimensionSize;
+  MPI_Comm_size(commWorld, &numPEs);
+  MPI_Comm_size(commWorld, &myRank);
+  auto commInfo3D = getCommunicatorSlice(commWorld);
+
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  pGridDimensionSize = std::get<4>(commInfo3D);
+
+  U localDimensionX = dimensionX/pGridDimensionSize;		// no error check here, but hopefully 
+  U localDimensionY = dimensionY/pGridDimensionSize;		// no error check here, but hopefully 
+
+  Matrix<T,U,StructureQ,Distribution> matrixQ2(std::vector<T>(localDimensionX*localDimensionY,0), localDimensionX, localDimensionY, dimensionX,
+    dimensionY, true);
+  Matrix<T,U,StructureR,Distribution> matrixR1(std::vector<T>(localDimensionX*localDimensionX,0), localDimensionX, localDimensionX, dimensionX,
+    dimensionX, true);
+  Matrix<T,U,StructureR,Distribution> matrixR2(std::vector<T>(localDimensionX*localDimensionX,0), localDimensionX, localDimensionX, dimensionX,
+    dimensionX, true);
+  FactorTunable_cqr(matrixA, matrixQ2, matrixR1, localDimensionX, localDimensionY, commWorld);
+  FactorTunable_cqr(matrixQ2, matrixQ, matrixR2, localDimensionX, localDimensionY, commWorld);
+
+  // Try gemm first, then try trmm later.
+  blasEngineArgumentPackage_gemm<T> gemmPack1;
+  gemmPack1.order = blasEngineOrder::AblasColumnMajor;
+  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
+  gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
+  gemmPack1.alpha = 1.;
+  gemmPack1.beta = 0.;
+
+  // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
+  //   send half of the data!
+  SquareMM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixR2, matrixR1,
+    matrixR, localDimensionX, localDimensionX, localDimensionX, commWorld, gemmPack1);
+
+  MPI_Comm_free(&std::get<0>(commInfo3D));
 }
 
 

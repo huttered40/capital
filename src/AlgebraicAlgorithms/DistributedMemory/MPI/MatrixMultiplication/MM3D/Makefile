@@ -1,14 +1,13 @@
 CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
 CFLAGS = -g -Wall -O3 -std=c++11
 
-OBJS1 = SquareMM3D.o
+OBJS1 = MM3D.o
 OBJS2 = testPerformance.o
 OBJS3 = testSequentialValidationGemm.o
 OBJS4 = testSequentialValidationTrmm.o
 OBJS5 = testSequentialValidationSyrk.o
-OBJS6 = testSequentialValidationCut.o
 
-all: testPerformance testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk testSequentialValidationCut
+all: testPerformance testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk
 
 testPerformance: $(OBJS2)
 	$(CCMPI) $(CFLAGS) -o testPerformance $(OBJS2) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
@@ -22,26 +21,20 @@ testSequentialValidationTrmm: $(OBJS4)
 testSequentialValidationSyrk: $(OBJS5)
 	$(CCMPI) $(CFLAGS) -o testSequentialValidationSyrk $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
-testSequentialValidationCut: $(OBJS6)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationCut $(OBJS4) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
-
-testPerformance.o: testPerformance.cpp SquareMM3D.h
+testPerformance.o: testPerformance.cpp MM3D.h
 	$(CCMPI) $(CFLAGS) -o testPerformance.o -c testPerformance.cpp
 
-testSequentialValidationGemm.o: testSequentialValidationGemm.cpp SquareMM3D.h
+testSequentialValidationGemm.o: testSequentialValidationGemm.cpp MM3D.h
 	$(CCMPI) $(CFLAGS) -o testSequentialValidationGemm.o -c testSequentialValidationGemm.cpp
 
-testSequentialValidationTrmm.o: testSequentialValidationTrmm.cpp SquareMM3D.h
+testSequentialValidationTrmm.o: testSequentialValidationTrmm.cpp MM3D.h
 	$(CCMPI) $(CFLAGS) -o testSequentialValidationTrmm.o -c testSequentialValidationTrmm.cpp
 
-testSequentialValidationSyrk.o: testSequentialValidationSyrk.cpp SquareMM3D.h
+testSequentialValidationSyrk.o: testSequentialValidationSyrk.cpp MM3D.h
 	$(CCMPI) $(CFLAGS) -o testSequentialValidationSyrk.o -c testSequentialValidationSyrk.cpp
 
-testSequentialValidationCut.o: testSequentialValidationCut.cpp SquareMM3D.h
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationCut.o -c testSequentialValidationCut.cpp
-
-Summa3D.o: SquareMM3D.h SquareMM3D.hpp
-	$(CCMPI) $(CFLAGS) -o SquareMM3D.o -c SquareMM3D.h
+MM3D.o: MM3D.h MM3D.hpp
+	$(CCMPI) $(CFLAGS) -o MM3D.o -c MM3D.h
 
 clean:
-	-rm -f *.o *.gch testPerformance testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk testSequentialValidationCut
+	-rm -f *.o *.gch testPerformance testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk

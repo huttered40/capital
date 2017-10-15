@@ -26,12 +26,12 @@ template<typename T, typename U, template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void MMvalidate<T,U,blasEngine>::validateLocal(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
-                        U localDimensionX,
-                        U localDimensionY,
-                        U localDimensionZ,
-                        U globalDimensionX,
-                        U globalDimensionY,
-                        U globalDimensionZ,
+                        U localDimensionM,
+                        U localDimensionN,
+                        U localDimensionK,
+                        U globalDimensionM,
+                        U globalDimensionN,
+                        U globalDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage
                       )
@@ -52,17 +52,17 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 
   // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
   // Fast pass-by-value via modern C++ move semantics
-  std::vector<T> matrixAforEngine = getReferenceMatrix(myMatrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
-  std::vector<T> matrixBforEngine = getReferenceMatrix(myMatrix, localDimensionZ, localDimensionX, globalDimensionZ, globalDimensionX, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
-  std::vector<T> matrixCforEngine(globalDimensionY*globalDimensionZ, 0);	// No matrix needed for this. Only used in BLAS call
+  std::vector<T> matrixAforEngine = getReferenceMatrix(myMatrix, localDimensionK, localDimensionM, globalDimensionK, globalDimensionM, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
+  std::vector<T> matrixBforEngine = getReferenceMatrix(myMatrix, localDimensionN, localDimensionK, globalDimensionN, globalDimensionK, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
+  std::vector<T> matrixCforEngine(globalDimensionM*globalDimensionN, 0);	// No matrix needed for this. Only used in BLAS call
 
   // Assume column-major matrix and no transposes
-  blasEngine<T,U>::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], globalDimensionY, globalDimensionZ,
-    globalDimensionX, globalDimensionY, globalDimensionX, globalDimensionY, srcPackage);
+  blasEngine<T,U>::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], globalDimensionM, globalDimensionN,
+    globalDimensionK, globalDimensionM, globalDimensionK, globalDimensionM, srcPackage);
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualSquare(myMatrix.getVectorData(), matrixCforEngine, localDimensionX, localDimensionY, localDimensionZ, globalDimensionX,
-    globalDimensionY, globalDimensionZ, commInfo);
+  T error = getResidualSquare(myMatrix.getVectorData(), matrixCforEngine, localDimensionM, localDimensionN, globalDimensionM,
+    globalDimensionN, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
@@ -75,16 +75,17 @@ template<typename T, typename U, template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void MMvalidate<T,U,blasEngine>::validateLocal(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
-                        U localDimensionX,
-                        U localDimensionY,
-                        U localDimensionZ,
-                        U globalDimensionX,
-                        U globalDimensionY,
-                        U globalDimensionZ,
+                        U localDimensionM,
+                        U localDimensionN,
+                        U globalDimensionM,
+                        U globalDimensionN,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage
                       )
 {
+  // not quite correct yet
+  abort();
+
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
@@ -101,17 +102,17 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 
   // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
   // Fast pass-by-value via modern C++ move semantics
-  std::vector<T> matrixAforEngine = getReferenceMatrix(myMatrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
-  std::vector<T> matrixBforEngine = getReferenceMatrix(myMatrix, localDimensionZ, localDimensionX, globalDimensionZ, globalDimensionX, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
+  std::vector<T> matrixAforEngine = getReferenceMatrix(myMatrix, localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
+  std::vector<T> matrixBforEngine = getReferenceMatrix(myMatrix, localDimensionN, localDimensionM, globalDimensionN, globalDimensionM, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
 
 
-  blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY),
-    (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionZ : globalDimensionX), (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionY : globalDimensionX),
-    (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionX : globalDimensionY), srcPackage);
+  blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionN : globalDimensionM),
+    (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionM : globalDimensionN), (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionM : globalDimensionN),
+    (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionN : globalDimensionM), srcPackage);
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualSquare(myMatrix.getVectorData(), matrixBforEngine, localDimensionX, localDimensionY, localDimensionZ, globalDimensionX,
-    globalDimensionY, globalDimensionZ, commInfo);
+  T error = getResidualSquare(myMatrix.getVectorData(), matrixBforEngine, localDimensionM, localDimensionN, globalDimensionM,
+    globalDimensionN, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
@@ -124,16 +125,17 @@ template<typename T, typename U, template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void MMvalidate<T,U,blasEngine>::validateLocal(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
-                        U localDimensionX,
-                        U localDimensionY,
-                        U localDimensionZ,
-                        U globalDimensionX,
-                        U globalDimensionY,
-                        U globalDimensionZ,
+                        U localDimensionN,
+                        U localDimensionK,
+                        U globalDimensionN,
+                        U globalDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                       )
 {
+  // not quite correct yet
+  abort();
+
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
@@ -150,16 +152,16 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 
   // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
   // Fast pass-by-value via modern C++ move semantics
-  std::vector<T> matrixAforEngine = getReferenceMatrix(myMatrix, localDimensionX, localDimensionY, globalDimensionX, globalDimensionY, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
-  std::vector<T> matrixBforEngine(globalDimensionZ*globalDimensionX);	// Instead of using C for output matrix, lets use B as we did in SquareMM3D
+  std::vector<T> matrixAforEngine = getReferenceMatrix(myMatrix, localDimensionK, localDimensionN, globalDimensionK, globalDimensionN, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
+  std::vector<T> matrixBforEngine(globalDimensionN*globalDimensionK);	// Instead of using C for output matrix, lets use B as we did in SquareMM3D
 
   // Assume column major and no transpose and that the matrix A is square.
-  blasEngine<T,U>::_syrk(&matrixAforEngine[0], &matrixBforEngine[0], globalDimensionX, globalDimensionY,
-    globalDimensionX, globalDimensionY, srcPackage);
+  blasEngine<T,U>::_syrk(&matrixAforEngine[0], &matrixBforEngine[0], globalDimensionK, globalDimensionN,
+    globalDimensionK, globalDimensionN, srcPackage);
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualSquare(myMatrix.getVectorData(), matrixBforEngine, localDimensionX, localDimensionY, localDimensionZ, globalDimensionX,
-    globalDimensionY, globalDimensionZ, commInfo);
+  T error = getResidualSquare(myMatrix.getVectorData(), matrixBforEngine, localDimensionN, localDimensionK, globalDimensionN,
+    globalDimensionK, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
@@ -172,12 +174,10 @@ template<typename T, typename U, template<typename,typename> class blasEngine>
 T MMvalidate<T,U,blasEngine>::getResidualSquare(
 		     std::vector<T>& myValues,
 		     std::vector<T>& blasValues,
-		     U localDimensionX,
-		     U localDimensionY,
-		     U localDimensionZ,
-		     U globalDimensionX,
-		     U globalDimensionY,
-	   	     U globalDimensionZ,
+		     U localDimensionM,
+		     U localDimensionN,
+		     U globalDimensionM,
+		     U globalDimensionN,
 		     std::tuple<MPI_Comm, int, int, int, int> commInfo
 		   )
 {
@@ -186,12 +186,12 @@ T MMvalidate<T,U,blasEngine>::getResidualSquare(
   int pCoordY = std::get<2>(commInfo);
   int pGridDimensionSize = std::get<4>(commInfo);
   U myIndex = 0;
-  U solIndex = pCoordX *globalDimensionY + pCoordY;
+  U solIndex = pCoordX *globalDimensionM + pCoordY;
 
-  for (U i=0; i<localDimensionX; i++)
+  for (U i=0; i<localDimensionN; i++)
   {
     U saveCountRef = solIndex;
-    for (U j=0; j<localDimensionY; j++)
+    for (U j=0; j<localDimensionM; j++)
     {
       T errorSquare = abs(myValues[myIndex] - blasValues[solIndex]);
       //std::cout << errorSquare << " " << myValues[myIndex] << " " << blasValues[solIndex] << std::endl;
@@ -200,7 +200,7 @@ T MMvalidate<T,U,blasEngine>::getResidualSquare(
       solIndex += pGridDimensionSize;
       myIndex++;
     }
-    solIndex = saveCountRef + pGridDimensionSize*globalDimensionY;
+    solIndex = saveCountRef + pGridDimensionSize*globalDimensionM;
   }
 
   error = std::sqrt(error);

@@ -7,7 +7,7 @@
 #include <mpi.h>
 
 // Local includes
-#include "SquareMM3D.h"
+#include "MM3D.h"
 
 using namespace std;
 
@@ -29,13 +29,14 @@ int main(int argc, char** argv)
 
   // size -- total number of processors in the 3D grid
 
-  int pGridDimensionSize = std::nearbyint(pow(size,1./3.));
-  uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
-  uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
+  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  uint64_t globalMatrixSizeN = (1<<(atoi(argv[1])));
+  uint64_t localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
+  uint64_t globalMatrixSizeK = (1<<(atoi(argv[2])));
+  uint64_t localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
   
-  MatrixTypeS matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeS matB(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-  MatrixTypeS matC(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+  MatrixTypeS matA(localMatrixSizeK,localMatrixSizeN,globalMatrixSizeN,globalMatrixSizeN);
+  MatrixTypeS matC(localMatrixSizeN,localMatrixSizeN,globalMatrixSizeN,globalMatrixSizeN);
 
   int helper = pGridDimensionSize;
   helper *= helper;
@@ -43,23 +44,22 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
-  // Don't use rank. Need to use the rank relative to the slice its on, since each slice will start off with the same matrix
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-  matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
 
-  blasEngineArgumentPackage_gemm<double> blasArgs;
+  blasEngineArgumentPackage_syrk<double> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
-  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-  blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+  blasArgs.uplo = blasEngineUpLo::AblasUpper;
+  blasArgs.transposeA = blasEngineTranspose::AblasTrans;
   blasArgs.alpha = 1.;
   blasArgs.beta = 0;
-  SquareMM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
-    Multiply(matA, matB, matC, localMatrixSize, localMatrixSize, localMatrixSize, MPI_COMM_WORLD, blasArgs);
+
+  MM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
+    Multiply(matA, matC, localMatrixSizeN, localMatrixSizeK, MPI_COMM_WORLD, blasArgs);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSize, localMatrixSize, localMatrixSize,
-    globalMatrixSize, globalMatrixSize, globalMatrixSize, MPI_COMM_WORLD, blasArgs);
+  MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSizeN, localMatrixSizeK,
+    globalMatrixSizeN, globalMatrixSizeK, MPI_COMM_WORLD, blasArgs);
 
   MPI_Finalize();
 

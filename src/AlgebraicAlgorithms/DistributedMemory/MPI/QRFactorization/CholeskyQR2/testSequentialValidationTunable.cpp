@@ -73,7 +73,7 @@ int main(int argc, char** argv)
     else {exponentC = (sumExponentsC + (3-(sumExponentsC%3)))/3;}
 */
 
-// Find the optimal grid based on the number of processors, size, and the dimensions of matrix A
+    // Find the optimal grid based on the number of processors, size, and the dimensions of matrix A
     dimensionD = std::min(size, (1<<exponentD));
     dimensionC = std::nearbyint(std::pow(size/dimensionD, 1./2));
 
@@ -91,6 +91,8 @@ int main(int argc, char** argv)
   int pCoordY = (rank%sliceSize)/dimensionC;
   int pCoordZ = rank/sliceSize;
 
+  cout << "rank " << rank << " has: pCoordX - " << pCoordX << ", pCoordY - " << pCoordY << ", pCoordZ - " << pCoordZ << endl;
+
   int localMatrixDimensionY = globalMatrixDimensionY/dimensionD;
   int localMatrixDimensionX = globalMatrixDimensionX/dimensionC;
 
@@ -101,8 +103,8 @@ int main(int argc, char** argv)
 
   matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
 
-//  CholeskyQR2<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
-//    FactorTunable(matA, matQ, matR, localMatrixSize, localMatrixSize, MPI_COMM_WORLD);
+  CholeskyQR2<double,int,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureRectangle,cblasEngine>::
+    FactorTunable(matA, matQ, matR, localMatrixSize, localMatrixSize, MPI_COMM_WORLD);
 
   MPI_Finalize();
 
