@@ -355,8 +355,35 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distributio
   U localDimensionM = globalDimensionM/pGridDimensionSize;
   U localDimensionN = globalDimensionN/pGridDimensionSize;
 
+  Matrix<T,U,MatrixStructureRectangle,Distribution> testA = myA;			// Just copy here. No big deal because it will be overwritten soon
+  blasEngineArgumentPackage_gemm<double> blasArgs;
+  blasArgs.order = blasEngineOrder::AblasColumnMajor;
+  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+  blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+  blasArgs.alpha = 1.;
+  blasArgs.beta = 0.;
+  MM3D<T,U,MatrixStructureRectangle,MatrixStructureSquare,MatrixStructureRectangle,cblasEngine>::Multiply(myQ, myR, testA, localDimensionM, localDimensionN, localDimensionN,
+    commWorld, blasArgs);
+
+  // Now we can just iterate over myA and testA and compare
+  T error = 0;
+  U myIndex = 0;
+  for (U i=0; i<localDimensionM; i++)
+  {
+    for (U j=0; j<localDimensionN; j++)
+    {
+      T errorSquare = 0;
+      errorSquare = std::abs(myA.getRawData()[myIndex] - testA.getRawData()[myIndex]);
+      errorSquare *= errorSquare;
+      error += errorSquare;
+      myIndex++;
+    }
+  }
+
+  error = std::sqrt(error);
+
   MPI_Comm_free(&sliceComm);
-  return 0;  
+  return error;  
 }
 
 
