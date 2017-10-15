@@ -141,8 +141,8 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable(Matrix<T,U,StructureA
     globalDimensionN, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
     globalDimensionN, true);
-  FactorTunable_cqr(matrixA, matrixQ2, matrixR1, localDimensionM, localDimensionN, gridDimensionD, gridDimensionC, commWorld);
-  FactorTunable_cqr(matrixQ2, matrixQ, matrixR2, localDimensionM, localDimensionN, gridDimensionD, gridDimensionC, commWorld);
+  FactorTunable_cqr(matrixA, matrixQ2, matrixR1, localDimensionM, localDimensionN, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators);
+  FactorTunable_cqr(matrixQ2, matrixQ, matrixR2, localDimensionM, localDimensionN, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators);
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -264,7 +264,7 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,
 
   // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
   blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], &localB[0], localDimensionX, localDimensionX,
-    localDimensionY, localDimensionY, localDimensionX, localDimensionX, gemmPack1);
+    localDimensionY, localDimensionY, localDimensionY, localDimensionX, gemmPack1);
 
   MPI_Reduce((isRootColumn ? MPI_IN_PLACE : &localB[0]), &localB[0], localDimensionX*localDimensionX, MPI_DOUBLE,
     MPI_SUM, pGridCoordZ, columnComm);
@@ -297,9 +297,71 @@ template<typename T,typename U,
   template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld)
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
+      std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators)
 {
-  std::cout << "I am in FactorTunable_cqr\n";
+  MPI_Comm rowComm = std::get<0>(tunableCommunicators);
+  MPI_Comm columnContigComm = std::get<1>(tunableCommunicators);
+  MPI_Comm columnAltComm = std::get<2>(tunableCommunicators);
+  MPI_Comm depthComm = std::get<3>(tunableCommunicators);
+  MPI_Comm miniCubeComm = std::get<4>(tunableCommunicators);
+
+  int worldRank,worldSize;
+  MPI_Comm_rank(commWorld, &worldRank);
+  MPI_Comm_size(commWorld, &worldSize);
+  int sliceSize = gridDimensionD*gridDimensionC;
+  int pCoordX = worldRank%gridDimensionC;
+  int pCoordY = (worldRank%sliceSize)/gridDimensionC;
+  int pCoordZ = worldRank/sliceSize;
+
+  int columnContigRank;
+  MPI_Comm_rank(columnContigComm, &columnContigRank);
+
+  // Need to perform the multiple steps to get our partition of matrixA
+  std::vector<T>& dataA = matrixA.getVectorData();
+  U sizeA = matrixA.getNumElems();
+  std::vector<T> foreignA;	// dont fill with data first, because if root its a waste,
+                                //   but need it to outside to get outside scope
+  bool isRootRow = ((pCoordX == pCoordZ) ? true : false);
+  bool isRootColumn = ((columnContigRank == pCoordZ) ? true : false);
+
+  // No optimization here I am pretty sure due to final result being symmetric, as it is cyclic and transpose isnt true as I have painfully found out before.
+  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pCoordZ, rowComm);
+
+  std::vector<T> localB(localDimensionN*localDimensionN);
+  blasEngineArgumentPackage_gemm<T> gemmPack1;
+  gemmPack1.order = blasEngineOrder::AblasColumnMajor;
+  gemmPack1.transposeA = blasEngineTranspose::AblasTrans;
+  gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
+  gemmPack1.alpha = 1.;
+  gemmPack1.beta = 0.;
+
+  // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
+  blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], &localB[0], localDimensionN, localDimensionN,
+    localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
+
+  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : &localB[0]), &localB[0], localDimensionN*localDimensionN, MPI_DOUBLE,
+    MPI_SUM, pCoordZ, columnContigComm);
+  MPI_Allreduce(MPI_IN_PLACE, &localB[0], localDimensionN*localDimensionN, MPI_DOUBLE,
+    MPI_SUM, columnAltComm);
+
+  MPI_Bcast(&localB[0], localDimensionN*localDimensionN, MPI_DOUBLE, columnContigRank, depthComm);
+
+  // Stuff localB vector into its own matrix so that we can pass it into CFR3D
+  Matrix<T,U,MatrixStructureSquare,Distribution> matrixB(std::move(localB), localDimensionN, localDimensionN,
+    localDimensionN*gridDimensionC, localDimensionN*gridDimensionC, true);
+
+  // Create an extra matrix for R-inverse
+  Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
+    localDimensionN*gridDimensionC, localDimensionN*gridDimensionC, true);
+
+  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionN, 'U', miniCubeComm);
+
+  // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
+  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
+  MM3D<T,U,StructureA,MatrixStructureSquare,StructureA,blasEngine>::Multiply(matrixA, matrixRI,
+    matrixQ, localDimensionM, localDimensionN, localDimensionN, miniCubeComm, gemmPack1);
+
 }
 
 
