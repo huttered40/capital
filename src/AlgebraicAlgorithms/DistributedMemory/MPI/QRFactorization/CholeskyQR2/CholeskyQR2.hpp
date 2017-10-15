@@ -5,6 +5,7 @@ static std::tuple<
 			MPI_Comm,
 			MPI_Comm,
 			MPI_Comm,
+			MPI_Comm,
 			MPI_Comm
 		 >
 		getTunableCommunicators(MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC)
@@ -26,9 +27,8 @@ static std::tuple<
   MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
   MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
 
-  MPI_Comm_free(&sliceComm);
   MPI_Comm_free(&columnComm);
-  return std::make_tuple(rowComm, columnContigComm, columnAltComm, depthComm, miniCubeComm);
+  return std::make_tuple(rowComm, columnContigComm, columnAltComm, depthComm, sliceComm, miniCubeComm);
 }
 
 
@@ -126,7 +126,7 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable(Matrix<T,U,StructureA
   MPI_Comm_size(commWorld, &myRank);
 
   auto tunableCommunicators = getTunableCommunicators(commWorld, gridDimensionD, gridDimensionC);
-  MPI_Comm miniCubeComm = std::get<4>(tunableCommunicators);
+  MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
   int cubeSize;
   MPI_Comm_size(miniCubeComm, &cubeSize);
   std::cout << "size of cube comm - " << cubeSize << std::endl;
@@ -162,6 +162,7 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable(Matrix<T,U,StructureA
   MPI_Comm_free(&std::get<2>(tunableCommunicators));
   MPI_Comm_free(&std::get<3>(tunableCommunicators));
   MPI_Comm_free(&std::get<4>(tunableCommunicators));
+  MPI_Comm_free(&std::get<5>(tunableCommunicators));
 }
 
 
@@ -298,13 +299,13 @@ template<typename T,typename U,
 template<template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
-      std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators)
+      std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators)
 {
   MPI_Comm rowComm = std::get<0>(tunableCommunicators);
   MPI_Comm columnContigComm = std::get<1>(tunableCommunicators);
   MPI_Comm columnAltComm = std::get<2>(tunableCommunicators);
   MPI_Comm depthComm = std::get<3>(tunableCommunicators);
-  MPI_Comm miniCubeComm = std::get<4>(tunableCommunicators);
+  MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
 
   int worldRank,worldSize;
   MPI_Comm_rank(commWorld, &worldRank);

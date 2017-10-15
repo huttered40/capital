@@ -8,6 +8,7 @@
 
 // Local includes
 #include "CholeskyQR2.h"
+#include "./../QRvalidate/QRvalidate.h"
 
 using namespace std;
 
@@ -106,7 +107,7 @@ int main(int argc, char** argv)
   CholeskyQR2<double,int,MatrixStructureRectangle,cblasEngine>::
     FactorTunable(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, dimensionD, dimensionC, MPI_COMM_WORLD);
 
-  if (rank == 0) matR.print();
+  QRvalidate<double,int>::validateLocalTunable(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, dimensionD, dimensionC, MPI_COMM_WORLD);
 
   MPI_Finalize();
 

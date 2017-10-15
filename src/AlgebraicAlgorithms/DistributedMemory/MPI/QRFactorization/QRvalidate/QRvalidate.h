@@ -52,6 +52,17 @@ public:
                         MPI_Comm commWorld
                       );
 
+  template<template<typename,typename,int> class Distribution>
+  static void validateLocalTunable(
+                        Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
+                        Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
+                        U globalDimensionM,
+                        U globalDimensionN,
+                        int gridDimensionD,
+                        int gridDimensionC,
+                        MPI_Comm commWorld
+		      );
 private:
   // 1D helper routines
   static T getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
@@ -70,6 +81,13 @@ private:
   template<template<typename,typename,int> class Distribution>
   static T testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                                U globalDimensionM, U globalDimensionN, MPI_Comm commWorld);
+
+  template<template<typename,typename,int> class Distribution>
+  static T getResidualTunable(Matrix<T,U,MatrixStructureRectangle,Distribution>& myA,
+                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
+                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
+                         U globalDimensionM, U globalDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
+                         std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators);
 
   template<template<typename,typename,int> class Distribution>
   static std::vector<T> getReferenceMatrix1D(
