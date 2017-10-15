@@ -446,7 +446,7 @@ T* MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
 									       )
 {
   if ((!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-    || (!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+    && (!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
     // Need to separate the below out into its own function that will not get instantied into object code
     //   unless it passes the test above. This avoids template-enduced template compiler errors

@@ -34,9 +34,10 @@ public:
   // However, we still need to template this method because the method needs to be aware of the Matrix's template parameters
   //   in order to use it as a method argument.
 
-  template<template<typename,typename,int> class Distribution>
+  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static void validateLocal(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+                        Matrix<T,U,StructureArg,Distribution>& myMatrix,
                         U localDimensionM,
                         U localDimensionN,
                         U localDimensionK,
@@ -47,9 +48,10 @@ public:
                         const blasEngineArgumentPackage_gemm<T>& srcPackage
                       );
 
-  template<template<typename,typename,int> class Distribution>
+  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static void validateLocal(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+                        Matrix<T,U,StructureArg,Distribution>& myMatrix,
                         U localDimensionM,
                         U localDimensionN,
                         U globalDimensionM,
@@ -58,9 +60,10 @@ public:
                         const blasEngineArgumentPackage_trmm<T>& srcPackage
                       );
 
-  template<template<typename,typename,int> class Distribution>
+  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static void validateLocal(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+                        Matrix<T,U,StructureArg,Distribution>& myMatrix,
                         U localDimensionN,
                         U localDimensionK,
                         U globalDimensionN,
@@ -81,9 +84,10 @@ private:
 		                std::tuple<MPI_Comm, int, int, int, int> commInfo
 			    );
 
-  template<template<typename,typename,int> class Distribution>
+  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static std::vector<T> getReferenceMatrix(
-                        			Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+                        			Matrix<T,U,StructureArg,Distribution>& myMatrix,
 						U localNumColumns,
 						U localNumRows,
 						U globalNumColumns,

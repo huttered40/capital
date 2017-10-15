@@ -23,9 +23,10 @@ static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm co
 // We enforce that matrixSol must have Square Structure.
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
+template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 void MMvalidate<T,U,blasEngine>::validateLocal(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+                        Matrix<T,U,StructureArg,Distribution>& myMatrix,
                         U localDimensionM,
                         U localDimensionN,
                         U localDimensionK,
@@ -72,9 +73,10 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
+template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 void MMvalidate<T,U,blasEngine>::validateLocal(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+                        Matrix<T,U,StructureArg,Distribution>& myMatrix,
                         U localDimensionM,
                         U localDimensionN,
                         U globalDimensionM,
@@ -122,9 +124,10 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
+template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 void MMvalidate<T,U,blasEngine>::validateLocal(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+                        Matrix<T,U,StructureArg,Distribution>& myMatrix,
                         U localDimensionN,
                         U localDimensionK,
                         U globalDimensionN,
@@ -209,9 +212,10 @@ T MMvalidate<T,U,blasEngine>::getResidualSquare(
 
 
 template<typename T, typename U, template<typename,typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
+template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
-                        					Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
+                        					Matrix<T,U,StructureArg,Distribution>& myMatrix,
 								U localNumColumns,
 								U localNumRows,
 								U globalNumColumns,
@@ -226,7 +230,7 @@ std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
   int pGridCoordZ = std::get<3>(commInfo);
   int pGridDimensionSize = std::get<4>(commInfo);
 
-  using MatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
+  using MatrixType = Matrix<T,U,StructureArg,Distribution>;
   MatrixType localMatrix(localNumColumns, localNumRows, globalNumColumns, globalNumRows);
   localMatrix.DistributeRandom(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key);
 

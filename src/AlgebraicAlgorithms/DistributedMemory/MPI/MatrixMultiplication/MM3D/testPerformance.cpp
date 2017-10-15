@@ -14,9 +14,8 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-  using MatrixTypeA = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
-  using MatrixTypeB = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
-  using MatrixTypeC = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixTypeS = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixTypeR = Matrix<double,int,MatrixStructureRectangle,MatrixDistributerCyclic>;
 
   // argv[1] - Matrix size x where x represents 2^x.
   // So in future, we might want t way to test non power of 2 dimension matrices
@@ -36,9 +35,9 @@ int main(int argc, char** argv)
   uint64_t globalMatrixSizeK = (1<<(atoi(argv[3])));
   uint64_t localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
   
-  MatrixTypeA matA(localMatrixSizeK,localMatrixSizeM,globalMatrixSizeK,globalMatrixSizeM);
-  MatrixTypeB matB(localMatrixSizeN,localMatrixSizeK,globalMatrixSizeN,globalMatrixSizeK);
-  MatrixTypeC matC(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
+  MatrixTypeR matA(localMatrixSizeK,localMatrixSizeM,globalMatrixSizeK,globalMatrixSizeM);
+  MatrixTypeR matB(localMatrixSizeN,localMatrixSizeK,globalMatrixSizeN,globalMatrixSizeK);
+  MatrixTypeR matC(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
 
   int helper = pGridDimensionSize;
   helper *= helper;
@@ -62,7 +61,7 @@ int main(int argc, char** argv)
   for (int i=0; i<10; i++)
   {
     myTimer.setStartTime();
-    MM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
+    MM3D<double,int,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureRectangle,cblasEngine>::
       Multiply(matA, matB, matC, localMatrixSizeM, localMatrixSizeN, localMatrixSizeK, MPI_COMM_WORLD, blasArgs);
     myTimer.setEndTime();
     myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D iteration", i);
