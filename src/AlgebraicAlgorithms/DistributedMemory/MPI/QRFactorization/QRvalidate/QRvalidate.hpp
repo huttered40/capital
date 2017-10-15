@@ -29,8 +29,8 @@ void QRvalidate<T,U>::validateLocal1D(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        U globalDimensionX,
-                        U globalDimensionY,
+                        U globalDimensionM,
+                        U globalDimensionN,
                         MPI_Comm commWorld
                       )
 {
@@ -41,42 +41,42 @@ void QRvalidate<T,U>::validateLocal1D(
   int myRank,numPEs;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
-  U localDimensionY = globalDimensionY/numPEs;
+  U localDimensionM = globalDimensionM/numPEs;
 
-  std::vector<T> globalMatrixA = getReferenceMatrix1D(matrixA, globalDimensionX, globalDimensionY, localDimensionY, myRank, commWorld);
+  std::vector<T> globalMatrixA = getReferenceMatrix1D(matrixA, globalDimensionN, globalDimensionM, localDimensionM, myRank, commWorld);
 
   // Assume row-major
-  std::vector<T> tau(globalDimensionX);
+  std::vector<T> tau(globalDimensionN);
   std::vector<T> matrixQ = globalMatrixA;		// true copy
-  LAPACKE_dgeqrf(LAPACK_COL_MAJOR, globalDimensionY, globalDimensionX, &matrixQ[0], globalDimensionY, &tau[0]);
-  LAPACKE_dorgqr(LAPACK_COL_MAJOR, globalDimensionY, globalDimensionX, globalDimensionX, &matrixQ[0],
-    globalDimensionY, &tau[0]);
+  LAPACKE_dgeqrf(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, &matrixQ[0], globalDimensionM, &tau[0]);
+  LAPACKE_dorgqr(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, globalDimensionN, &matrixQ[0],
+    globalDimensionM, &tau[0]);
 
   // Q is in globalMatrixA now
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidual1D_RowCyclic(myQ.getVectorData(), matrixQ, globalDimensionX, globalDimensionY, commWorld);
+  T error = getResidual1D_RowCyclic(myQ.getVectorData(), matrixQ, globalDimensionN, globalDimensionM, commWorld);
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myQ - solQ is " << error << std::endl;}
 
   // Now generate R using Q and A
-  std::vector<T> matrixR(globalDimensionX*globalDimensionX,0);
+  std::vector<T> matrixR(globalDimensionN*globalDimensionN,0);
   // For right now, I will just use cblas, but Note that I should template this class with blasEngine
-  cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, globalDimensionX, globalDimensionX, globalDimensionY,
-    1., &matrixQ[0], globalDimensionY, &globalMatrixA[0], globalDimensionY, 0., &matrixR[0], globalDimensionX);
+  cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, globalDimensionN, globalDimensionN, globalDimensionM,
+    1., &matrixQ[0], globalDimensionM, &globalMatrixA[0], globalDimensionM, 0., &matrixR[0], globalDimensionN);
 
   // Need to set up error2 for matrix R, but do that later
-  T error2 = getResidual1D_Full(myR.getVectorData(), matrixR, globalDimensionX, globalDimensionY, commWorld);
+  T error2 = getResidual1D_Full(myR.getVectorData(), matrixR, globalDimensionN, globalDimensionM, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myR - solR is " << error2 << std::endl;}
 
   // generate A_computed = myQ*myR and compare against original A
-  T error3 = getResidual1D(matrixA.getVectorData(), myQ.getVectorData(), myR.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
+  T error3 = getResidual1D(matrixA.getVectorData(), myQ.getVectorData(), myR.getVectorData(), globalDimensionN, globalDimensionM, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error3, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total residual error is " << error3 << std::endl;}
 
-  T error4 = testOrthogonality1D(myQ.getVectorData(), globalDimensionX, globalDimensionY, commWorld);
+  T error4 = testOrthogonality1D(myQ.getVectorData(), globalDimensionN, globalDimensionM, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error4, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error4 << std::endl;}
 

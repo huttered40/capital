@@ -104,7 +104,7 @@ int main(int argc, char** argv)
   matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
 
   CholeskyQR2<double,int,MatrixStructureRectangle,cblasEngine>::
-    FactorTunable(matA, matQ, matR, localMatrixDimensionM, localMatrixDimensionN, MPI_COMM_WORLD);
+    FactorTunable(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, dimensionD, dimensionC, MPI_COMM_WORLD);
 
   MPI_Finalize();
 

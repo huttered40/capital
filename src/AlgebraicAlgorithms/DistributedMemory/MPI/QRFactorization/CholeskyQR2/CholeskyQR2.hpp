@@ -1,29 +1,60 @@
 /* Author: Edward Hutter */
 
+static std::tuple<
+			MPI_Comm,
+			MPI_Comm,
+			MPI_Comm,
+			MPI_Comm,
+			MPI_Comm
+		 >
+		getTunableCommunicators(MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC)
+{
+  int worldRank, worldSize, sliceRank, columnRank;
+  MPI_Comm_rank(commWorld, &worldRank);
+  MPI_Comm_size(commWorld, &worldSize);
+
+  int sliceSize = pGridDimensionD*pGridDimensionC;
+  MPI_Comm sliceComm, rowComm, columnComm, columnContigComm, columnAltComm, depthComm, miniCubeComm;
+  MPI_Comm_split(commWorld, worldRank/sliceSize, worldRank, &sliceComm);
+  MPI_Comm_rank(sliceComm, &sliceRank);
+  MPI_Comm_split(sliceComm, sliceRank/pGridDimensionC, sliceRank, &rowComm);
+  int cubeInt = worldRank%sliceSize;
+  MPI_Comm_split(commWorld, cubeInt/(pGridDimensionC*pGridDimensionC), worldRank, &miniCubeComm);
+  MPI_Comm_split(commWorld, cubeInt, worldRank, &depthComm);
+  MPI_Comm_split(sliceComm, worldRank%pGridDimensionC, worldRank, &columnComm);
+  MPI_Comm_rank(columnComm, &columnRank);
+  MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
+  MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
+
+  MPI_Comm_free(&sliceComm);
+  MPI_Comm_free(&columnComm);
+  return std::make_tuple(rowComm, columnContigComm, columnAltComm, depthComm, miniCubeComm);
+}
+
 
 template<typename T,typename U,
   template<typename,typename,template<typename,typename,int> class> class StructureA,		// Note: this vould be either rectangular or square.
   template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,StructureA,blasEngine>::Factor1D(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U dimensionX, U dimensionY, MPI_Comm commWorld)
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U globalDimensionM, U globalDimensionN, MPI_Comm commWorld)
 {
   // We assume data is owned relative to a 1D processor grid, so every processor owns a chunk of data consisting of
   //   all columns and a block of rows.
 
   int numPEs;
   MPI_Comm_size(commWorld, &numPEs);
-  U localDimensionY = dimensionY/numPEs;		// no error check here, but hopefully 
+  U localDimensionM = globalDimensionM/numPEs;		// no error check here, but hopefully 
 
-  Matrix<T,U,StructureA,Distribution> matrixQ2(std::vector<T>(dimensionX*localDimensionY), dimensionX, localDimensionY, dimensionX,
-    dimensionY, true);
-  Matrix<T,U,MatrixStructureSquare,Distribution> matrixR1(std::vector<T>(dimensionX*dimensionX), dimensionX, dimensionX, dimensionX,
-    dimensionX, true);
-  Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(dimensionX*dimensionX), dimensionX, dimensionX, dimensionX,
-    dimensionX, true);
+  Matrix<T,U,StructureA,Distribution> matrixQ2(std::vector<T>(localDimensionM*globalDimensionN), globalDimensionN, localDimensionM, globalDimensionN,
+    globalDimensionM, true);
+  Matrix<T,U,MatrixStructureSquare,Distribution> matrixR1(std::vector<T>(globalDimensionN*globalDimensionN), globalDimensionN, globalDimensionN, globalDimensionN,
+    globalDimensionN, true);
+  Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(globalDimensionN*globalDimensionN), globalDimensionN, globalDimensionN, globalDimensionN,
+    globalDimensionN, true);
 
-  Factor1D_cqr(matrixA, matrixQ2, matrixR1, dimensionX, localDimensionY, commWorld);
-  Factor1D_cqr(matrixQ2, matrixQ, matrixR2, dimensionX, localDimensionY, commWorld);
+  Factor1D_cqr(matrixA, matrixQ2, matrixR1, globalDimensionN, localDimensionM, commWorld);
+  Factor1D_cqr(matrixQ2, matrixQ, matrixR2, globalDimensionN, localDimensionM, commWorld);
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -32,8 +63,8 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::Factor1D(Matrix<T,U,StructureA,Dist
   gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
   gemmPack1.alpha = 1.;
   gemmPack1.beta = 0.;
-  blasEngine<T,U>::_gemm(matrixR2.getRawData(), matrixR1.getRawData(), matrixR.getRawData(), dimensionX, dimensionX,
-    dimensionX, dimensionX, dimensionX, dimensionX, gemmPack1);
+  blasEngine<T,U>::_gemm(matrixR2.getRawData(), matrixR1.getRawData(), matrixR.getRawData(), globalDimensionN, globalDimensionN,
+    globalDimensionN, globalDimensionN, globalDimensionN, globalDimensionN, gemmPack1);
 }
 
 template<typename T,typename U,
@@ -86,7 +117,7 @@ template<typename T,typename U,
   template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, MPI_Comm commWorld)
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U globalDimensionM, U globalDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld)
 {
   // We assume data is owned relative to a 3D processor grid
 
@@ -94,15 +125,24 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable(Matrix<T,U,StructureA
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_size(commWorld, &myRank);
 
+  auto tunableCommunicators = getTunableCommunicators(commWorld, gridDimensionD, gridDimensionC);
+  MPI_Comm miniCubeComm = std::get<4>(tunableCommunicators);
+  int cubeSize;
+  MPI_Comm_size(miniCubeComm, &cubeSize);
+  std::cout << "size of cube comm - " << cubeSize << std::endl;
+
+  U localDimensionM = globalDimensionM/gridDimensionD;
+  U localDimensionN = globalDimensionN/gridDimensionC;
+
   // Need to get the right global dimensions here, use a tunable package struct or something
-  Matrix<T,U,StructureA,Distribution> matrixQ2(std::vector<T>(localDimensionN*localDimensionM,0), localDimensionN, localDimensionM, localDimensionN,
-    localDimensionM, true);
-  Matrix<T,U,MatrixStructureSquare,Distribution> matrixR1(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, localDimensionN,
-    localDimensionN, true);
-  Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, localDimensionN,
-    localDimensionN, true);
-  FactorTunable_cqr(matrixA, matrixQ2, matrixR1, localDimensionM, localDimensionN, commWorld);
-  FactorTunable_cqr(matrixQ2, matrixQ, matrixR2, localDimensionM, localDimensionN, commWorld);
+  Matrix<T,U,StructureA,Distribution> matrixQ2(std::vector<T>(localDimensionN*localDimensionM,0), localDimensionN, localDimensionM, globalDimensionN,
+    globalDimensionM, true);
+  Matrix<T,U,MatrixStructureSquare,Distribution> matrixR1(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
+    globalDimensionN, true);
+  Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
+    globalDimensionN, true);
+  FactorTunable_cqr(matrixA, matrixQ2, matrixR1, localDimensionM, localDimensionN, gridDimensionD, gridDimensionC, commWorld);
+  FactorTunable_cqr(matrixQ2, matrixQ, matrixR2, localDimensionM, localDimensionN, gridDimensionD, gridDimensionC, commWorld);
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -115,9 +155,13 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable(Matrix<T,U,StructureA
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
   MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixR2, matrixR1,
-    matrixR, localDimensionN, localDimensionN, localDimensionN, commWorld, gemmPack1);
+    matrixR, localDimensionN, localDimensionN, localDimensionN, miniCubeComm, gemmPack1);
 
-  //MPI_Comm_free(&std::get<0>(commInfo3D));
+  MPI_Comm_free(&std::get<0>(tunableCommunicators));
+  MPI_Comm_free(&std::get<1>(tunableCommunicators));
+  MPI_Comm_free(&std::get<2>(tunableCommunicators));
+  MPI_Comm_free(&std::get<3>(tunableCommunicators));
+  MPI_Comm_free(&std::get<4>(tunableCommunicators));
 }
 
 
@@ -253,7 +297,7 @@ template<typename T,typename U,
   template<typename,typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, MPI_Comm commWorld)
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld)
 {
   std::cout << "I am in FactorTunable_cqr\n";
 }

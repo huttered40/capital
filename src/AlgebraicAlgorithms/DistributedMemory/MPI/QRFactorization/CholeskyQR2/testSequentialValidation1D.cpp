@@ -31,23 +31,23 @@ int main(int argc, char** argv)
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   // size -- total number of processors in the 1D grid
 
-  int globalMatrixDimensionY = (1<<(atoi(argv[1])));
-  int globalMatrixDimensionX = (1<<(atoi(argv[2])));
-  int localMatrixDimensionY = globalMatrixDimensionY/size;
-  int localMatrixDimensionX = globalMatrixDimensionX;
+  int globalMatrixDimensionM = (1<<(atoi(argv[1])));
+  int globalMatrixDimensionN = (1<<(atoi(argv[2])));
+  int localMatrixDimensionM = globalMatrixDimensionM/size;
+  int localMatrixDimensionN = globalMatrixDimensionN;
   
-  MatrixTypeR matA(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
-  MatrixTypeR matQ(localMatrixDimensionX,localMatrixDimensionY,globalMatrixDimensionX,globalMatrixDimensionY);
-  MatrixTypeS matR(localMatrixDimensionX,localMatrixDimensionX,globalMatrixDimensionX,globalMatrixDimensionX);
+  MatrixTypeR matA(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
+  MatrixTypeR matQ(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
+  MatrixTypeS matR(localMatrixDimensionN,localMatrixDimensionN,globalMatrixDimensionN,globalMatrixDimensionN);
 
   matA.DistributeRandom(0, rank, 1, size, rank);
 
-  cout << "Rank " << rank << " has local dimensionX - " << localMatrixDimensionX << ", localDimensionY - " << localMatrixDimensionY << endl;
+  cout << "Rank " << rank << " has local dimensionN - " << localMatrixDimensionN << ", localDimensionM - " << localMatrixDimensionM << endl;
 
   CholeskyQR2<double,int,MatrixStructureRectangle,cblasEngine>::
-    Factor1D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
+    Factor1D(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, MPI_COMM_WORLD);
 
-  QRvalidate<double,int>::validateLocal1D(matA, matQ, matR, globalMatrixDimensionX, globalMatrixDimensionY, MPI_COMM_WORLD);
+  QRvalidate<double,int>::validateLocal1D(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, MPI_COMM_WORLD);
 
   MPI_Finalize();
 
