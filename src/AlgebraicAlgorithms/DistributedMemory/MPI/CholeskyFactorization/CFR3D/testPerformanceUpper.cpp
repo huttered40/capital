@@ -30,9 +30,15 @@ int main(int argc, char** argv)
 
   // size -- total number of processors in the 3D grid
 
+  int numIterations = 10;
   int pGridDimensionSize = ceil(pow(size,1./3.));
   uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
   uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
+
+  if (argc == 3)
+  {
+    numIterations = atoi(argv[2]);
+  }
   
   cout << "global matrix size - " << globalMatrixSize << ", local Matrix size - " << localMatrixSize;
   cout << ", rank - " << rank << ", size - " << size << ", one dimension of the 3D grid's size - " << pGridDimensionSize << endl;
@@ -50,7 +56,7 @@ int main(int argc, char** argv)
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
 
   pTimer myTimer;
-  for (int i=0; i<10; i++)
+  for (int i=0; i<numIterations; i++)
   {
     myTimer.setStartTime();
     CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::

@@ -27,6 +27,7 @@ int main(int argc, char** argv)
 
   // size -- total number of processors in the 3D grid
 
+  int numIterations = 10;
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   uint64_t globalMatrixSizeM = (1<<(atoi(argv[1])));
   uint64_t localMatrixSizeM = globalMatrixSizeM/pGridDimensionSize;
@@ -34,7 +35,12 @@ int main(int argc, char** argv)
   uint64_t localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
   uint64_t globalMatrixSizeK = (1<<(atoi(argv[3])));
   uint64_t localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
-  
+
+  if (argc == 5)
+  {
+    numIterations = atoi(argv[4]);
+  }
+
   MatrixTypeR matA(localMatrixSizeK,localMatrixSizeM,globalMatrixSizeK,globalMatrixSizeM);
   MatrixTypeR matB(localMatrixSizeN,localMatrixSizeK,globalMatrixSizeN,globalMatrixSizeK);
   MatrixTypeR matC(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
@@ -58,7 +64,7 @@ int main(int argc, char** argv)
   pTimer myTimer;
 
   // Loop for getting a good range of results.
-  for (int i=0; i<10; i++)
+  for (int i=0; i<numIterations; i++)
   {
     myTimer.setStartTime();
     MM3D<double,int,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureRectangle,cblasEngine>::

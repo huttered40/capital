@@ -18,15 +18,19 @@ public:
 
   void printParallelTime(double tolerance, MPI_Comm comm, const std::string& str, int iteration = 0)
   {
-    int myRank;
-    double maxTime,minTime;
+    int myRank,numPEs;
+    double maxTime,minTime,avgTime;
     MPI_Comm_rank(comm, &myRank);
+    MPI_Comm_size(comm, &numPEs);
 
     std::chrono::duration<double> elapsed_seconds = end-start;
     double count = elapsed_seconds.count();
     MPI_Allreduce(&count, &maxTime, 1, MPI_DOUBLE, MPI_MAX, comm);
     MPI_Allreduce(&count, &minTime, 1, MPI_DOUBLE, MPI_MIN, comm);
+    MPI_Allreduce(&count, &avgTime, 1, MPI_DOUBLE, MPI_SUM, comm);
+    avgTime /= numPEs; 
 
+    /*
     if (std::abs(count-maxTime) <= tolerance)
     {
       std::cout << "Max time is on processor " << myRank << " for " << str << " on iteration " << iteration << " has a wall-clock time of " << maxTime << std::endl;
@@ -38,6 +42,14 @@ public:
     {
       std::cout << "Min time is on processor " << myRank << " for " << str << " on iteration " << iteration << " has a wall-clock time of " << maxTime << std::endl;
     }
+    */
+    if (myRank == 0)
+    {
+      std::cout << "Max time for " << str << " on iteration " << iteration << " has a wall-clock time of " << maxTime << std::endl;
+      std::cout << "Min time for " << str << " on iteration " << iteration << " has a wall-clock time of " << minTime << std::endl;
+      std::cout << "Average time for " << str << " on iteration " << iteration << " has a wall-clock time of " << avgTime << std::endl;
+    }
+    MPI_Barrier(comm);
   }
 
   void setStartTime()
