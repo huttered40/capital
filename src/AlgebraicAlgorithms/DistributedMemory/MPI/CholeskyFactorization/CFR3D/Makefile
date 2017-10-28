@@ -37,4 +37,4 @@ CFR3D.o: CFR3D.h CFR3D.hpp
 	$(CCMPI) $(CFLAGS) -o CFR3D.o -c CFR3D.h
 
 clean:
-	-rm -f *.o *.gch test testSequentialValidationLower testSequentialValidationUpper testPerformanceUpper testPerformanceLower
+	-rm -f *.o *.err *.out *.gch test testSequentialValidationLower testSequentialValidationUpper testPerformanceUpper testPerformanceLower

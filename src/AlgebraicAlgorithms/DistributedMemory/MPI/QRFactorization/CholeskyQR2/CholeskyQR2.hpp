@@ -22,10 +22,20 @@ static std::tuple<
   int cubeInt = worldRank%sliceSize;
   MPI_Comm_split(commWorld, cubeInt/(pGridDimensionC*pGridDimensionC), worldRank, &miniCubeComm);
   MPI_Comm_split(commWorld, cubeInt, worldRank, &depthComm);
-  MPI_Comm_split(sliceComm, worldRank%pGridDimensionC, worldRank, &columnComm);
+  MPI_Comm_split(sliceComm, sliceRank%pGridDimensionC, sliceRank, &columnComm);
   MPI_Comm_rank(columnComm, &columnRank);
   MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
   MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
+  
+// for debugging
+  int cubeSize, cubeRank;
+  MPI_Comm_size(miniCubeComm, &cubeSize);
+  MPI_Comm_rank(miniCubeComm, &cubeRank);
+
+  // Lets do an advanced MPI_Communicator debugging technique
+  int val = cubeInt/(pGridDimensionC*pGridDimensionC);
+  MPI_Allreduce(MPI_IN_PLACE, &val, 1, MPI_INT, MPI_MAX, miniCubeComm);
+  //std::cout << "size of cube comm - " << cubeSize << " and I have cube rank - " << cubeRank << " and true rank " << worldRank << " and Value  - " << val << std::endl;
 
   MPI_Comm_free(&columnComm);
   return std::make_tuple(rowComm, columnContigComm, columnAltComm, depthComm, sliceComm, miniCubeComm);
@@ -123,13 +133,10 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable(Matrix<T,U,StructureA
 
   int numPEs, myRank, pGridDimensionSize;
   MPI_Comm_size(commWorld, &numPEs);
-  MPI_Comm_size(commWorld, &myRank);
+  MPI_Comm_rank(commWorld, &myRank);
 
   auto tunableCommunicators = getTunableCommunicators(commWorld, gridDimensionD, gridDimensionC);
   MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
-  int cubeSize;
-  MPI_Comm_size(miniCubeComm, &cubeSize);
-  std::cout << "size of cube comm - " << cubeSize << std::endl;
 
   U localDimensionM = globalDimensionM/gridDimensionD;
   U localDimensionN = globalDimensionN/gridDimensionC;
@@ -280,7 +287,7 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     localDimensionN*pGridDimensionSize, localDimensionN*pGridDimensionSize, true);
 
-  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionN, 'U', commWorld);
+  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionN, 'U', 0, commWorld);
 
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
@@ -356,7 +363,8 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable_cqr(Matrix<T,U,Struct
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     localDimensionN*gridDimensionC, localDimensionN*gridDimensionC, true);
 
-  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionN, 'U', miniCubeComm);
+  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionN, 'U', 0, miniCubeComm);
+  MPI_Barrier(MPI_COMM_WORLD);
 
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;

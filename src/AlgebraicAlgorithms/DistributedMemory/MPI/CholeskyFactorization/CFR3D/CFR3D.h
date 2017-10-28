@@ -46,6 +46,7 @@ public:
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
                       U dimension,
                       char dir,
+                      int tune,
                       MPI_Comm commWorld
                     );
 
@@ -104,7 +105,8 @@ private:
   static void transposeSwap(
 				Matrix<T,U,StructureArg,Distribution>& mat,
 				int myRank,
-				int transposeRank
+				int transposeRank,
+				MPI_Comm commWorld
 			   );
 
   template<template<typename,typename,int> class Distribution>

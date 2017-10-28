@@ -67,6 +67,7 @@ int main(int argc, char** argv)
       Factor3D(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, MPI_COMM_WORLD);
     myTimer.setEndTime();
     myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "3D-CQR2 iteration", i);
+    QRvalidate<double,int>::validateLocal3D(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, MPI_COMM_WORLD);
   }
 
   MPI_Finalize();

@@ -48,7 +48,7 @@ int main(int argc, char** argv)
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
 
   CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
-    Factor(matA, matL, matLI, localMatrixSize, 'L', MPI_COMM_WORLD);
+    Factor(matA, matL, matLI, localMatrixSize, 'L', 0, MPI_COMM_WORLD);
 
   CFvalidate<double,int>::validateCF_Local(matL, matLI, localMatrixSize, globalMatrixSize, 'L', MPI_COMM_WORLD);
 

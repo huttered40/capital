@@ -9,6 +9,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
   U dimension,								// Assume this dimension is of each local Matrix that each processor owns. Could change that later.
   char dir,
+  int tune,
   MPI_Comm commWorld )
 {
   // Need to split up the commWorld communicator into a 3D grid similar to Summa3D
@@ -16,7 +17,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(commWorld, &size);
 
-  int pGridDimensionSize = ceil(pow(size,1./3.));
+  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   int helper = pGridDimensionSize;
   helper *= helper;
   int pGridCoordX = rank%pGridDimensionSize;
@@ -25,7 +26,19 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
 
   U globalDimension = dimension*pGridDimensionSize;
-  U bcDimension = globalDimension/(helper*helper);		// Can be tuned later.
+  U bcDimension = globalDimension/helper;		// Can be tuned later.
+
+  // Basic tuner was added
+  for (int i=0; i<tune; i++)
+  {
+    bcDimension *= 2;
+  }
+  bcDimension = std::min(bcDimension, globalDimension/pGridDimensionSize);
+/*  if (rank == 0)
+  {
+    std::cout << "bcDimension - " << bcDimension << std::endl;
+  }
+*/
 
   if (dir == 'L')
   {
@@ -142,7 +155,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
 
   int rank;
   // use MPI_COMM_WORLD for this p2p communication for transpose, but could use a smaller communicator
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_rank(commWorld, &rank);
   U localShift = (localDimension>>1);
   U globalShift = (globalDimension>>1);
   rFactorLower(matrixA, matrixL, matrixLI, localShift, bcDimension, globalShift,
@@ -156,7 +169,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
   Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, packedMatrix,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
 
-  transposeSwap(packedMatrix, rank, transposePartner);
+  transposeSwap(packedMatrix, rank, transposePartner, commWorld);
  
   blasEngineArgumentPackage_gemm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
@@ -178,7 +191,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
     matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY);
   Matrix<T,U,MatrixStructureSquare,Distribution> squareLSwap = squareL;
 
-  transposeSwap(squareLSwap, rank, transposePartner);
+  transposeSwap(squareLSwap, rank, transposePartner, commWorld);
 
   MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
     Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
@@ -335,7 +348,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
 
   int rank;
   // use MPI_COMM_WORLD for this p2p communication for transpose, but could use a smaller communicator
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_rank(commWorld, &rank);
   U localShift = (localDimension>>1);
   U globalShift = (globalDimension>>1);
   rFactorUpper(matrixA, matrixR, matrixRI, localShift, bcDimension, globalShift,
@@ -349,7 +362,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
   Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>::Serialize(matrixRI, packedMatrix,
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
 
-  transposeSwap(packedMatrix, rank, transposePartner);
+  transposeSwap(packedMatrix, rank, transposePartner, commWorld);
  
   blasEngineArgumentPackage_gemm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
@@ -370,7 +383,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
     matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift);
   Matrix<T,U,MatrixStructureSquare,Distribution> squareRSwap = squareR;
 
-  transposeSwap(squareRSwap, rank, transposePartner);
+  transposeSwap(squareRSwap, rank, transposePartner, commWorld);
 
   MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
     Multiply(squareRSwap, squareR, holdRsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
@@ -430,13 +443,14 @@ template<
 void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::transposeSwap(
 											Matrix<T,U,StructureArg,Distribution>& mat,
 											int myRank,
-											int transposeRank
+											int transposeRank,
+											MPI_Comm commWorld
 										     )
 {
   if (myRank != transposeRank)
   {
     // Transfer with transpose rank
-    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), MPI_DOUBLE, transposeRank, 0, transposeRank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), MPI_DOUBLE, transposeRank, 0, transposeRank, 0, commWorld, MPI_STATUS_IGNORE);
 
     // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
     //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
