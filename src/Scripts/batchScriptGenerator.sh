@@ -1,13 +1,16 @@
 #!/bin/bash
 
-nodes=$1
-p=$((32*nodes))
+batchSciptName=$1
+numNodes=$2
+ppn=$3
+numPEs=$((ppn*numNodes))
+numBinaries=$4
 
-cat > batchScript$nodes$2.sh <<EOF
+cat > $1.sh <<EOF
 #!/bin/bash
-#PBS -l nodes=$nodes:ppn=32:xe
-#PBS -l walltime=$3:$4:$5
-#PBS -N $2
+#PBS -l nodes=$numNodes:ppn=$3:xe
+#PBS -l walltime=$5:$6:$7
+#PBS -N $1
 #PBS -e \$PBS_JOBID.err
 #PBS -o \$PBS_JOBID.out
 ##PBS -m Ed
@@ -19,6 +22,137 @@ cd \$PBS_O_WORKDIR
 
 #module load craype-hugepages2M  perftools
 # export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable
+
+# Now I need to use a varibale for the command-line prompt, since it will change based on the binary executable,
+#   for example, scalapack QR has multiple special inputs that take up comm-line prompts that others dont
+#   I want special functions in the inner-loop to handle this
+
+
+# List all Binary Tags that this script supports
+tag1='MM3D'
+tag2='CFR3D'
+tag3='CholeskyQR2_1D'
+tag4='CholeskyQR2_3D'
+tag5='CholeskyQR2_Tunable'
+tag6='scaLAPACK_QR'
+
+# Each Binary tag has a specific number of command-line arguments that it accepts
+let numArgs${tag1}=19
+let numArgs${tag2}=12
+let numArgs${tag3}=15
+let numArgs${tag4}=15
+let numArgs${tag5}=23
+let numArgs${tag6}=23
+
+
+# Functions for launching specific jobs based on certain parameters
+launch$tag1 () {
+  # do stuff for MM3D
+  # Need a loop over parameter K (start, end, jump operator, jump factor)
+  echo \$1
+}
+
+launch$tag2 () {
+  # do stuff for CFR3D
+  echo \$1
+  #aprun -n \$3 \$1 \$4  
+  #aprun -n \${numPEs} ./../../../../../../../CANDMC/bin/benchmarks/bench_scala_qr \${m} \${n} \${bsize} 4 0 \${pr} 1 0  > ScalapackSSresults/$2_scalapack_ss_\${numPEs}_\${m}_\${n}_\${bsize}_\${pr}.out
+}
+
+launch$tag3 () {
+  # do stuff for CholeskyQR2_1D
+  # Nothing needed besides launch
+  echo \$1
+}
+
+launch$tag4 () {
+  # do stuff for CholeskyQR2_3D
+  # Nothing needed besides launch
+  echo \$1
+}
+
+launch$tag5 () {
+  # do stuff for CholeskyQR2_Tunable
+  echo \$1
+}
+
+launch$tag6 () {
+  # do stuff for scaLAPACK_QR
+  echo \$1
+}
+
+numArguments$tag1 () {
+  return numArgs$tag1
+}
+
+numArguments$tag2 () {
+  return numArgs$tag2
+}
+
+numArguments$tag3 () {
+  return numArgs$tag3
+}
+
+numArguments$tag4 () {
+  return numArgs$tag4
+}
+
+numArguments$tag5 () {
+  return numArgs$tag5
+}
+
+numArguments$tag6 () {
+  return numArgs$tag6
+}
+
+
+commandLineCounter=8
+
+for i in {1..$numBinaries}
+do
+  export binaryPath=\$commandlineCounter
+  export binaryTag=\$((\$commandlineCounter+1)
+  export numIterations=\$((\$commandlineCounter+2)
+  export startNumPEs=\$((\$commandLineCounter+3))
+  export endNumPEs=\$((\$commandLineCounter+4))
+  export jumpNumPEs=\$((\$commandLineCounter+5))
+  export jumpNumPEsOperator=\$((\$commandLineCounter+6))
+
+  while [\$startNumPEs -le \$endNumPEs];
+  do
+    export startDimensionM=\$((\$commandLineCounter+7)) 
+    export endDimensionM=\$((\$commandLineCounter+8))
+    export jumpDimensionM=\$((\$commandLineCounter+9))
+    export jumpDimensionMOperator=\$((\$commandLineCounter+\${10}))
+
+    while [\$startDimensionM -le \$endDimensionM];
+    do
+      if [\$binaryTag -eq \$tag2]
+      do
+        # call function
+        launch\$binaryTag binaryPath numIterations startNumPEs startDimensionM \$((\$commandLineCounter+\${11}))
+      done
+      else
+      do
+        export startDimensionN=\$((\$commandLineCounter+\${11})) 
+        export endDimensionN=\$((\$commandLineCounter+\${12}))
+        export jumpDimensionN=\$((\$commandLineCounter+\${13}))
+        export jumpDimensionNOperator=\$((\$commandLineCounter+\${14}))
+        while [\$startDimensionN -le \$endDimensionN];
+        do
+          # call function
+          launch\$binaryTag binaryPath numIterations startNumPEs startDimensionM startDimensionN \${@:\$((\$commandLineCounter+\${14})):\$((numArguments\$BinaryTag - 14))}
+          startDimensionN=\$((\$startDimensionN \$jumpDimensionNOperator \$jumpDimensionN)) 
+        done
+      done
+      startDimensionM=\$((\$startDimensionM \$jumpDimensionMOperator \$jumpDimensionM))
+    done
+    startNumPEs=\$((\$startNumPEs \$jumpNumPEsOperator \$jumpNumPEs))
+  done
+
+  commandLineCounter = \$((\$commandLineCounter+numArguments\$BinaryTag))
+done
+
 
 ss_probs00=1
 ss_probs01=1024
