@@ -77,7 +77,13 @@ updateCounter () {
 launch$tag1 () {
   # do stuff for MM3D
   # Need a loop over parameter K (start, end, jump operator, jump factor)
-  echo \$1
+  local startDimensionK=\$6
+  local endDimensionK=\$7
+  while [ \$startDimensionK -le \$endDimensionK ];
+  do
+    echo "aprun -n \$3 \$1 \$4 \$5 \$startDimensionK \$2"
+    startDimensionK=\$(updateCounter \$startDimensionK \$9 \$8)
+  done
 }
 
 launch$tag2 () {
@@ -109,27 +115,27 @@ launch$tag6 () {
 }
 
 numArguments$tag1 () {
-  return numArgs$tag1
+  echo "\$numArgs$tag1"
 }
 
 numArguments$tag2 () {
-  return numArgs$tag2
+  echo "\$numArgs$tag2"
 }
 
 numArguments$tag3 () {
-  return numArgs$tag3
+  echo "\$numArgs$tag3"
 }
 
 numArguments$tag4 () {
-  return numArgs$tag4
+  echo "\$numArgs$tag4"
 }
 
 numArguments$tag5 () {
-  return numArgs$tag5
+  echo "\$numArgs$tag5"
 }
 
 numArguments$tag6 () {
-  return numArgs$tag6
+  echo "\$numArgs$tag6"
 }
 
 
@@ -186,7 +192,10 @@ do
         while [ \$startDimensionN -le \$endDimensionN ];
         do
           # call function
-          launch\$binaryTag \$binaryPath \$numIterations \$startNumPEs \$startDimensionM \$startDimensionN \${@:\$((\$commandLineCounter+16)):\$((numArguments\$BinaryTag - 15))}
+          export startRange=\$((\$commandLineCounter+15))
+          export lengthTag=\$(numArguments\$binaryTag)
+          export lengthRange=\$((\$lengthTag - 15))
+          launch\$binaryTag \$binaryPath \$numIterations \$startNumPEs \$startDimensionM \$startDimensionN \${@:\$startRange:\$lengthRange}
           startDimensionN=\$(updateCounter \$startDimensionN \$jumpDimensionNOperator \$jumpDimensionN)
         done
       fi
@@ -194,6 +203,6 @@ do
     done
     startNumPEs=\$(updateCounter \$startNumPEs \$jumpNumPEsOperator \$jumpNumPEs)
   done
-  commandLineCounter=\$((\$commandLineCounter+numArguments\$BinaryTag))
+  commandLineCounter=\$((\$commandLineCounter+numArguments\$binaryTag))
 done
 EOF
