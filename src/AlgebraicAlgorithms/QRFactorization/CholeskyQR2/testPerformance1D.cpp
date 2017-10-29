@@ -10,7 +10,7 @@
 // Local includes
 #include "CholeskyQR2.h"
 #include "./../QRvalidate/QRvalidate.h"
-#include "../../../../../Timer/Timer.h"
+#include "../../../Timer/Timer.h"
 
 using namespace std;
 

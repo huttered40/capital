@@ -10,9 +10,9 @@
 #include "/home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/LAPACKE/include/lapacke.h"
 
 // Local includes
-#include "./../../../../../AlgebraicContainers/Matrix/Matrix.h"
-#include "./../../../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
-#include "./../../../../../AlgebraicBLAS/blasEngine.h"
+#include "./../../../AlgebraicContainers/Matrix/Matrix.h"
+#include "./../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
+#include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 
 // Lets use partial template specialization

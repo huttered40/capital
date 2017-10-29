@@ -7,7 +7,7 @@
 #include <mpi.h>
 
 // Local includes
-#include "../../../../../Timer/Timer.h"
+#include "../../../Timer/Timer.h"
 #include "MM3D.h"
 
 using namespace std;

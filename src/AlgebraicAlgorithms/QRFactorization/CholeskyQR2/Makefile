@@ -1,11 +1,5 @@
-<<<<<<< HEAD
 CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
 CFLAGS = -g -Wall -O0 -std=c++11
-=======
-#CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
-#CFLAGS = -g -Wall -O0 -std=c++11
-BWFLAGS = CC -std=gnu11 -mkl=sequential -fast
->>>>>>> 38e9d69... Added all the changes and files that I must have forgot to back when debugging and running this last week on Blue Waters.
 
 OBJS1 = CholeskyQR2.o
 OBJS2 = testSequentialValidation1D.o
@@ -57,8 +51,4 @@ Summa3D.o: CholeskyQR2.h CholeskyQR2.hpp
 	$(CCMPI) $(CFLAGS) -o CholeskyQR2.o -c CholeskyQR2.h
 
 clean:
-<<<<<<< HEAD
 	-rm -f *.o *.gch testSequentialValidation1D testSequentialValidation3D testSequentialValidationTunable testPerformance1D testPerformance3D testPerformanceTunable
-=======
-	-rm -f *.o *.err *.out *.gch testSequentialValidation1D testSequentialValidation3D testSequentialValidationTunable testPerformance1D testPerformance3D testPerformanceTunable
->>>>>>> 38e9d69... Added all the changes and files that I must have forgot to back when debugging and running this last week on Blue Waters.

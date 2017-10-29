@@ -12,9 +12,9 @@
 #include <mpi.h>
 
 // Local includes
-#include "./../../../../../AlgebraicContainers/Matrix/Matrix.h"
-#include "./../../../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
-#include "./../../../../../AlgebraicBLAS/blasEngine.h"
+#include "./../../../AlgebraicContainers/Matrix/Matrix.h"
+#include "./../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
+#include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../MMvalidate/MMvalidate.h"
 
 /*

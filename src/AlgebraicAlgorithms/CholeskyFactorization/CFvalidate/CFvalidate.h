@@ -11,9 +11,9 @@
 #include "/home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/LAPACKE/include/lapacke.h"
 
 // Local includes
-#include "./../../../../../AlgebraicContainers/Matrix/Matrix.h"
-#include "./../../../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
-#include "./../../../../../Timer/Timer.h"
+#include "./../../../AlgebraicContainers/Matrix/Matrix.h"
+#include "./../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
+#include "./../../../Timer/Timer.h"
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
