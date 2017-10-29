@@ -52,6 +52,27 @@ let numArgs${tag5}=23
 let numArgs${tag6}=23
 
 
+updateCounter () {
+  local counter=\$1
+  if [ \$2 -eq 1 ]
+  then
+    counter=\$((\$counter + \$3)) 
+  elif [ \$2 -eq 2 ]
+  then
+   counter=\$((\$counter - \$3)) 
+  elif [ \$2 -eq 3 ]
+  then
+    counter=\$((\$counter * \$3)) 
+  elif [ \$2 -eq 4 ]
+  then
+    counter=\$((\$counter / \$3)) 
+  fi
+  echo "\$counter"
+}
+
+# Below: for reference
+#aprun -n \${numPEs} ./../../../../../../../CANDMC/bin/benchmarks/bench_scala_qr \${m} \${n} \${bsize} 4 0 \${pr} 1 0  > ScalapackSSresults/$2_scalapack_ss_\${numPEs}_\${m}_\${n}_\${bsize}_\${pr}.out
+
 # Functions for launching specific jobs based on certain parameters
 launch$tag1 () {
   # do stuff for MM3D
@@ -60,10 +81,9 @@ launch$tag1 () {
 }
 
 launch$tag2 () {
-  # do stuff for CFR3D
-  echo \$1
-  #aprun -n \$3 \$1 \$4  
-  #aprun -n \${numPEs} ./../../../../../../../CANDMC/bin/benchmarks/bench_scala_qr \${m} \${n} \${bsize} 4 0 \${pr} 1 0  > ScalapackSSresults/$2_scalapack_ss_\${numPEs}_\${m}_\${n}_\${bsize}_\${pr}.out
+  # launch CFR3D
+  # Need to loop over the block-size multiplier
+  echo "aprun -n \$3 \$1 \$4 \$2 \$5"
 }
 
 launch$tag3 () {
@@ -112,30 +132,13 @@ numArguments$tag6 () {
   return numArgs$tag6
 }
 
-updateCounter () {
-  local counter=\$1
-  if [ \$2 -eq 1 ]
-  then
-    counter=\$((\$counter + \$3)) 
-  elif [ \$2 -eq 2 ]
-  then
-   counter=\$((\$counter - \$3)) 
-  elif [ \$2 -eq 3 ]
-  then
-    counter=\$((\$counter * \$3)) 
-  elif [ \$2 -eq 4 ]
-  then
-    counter=\$((\$counter / \$3)) 
-  fi
-  echo "\$counter"
-}
-
 
 commandLineCounter=1
 index=1
 
 for i in {1..$numBinaries}
 do
+  index=\$commandLineCounter
   export binaryPath=\${!index}
   index=\$((\$commandLineCounter+1))
   export binaryTag=\${!index}
@@ -153,6 +156,7 @@ do
 
   while [ \$startNumPEs -le \$endNumPEs ];
   do
+    index=\$((\$commandLineCounter+7))
     export startDimensionM=\${!index}
     index=\$((\$commandLineCounter+8))
     export endDimensionM=\${!index}
@@ -167,8 +171,10 @@ do
       if [ \${!binaryTag} -eq \$CFR3D ]
       then
         # call function
-        launch\$binaryTag \$binaryPath \$numIterations \$startNumPEs \$startDimensionM \$((\$commandLineCounter+11))
+        export blockSizeMultiplier=\${!index}
+        launch\$binaryTag \$binaryPath \$numIterations \$startNumPEs \$startDimensionM \$blockSizeMultiplier
       else
+        index=\$((\$commandLineCounter+11))
         export startDimensionN=\${!index}
         index=\$((\$commandLineCounter+12))
         export endDimensionN=\${!index}
@@ -188,7 +194,6 @@ do
     done
     startNumPEs=\$(updateCounter \$startNumPEs \$jumpNumPEsOperator \$jumpNumPEs)
   done
-
   commandLineCounter=\$((\$commandLineCounter+numArguments\$BinaryTag))
 done
 EOF
