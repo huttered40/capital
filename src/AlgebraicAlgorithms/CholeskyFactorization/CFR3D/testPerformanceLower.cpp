@@ -30,18 +30,20 @@ int main(int argc, char** argv)
 
   // size -- total number of processors in the 3D grid
 
-  int numIterations = 10;
+  int numIterations = 5;
   int pGridDimensionSize = ceil(pow(size,1./3.));
   uint64_t globalMatrixSize = (1<<(atoi(argv[1])));
   uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
+  int blockSizeMultiplier = 0;
 
   if (argc == 3)
   {
     numIterations = atoi(argv[2]);
   }
-
-  cout << "global matrix size - " << globalMatrixSize << ", local Matrix size - " << localMatrixSize;
-  cout << ", rank - " << rank << ", size - " << size << ", one dimension of the 3D grid's size - " << pGridDimensionSize << endl;
+  if (argc == 4)
+  {
+    blockSizeMultiplier = atoi(argv[3]);
+  }
 
   MatrixTypeA matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
   MatrixTypeL matL(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
@@ -60,7 +62,7 @@ int main(int argc, char** argv)
   {
     myTimer.setStartTime();
     CFR3D<double,int,MatrixStructureSquare,MatrixStructureSquare,cblasEngine>::
-      Factor(matA, matL, matLI, localMatrixSize, 'L', i, MPI_COMM_WORLD);
+      Factor(matA, matL, matLI, localMatrixSize, 'L', blockSizeMultiplier, MPI_COMM_WORLD);
     myTimer.setEndTime();
     myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Lower", i);
   }
