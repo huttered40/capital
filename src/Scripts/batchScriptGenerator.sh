@@ -13,7 +13,7 @@ tag4='CholeskyQR2_3D'
 tag5='CholeskyQR2_Tunable'
 tag6='scaLAPACK_QR'
 
-cat > $1.sh <<EOF
+cat <<-EOF > $1.sh
 #!/bin/bash
 #PBS -l nodes=$numNodes:ppn=$3:xe
 #PBS -l walltime=$5:$6:$7
@@ -169,18 +169,18 @@ do
         # call function
         launch\$binaryTag \$binaryPath \$numIterations \$startNumPEs \$startDimensionM \$((\$commandLineCounter+11))
       else
-        export startDimensionN=\$((\$commandLineCounter+12)) 
-        index=\${!index}
-        export endDimensionN=\$((\$commandLineCounter+13))
-        index=\${!index}
-        export jumpDimensionN=\$((\$commandLineCounter+14))
-        index=\${!index}
-        export jumpDimensionNOperator=\$((\$commandLineCounter+15))
-        index=\${!index}
+        export startDimensionN=\${!index}
+        index=\$((\$commandLineCounter+12))
+        export endDimensionN=\${!index}
+        index=\$((\$commandLineCounter+13))
+        export jumpDimensionN=\${!index}
+        index=\$((\$commandLineCounter+14))
+        export jumpDimensionNOperator=\${!index}
+        index=\$((\$commandLineCounter+15))
         while [ \$startDimensionN -le \$endDimensionN ];
         do
           # call function
-          launch\$binaryTag \$binaryPath \$numIterations \$startNumPEs \$startDimensionM \$startDimensionN \${@:\$((\$commandLineCounter+14)):\$((numArguments\$BinaryTag - 14))}
+          launch\$binaryTag \$binaryPath \$numIterations \$startNumPEs \$startDimensionM \$startDimensionN \${@:\$((\$commandLineCounter+16)):\$((numArguments\$BinaryTag - 15))}
           startDimensionN=\$(updateCounter \$startDimensionN \$jumpDimensionNOperator \$jumpDimensionN)
         done
       fi
@@ -191,3 +191,4 @@ do
 
   commandLineCounter=\$((\$commandLineCounter+numArguments\$BinaryTag))
 done
+EOF
