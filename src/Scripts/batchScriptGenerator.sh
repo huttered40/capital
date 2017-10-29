@@ -76,7 +76,6 @@ updateCounter () {
 # Functions for launching specific jobs based on certain parameters
 launch$tag1 () {
   # do stuff for MM3D
-  # Need a loop over parameter K (start, end, jump operator, jump factor)
   local startDimensionK=\$6
   local endDimensionK=\$7
   while [ \$startDimensionK -le \$endDimensionK ];
@@ -89,7 +88,13 @@ launch$tag1 () {
 launch$tag2 () {
   # launch CFR3D
   # Need to loop over the block-size multiplier
-  echo "aprun -n \$3 \$1 \$4 \$2 \$5"
+  local blockSizeStartRange=\$5
+  local blockSizeEndRange=\$6
+  while [ \$blockSizeStartRange -le \$blockSizeEndRange ]
+  do
+    echo "aprun -n \$3 \$1 \$4 \$2 \$blockSizeStartRange"
+    blockSizeStartRange=\$((\$blockSizeStartRange+1))
+  done
 }
 
 launch$tag3 () {
@@ -177,8 +182,11 @@ do
       if [ \${!binaryTag} -eq \$CFR3D ]
       then
         # call function
-        export blockSizeMultiplier=\${!index}
-        launch\$binaryTag \$binaryPath \$numIterations \$startNumPEs \$startDimensionM \$blockSizeMultiplier
+        index=\$((\$commandLineCounter+11))
+        export blockSizeMultiplierRangeStart=\${!index}
+        index=\$((\$commandLineCounter+12))
+        export blockSizeMultiplierRangeEnd=\${!index}
+        launch\$binaryTag \$binaryPath \$numIterations \$startNumPEs \$startDimensionM \$blockSizeMultiplierRangeStart \$blockSizeMultiplierRangeEnd
       else
         index=\$((\$commandLineCounter+11))
         export startDimensionN=\${!index}

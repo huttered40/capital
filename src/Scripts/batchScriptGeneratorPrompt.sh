@@ -23,7 +23,7 @@ echo "  [dimension m to start] [dimension m to end] [jump amount] [jump operator
 echo "  if not CFR3D, specify: [dimension n to start] [dimension n to end] [jump amount] [jump operator (+,-,*,/]"
 echo "    Based on Binary Tag, more options are available."
 echo "    If Binary Tag == MM3D, specify: [dimension k to start] [dimension k to end] [jump amount] [jump operator (+,-,*,/]"
-echo "    If Binary Tag == CFR3D, specify: [number of powers of 2 greater than the theoretically optimal base case]"
+echo "    If Binary Tag == CFR3D, specify: [start of range of the number of powers of 2 greater than the theoretically optimal base case] [end of that range]"
 echo "    If Binary Tag == CholeskyQR2_1D, specify: nothing is needed"
 echo "    If Binary Tag == CholeskyQR2_3D, specify: nothing is needed"
 echo "    If Binary Tag == CholeskyQR2_Tunable, specify: [processor grid dimension d to start] [processor grid dimension d to end] [jump amount] [jump operator (+,-,*,/]"
