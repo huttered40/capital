@@ -75,7 +75,7 @@ updateCounter () {
 
 # Functions for launching specific jobs based on certain parameters
 launch$tag1 () {
-  # do stuff for MM3D
+  # launch MM3D
   local startDimensionK=\$6
   local endDimensionK=\$7
   while [ \$startDimensionK -le \$endDimensionK ];
@@ -98,25 +98,37 @@ launch$tag2 () {
 }
 
 launch$tag3 () {
-  # do stuff for CholeskyQR2_1D
-  # Nothing needed besides launch
+  # launch CholeskyQR2_1D
+    echo "aprun -n \$3 \$1 \$4 \$5 \$2"
   echo \$1
 }
 
 launch$tag4 () {
-  # do stuff for CholeskyQR2_3D
+  # launch CholeskyQR2_3D
   # Nothing needed besides launch
-  echo \$1
+  echo "aprun -n \$3 \$1 \$4 \$5 \$2"
 }
 
 launch$tag5 () {
-  # do stuff for CholeskyQR2_Tunable
-  echo \$1
+  # launch CholeskyQR2_Tunable
+  local startPgridDimensionD=\$6
+  local endPgridDimensionD=\$7
+  while [ \$startPgridDimensionD -le \$endPgridDimensionD ]
+  do
+    local startPgridDimensionC=\${10}
+    local endPgridDimensionC=\${11}
+    while [ \$startPgridDimensionC -le \$endPgridDimensionC ];
+    do
+      echo "aprun -n \$3 \$1 \$4 \$5 \$startPgridDimensionD \$startPgridDimensionC \$2"
+      startPgridDimensionC=\$(updateCounter \$startPgridDimensionC \${13} \${12})
+    done
+    startPgridDimensionD=\$(updateCounter \$startPgridDimensionD \$9 \$8)
+  done
 }
 
 launch$tag6 () {
-  # do stuff for scaLAPACK_QR
-  echo \$1
+  # launch scaLAPACK_QR
+  echo $1
 }
 
 numArguments$tag1 () {
