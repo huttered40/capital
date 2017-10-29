@@ -1,7 +1,19 @@
 #!/bin/bash
 
+echo $'\n'
+echo "Things to note: With operators, 1 -> +"
+echo "                                2 -> -"
+echo "                                3 -> *"
+echo "                                4 -> /"
+
+echo $'\n'
+echo "When generating the script via batchScriptGenerator.sh, the following must be specified as command-line arguments:"
 echo "[script name]  [number of nodes]  [processor per node]  [number of binaries to test on] [number of hours for run]"
 echo "[number of minutes for run]  [number of seconds for run]"
+
+echo $'\n'
+
+echo "Once script has been generated, the following must be specied as command-line arguments:"
 echo "For each of the [number of binaries to test on], you must specify:"
 echo "  [binary path and name]"
 echo "  Binary Tag (MM3D, CFR3D, CholeskyQR2_1D, CholeskyQR2_3D, Cholesky_QR2_Tunable, scaLAPACK_QR)"
