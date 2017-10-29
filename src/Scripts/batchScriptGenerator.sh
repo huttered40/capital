@@ -70,9 +70,6 @@ updateCounter () {
   echo "\$counter"
 }
 
-# Below: for reference
-#aprun -n \${numPEs} ./../../../../../../../CANDMC/bin/benchmarks/bench_scala_qr \${m} \${n} \${bsize} 4 0 \${pr} 1 0  > ScalapackSSresults/$2_scalapack_ss_\${numPEs}_\${m}_\${n}_\${bsize}_\${pr}.out
-
 # Functions for launching specific jobs based on certain parameters
 launch$tag1 () {
   # launch MM3D
@@ -128,7 +125,19 @@ launch$tag5 () {
 
 launch$tag6 () {
   # launch scaLAPACK_QR
-  echo $1
+  local blockSizeStart=\$6
+  local blockSizeEnd=\$7
+  while [ \$blockSizeStart -le \$blockSizeEnd ]
+  do
+    local numProwsStart=\${10}
+    local numProwsEnd=\${11}
+    while [ \$numProwsStart -le \$numProwsEnd ];
+    do
+      echo "aprun -n \$3 \$1 \$4 \$5 \$blockSizeStart \$2 0 \$numProwsStart 0"
+      numProwsStart=\$(updateCounter \$numProwsStart \${13} \${12})
+    done
+    blockSizeStart=\$(updateCounter \$blockSizeStart \$9 \$8)
+  done
 }
 
 numArguments$tag1 () {
