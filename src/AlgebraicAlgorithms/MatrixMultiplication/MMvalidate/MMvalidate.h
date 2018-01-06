@@ -87,7 +87,7 @@ private:
   template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static std::vector<T> getReferenceMatrix(
-                        			Matrix<T,U,StructureArg,Distribution>& myMatrix,
+						Matrix<T,U,StructureArg,Distribution>& myMatrix,
 						U localNumColumns,
 						U localNumRows,
 						U globalNumColumns,

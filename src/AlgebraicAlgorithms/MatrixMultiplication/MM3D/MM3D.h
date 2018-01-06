@@ -141,6 +141,28 @@ public:
 
 private:
 
+  template<template<typename,typename,int> class Distribution, typename tupleStructure>
+  static void _start1(
+  			Matrix<T,U,StructureA,Distribution>& matrixA,
+			Matrix<T,U,StructureB,Distribution>& matrixB,
+			U localDimensionM,
+			U localDimensionN,
+			U localDimensionK,
+			tupleStructure& commInfo3D,
+			T*& matrixAforEnginePtr,
+			T*& matrixBforEnginePtr,
+			std::vector<T>& foreignA,
+			std::vector<T>& foreignB
+		     );
+
+  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution,
+    typename tupleStructure>
+  static void _end1(
+			T* matrixEnginePtr,
+  			Matrix<T,U,StructureArg,Distribution>& matrix,
+			tupleStructure& commInfo3D
+		   );
+
   static void BroadcastPanels(
 				std::vector<T>& data,
 				U size,
@@ -153,7 +175,7 @@ private:
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static T* getEnginePtr(
 				Matrix<T,U,StructureArg, Distribution>& matrixArg,
-				Matrix<T,U,MatrixStructureSquare, Distribution>& matrixDest,
+				Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
 				std::vector<T>& data,
 				bool isRoot
                           );

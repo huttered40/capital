@@ -771,19 +771,118 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
 {
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet\n";
+  // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
+  // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
+  U srcNumRows = src.getNumRowsLocal();
+  U srcNumColumns = src.getNumColumnsLocal();
+  U destNumRows = dest.getNumRowsLocal();
+  U destNumColumns = dest.getNumColumnsLocal();
+
+  std::vector<T>& srcVectorData = src.getVectorData();
+  std::vector<T*>& srcMatrixData = src.getMatrixData();
+  std::vector<T>& destVectorData = dest.getVectorData();
+  std::vector<T*>& destMatrixData = dest.getMatrixData();
+
+  U numElems = srcNumColumns*srcNumColumns;
+  bool assembleFinder = false;
+  if (static_cast<U>(destVectorData.size()) < numElems)
+  {
+    assembleFinder = true;
+    destVectorData.resize(numElems);
+  }
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
+  {
+    assembleFinder = true;
+    destMatrixData.resize(srcNumRows);
+  }
+
+  U counter{1};
+  U srcOffset{0};
+  U destOffset{0};
+  U counter2{srcNumRows};
+  for (U i=0; i<srcNumRows; i++)
+  {
+    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
+    U fillZeros = srcNumRows-counter;
+    fillZerosContig(&destVectorData[destOffset+counter], fillZeros);
+    srcOffset += counter;
+    destOffset += counter2;
+    counter++;
+  }
+
+  if (assembleFinder)
+  {
+    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
+    dest.setNumRowsLocal(srcNumRows);
+    dest.setNumColumnsLocal(srcNumColumns);
+    dest.setNumElems(numElems);
+    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+  }
   return;
 }
 
 
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
+void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& big, Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet\n";
-  return;
+  // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
+  // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+  assert(rangeX == rangeY);
+
+  U bigNumRows = big.getNumRowsLocal();
+  U bigNumColumns = big.getNumColumnsLocal();
+  U smallNumRows = small.getNumRowsLocal();
+  U smallNumColumns = small.getNumColumnsLocal();
+
+  std::vector<T>& bigVectorData = big.getVectorData();
+  std::vector<T*>& bigMatrixData = big.getMatrixData();
+  std::vector<T>& smallVectorData = small.getVectorData();
+  std::vector<T*>& smallMatrixData = small.getMatrixData();
+
+  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeX);
+  U numColumns = (dir ? bigNumColumns : rangeX);
+  bool assembleFinder = false;
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
+  {
+    assembleFinder = true;
+    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
+  }
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallVectorData.size())) < numColumns)
+  {
+    assembleFinder = true;
+    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
+  }
+
+  U bigMatOffset = ((cutDimensionXstart*(cutDimensionXstart+1))>>1);
+  bigMatOffset += cutDimensionYstart;
+  U bigMatCounter = cutDimensionXstart;
+  U srcOffset = (dir ? 0 : bigMatOffset);
+  U destOffset = (dir ? bigMatOffset : 0);
+  auto& destVectorData = dir ? bigVectorData : smallVectorData;
+  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  for (U i=0; i<rangeX; i++)
+  {
+    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
+    destOffset += (dir ? (bigMatCounter+1) : rangeY);
+    srcOffset += (dir ? rangeY : (bigMatCounter+1));
+    bigMatCounter++;
+  }
+
+  if (assembleFinder)
+  {
+    if (dir) {abort();}		// weird case that I want to check against
+    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
+    small.setNumRowsLocal(numColumns);
+    small.setNumColumnsLocal(rangeY);
+    small.setNumElems(numElems);
+    // I am only providing Square here, not UT, because if UT, it would have aborted
+    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+  }
 }
 
 
@@ -1063,18 +1162,121 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
 {
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet\n";
+  // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
+  // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
+  U srcNumRows = src.getNumRowsLocal();
+  U srcNumColumns = src.getNumColumnsLocal();
+  U destNumRows = dest.getNumRowsLocal();
+  U destNumColumns = dest.getNumColumnsLocal();
+
+  std::vector<T>& srcVectorData = src.getVectorData();
+  std::vector<T*>& srcMatrixData = src.getMatrixData();
+  std::vector<T>& destVectorData = dest.getVectorData();
+  std::vector<T*>& destMatrixData = dest.getMatrixData();
+
+  U numElems = srcNumColumns*srcNumColumns;
+  bool assembleFinder = false;
+  if (static_cast<U>(destVectorData.size()) < numElems)
+  {
+    assembleFinder = true;
+    destVectorData.resize(numElems);
+  }
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
+  {
+    assembleFinder = true;
+    destMatrixData.resize(srcNumColumns);
+  }
+
+  U counter{srcNumRows};
+  U srcOffset{0};
+  U destOffset{0};
+  U counter2{srcNumColumns};
+  for (U i=0; i<srcNumColumns; i++)
+  {
+    fillZerosContig(&destVectorData[destOffset], i);
+    memcpy(&destVectorData[destOffset+i], &srcVectorData[srcOffset], counter*sizeof(T));
+    srcOffset += counter;
+    destOffset += srcNumRows;
+    counter--;
+  }
+
+  if (assembleFinder)
+  {
+    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
+    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
+    dest.setNumRowsLocal(srcNumRows);
+    dest.setNumColumnsLocal(srcNumColumns);	// no dir needed here due to abort above
+    dest.setNumElems(numElems);
+    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
+  }
   return;
 }
 
 
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
+void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& big, Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet\n";
+  // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
+  // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+  assert(rangeX == rangeY);
+
+  U bigNumRows = big.getNumRowsLocal();
+  U bigNumColumns = big.getNumColumnsLocal();
+  U smallNumRows = small.getNumRowsLocal();
+  U smallNumColumns = small.getNumColumnsLocal();
+
+  std::vector<T>& bigVectorData = big.getVectorData();
+  std::vector<T*>& bigMatrixData = big.getMatrixData();
+  std::vector<T>& smallVectorData = small.getVectorData();
+  std::vector<T*>& smallMatrixData = small.getMatrixData();
+
+  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeX);
+  U numColumns = (dir ? bigNumColumns : rangeX);
+  bool assembleFinder = false;
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
+  {
+    assembleFinder = true;
+    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
+  }
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
+  {
+    assembleFinder = true;
+    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
+  }
+
+  U smallMatOffset = 0;
+  U smallMatCounter = rangeY;
+  U bigMatOffset = ((bigNumColumns*(bigNumColumns+1))>>1);
+  U helper = bigNumColumns - cutDimensionXstart;
+  bigMatOffset -= ((helper*(helper+1))>>1);
+  bigMatOffset += (cutDimensionYstart-cutDimensionXstart);
+  U bigMatCounter = bigNumRows-cutDimensionXstart;
+  U srcOffset = (dir ? smallMatOffset : bigMatOffset);
+  U destOffset = (dir ? bigMatOffset : smallMatOffset);
+  auto& destVectorData = dir ? bigVectorData : smallVectorData;
+  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  for (U i=0; i<rangeX; i++)
+  {
+    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
+    destOffset += (dir ? (bigMatCounter-1) : smallMatCounter);
+    srcOffset += (dir ? smallMatCounter : (bigMatCounter-1));
+    bigMatCounter--;
+  }
+  if (assembleFinder)
+  {
+    if (dir) {abort();}
+    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
+    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
+    small.setNumRowsLocal(rangeY);
+    small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
+    small.setNumElems(numElems);
+    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+  }
   return;
 }
 

@@ -1,40 +1,32 @@
 CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
+CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
 CFLAGS = -g -Wall -O3 -std=c++11
 
-OBJS1 = MM3D.o
-OBJS2 = testPerformanceGemm.o
-OBJS3 = testSequentialValidationGemm.o
-OBJS4 = testSequentialValidationTrmm.o
-OBJS5 = testSequentialValidationSyrk.o
+OBJS1 = MM3D
+OBJS2 = test
 
-all: testPerformanceGemm testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk
+MPI: $(OBJS2)MPI
 
-testPerformanceGemm: $(OBJS2)
-	$(CCMPI) $(CFLAGS) -o testPerformanceGemm $(OBJS2) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
+AMPI: $(OBJS2)AMPI
 
-testSequentialValidationGemm: $(OBJS3)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationGemm $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
+$(OBJS2)MPI: $(OBJS2)MPI.o
+	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI $(OBJS2)MPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
-testSequentialValidationTrmm: $(OBJS4)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationTrmm $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
+$(OBJS2)MPI.o: MM3D.h
+	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI.o -c test.cpp
 
-testSequentialValidationSyrk: $(OBJS5)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationSyrk $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
+$(OBJS1)MPI.o: MM3D.h MM3D.hpp
+	$(CCMPI) $(CFLAGS) -o $(OBJS1)MPI.o -c MM3D.h
 
-testPerformanceGemm.o: testPerformanceGemm.cpp MM3D.h
-	$(CCMPI) $(CFLAGS) -o testPerformanceGemm.o -c testPerformanceGemm.cpp
 
-testSequentialValidationGemm.o: testSequentialValidationGemm.cpp MM3D.h
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationGemm.o -c testSequentialValidationGemm.cpp
+$(OBJS2)AMPI: $(OBJS2)AMPI.o
+	$(CCAMPI) $(CFLAGS) -o $(OBJS2)AMPI $(OBJS2)AMPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
-testSequentialValidationTrmm.o: testSequentialValidationTrmm.cpp MM3D.h
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationTrmm.o -c testSequentialValidationTrmm.cpp
+$(OBJS2)AMPI.o: MM3D.h
+	$(CCAMPI) $(CFLAGS) -o $(OBJS2)AMPI.o -c test.cpp
 
-testSequentialValidationSyrk.o: testSequentialValidationSyrk.cpp MM3D.h
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationSyrk.o -c testSequentialValidationSyrk.cpp
-
-MM3D.o: MM3D.h MM3D.hpp
-	$(CCMPI) $(CFLAGS) -o MM3D.o -c MM3D.h
+$(OBJS1)AMPI.o: MM3D.h MM3D.hpp
+	$(CCAMPI) $(CFLAGS) -o $(OBJS1)AMPI.o -c MM3D.h
 
 clean:
-	-rm -f *.o *.gch testPerformanceGemm testSequentialValidationGemm testSequentialValidationTrmm testSequentialValidationSyrk
+	-rm -f *.o *.gch charmrun test*MPI

@@ -59,49 +59,24 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
   auto commInfo3D = setUpCommunicators(commWorld);
-
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
-  int pGridCoordX = std::get<4>(commInfo3D);
-  int pGridCoordY = std::get<5>(commInfo3D);
-  int pGridCoordZ = std::get<6>(commInfo3D);
-
-  std::vector<T>& dataA = matrixA.getVectorData(); 
-  std::vector<T>& dataB = matrixB.getVectorData();
-  U sizeA = matrixA.getNumElems();
-  U sizeB = matrixB.getNumElems();
+  T* matrixAforEnginePtr;
+  T* matrixBforEnginePtr;
   std::vector<T> foreignA;
   std::vector<T> foreignB;
-  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
-  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
-  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
-  BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+  // soon, we will need a methodKey for the different MM algs
+  _start1(matrixA,matrixB,localDimensionM,localDimensionN,localDimensionK,commInfo3D,matrixAforEnginePtr,matrixBforEnginePtr,foreignA,foreignB);
 
-  Matrix<T,U,MatrixStructureSquare,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
-  T* matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
-  Matrix<T,U,MatrixStructureSquare,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
-  T* matrixBforEnginePtr = getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
+  // Assume, for now, that matrixC has Rectangular Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
+  T* matrixCforEnginePtr = matrixC.getRawData();
 
-  // Assume, for now, that matrixC has Square Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
-  std::vector<T>& matrixCforEngine = matrixC.getVectorData();
-  U numElemsC = matrixC.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
-
-  blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, &matrixCforEngine[0], localDimensionM, localDimensionN,
+  blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, matrixCforEnginePtr, localDimensionM, localDimensionN,
     localDimensionK,
     (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
     (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
     localDimensionM, srcPackage);
 
-  MPI_Allreduce(MPI_IN_PLACE, &matrixCforEngine[0], numElemsC, MPI_DOUBLE, MPI_SUM, depthComm);
-
-  MPI_Comm_free(&rowComm);
-  MPI_Comm_free(&columnComm);
-  MPI_Comm_free(&sliceComm);
-  MPI_Comm_free(&depthComm);
+  _end1(matrixCforEnginePtr,matrixC,commInfo3D);
 }
 
 template<typename T, typename U,
@@ -119,60 +94,27 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
                                                               const blasEngineArgumentPackage_trmm<T>& srcPackage
                                                             )
 {
-  // Not correct right now. Will fix later
-  MPI_Abort(commWorld, -1);
-
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
   auto commInfo3D = setUpCommunicators(commWorld);
-
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
-  int pGridCoordX = std::get<4>(commInfo3D);
-  int pGridCoordY = std::get<5>(commInfo3D);
-  int pGridCoordZ = std::get<6>(commInfo3D);
-
-  std::vector<T>& dataA = matrixA.getVectorData(); 
-  std::vector<T>& dataB = matrixB.getVectorData();
-  U sizeA = matrixA.getNumElems();
-  U sizeB = matrixB.getNumElems();
+  T* matrixAforEnginePtr;
+  T* matrixBforEnginePtr;
   std::vector<T> foreignA;
   std::vector<T> foreignB;
-  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
-  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
-  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
-  BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+  // soon, we will need a methodKey for the different MM algs
+  _start1(matrixA,matrixB,localDimensionM,(srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN),localDimensionN,
+    commInfo3D,matrixAforEnginePtr,matrixBforEnginePtr,foreignA,foreignB);
 
-  // Right now, foreignA and/or foreignB might be empty if this processor is the rowRoot or the columnRoot
+  // We will follow the standard here: matrixA is always the triangular matrix. matrixB is always the rectangular matrix
 
-  Matrix<T,U,MatrixStructureSquare,Distribution> helperA(std::vector<T>(), localDimensionN, localDimensionM, localDimensionN, localDimensionM);
-  T* matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
-
-  // We assume that matrixB is Square for now. No reason to believe otherwise
-  std::vector<T>& matrixBforEngine = matrixB.getVectorData();
-  U numElems = matrixB.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
-
-  // Now at this point we have a choice. MM3D template class accepts 3 template parameters for the Matrix Structures of matrixA, matrixB, and matrixC
-  //   But, trmm only deals with 2 matrices matrixA and matrixB, and stores the result in matrixB.
-  //   Should the user just deal with this? And how do we deal with a template parameter that doesn't need to exist?
-
-  blasEngine<T,U>::_trmm(matrixAforEnginePtr, &matrixBforEngine[0], (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionN : localDimensionM),
+  blasEngine<T,U>::_trmm(matrixAforEnginePtr, matrixBforEnginePtr,localDimensionM, localDimensionN,
     (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN),
-    (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN),
-    (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionN : localDimensionM),
+    (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN),
     srcPackage);
 
-  MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], sizeB, MPI_DOUBLE, MPI_SUM, depthComm);
-
-  MPI_Comm_free(&rowComm);
-  MPI_Comm_free(&columnComm);
-  MPI_Comm_free(&sliceComm);
-  MPI_Comm_free(&depthComm);
+  _end1(matrixBforEnginePtr,matrixB,commInfo3D);
 }
 
 template<typename T, typename U,
@@ -219,7 +161,7 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   BroadcastPanels((isRootTrans ? dataAtrans : foreignAtrans), sizeA, isRootTrans, pGridCoordZ, transComm);
 
   // Right now, foreignA and/or foreignAtrans might be empty if this processor is the rowRoot or the transRoot
-  Matrix<T,U,MatrixStructureSquare,Distribution> helperA(std::vector<T>(), localDimensionN, localDimensionN, localDimensionN, localDimensionN);
+  Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), localDimensionN, localDimensionN, localDimensionN, localDimensionN);
   T* matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
 
   // We assume that matrixB is Square for now. No reason to believe otherwise
@@ -233,6 +175,7 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
     (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
     srcPackage);
 
+  // in a syrk, we will end up with a symmetric matrix, so we should serialize into packed buffer first to avoid half the communication!
   MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
   MPI_Comm_free(&rowComm);
@@ -414,6 +357,99 @@ template<typename T, typename U,
   template<typename,typename, template<typename,typename,int> class> class StructureB,
   template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
   template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<template<typename,typename,int> class Distribution, typename tupleStructure>
+void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::_start1(
+  									Matrix<T,U,StructureA,Distribution>& matrixA,
+									Matrix<T,U,StructureB,Distribution>& matrixB,
+									U localDimensionM,
+									U localDimensionN,
+									U localDimensionK,
+									tupleStructure& commInfo3D,
+									T*& matrixAforEnginePtr,
+									T*& matrixBforEnginePtr,
+									std::vector<T>& foreignA,
+									std::vector<T>& foreignB
+		   						    )
+{
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm columnComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
+
+  std::vector<T>& dataA = matrixA.getVectorData(); 
+  std::vector<T>& dataB = matrixB.getVectorData();
+  U sizeA = matrixA.getNumElems();
+  U sizeB = matrixB.getNumElems();
+  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
+  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
+
+  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
+  BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+
+  matrixAforEnginePtr = (isRootRow ? &dataA[0] : &foreignA[0]);
+  matrixBforEnginePtr = (isRootColumn ? &dataB[0] : &foreignB[0]);
+  if ((!std::is_same<StructureA<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+    && (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+  {
+    Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
+    matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
+  }
+  if ((!std::is_same<StructureB<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+    && (!std::is_same<StructureB<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+  {
+    Matrix<T,U,MatrixStructureRectangle,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
+    matrixBforEnginePtr = getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
+  }
+}
+
+
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<template<typename,typename, template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution,
+  typename tupleStructure>
+void MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::_end1(
+									T* matrixEnginePtr,
+  									Matrix<T,U,StructureArg,Distribution>& matrix,
+									tupleStructure& commInfo3D
+		   						    )
+{
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm columnComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+
+  U numElems = matrix.getNumElems();
+
+  // Prevents buffer aliasing, which MPI does not like.
+  if (matrixEnginePtr == matrix.getRawData())
+  {
+    MPI_Allreduce(MPI_IN_PLACE,matrixEnginePtr, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
+  }
+  else
+  {
+    MPI_Allreduce(matrixEnginePtr, matrix.getRawData(), numElems, MPI_DOUBLE, MPI_SUM, depthComm);
+  }
+
+  MPI_Comm_free(&rowComm);
+  MPI_Comm_free(&columnComm);
+  MPI_Comm_free(&sliceComm);
+  MPI_Comm_free(&depthComm);
+}
+
+
+template<typename T, typename U,
+  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
+  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 void MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::BroadcastPanels(
 											std::vector<T>& data,
 											U size,
@@ -443,33 +479,25 @@ template<template<typename,typename, template<typename,typename,int> class> clas
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 T* MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
 											Matrix<T,U,StructureArg, Distribution>& matrixArg,
-											Matrix<T,U,MatrixStructureSquare, Distribution>& matrixDest,
+											Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
 											std::vector<T>& data,
 											bool isRoot
 									       )
 {
-  if ((!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-    && (!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+  // Need to separate the below out into its own function that will not get instantied into object code
+  //   unless it passes the test above. This avoids template-enduced template compiler errors
+  if (!isRoot)
   {
-    // Need to separate the below out into its own function that will not get instantied into object code
-    //   unless it passes the test above. This avoids template-enduced template compiler errors
-    if (!isRoot)
-    {
-      Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::move(data), matrixArg.getNumColumnsLocal(),
-        matrixArg.getNumRowsLocal(), matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal(), true);
-      Serializer<T,U,StructureArg,MatrixStructureSquare>::Serialize(matrixToSerialize, matrixDest);
-    }
-    else
-    {
-      // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangle
-      Serializer<T,U,StructureArg,MatrixStructureSquare>::Serialize(matrixArg, matrixDest);
-    }
-    return matrixDest.getRawData();		// this is being deleted off the stack! It is a local variable!!!!!!
+    Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::move(data), matrixArg.getNumColumnsLocal(),
+      matrixArg.getNumRowsLocal(), matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal(), true);
+    Serializer<T,U,StructureArg,MatrixStructureRectangle>::Serialize(matrixToSerialize, matrixDest);
   }
   else
   {
-    return &data[0];
+    // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangle
+    Serializer<T,U,StructureArg,MatrixStructureRectangle>::Serialize(matrixArg, matrixDest);
   }
+  return matrixDest.getRawData();		// this is being deleted off the stack! It is a local variable!!!!!!
 }
 
 
