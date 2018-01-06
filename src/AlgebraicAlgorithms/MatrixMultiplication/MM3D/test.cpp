@@ -83,7 +83,7 @@ int main(int argc, char** argv)
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      MM3D<double,int,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureRectangle,cblasEngine>::
+      MM3D<double,int,cblasEngine>::
         Multiply(matA, matB, matC, localMatrixSizeM, localMatrixSizeN, localMatrixSizeK, MPI_COMM_WORLD, blasArgs);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D GEMM iteration", i);
@@ -106,8 +106,8 @@ int main(int argc, char** argv)
     */
     int matrixUpLo = atoi(argv[6]);
     /*
-      Choices for triangleSide: 0) Triangle * Rectangle
-			        1) Rectangle * Triangle
+      Choices for triangleSide: 0) Triangle * Rectangle (matrixA * matrixB)
+			        1) Rectangle * Triangle (matrixB * matrixA)
     */
     int triangleSide = atoi(argv[7]);
 
@@ -120,6 +120,7 @@ int main(int argc, char** argv)
     // I guess I will go through all cases. Ugh!
     if ((matrixUpLo == 0) && (triangleSide == 0))
     {
+      cout << "Yes, I am where I think I am, with localMatrixSizeM - " << localMatrixSizeM << " and localMatrixSizeN - " << localMatrixSizeN << endl;
       MatrixTypeLT matA(localMatrixSizeM,localMatrixSizeM,globalMatrixSizeM,globalMatrixSizeM);
       MatrixTypeR matB(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
 
@@ -134,7 +135,7 @@ int main(int argc, char** argv)
       for (int i=0; i<numIterations; i++)
       {
         myTimer.setStartTime();
-        MM3D<double,int,MatrixStructureLowerTriangular,MatrixStructureRectangle,MatrixStructureRectangle, cblasEngine>::
+        MM3D<double,int,cblasEngine>::
           Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
@@ -162,7 +163,7 @@ int main(int argc, char** argv)
       for (int i=0; i<numIterations; i++)
       {
         myTimer.setStartTime();
-        MM3D<double,int,MatrixStructureLowerTriangular,MatrixStructureRectangle,MatrixStructureRectangle, cblasEngine>::
+        MM3D<double,int,cblasEngine>::
           Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
@@ -190,7 +191,7 @@ int main(int argc, char** argv)
       for (int i=0; i<numIterations; i++)
       {
         myTimer.setStartTime();
-        MM3D<double,int,MatrixStructureUpperTriangular,MatrixStructureRectangle,MatrixStructureRectangle,cblasEngine>::
+        MM3D<double,int,cblasEngine>::
           Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
@@ -219,7 +220,7 @@ int main(int argc, char** argv)
       for (int i=0; i<numIterations; i++)
       {
         myTimer.setStartTime();
-        MM3D<double,int,MatrixStructureUpperTriangular,MatrixStructureRectangle,MatrixStructureRectangle, cblasEngine>::
+        MM3D<double,int,cblasEngine>::
           Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
@@ -262,7 +263,7 @@ int main(int argc, char** argv)
     blasArgs.beta = 0;
 
     pTimer myTimer;
-    MM3D<double,int,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare, cblasEngine>::
+    MM3D<double,int,cblasEngine>::
       Multiply(matA, matC, localMatrixSizeN, localMatrixSizeK, MPI_COMM_WORLD, blasArgs);
     MPI_Barrier(MPI_COMM_WORLD);
     MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSizeN, localMatrixSizeK,

@@ -23,11 +23,7 @@
   Also, we need to figure out what to do with Rectangular.
 */
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC = MatrixStructureSquare,
-  template<typename,typename> class blasEngine = cblasEngine>
+template<typename T, typename U, template<typename,typename> class blasEngine = cblasEngine>
 class MM3D
 {
 
@@ -47,7 +43,12 @@ public:
   // New design: user will specify via an argument to the overloaded Multiply() method what underlying BLAS routine he wants called.
   //             I think this is a reasonable assumption to make and will allow me to optimize each routine.
 
-  template<template<typename,typename,int> class Distribution>
+  template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename, template<typename,typename,int> class> class StructureC = MatrixStructureSquare,
+  		template<typename,typename,int> class Distribution
+	  >
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
@@ -59,7 +60,11 @@ public:
                         const blasEngineArgumentPackage_gemm<T>& srcPackage
                       );
 
-  template<template<typename,typename,int> class Distribution>
+  template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename,int> class Distribution
+	  >
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
@@ -69,7 +74,11 @@ public:
                         const blasEngineArgumentPackage_trmm<T>& srcPackage
                       );
 
-  template<template<typename,typename,int> class Distribution>
+  template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename,int> class Distribution
+	  >
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
@@ -79,7 +88,12 @@ public:
                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                       );
 
-  template<template<typename,typename,int> class Distribution>
+  template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename, template<typename,typename,int> class> class StructureC = MatrixStructureSquare,
+  		template<typename,typename,int> class Distribution
+	  >
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
@@ -103,7 +117,11 @@ public:
                         bool cutC = true
                       );
 
-  template<template<typename,typename,int> class Distribution>
+  template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename,int> class Distribution
+	  >
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
@@ -121,7 +139,11 @@ public:
                         bool cutB = true
                       );
 
-  template<template<typename,typename,int> class Distribution>
+  template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename,int> class Distribution
+	  >
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
@@ -141,10 +163,13 @@ public:
 
 private:
 
-  template<template<typename,typename,int> class Distribution, typename tupleStructure>
+  template<template<typename,typename,int> class Distribution,
+    template<typename,typename, template<typename,typename,int> class> class StructureArg1,
+    template<typename,typename, template<typename,typename,int> class> class StructureArg2,
+    typename tupleStructure>
   static void _start1(
-  			Matrix<T,U,StructureA,Distribution>& matrixA,
-			Matrix<T,U,StructureB,Distribution>& matrixB,
+  			Matrix<T,U,StructureArg1,Distribution>& matrixA,
+			Matrix<T,U,StructureArg2,Distribution>& matrixB,
 			U localDimensionM,
 			U localDimensionN,
 			U localDimensionK,

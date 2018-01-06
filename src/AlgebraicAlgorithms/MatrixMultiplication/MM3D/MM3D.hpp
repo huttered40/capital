@@ -38,22 +38,23 @@ static std::tuple<MPI_Comm,
 //   Of course we will serialize into Square Structure if not in Square Structure already in order to be compatible
 //   with BLAS-3 routines.
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-template<template<typename,typename,int> class Distribution>
-void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
-                                                              Matrix<T,U,StructureA,Distribution>& matrixA,
-                                                              Matrix<T,U,StructureB,Distribution>& matrixB,
-                                                              Matrix<T,U,StructureC,Distribution>& matrixC,
-                                                              U localDimensionM,
-                                                              U localDimensionN,
-                                                              U localDimensionK,
-                                                              MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage_gemm<T>& srcPackage
-                                                            )
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<
+	  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  	  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  	  template<typename,typename, template<typename,typename,int> class> class StructureC,
+  	  template<typename,typename,int> class Distribution
+	>
+void MM3D<T,U,blasEngine>::Multiply(
+                                   	Matrix<T,U,StructureA,Distribution>& matrixA,
+                                        Matrix<T,U,StructureB,Distribution>& matrixB,
+                                        Matrix<T,U,StructureC,Distribution>& matrixC,
+                                        U localDimensionM,
+                                        U localDimensionN,
+                                        U localDimensionK,
+                                        MPI_Comm commWorld,
+                                        const blasEngineArgumentPackage_gemm<T>& srcPackage
+                                   )
 {
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -79,20 +80,20 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   _end1(matrixCforEnginePtr,matrixC,commInfo3D);
 }
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-template<template<typename,typename,int> class Distribution>
-void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
-                                                              Matrix<T,U,StructureA,Distribution>& matrixA,
-                                                              Matrix<T,U,StructureB,Distribution>& matrixB,
-                                                              U localDimensionM,
-                                                              U localDimensionN,
-                                                              MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage_trmm<T>& srcPackage
-                                                            )
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename,int> class Distribution
+	>
+void MM3D<T,U,blasEngine>::Multiply(
+                                   	Matrix<T,U,StructureA,Distribution>& matrixA,
+                                        Matrix<T,U,StructureB,Distribution>& matrixB,
+                                        U localDimensionM,
+                                        U localDimensionN,
+                                        MPI_Comm commWorld,
+                                        const blasEngineArgumentPackage_trmm<T>& srcPackage
+                                   )
 {
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -104,10 +105,28 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   std::vector<T> foreignB;
 
   // soon, we will need a methodKey for the different MM algs
-  _start1(matrixA,matrixB,localDimensionM,(srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN),localDimensionN,
-    commInfo3D,matrixAforEnginePtr,matrixBforEnginePtr,foreignA,foreignB);
-
+  if (srcPackage.side == blasEngineSide::AblasLeft)
+  {
+    _start1(matrixA, matrixB, localDimensionM, localDimensionM,localDimensionN,
+      commInfo3D, matrixAforEnginePtr, matrixBforEnginePtr, foreignA, foreignB);
+  }
+  else
+  {
+    _start1(matrixB, matrixA,localDimensionM, localDimensionN, localDimensionN,
+      commInfo3D, matrixBforEnginePtr, matrixAforEnginePtr, foreignB, foreignA);
+  }
   // We will follow the standard here: matrixA is always the triangular matrix. matrixB is always the rectangular matrix
+
+  // debugging
+  if (matrixAforEnginePtr != matrixA.getRawData())
+  {
+    std::cout << "Bad for A\n";
+    // print out A? Its good that it was "bad" because matrixA started off as LT and should have been serialied into a rectangle.
+  }
+  if (matrixBforEnginePtr != matrixB.getRawData())
+  {
+    std::cout << "Bad for B\n";
+  }
 
   blasEngine<T,U>::_trmm(matrixAforEnginePtr, matrixBforEnginePtr,localDimensionM, localDimensionN,
     (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN),
@@ -117,20 +136,20 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   _end1(matrixBforEnginePtr,matrixB,commInfo3D);
 }
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-template<template<typename,typename,int> class Distribution>
-void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
-                                                              Matrix<T,U,StructureA,Distribution>& matrixA,
-                                                              Matrix<T,U,StructureB,Distribution>& matrixB,
-                                                              U localDimensionN,
-                                                              U localDimensionK,
-                                                              MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage_syrk<T>& srcPackage
-                                                            )
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename,int> class Distribution
+	>
+void MM3D<T,U,blasEngine>::Multiply(
+                                   	Matrix<T,U,StructureA,Distribution>& matrixA,
+                                        Matrix<T,U,StructureB,Distribution>& matrixB,
+                                        U localDimensionN,
+                                        U localDimensionK,
+                                        MPI_Comm commWorld,
+                                        const blasEngineArgumentPackage_syrk<T>& srcPackage
+                                   )
 {
   // Not correct right now. Will fix later
   MPI_Abort(commWorld, -1);
@@ -184,34 +203,35 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
   MPI_Comm_free(&depthComm);
 }
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-template<template<typename,typename,int> class Distribution>
-void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
-                                                              Matrix<T,U,StructureA,Distribution>& matrixA,
-                                                              Matrix<T,U,StructureB,Distribution>& matrixB,
-                                                              Matrix<T,U,StructureC,Distribution>& matrixC,
-                                                              U matrixAcutXstart,
-                                                              U matrixAcutXend,
-                                                              U matrixAcutYstart,
-                                                              U matrixAcutYend,
-                                                              U matrixBcutZstart,
-                                                              U matrixBcutZend,
-                                                              U matrixBcutXstart,
-                                                              U matrixBcutXend,
-                                                              U matrixCcutZstart,
-                                                              U matrixCcutZend,
-                                                              U matrixCcutYstart,
-                                                              U matrixCcutYend,
-                                                              MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage_gemm<T>& srcPackage,
-                                                              bool cutA,
-                                                              bool cutB,
-                                                              bool cutC
-                                                            )
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename, template<typename,typename,int> class> class StructureC,
+  		template<typename,typename,int> class Distribution
+	>
+void MM3D<T,U,blasEngine>::Multiply(
+                                   	Matrix<T,U,StructureA,Distribution>& matrixA,
+                                        Matrix<T,U,StructureB,Distribution>& matrixB,
+				        Matrix<T,U,StructureC,Distribution>& matrixC,
+				        U matrixAcutXstart,
+				        U matrixAcutXend,
+				        U matrixAcutYstart,
+				        U matrixAcutYend,
+				        U matrixBcutZstart,
+				        U matrixBcutZend,
+				        U matrixBcutXstart,
+				        U matrixBcutXend,
+				        U matrixCcutZstart,
+				        U matrixCcutZend,
+				        U matrixCcutYstart,
+				        U matrixCcutYend,
+				        MPI_Comm commWorld,
+				        const blasEngineArgumentPackage_gemm<T>& srcPackage,
+				        bool cutA,
+				        bool cutB,
+				        bool cutC
+                                   )
 {
   // We will set up 3 matrices and call the method above.
 
@@ -248,28 +268,28 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 }
 
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-template<template<typename,typename,int> class Distribution>
-void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
-                                                              Matrix<T,U,StructureA,Distribution>& matrixA,
-                                                              Matrix<T,U,StructureB,Distribution>& matrixB,
-                                                              U matrixAcutXstart,
-                                                              U matrixAcutXend,
-                                                              U matrixAcutYstart,
-                                                              U matrixAcutYend,
-                                                              U matrixBcutZstart,
-                                                              U matrixBcutZend,
-                                                              U matrixBcutXstart,
-                                                              U matrixBcutXend,
-                                                              MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage_trmm<T>& srcPackage,
-                                                              bool cutA,
-                                                              bool cutB
-                                                            )
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename,int> class Distribution
+	 >
+void MM3D<T,U,blasEngine>::Multiply(
+				      Matrix<T,U,StructureA,Distribution>& matrixA,
+				      Matrix<T,U,StructureB,Distribution>& matrixB,
+				      U matrixAcutXstart,
+				      U matrixAcutXend,
+				      U matrixAcutYstart,
+				      U matrixAcutYend,
+				      U matrixBcutZstart,
+				      U matrixBcutZend,
+				      U matrixBcutXstart,
+				      U matrixBcutXend,
+				      MPI_Comm commWorld,
+				      const blasEngineArgumentPackage_trmm<T>& srcPackage,
+				      bool cutA,
+				      bool cutB
+                                    )
 {
   // We will set up 3 matrices and call the method above.
 
@@ -300,28 +320,28 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 }
 
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-template<template<typename,typename,int> class Distribution>
-void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
-                                                              Matrix<T,U,StructureA,Distribution>& matrixA,
-                                                              Matrix<T,U,StructureB,Distribution>& matrixB,
-                                                              U matrixAcutXstart,
-                                                              U matrixAcutXend,
-                                                              U matrixAcutYstart,
-                                                              U matrixAcutYend,
-                                                              U matrixBcutZstart,
-                                                              U matrixBcutZend,
-                                                              U matrixBcutXstart,
-                                                              U matrixBcutXend,
-                                                              MPI_Comm commWorld,
-                                                              const blasEngineArgumentPackage_syrk<T>& srcPackage,
-                                                              bool cutA,
-                                                              bool cutB
-                                                            )
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename,int> class Distribution
+	 >
+void MM3D<T,U,blasEngine>::Multiply(
+				      Matrix<T,U,StructureA,Distribution>& matrixA,
+				      Matrix<T,U,StructureB,Distribution>& matrixB,
+				      U matrixAcutXstart,
+				      U matrixAcutXend,
+				      U matrixAcutYstart,
+				      U matrixAcutYend,
+				      U matrixBcutZstart,
+				      U matrixBcutZend,
+				      U matrixBcutXstart,
+				      U matrixBcutXend,
+				      MPI_Comm commWorld,
+				      const blasEngineArgumentPackage_syrk<T>& srcPackage,
+				      bool cutA,
+				      bool cutB
+				    )
 {
   // We will set up 3 matrices and call the method above.
 
@@ -352,24 +372,23 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::Multiply(
 }
 
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-template<template<typename,typename,int> class Distribution, typename tupleStructure>
-void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::_start1(
-  									Matrix<T,U,StructureA,Distribution>& matrixA,
-									Matrix<T,U,StructureB,Distribution>& matrixB,
-									U localDimensionM,
-									U localDimensionN,
-									U localDimensionK,
-									tupleStructure& commInfo3D,
-									T*& matrixAforEnginePtr,
-									T*& matrixBforEnginePtr,
-									std::vector<T>& foreignA,
-									std::vector<T>& foreignB
-		   						    )
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<template<typename,typename,int> class Distribution,
+  template<typename,typename, template<typename,typename,int> class> class StructureArg1,
+  template<typename,typename, template<typename,typename,int> class> class StructureArg2,
+  typename tupleStructure>
+void MM3D<T,U,blasEngine>::_start1(
+					Matrix<T,U,StructureArg1,Distribution>& matrixA,
+					Matrix<T,U,StructureArg2,Distribution>& matrixB,
+					U localDimensionM,
+					U localDimensionN,
+					U localDimensionK,
+					tupleStructure& commInfo3D,
+					T*& matrixAforEnginePtr,
+					T*& matrixBforEnginePtr,
+					std::vector<T>& foreignA,
+					std::vector<T>& foreignB
+				  )
 {
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
@@ -392,14 +411,14 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::_start1(
 
   matrixAforEnginePtr = (isRootRow ? &dataA[0] : &foreignA[0]);
   matrixBforEnginePtr = (isRootColumn ? &dataB[0] : &foreignB[0]);
-  if ((!std::is_same<StructureA<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-    && (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+  if ((!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+    && (!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
     Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
     matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
   }
-  if ((!std::is_same<StructureB<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-    && (!std::is_same<StructureB<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+  if ((!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+    && (!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
     Matrix<T,U,MatrixStructureRectangle,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
     matrixBforEnginePtr = getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
@@ -407,18 +426,14 @@ void MM3D<T,U,StructureA,StructureB,StructureC,blasEngine>::_start1(
 }
 
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution,
   typename tupleStructure>
-void MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::_end1(
-									T* matrixEnginePtr,
-  									Matrix<T,U,StructureArg,Distribution>& matrix,
-									tupleStructure& commInfo3D
-		   						    )
+void MM3D<T,U,blasEngine>::_end1(
+					T* matrixEnginePtr,
+					Matrix<T,U,StructureArg,Distribution>& matrix,
+					tupleStructure& commInfo3D
+				)
 {
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
@@ -445,18 +460,14 @@ void MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::_end1(
 }
 
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-void MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::BroadcastPanels(
-											std::vector<T>& data,
-											U size,
-											bool isRoot,
-											int pGridCoordZ,
-											MPI_Comm panelComm
-										    )
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+void MM3D<T,U,blasEngine>::BroadcastPanels(
+						std::vector<T>& data,
+						U size,
+						bool isRoot,
+						int pGridCoordZ,
+						MPI_Comm panelComm
+					   )
 {
   if (isRoot)
   {
@@ -470,19 +481,15 @@ void MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::BroadcastPanels(
 }
 
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-T* MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
-											Matrix<T,U,StructureArg, Distribution>& matrixArg,
-											Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
-											std::vector<T>& data,
-											bool isRoot
-									       )
+T* MM3D<T,U,blasEngine>::getEnginePtr(
+					Matrix<T,U,StructureArg, Distribution>& matrixArg,
+					Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
+					std::vector<T>& data,
+					bool isRoot
+				     )
 {
   // Need to separate the below out into its own function that will not get instantied into object code
   //   unless it passes the test above. This avoids template-enduced template compiler errors
@@ -501,23 +508,19 @@ T* MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getEnginePtr(
 }
 
 
-template<typename T, typename U,
-  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  template<typename,typename, template<typename,typename,int> class> class StructureC,		// Defaulted to MatrixStructureSquare
-  template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-Matrix<T,U,StructureArg,Distribution>& MM3D<T,U,StructureA, StructureB, StructureC, blasEngine>::getSubMatrix(
-											Matrix<T,U,StructureArg, Distribution>& srcMatrix,	// pass by value via move constructor
-											Matrix<T,U,StructureArg, Distribution>& fillMatrix,	// pass by value via move constructor
-											U matrixArgColumnStart,
-											U matrixArgColumnEnd,
-											U matrixArgRowStart,
-											U matrixArgRowEnd,
-											U globalDiff,
-											bool getSub
-									       )
+Matrix<T,U,StructureArg,Distribution>& MM3D<T,U,blasEngine>::getSubMatrix(
+								Matrix<T,U,StructureArg, Distribution>& srcMatrix,	// pass by value via move constructor
+								Matrix<T,U,StructureArg, Distribution>& fillMatrix,	// pass by value via move constructor
+								U matrixArgColumnStart,
+								U matrixArgColumnEnd,
+								U matrixArgRowStart,
+								U matrixArgRowEnd,
+								U globalDiff,
+								bool getSub
+						       )
 {
   if (getSub)
   {

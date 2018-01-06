@@ -26,7 +26,9 @@ template<typename T, typename U, template<typename,typename> class blasEngine>
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 void MMvalidate<T,U,blasEngine>::validateLocal(
-                        Matrix<T,U,StructureArg,Distribution>& myMatrix,
+            		//.. lets change this up: I want to pass in 2 input matrices, and the outputmatrix I attained. That is simpler for me.
+                        //.. then I also need to watch out for serialization, say if I pass in a UT matrix or LT, etc.
+		        Matrix<T,U,StructureArg,Distribution>& myMatrix,
                         U localDimensionM,
                         U localDimensionN,
                         U localDimensionK,
@@ -229,6 +231,8 @@ std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
 								std::tuple<MPI_Comm, int, int, int, int> commInfo
 							     )
 {
+  //.. new idea here: I don't want to re-generate A and B. I just want to AllGather what I originally made in test.cpp, and then get my cyclic part.
+
   MPI_Comm sliceComm = std::get<0>(commInfo);
   int pGridCoordX = std::get<1>(commInfo);
   int pGridCoordY = std::get<2>(commInfo);
@@ -238,6 +242,10 @@ std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
   using MatrixType = Matrix<T,U,StructureArg,Distribution>;
   MatrixType localMatrix(localNumColumns, localNumRows, globalNumColumns, globalNumRows);
   localMatrix.DistributeRandom(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key);
+
+  // debugging
+  localMatrix.print();
+  std::cout << "\n\n\n\n";
 
   std::vector<T> blockedMatrix(globalNumColumns*globalNumRows);
   std::vector<T> cyclicMatrix(globalNumColumns*globalNumRows);
