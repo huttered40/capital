@@ -92,7 +92,7 @@ int main(int argc, char** argv)
     if (methodKey2 == 0)
     {
       // Sequential validation after 1 iteration, since numIterations == 1
-      MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSizeM, localMatrixSizeN, localMatrixSizeK,
+      MMvalidate<double,int,cblasEngine>::validateLocal(matA, matB, matC, localMatrixSizeM, localMatrixSizeN, localMatrixSizeK,
         globalMatrixSizeM, globalMatrixSizeN, globalMatrixSizeK, MPI_COMM_WORLD, blasArgs);
     }
   }
@@ -120,7 +120,6 @@ int main(int argc, char** argv)
     // I guess I will go through all cases. Ugh!
     if ((matrixUpLo == 0) && (triangleSide == 0))
     {
-      cout << "Yes, I am where I think I am, with localMatrixSizeM - " << localMatrixSizeM << " and localMatrixSizeN - " << localMatrixSizeN << endl;
       MatrixTypeLT matA(localMatrixSizeM,localMatrixSizeM,globalMatrixSizeM,globalMatrixSizeM);
       MatrixTypeR matB(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
 
@@ -129,7 +128,10 @@ int main(int argc, char** argv)
 
       blasArgs.side = blasEngineSide::AblasLeft;
       blasArgs.uplo = blasEngineUpLo::AblasLower;
-  
+ 
+      // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
+      MatrixTypeR matBcopy = matB;
+ 
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
@@ -144,7 +146,7 @@ int main(int argc, char** argv)
       if (methodKey2 == 0)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
       }
     }
     else if ((matrixUpLo == 0) && (triangleSide == 1))
@@ -157,6 +159,9 @@ int main(int argc, char** argv)
 
       blasArgs.side = blasEngineSide::AblasRight;
       blasArgs.uplo = blasEngineUpLo::AblasLower;
+
+      // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
+      MatrixTypeR matBcopy = matB;
   
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
       // Loop for getting a good range of results.
@@ -172,7 +177,7 @@ int main(int argc, char** argv)
       if (methodKey2 == 0)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 0))
@@ -186,6 +191,9 @@ int main(int argc, char** argv)
       blasArgs.side = blasEngineSide::AblasLeft;
       blasArgs.uplo = blasEngineUpLo::AblasUpper;
   
+      // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
+      MatrixTypeR matBcopy = matB;
+
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
@@ -200,7 +208,7 @@ int main(int argc, char** argv)
       if (methodKey2 == 0)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
       }
 
     }
@@ -214,6 +222,9 @@ int main(int argc, char** argv)
 
       blasArgs.side = blasEngineSide::AblasRight;
       blasArgs.uplo = blasEngineUpLo::AblasUpper;
+
+      // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
+      MatrixTypeR matBcopy = matB;
   
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
       // Loop for getting a good range of results.
@@ -229,7 +240,7 @@ int main(int argc, char** argv)
       if (methodKey2 == 0)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
       }
 
     }

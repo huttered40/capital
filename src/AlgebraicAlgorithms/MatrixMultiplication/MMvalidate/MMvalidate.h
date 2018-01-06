@@ -34,10 +34,16 @@ public:
   // However, we still need to template this method because the method needs to be aware of the Matrix's template parameters
   //   in order to use it as a method argument.
 
-  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
-    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
+  template<
+    template<typename,typename, template<typename,typename,int> class> class StructureArgA,
+    template<typename,typename, template<typename,typename,int> class> class StructureArgB,
+    template<typename,typename, template<typename,typename,int> class> class StructureArgC,
+    template<typename,typename,int> class Distribution
+          >
   static void validateLocal(
-                        Matrix<T,U,StructureArg,Distribution>& myMatrix,
+                        Matrix<T,U,StructureArgA,Distribution>& matrixA,
+                        Matrix<T,U,StructureArgB,Distribution>& matrixB,
+                        Matrix<T,U,StructureArgC,Distribution>& matrixC,
                         U localDimensionM,
                         U localDimensionN,
                         U localDimensionK,
@@ -48,10 +54,15 @@ public:
                         const blasEngineArgumentPackage_gemm<T>& srcPackage
                       );
 
-  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
-    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
+  template<
+    template<typename,typename, template<typename,typename,int> class> class StructureArgA,
+    template<typename,typename, template<typename,typename,int> class> class StructureArgB,
+    template<typename,typename,int> class Distribution
+          >
   static void validateLocal(
-                        Matrix<T,U,StructureArg,Distribution>& myMatrix,
+                        Matrix<T,U,StructureArgA,Distribution>& matrixA,
+                        Matrix<T,U,StructureArgB,Distribution>& matrixBin,
+                        Matrix<T,U,StructureArgB,Distribution>& matrixBout,
                         U localDimensionM,
                         U localDimensionN,
                         U globalDimensionM,
@@ -60,10 +71,15 @@ public:
                         const blasEngineArgumentPackage_trmm<T>& srcPackage
                       );
 
-  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
-    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
+  template<
+    template<typename,typename, template<typename,typename,int> class> class StructureArgA,
+    template<typename,typename, template<typename,typename,int> class> class StructureArgB,
+    template<typename,typename,int> class Distribution
+          >
   static void validateLocal(
-                        Matrix<T,U,StructureArg,Distribution>& myMatrix,
+                        Matrix<T,U,StructureArgA,Distribution>& matrixA,
+                        Matrix<T,U,StructureArgB,Distribution>& matrixB,
+                        Matrix<T,U,StructureArgB,Distribution>& matrixC,
                         U localDimensionN,
                         U localDimensionK,
                         U globalDimensionN,

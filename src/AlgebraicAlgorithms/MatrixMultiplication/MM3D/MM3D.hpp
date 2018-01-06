@@ -60,19 +60,24 @@ void MM3D<T,U,blasEngine>::Multiply(
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
   auto commInfo3D = setUpCommunicators(commWorld);
-  T* matrixAforEnginePtr;
-  T* matrixBforEnginePtr;
+  T* matrixAEnginePtr;
+  T* matrixBEnginePtr;
+  std::vector<T> matrixAEngineVector;
+  std::vector<T> matrixBEngineVector;
   std::vector<T> foreignA;
   std::vector<T> foreignB;
+  bool serializeKeyA = false;
+  bool serializeKeyB = false;
 
   // soon, we will need a methodKey for the different MM algs
-  _start1(matrixA,matrixB,localDimensionM,localDimensionN,localDimensionK,commInfo3D,matrixAforEnginePtr,matrixBforEnginePtr,foreignA,foreignB);
+  _start1(matrixA,matrixB,localDimensionM,localDimensionN,localDimensionK,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,
+    matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
 
   // Assume, for now, that matrixC has Rectangular Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
   T* matrixCforEnginePtr = matrixC.getRawData();
 
-  blasEngine<T,U>::_gemm(matrixAforEnginePtr, matrixBforEnginePtr, matrixCforEnginePtr, localDimensionM, localDimensionN,
-    localDimensionK,
+  blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+    matrixCforEnginePtr, localDimensionM, localDimensionN, localDimensionK,
     (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
     (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
     localDimensionM, srcPackage);
@@ -99,41 +104,35 @@ void MM3D<T,U,blasEngine>::Multiply(
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
   auto commInfo3D = setUpCommunicators(commWorld);
-  T* matrixAforEnginePtr;
-  T* matrixBforEnginePtr;
+  T* matrixAEnginePtr;
+  T* matrixBEnginePtr;
+  std::vector<T> matrixAEngineVector;
+  std::vector<T> matrixBEngineVector;
   std::vector<T> foreignA;
   std::vector<T> foreignB;
+  bool serializeKeyA = false;
+  bool serializeKeyB = false;
 
   // soon, we will need a methodKey for the different MM algs
   if (srcPackage.side == blasEngineSide::AblasLeft)
   {
-    _start1(matrixA, matrixB, localDimensionM, localDimensionM,localDimensionN,
-      commInfo3D, matrixAforEnginePtr, matrixBforEnginePtr, foreignA, foreignB);
+    _start1(matrixA, matrixB, localDimensionM, localDimensionN,localDimensionM,
+      commInfo3D, matrixAEnginePtr, matrixBEnginePtr, matrixAEngineVector, matrixBEngineVector, foreignA, foreignB,
+      serializeKeyA, serializeKeyB);
+    blasEngine<T,U>::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+      localDimensionM, localDimensionN, localDimensionM, (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN),
+      srcPackage);
   }
   else
   {
     _start1(matrixB, matrixA,localDimensionM, localDimensionN, localDimensionN,
-      commInfo3D, matrixBforEnginePtr, matrixAforEnginePtr, foreignB, foreignA);
+      commInfo3D, matrixBEnginePtr, matrixAEnginePtr, matrixBEngineVector, matrixAEngineVector, foreignB, foreignA, serializeKeyB, serializeKeyA);
+    blasEngine<T,U>::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+      localDimensionM, localDimensionN, localDimensionN, (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN),
+      srcPackage);
   }
   // We will follow the standard here: matrixA is always the triangular matrix. matrixB is always the rectangular matrix
-
-  // debugging
-  if (matrixAforEnginePtr != matrixA.getRawData())
-  {
-    std::cout << "Bad for A\n";
-    // print out A? Its good that it was "bad" because matrixA started off as LT and should have been serialied into a rectangle.
-  }
-  if (matrixBforEnginePtr != matrixB.getRawData())
-  {
-    std::cout << "Bad for B\n";
-  }
-
-  blasEngine<T,U>::_trmm(matrixAforEnginePtr, matrixBforEnginePtr,localDimensionM, localDimensionN,
-    (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN),
-    (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN),
-    srcPackage);
-
-  _end1(matrixBforEnginePtr,matrixB,commInfo3D);
+  _end1((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),matrixB,commInfo3D);
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
@@ -151,6 +150,7 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                                    )
 {
+/*
   // Not correct right now. Will fix later
   MPI_Abort(commWorld, -1);
 
@@ -201,6 +201,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   MPI_Comm_free(&transComm);
   MPI_Comm_free(&sliceComm);
   MPI_Comm_free(&depthComm);
+*/
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
@@ -384,10 +385,14 @@ void MM3D<T,U,blasEngine>::_start1(
 					U localDimensionN,
 					U localDimensionK,
 					tupleStructure& commInfo3D,
-					T*& matrixAforEnginePtr,
-					T*& matrixBforEnginePtr,
+					T*& matrixAEnginePtr,
+					T*& matrixBEnginePtr,
+					std::vector<T>& matrixAEngineVector,
+					std::vector<T>& matrixBEngineVector,
 					std::vector<T>& foreignA,
-					std::vector<T>& foreignB
+					std::vector<T>& foreignB,
+					bool& serializeKeyA,
+					bool& serializeKeyB
 				  )
 {
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
@@ -409,19 +414,23 @@ void MM3D<T,U,blasEngine>::_start1(
   BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
   BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
 
-  matrixAforEnginePtr = (isRootRow ? &dataA[0] : &foreignA[0]);
-  matrixBforEnginePtr = (isRootColumn ? &dataB[0] : &foreignB[0]);
+  matrixAEnginePtr = (isRootRow ? &dataA[0] : &foreignA[0]);
+  matrixBEnginePtr = (isRootColumn ? &dataB[0] : &foreignB[0]);
   if ((!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
     && (!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
+    serializeKeyA = true;
     Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
-    matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
+    getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
+    matrixAEngineVector = std::move(helperA.getVectorData());
   }
   if ((!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
     && (!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
+    serializeKeyB = true;
     Matrix<T,U,MatrixStructureRectangle,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
-    matrixBforEnginePtr = getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
+    getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
+    matrixBEngineVector = std::move(helperB.getVectorData());
   }
 }
 
@@ -484,7 +493,7 @@ void MM3D<T,U,blasEngine>::BroadcastPanels(
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-T* MM3D<T,U,blasEngine>::getEnginePtr(
+void MM3D<T,U,blasEngine>::getEnginePtr(
 					Matrix<T,U,StructureArg, Distribution>& matrixArg,
 					Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
 					std::vector<T>& data,
@@ -504,7 +513,6 @@ T* MM3D<T,U,blasEngine>::getEnginePtr(
     // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangle
     Serializer<T,U,StructureArg,MatrixStructureRectangle>::Serialize(matrixArg, matrixDest);
   }
-  return matrixDest.getRawData();		// this is being deleted off the stack! It is a local variable!!!!!!
 }
 
 

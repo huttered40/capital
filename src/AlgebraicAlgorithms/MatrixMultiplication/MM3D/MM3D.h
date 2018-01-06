@@ -174,10 +174,14 @@ private:
 			U localDimensionN,
 			U localDimensionK,
 			tupleStructure& commInfo3D,
-			T*& matrixAforEnginePtr,
-			T*& matrixBforEnginePtr,
+			T*& matrixAEnginePtr,
+			T*& matrixBEnginePtr,
+			std::vector<T>& matrixAEngineVector,
+			std::vector<T>& matrixBEngineVector,
 			std::vector<T>& foreignA,
-			std::vector<T>& foreignB
+			std::vector<T>& foreignB,
+			bool& serializeKeyA,
+			bool& serializeKeyB
 		     );
 
   template<template<typename,typename, template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution,
@@ -198,7 +202,7 @@ private:
 
   template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-  static T* getEnginePtr(
+  static void getEnginePtr(
 				Matrix<T,U,StructureArg, Distribution>& matrixArg,
 				Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
 				std::vector<T>& data,
