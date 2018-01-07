@@ -53,7 +53,8 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         U localDimensionN,
                                         U localDimensionK,
                                         MPI_Comm commWorld,
-                                        const blasEngineArgumentPackage_gemm<T>& srcPackage
+                                        const blasEngineArgumentPackage_gemm<T>& srcPackage,
+					int methodKey						// I chose an integer instead of another template parameter
                                    )
 {
   // Use tuples so we don't have to pass multiple things by reference.
@@ -69,9 +70,25 @@ void MM3D<T,U,blasEngine>::Multiply(
   bool serializeKeyA = false;
   bool serializeKeyB = false;
 
-  // soon, we will need a methodKey for the different MM algs
-  _start1(matrixA,matrixB,localDimensionM,localDimensionN,localDimensionK,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,
-    matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
+  if (methodKey == 0)
+  {
+    _start1(matrixA,matrixB,localDimensionM,localDimensionN,localDimensionK,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,
+      matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
+  }
+  else if (methodKey == 1)
+  {
+    serializeKeyA = true;
+    serializeKeyB = true;
+    _start2(matrixA,matrixB,localDimensionM,localDimensionN,localDimensionK,commInfo3D,
+      matrixAEngineVector,matrixBEngineVector,serializeKeyA,serializeKeyB);
+/*
+    // debugging
+    for (int i=0; i<localDimensionN*localDimensionK; i++)
+    {
+      std::cout << "val - " << matrixBEngineVector[i] << std::endl;
+    }
+*/
+  }
 
   // Assume, for now, that matrixC has Rectangular Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
   T* matrixCforEnginePtr = matrixC.getRawData();
@@ -97,7 +114,8 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         U localDimensionM,
                                         U localDimensionN,
                                         MPI_Comm commWorld,
-                                        const blasEngineArgumentPackage_trmm<T>& srcPackage
+                                        const blasEngineArgumentPackage_trmm<T>& srcPackage,
+					int methodKey						// I chose an integer instead of another template parameter
                                    )
 {
   // Use tuples so we don't have to pass multiple things by reference.
@@ -116,17 +134,38 @@ void MM3D<T,U,blasEngine>::Multiply(
   // soon, we will need a methodKey for the different MM algs
   if (srcPackage.side == blasEngineSide::AblasLeft)
   {
-    _start1(matrixA, matrixB, localDimensionM, localDimensionN,localDimensionM,
-      commInfo3D, matrixAEnginePtr, matrixBEnginePtr, matrixAEngineVector, matrixBEngineVector, foreignA, foreignB,
-      serializeKeyA, serializeKeyB);
+    if (methodKey == 0)
+    {
+      _start1(matrixA, matrixB, localDimensionM, localDimensionN,localDimensionM,
+        commInfo3D, matrixAEnginePtr, matrixBEnginePtr, matrixAEngineVector, matrixBEngineVector, foreignA, foreignB,
+        serializeKeyA, serializeKeyB);
+    }
+    else if (methodKey == 1)
+    {
+      serializeKeyA = true;
+      serializeKeyB = true;
+      _start2(matrixA, matrixB, localDimensionM, localDimensionN,localDimensionM,
+        commInfo3D, matrixAEngineVector, matrixBEngineVector,
+        serializeKeyA, serializeKeyB);
+    }
     blasEngine<T,U>::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
       localDimensionM, localDimensionN, localDimensionM, (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN),
       srcPackage);
   }
   else
   {
-    _start1(matrixB, matrixA,localDimensionM, localDimensionN, localDimensionN,
-      commInfo3D, matrixBEnginePtr, matrixAEnginePtr, matrixBEngineVector, matrixAEngineVector, foreignB, foreignA, serializeKeyB, serializeKeyA);
+    if (methodKey == 0)
+    {
+      _start1(matrixB, matrixA,localDimensionM, localDimensionN, localDimensionN,
+        commInfo3D, matrixBEnginePtr, matrixAEnginePtr, matrixBEngineVector, matrixAEngineVector, foreignB, foreignA, serializeKeyB, serializeKeyA);
+    }
+    else if (methodKey == 1)
+    {
+      serializeKeyA = true;
+      serializeKeyB = true;
+      _start2(matrixB, matrixA,localDimensionM, localDimensionN, localDimensionN,
+        commInfo3D, matrixBEngineVector, matrixAEngineVector, serializeKeyB, serializeKeyA);
+    }
     blasEngine<T,U>::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
       localDimensionM, localDimensionN, localDimensionN, (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN),
       srcPackage);
@@ -229,6 +268,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 				        U matrixCcutYend,
 				        MPI_Comm commWorld,
 				        const blasEngineArgumentPackage_gemm<T>& srcPackage,
+					int methodKey,						// I chose an integer instead of another template parameter
 				        bool cutA,
 				        bool cutB,
 				        bool cutC
@@ -258,7 +298,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
   Matrix<T,U,StructureC,Distribution>& matC = getSubMatrix(matrixC, subMatrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, globalDiffC, cutC);
 
-  Multiply(matA, matB, matC, rangeA_x, rangeA_y, rangeB_z, commWorld, srcPackage);
+  Multiply(matA, matB, matC, rangeA_x, rangeA_y, rangeB_z, commWorld, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC)
@@ -288,6 +328,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 				      U matrixBcutXend,
 				      MPI_Comm commWorld,
 				      const blasEngineArgumentPackage_trmm<T>& srcPackage,
+				      int methodKey,						// I chose an integer instead of another template parameter
 				      bool cutA,
 				      bool cutB
                                     )
@@ -310,7 +351,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
   Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
 
-  Multiply(matA, matB, rangeA_x, rangeA_y, rangeB_z, commWorld, srcPackage);
+  Multiply(matA, matB, rangeA_x, rangeA_y, rangeB_z, commWorld, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
   if (cutB)
@@ -467,6 +508,148 @@ void MM3D<T,U,blasEngine>::_end1(
   MPI_Comm_free(&sliceComm);
   MPI_Comm_free(&depthComm);
 }
+
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<template<typename,typename,int> class Distribution,
+  template<typename,typename, template<typename,typename,int> class> class StructureArg1,
+  template<typename,typename, template<typename,typename,int> class> class StructureArg2,
+  typename tupleStructure>
+void MM3D<T,U,blasEngine>::_start2(
+					Matrix<T,U,StructureArg1,Distribution>& matrixA,
+					Matrix<T,U,StructureArg2,Distribution>& matrixB,
+					U localDimensionM,
+					U localDimensionN,
+					U localDimensionK,
+					tupleStructure& commInfo3D,
+					std::vector<T>& matrixAEngineVector,
+					std::vector<T>& matrixBEngineVector,
+					bool& serializeKeyA,
+					bool& serializeKeyB
+				  )
+{
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm columnComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
+  int rowCommSize,columnCommSize,depthCommSize;
+  MPI_Comm_size(rowComm, &rowCommSize);
+  MPI_Comm_size(columnComm, &columnCommSize);
+  MPI_Comm_size(depthComm, &depthCommSize);
+
+/* Debugging notes
+  .. debugging playground right now
+  .. note that matrixAEnginveVector A and B have 0 size right now .They need to be allocated into rectangles here
+  ..   but I can't do that with sizeA a d sizeB because either can be the packed size, and I need the rectangular size (which I can of course
+  ..   get from the arguments (localDimension*, etc.)
+  .. Another thing: How do I deal with serialization? Like, what if matrixA or B is a UT or LT? I do not want to communicate more than the packed data
+  ..   in that case obviously, but I also need to make sure that things are still in order, which I think is harder now than it was in _start1( method )
+*/
+
+  std::vector<T>& dataA = matrixA.getVectorData(); 
+  std::vector<T>& dataB = matrixB.getVectorData();
+  U sizeA = matrixA.getNumElems();
+  U sizeB = matrixB.getNumElems();
+
+  // Allgathering matrixA is no problem because we store matrices column-wise
+  U localNumRowsA = matrixA.getNumRowsLocal();
+  U localNumColumnsA = matrixA.getNumColumnsLocal();
+  std::vector<T> collectMatrixA(sizeA);			// will need to change upon Serialize changes
+  U shift = (pGridCoordZ + pGridCoordX) % rowCommSize;
+  U dataAOffset = localNumRowsA*(localNumColumnsA/rowCommSize)*shift;
+  matrixAEngineVector.resize(sizeA);			// will need to change upon Serialize changes
+  U messageSizeA = sizeA/rowCommSize;
+  MPI_Allgather(&dataA[dataAOffset], messageSizeA, MPI_DOUBLE, &collectMatrixA[0], messageSizeA, MPI_DOUBLE, rowComm);
+
+  // If pGridCoordZ != 0, then we need to re-shuffle the data. AllGather did not put into optimal order.
+  if (pGridCoordZ == 0)
+  {
+    matrixAEngineVector = std::move(collectMatrixA);
+  }
+  else
+  {
+    U shuffleAoffset = messageSizeA*pGridCoordZ;
+    for (U i=0; i<rowCommSize; i++)
+    {
+      U saveStepA = i*messageSizeA;
+      for (U j=0; j<messageSizeA; j++)
+      {
+        matrixAEngineVector[saveStepA+j] = collectMatrixA[shuffleAoffset+j];
+      }
+      shuffleAoffset += messageSizeA;
+      shuffleAoffset %= sizeA;
+    }
+  }
+
+  // Allgathering matrixB is a problem
+  // Lets use MPI Derived datatypes for this.
+  U localNumRowsB = matrixB.getNumRowsLocal();
+  U localNumColumnsB = matrixB.getNumColumnsLocal();
+  std::vector<T> collectMatrixB(sizeB);			// will need to change upon Serialize changes
+  shift = (pGridCoordZ + pGridCoordY) % columnCommSize;
+  U blockLengthB = localNumRowsB/columnCommSize;
+  U dataBOffset = blockLengthB*shift;
+  MPI_Datatype matrixBcolumnData;
+  MPI_Type_vector(localNumColumnsB,blockLengthB,localNumRowsB,MPI_DOUBLE,&matrixBcolumnData);
+  MPI_Type_commit(&matrixBcolumnData);
+  U messageSizeB = sizeB/columnCommSize;
+  MPI_Allgather(&dataB[dataBOffset], 1, matrixBcolumnData, &collectMatrixB[0], messageSizeB, MPI_DOUBLE, columnComm);
+/* AMPI has trouble here. Check back with Sam. Then recheck for correctness.
+  // debugging
+  for (int i=0; i<sizeB; i++)
+  {
+    std::cout << "check val - " << collectMatrixB[i] << std::endl;
+  }
+*/
+
+  // Then need to re-shuffle the data in collectMatrixB because of the format Allgather puts the received data in 
+  // Note: there is a particular order to it beyond the AllGather order. Depends what z coordinate we are on (that determines the shift)
+  if ((rowCommSize == 1) && (columnCommSize == 1) && (depthCommSize == 1))
+  {
+    matrixBEngineVector = std::move(collectMatrixB);
+  }
+  else
+  {
+    matrixBEngineVector.resize(sizeB);			// will need to change upon Serialize changes
+    for (U i=0; i<localNumColumnsB; i++)
+    {
+      // We always start in the same offset in the gatherBuffer
+      U shuffleBoffset = messageSizeB*pGridCoordZ;
+      for (U j=0; j<columnCommSize; j++)
+      {
+        U saveOffsetB = shuffleBoffset + i*blockLengthB;
+        U saveStepB = i*localNumRowsB + j*blockLengthB;
+        for (U k=0; k<blockLengthB; k++)
+        {
+          matrixBEngineVector[saveStepB+k] = collectMatrixB[saveOffsetB+k];
+        }
+        shuffleBoffset += messageSizeB;
+        shuffleBoffset %= sizeB;
+      }
+    }
+  }
+
+/*
+  if ((!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+    && (!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+  {
+    Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
+    getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
+    matrixAEngineVector = std::move(helperA.getVectorData());
+  }
+  if ((!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+    && (!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+  {
+    Matrix<T,U,MatrixStructureRectangle,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
+    getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
+    matrixBEngineVector = std::move(helperB.getVectorData());
+  }
+*/
+}
+
 
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine

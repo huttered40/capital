@@ -57,7 +57,8 @@ public:
                         U localDimensionN,
                         U localDimensionK,
                         MPI_Comm commWorld,
-                        const blasEngineArgumentPackage_gemm<T>& srcPackage
+                        const blasEngineArgumentPackage_gemm<T>& srcPackage,
+			int methodKey
                       );
 
   template<
@@ -71,7 +72,8 @@ public:
                         U localDimensionM,
                         U localDimensionN,
                         MPI_Comm commWorld,
-                        const blasEngineArgumentPackage_trmm<T>& srcPackage
+                        const blasEngineArgumentPackage_trmm<T>& srcPackage,
+			int methodKey
                       );
 
   template<
@@ -112,6 +114,7 @@ public:
                         U matrixCcutYend,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
+			int methodKey,
                         bool cutA = true,
                         bool cutB = true,
                         bool cutC = true
@@ -135,6 +138,7 @@ public:
                         U matrixBcutXend,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
+			int methodKey,
                         bool cutA = true,
                         bool cutB = true
                       );
@@ -180,6 +184,23 @@ private:
 			std::vector<T>& matrixBEngineVector,
 			std::vector<T>& foreignA,
 			std::vector<T>& foreignB,
+			bool& serializeKeyA,
+			bool& serializeKeyB
+		     );
+
+  template<template<typename,typename,int> class Distribution,
+    template<typename,typename, template<typename,typename,int> class> class StructureArg1,
+    template<typename,typename, template<typename,typename,int> class> class StructureArg2,
+    typename tupleStructure>
+  static void _start2(
+  			Matrix<T,U,StructureArg1,Distribution>& matrixA,
+			Matrix<T,U,StructureArg2,Distribution>& matrixB,
+			U localDimensionM,
+			U localDimensionN,
+			U localDimensionK,
+			tupleStructure& commInfo3D,
+			std::vector<T>& matrixAEngineVector,
+			std::vector<T>& matrixBEngineVector,
 			bool& serializeKeyA,
 			bool& serializeKeyB
 		     );

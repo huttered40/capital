@@ -38,6 +38,11 @@ int main(int argc, char** argv)
 			    1) Performance testing
   */
   int methodKey2 = atoi(argv[2]);
+  /*
+    Choices for methodKey3: 0) Broadcast + Allreduce
+			    1) Allgather + Allreduce
+  */
+  int methodKey3 = atoi(argv[3]);
 
   int pGridDimensionSize = std::nearbyint(pow(size,1./3.));
   int helper = pGridDimensionSize;
@@ -50,17 +55,17 @@ int main(int argc, char** argv)
     Choices for dimensionKey: 0) Non-power of 2
 			      1) Power of 2
   */
-  int dimensionKey = atoi(argv[3]);
-  uint64_t globalMatrixSizeM = (dimensionKey == 0 ? atoi(argv[4]) : (1<<(atoi(argv[4]))));
+  int dimensionKey = atoi(argv[4]);
+  uint64_t globalMatrixSizeM = (dimensionKey == 0 ? atoi(argv[5]) : (1<<(atoi(argv[5]))));
   uint64_t localMatrixSizeM = globalMatrixSizeM/pGridDimensionSize;
-  uint64_t globalMatrixSizeN = (dimensionKey == 0 ? atoi(argv[5]) : (1<<(atoi(argv[5]))));
+  uint64_t globalMatrixSizeN = (dimensionKey == 0 ? atoi(argv[6]) : (1<<(atoi(argv[6]))));
   uint64_t localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
 
   pTimer myTimer;
   if (methodKey1 == 0)
   {
     // GEMM
-    uint64_t globalMatrixSizeK = (dimensionKey == 0 ? atoi(argv[6]) : (1<<(atoi(argv[6]))));
+    uint64_t globalMatrixSizeK = (dimensionKey == 0 ? atoi(argv[7]) : (1<<(atoi(argv[7]))));
     uint64_t localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
 
     MatrixTypeR matA(localMatrixSizeK,localMatrixSizeM,globalMatrixSizeK,globalMatrixSizeM);
@@ -78,13 +83,13 @@ int main(int argc, char** argv)
     blasArgs.alpha = 1.;
     blasArgs.beta = 0;
   
-    int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[7]));
+    int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
       MM3D<double,int,cblasEngine>::
-        Multiply(matA, matB, matC, localMatrixSizeM, localMatrixSizeN, localMatrixSizeK, MPI_COMM_WORLD, blasArgs);
+        Multiply(matA, matB, matC, localMatrixSizeM, localMatrixSizeN, localMatrixSizeK, MPI_COMM_WORLD, blasArgs, methodKey3);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D GEMM iteration", i);
       MPI_Barrier(MPI_COMM_WORLD);
@@ -104,12 +109,12 @@ int main(int argc, char** argv)
       Choices for matrixUpLo: 0) Lower-triangular
 			      1) Upper-triangular
     */
-    int matrixUpLo = atoi(argv[6]);
+    int matrixUpLo = atoi(argv[7]);
     /*
       Choices for triangleSide: 0) Triangle * Rectangle (matrixA * matrixB)
 			        1) Rectangle * Triangle (matrixB * matrixA)
     */
-    int triangleSide = atoi(argv[7]);
+    int triangleSide = atoi(argv[8]);
 
     blasEngineArgumentPackage_trmm<double> blasArgs;
     blasArgs.order = blasEngineOrder::AblasColumnMajor;
@@ -132,13 +137,13 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
  
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
+      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
         myTimer.setStartTime();
         MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs, methodKey3);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -163,13 +168,13 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
   
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
+      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
         myTimer.setStartTime();
         MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs, methodKey3);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -194,13 +199,13 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
 
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
+      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
         myTimer.setStartTime();
         MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs, methodKey3);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -226,13 +231,13 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
   
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
+      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
         myTimer.setStartTime();
         MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs, methodKey3);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -254,24 +259,30 @@ int main(int argc, char** argv)
   {
 /*
     // SYRK
-    // syrk will need its own set of choices, similar to TRMM that GEMM doesn't need, right?
-    MatrixTypeS matA(localMatrixSizeK,localMatrixSizeN,globalMatrixSizeN,globalMatrixSizeN);
-    MatrixTypeS matC(localMatrixSizeN,localMatrixSizeN,globalMatrixSizeN,globalMatrixSizeN);
-
-    int helper = pGridDimensionSize;
-    helper *= helper;
-    int pCoordX = rank%pGridDimensionSize;
-    int pCoordY = (rank%helper)/pGridDimensionSize;
-    int pCoordZ = rank/helper;
-
-    matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-
+    //
+      Choices for matrixAtranspose: 0) NoTrans
+			      	    1) Trans
+    //
+    int matrixAtranspose = atoi(argv[6]);
     blasEngineArgumentPackage_syrk<double> blasArgs;
     blasArgs.order = blasEngineOrder::AblasColumnMajor;
-    blasArgs.uplo = blasEngineUpLo::AblasUpper;
-    blasArgs.transposeA = blasEngineTranspose::AblasTrans;
+    blasArgs.uplo = blasEngineUpLo::AblasUpper;			// Lets only use the Upper for testing
     blasArgs.alpha = 1.;
     blasArgs.beta = 0;
+    MatrixTypeR matC(localMatrixSizeM,localMatrixSizeM,globalMatrixSizeM,globalMatrixSizeM);
+
+    if (matrixAtranspose == 0)
+    {
+      MatrixTypeR matA(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
+      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+      blasArgs.transposeA = blasEngineTranspose::AblasTrans;
+    }
+    else
+    {
+      MatrixTypeR matA(localMatrixSizeM,localMatrixSizeN,globalMatrixSizeM,globalMatrixSizeN);
+      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+      blasArgs.transposeA = blasEngineTranspose::AblasTrans;
+    }
 
     pTimer myTimer;
     MM3D<double,int,cblasEngine>::
