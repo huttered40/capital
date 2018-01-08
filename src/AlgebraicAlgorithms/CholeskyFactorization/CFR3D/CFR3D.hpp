@@ -3,7 +3,7 @@
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(
+void CFR3D<T,U,blasEngine>::Factor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
@@ -54,7 +54,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorLower(
+void CFR3D<T,U,blasEngine>::rFactorLower(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
@@ -177,13 +177,12 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
   blasArgs.transposeB = blasEngineTranspose::AblasTrans;
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
-  MM3D<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular,MatrixStructureSquare,blasEngine>::
-    Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+  MM3D<T,U,blasEngine>::Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
       0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
-
 
   // Now we need to perform L_{21}L_{21}^T via syrk
   //   Actually, I am havin trouble with SYRK, lets try gemm instead
+  // As of January 2017, still having trouble with SYRK.
   Matrix<T,U,MatrixStructureSquare,Distribution> holdLsyrk(std::vector<T>(localShift*localShift), localShift, localShift, globalShift, globalShift, true);
 
   Matrix<T,U,MatrixStructureSquare,Distribution> squareL(std::vector<T>(), localShift, localShift, globalShift, globalShift);
@@ -193,8 +192,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
 
   transposeSwap(squareLSwap, rank, transposePartner, commWorld);
 
-  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
-    Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
+  MM3D<T,U,blasEngine>::Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
       0, localShift, 0, localShift, commWorld, blasArgs, false, false, false);
 
   // Next step: A_{22} - holdLsyrk.
@@ -231,13 +229,13 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
   invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
   invPackage1.alpha = 1.;
   invPackage1.beta = 0.;
-  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixL, matrixLI,
+  MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI,
     tempInverse, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, matLIstartX, matLIstartX+localShift, matLIstartY,
       matLIstartY+localShift, 0, localShift, 0, localShift, commWorld, invPackage1, true, true, false);
 
   // Next step: finish the Triangular inverse calculation
   invPackage1.alpha = -1.;
-  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixLI, tempInverse,
+  MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse,
     matrixLI, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY, 0, localShift, 0, localShift,
       matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, true, true, true);
   
@@ -246,7 +244,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorL
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorUpper(
+void CFR3D<T,U,blasEngine>::rFactorUpper(
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
@@ -370,7 +368,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
-  MM3D<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
+  MM3D<T,U,blasEngine>::
     Multiply(packedMatrix, matrixA, matrixR, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
       matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, false, true, true);
 
@@ -385,8 +383,7 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
 
   transposeSwap(squareRSwap, rank, transposePartner, commWorld);
 
-  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::
-    Multiply(squareRSwap, squareR, holdRsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
+  MM3D<T,U,blasEngine>::Multiply(squareRSwap, squareR, holdRsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
       0, localShift, 0, localShift, commWorld, blasArgs, false, false, false);
 
   // Next step: A_{22} - holdRsyrk.
@@ -423,24 +420,23 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::rFactorU
   invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
   invPackage1.alpha = 1.;
   invPackage1.beta = 0.;
-  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixR, matrixRI,
-    tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, matRIstartX+localShift, matRIendX,
-      matRIstartY+localShift, matRIendY, 0, localShift, 0, localShift, commWorld, invPackage1, true, true, false);
+  MM3D<T,U,blasEngine>::Multiply(matrixR, matrixRI,tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift,
+    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, localShift, 0, localShift, commWorld, invPackage1, true, true, false);
 
   // Next step: finish the Triangular inverse calculation
   invPackage1.alpha = -1.;
-  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixRI, tempInverse,
+  MM3D<T,U,blasEngine>::Multiply(matrixRI, tempInverse,
     matrixRI, matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift, 0, localShift, 0, localShift,
       matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, true, true, true);
 
 }
-  
+
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<
   template<typename,typename,template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>
-void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::transposeSwap(
+void CFR3D<T,U,blasEngine>::transposeSwap(
 											Matrix<T,U,StructureArg,Distribution>& mat,
 											int myRank,
 											int transposeRank,
@@ -462,18 +458,18 @@ void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::transpos
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-std::vector<T> CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::blockedToCyclicTransformation(
-											Matrix<T,U,MatrixStructureSquare,Distribution>& matA,
-										        U localDimension,
-											U globalDimension,
-											U bcDimension,
-											U matAstartX,
-											U matAendX,
-											U matAstartY,
-											U matAendY,
-											int pGridDimensionSize,
-											MPI_Comm slice2Dcomm
-										     )
+std::vector<T> CFR3D<T,U,blasEngine>::blockedToCyclicTransformation(
+									Matrix<T,U,MatrixStructureSquare,Distribution>& matA,
+									U localDimension,
+									U globalDimension,
+									U bcDimension,
+									U matAstartX,
+									U matAendX,
+									U matAstartY,
+									U matAendY,
+									int pGridDimensionSize,
+									MPI_Comm slice2Dcomm
+								     )
 {
   Matrix<T,U,MatrixStructureSquare,Distribution> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension,
     globalDimension, globalDimension);
@@ -529,16 +525,16 @@ std::vector<T> CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>
 //   number of flops, but in terms of memory accesses and cache lines, not sure. Note that with this optimization,
 //   we may need to separate into two different functions
 template<typename T, typename U, template<typename, typename> class blasEngine>
-void CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::cyclicToLocalTransformation(
-											std::vector<T>& storeT,
-											std::vector<T>& storeTI,
-										        U localDimension,
-											U globalDimension,
-											U bcDimension,
-											int pGridDimensionSize,
-											int rankSlice,
-											char dir
-										     )
+void CFR3D<T,U,blasEngine>::cyclicToLocalTransformation(
+								std::vector<T>& storeT,
+								std::vector<T>& storeTI,
+								U localDimension,
+								U globalDimension,
+								U bcDimension,
+								int pGridDimensionSize,
+								int rankSlice,
+								char dir
+							     )
 {
   U writeIndex = 0;
   U rowOffsetWithinBlock = rankSlice / pGridDimensionSize;

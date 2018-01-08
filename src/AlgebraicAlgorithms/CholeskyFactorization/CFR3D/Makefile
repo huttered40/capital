@@ -1,40 +1,31 @@
 CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
+CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
 CFLAGS = -g -Wall -O3 -std=c++11
 
-OBJS1 = CFR3D.o
-OBJS2 = testPerformanceUpper.o
-OBJS3 = testPerformanceLower.o
-OBJS4 = testSequentialValidationLower.o
-OBJS5 = testSequentialValidationUpper.o
+OBJS1 = CFR3D
+OBJS2 = test
 
-all: testPerformanceUpper testPerformanceLower testSequentialValidationLower testSequentialValidationUpper
+MPI: $(OBJS2)MPI
 
-testPerformanceUpper: $(OBJS2)
-	$(CCMPI) $(CFLAGS) -o testPerformanceUpper $(OBJS2) /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapack.a /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+AMPI: $(OBJS2)AMPI
 
-testPerformanceLower: $(OBJS3)
-	$(CCMPI) $(CFLAGS) -o testPerformanceLower $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapack.a /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+$(OBJS2)MPI: $(OBJS2)MPI.o
+	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI $(OBJS2)MPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.so /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapacke.a -lgfortran -lpthread
 
-testSequentialValidationLower: $(OBJS4)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationLower $(OBJS4) /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapack.a /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+$(OBJS2)MPI.o: test.cpp CFR3D.h
+	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI.o -c test.cpp
 
-testSequentialValidationUpper: $(OBJS5)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationUpper $(OBJS5) /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapack.a /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+$(OBJS1)MPI.o: CFR3D.h CFR3D.hpp
+	$(CCMPI) $(CFLAGS) -o $(OBJS1)MPI.o -c CFR3D.h
 
-testPerformanceUpper.o: testPerformanceUpper.cpp CFR3D.h
-	$(CCMPI) $(CFLAGS) -o testPerformanceUpper.o -c testPerformanceUpper.cpp
+$(OBJS2)AMPI: $(OBJS2)AMPI.o
+	$(CCMPI) $(CFLAGS) -o $(OBJS2)AMPI $(OBJS2)AMPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.so /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapack.a -lgfortran -lpthread
 
-testPerformanceLower.o: testPerformanceLower.cpp CFR3D.h
-	$(CCMPI) $(CFLAGS) -o testPerformanceLower.o -c testPerformanceLower.cpp
+$(OBJS2)AMPI.o: test.cpp CFR3D.h
+	$(CCMPI) $(CFLAGS) -o $(OBJS2)AMPI.o -c test.cpp
 
-testSequentialValidationLower.o: testSequentialValidationLower.cpp CFR3D.h
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationLower.o -c testSequentialValidationLower.cpp
-
-testSequentialValidationUpper.o: testSequentialValidationUpper.cpp CFR3D.h
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationUpper.o -c testSequentialValidationUpper.cpp
-
-CFR3D.o: CFR3D.h CFR3D.hpp
-	$(CCMPI) $(CFLAGS) -o CFR3D.o -c CFR3D.h
+$(OBJS1)AMPI.o: CFR3D.h CFR3D.hpp
+	$(CCMPI) $(CFLAGS) -o $(OBJS1)AMPI.o -c CFR3D.h
 
 clean:
-	-rm -f *.o *.err *.out *.gch test testSequentialValidationLower testSequentialValidationUpper testPerformanceUpper testPerformanceLower
+	-rm -f *.o *.err *.out *.gch test testSequentialValidationLower testPerformanceUpper testPerformanceLower

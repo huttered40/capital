@@ -385,6 +385,9 @@ void MM3D<T,U,blasEngine>::Multiply(
 				      bool cutB
 				    )
 {
+/*
+  // Not correct right now. Will fix later
+  MPI_Abort(commWorld, -1);
   // We will set up 3 matrices and call the method above.
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
@@ -411,6 +414,7 @@ void MM3D<T,U,blasEngine>::Multiply(
     Serializer<T,U,StructureB,StructureB>::Serialize(matrixB, matB,
       matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
   }
+*/
 }
 
 
@@ -541,12 +545,8 @@ void MM3D<T,U,blasEngine>::_start2(
   MPI_Comm_size(depthComm, &depthCommSize);
 
 /* Debugging notes
-  .. debugging playground right now
-  .. note that matrixAEnginveVector A and B have 0 size right now .They need to be allocated into rectangles here
-  ..   but I can't do that with sizeA a d sizeB because either can be the packed size, and I need the rectangular size (which I can of course
-  ..   get from the arguments (localDimension*, etc.)
-  .. Another thing: How do I deal with serialization? Like, what if matrixA or B is a UT or LT? I do not want to communicate more than the packed data
-  ..   in that case obviously, but I also need to make sure that things are still in order, which I think is harder now than it was in _start1( method )
+  How do I deal with serialization? Like, what if matrixA or B is a UT or LT? I do not want to communicate more than the packed data
+    in that case obviously, but I also need to make sure that things are still in order, which I think is harder now than it was in _start1( method )
 */
 
   std::vector<T>& dataA = matrixA.getVectorData(); 
@@ -614,6 +614,7 @@ void MM3D<T,U,blasEngine>::_start2(
   else
   {
     matrixBEngineVector.resize(sizeB);			// will need to change upon Serialize changes
+    // Open question: Is this the most cache-efficient way to reshuffle the data?
     for (U i=0; i<localNumColumnsB; i++)
     {
       // We always start in the same offset in the gatherBuffer
