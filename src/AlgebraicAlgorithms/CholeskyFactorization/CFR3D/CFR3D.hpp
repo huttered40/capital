@@ -178,7 +178,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
-      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true);
+      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, 0, true, false, true);
 
   // Now we need to perform L_{21}L_{21}^T via syrk
   //   Actually, I am havin trouble with SYRK, lets try gemm instead
@@ -193,7 +193,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   transposeSwap(squareLSwap, rank, transposePartner, commWorld);
 
   MM3D<T,U,blasEngine>::Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
-      0, localShift, 0, localShift, commWorld, blasArgs, false, false, false);
+      0, localShift, 0, localShift, commWorld, blasArgs, 0, false, false, false);
 
   // Next step: A_{22} - holdLsyrk.
   Matrix<T,U,MatrixStructureSquare,Distribution> holdSum(std::vector<T>(localShift*localShift), localShift, localShift, globalShift, globalShift, true);
@@ -231,13 +231,13 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   invPackage1.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI,
     tempInverse, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, matLIstartX, matLIstartX+localShift, matLIstartY,
-      matLIstartY+localShift, 0, localShift, 0, localShift, commWorld, invPackage1, true, true, false);
+      matLIstartY+localShift, 0, localShift, 0, localShift, commWorld, invPackage1, 0, true, true, false);
 
   // Next step: finish the Triangular inverse calculation
   invPackage1.alpha = -1.;
   MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse,
     matrixLI, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY, 0, localShift, 0, localShift,
-      matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, true, true, true);
+      matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, 0, true, true, true);
   
 }
 
@@ -370,7 +370,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   blasArgs.beta = 0.;
   MM3D<T,U,blasEngine>::
     Multiply(packedMatrix, matrixA, matrixR, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
-      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, false, true, true);
+      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, 0, false, true, true);
 
   // Now we need to perform R_{12}^T * R_{12} via syrk
   //   Actually, I am havin trouble with SYRK, lets try gemm instead
@@ -384,7 +384,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   transposeSwap(squareRSwap, rank, transposePartner, commWorld);
 
   MM3D<T,U,blasEngine>::Multiply(squareRSwap, squareR, holdRsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
-      0, localShift, 0, localShift, commWorld, blasArgs, false, false, false);
+      0, localShift, 0, localShift, commWorld, blasArgs, 0, false, false, false);
 
   // Next step: A_{22} - holdRsyrk.
   Matrix<T,U,MatrixStructureSquare,Distribution> holdSum(std::vector<T>(localShift*localShift), localShift, localShift, globalShift, globalShift, true);
@@ -421,13 +421,13 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   invPackage1.alpha = 1.;
   invPackage1.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(matrixR, matrixRI,tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift,
-    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, localShift, 0, localShift, commWorld, invPackage1, true, true, false);
+    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, localShift, 0, localShift, commWorld, invPackage1, 0, true, true, false);
 
   // Next step: finish the Triangular inverse calculation
   invPackage1.alpha = -1.;
   MM3D<T,U,blasEngine>::Multiply(matrixRI, tempInverse,
     matrixRI, matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift, 0, localShift, 0, localShift,
-      matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, true, true, true);
+      matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, 0, true, true, true);
 
 }
 

@@ -251,8 +251,8 @@ template<
   		template<typename,typename,int> class Distribution
 	>
 void MM3D<T,U,blasEngine>::Multiply(
-                                   	Matrix<T,U,StructureA,Distribution>& matrixA,
-                                        Matrix<T,U,StructureB,Distribution>& matrixB,
+                Matrix<T,U,StructureA,Distribution>& matrixA,
+                Matrix<T,U,StructureB,Distribution>& matrixB,
 				        Matrix<T,U,StructureC,Distribution>& matrixC,
 				        U matrixAcutXstart,
 				        U matrixAcutXend,
@@ -268,7 +268,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 				        U matrixCcutYend,
 				        MPI_Comm commWorld,
 				        const blasEngineArgumentPackage_gemm<T>& srcPackage,
-					int methodKey,						// I chose an integer instead of another template parameter
+					      int methodKey,						// I chose an integer instead of another template parameter
 				        bool cutA,
 				        bool cutB,
 				        bool cutC

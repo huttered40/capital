@@ -114,10 +114,10 @@ public:
                         U matrixCcutYend,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
-			int methodKey,
-                        bool cutA = true,
-                        bool cutB = true,
-                        bool cutC = true
+                  			int methodKey,
+                        bool cutA,
+                        bool cutB,
+                        bool cutC
                       );
 
   template<
@@ -138,9 +138,9 @@ public:
                         U matrixBcutXend,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
-			int methodKey,
-                        bool cutA = true,
-                        bool cutB = true
+			                  int methodKey,
+                        bool cutA,
+                        bool cutB
                       );
 
   template<
