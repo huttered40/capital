@@ -27,4 +27,4 @@ $(OBJS1)AMPI.o: CholeskyQR2.h CholeskyQR2.hpp
 	$(CCAMPI) $(CFLAGS) -o $(OBJS1)AMPI.o -c CholeskyQR2.h
 
 clean:
-	-rm -f *.o *.gch test
+	-rm -f *.o *.gch test*MPI charmrun
