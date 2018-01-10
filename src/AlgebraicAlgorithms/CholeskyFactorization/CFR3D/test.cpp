@@ -43,7 +43,7 @@ int main(int argc, char** argv)
   int methodKey1 = atoi(argv[1]);
   /*
     methodKey2 -> 0) Sequential Validation
-		  1) Performance
+		              1) Performance
   */
   int methodKey2 = atoi(argv[2]);
 

@@ -1,54 +1,30 @@
 CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
+CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
 CFLAGS = -g -Wall -O0 -std=c++11
 
-OBJS1 = CholeskyQR2.o
-OBJS2 = testSequentialValidation1D.o
-OBJS3 = testSequentialValidation3D.o
-OBJS4 = testSequentialValidationTunable.o
-OBJS5 = testPerformance1D.o
-OBJS6 = testPerformance3D.o
-OBJS7 = testPerformanceTunable.o
+OBJS1 = CholeskyQR2
+OBJS2 = test
 
-all: testSequentialValidation1D testSequentialValidation3D testSequentialValidationTunable testPerformance1D testPerformance3D testPerformanceTunable
+MPI: $(OBJS2)MPI
+AMPI: $(OBJS2)AMPI
 
-testSequentialValidation1D: $(OBJS2)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidation1D $(OBJS2) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+$(OBJS2)MPI: $(OBJS2)MPI.o
+	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI $(OBJS2)MPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
 
-testSequentialValidation3D: $(OBJS3)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidation3D $(OBJS3) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+$(OBJS2)MPI.o: test.cpp CholeskyQR2.h
+	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI.o -c test.cpp
 
-testSequentialValidationTunable: $(OBJS4)
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationTunable $(OBJS4) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+$(OBJS1)MPI.o: CholeskyQR2.h CholeskyQR2.hpp
+	$(CCMPI) $(CFLAGS) -o $(OBJS1)MPI.o -c CholeskyQR2.h
 
-testPerformance1D: $(OBJS5)
-	$(CCMPI) $(CFLAGS) -o testPerformance1D $(OBJS5) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+$(OBJS2)AMPI: $(OBJS2)AMPI.o
+	$(CCAMPI) $(CFLAGS) -o $(OBJS2)AMPI $(OBJS2)AMPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
 
-testPerformance3D: $(OBJS6)
-	$(CCMPI) $(CFLAGS) -o testPerformance3D $(OBJS6) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+$(OBJS2)AMPI.o: test.cpp CholeskyQR2.h
+	$(CCAMPI) $(CFLAGS) -o $(OBJS2)AMPI.o -c test.cpp
 
-testPerformanceTunable: $(OBJS7)
-	$(CCMPI) $(CFLAGS) -o testPerformanceTunable $(OBJS7) /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
-
-testSequentialValidation1D.o: testSequentialValidation1D.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -o testSequentialValidation1D.o -c testSequentialValidation1D.cpp
-
-testSequentialValidation3D.o: testSequentialValidation3D.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -o testSequentialValidation3D.o -c testSequentialValidation3D.cpp
-
-testSequentialValidationTunable.o: testSequentialValidationTunable.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -o testSequentialValidationTunable.o -c testSequentialValidationTunable.cpp
-
-testPerformance1D.o: testPerformance1D.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -o testPerformance1D.o -c testPerformance1D.cpp
-
-testPerformance3D.o: testPerformance3D.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -o testPerformance3D.o -c testPerformance3D.cpp
-
-testPerformanceTunable.o: testPerformanceTunable.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -o testPerformanceTunable.o -c testPerformanceTunable.cpp
-
-Summa3D.o: CholeskyQR2.h CholeskyQR2.hpp
-	$(CCMPI) $(CFLAGS) -o CholeskyQR2.o -c CholeskyQR2.h
+$(OBJS1)AMPI.o: CholeskyQR2.h CholeskyQR2.hpp
+	$(CCAMPI) $(CFLAGS) -o $(OBJS1)AMPI.o -c CholeskyQR2.h
 
 clean:
-	-rm -f *.o *.gch testSequentialValidation1D testSequentialValidation3D testSequentialValidationTunable testPerformance1D testPerformance3D testPerformanceTunable
+	-rm -f *.o *.gch test

@@ -109,13 +109,13 @@ template<
   		template<typename,typename,int> class Distribution
 	>
 void MM3D<T,U,blasEngine>::Multiply(
-                                   	Matrix<T,U,StructureA,Distribution>& matrixA,
+                                   	    Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         U localDimensionM,
                                         U localDimensionN,
                                         MPI_Comm commWorld,
                                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
-					int methodKey						// I chose an integer instead of another template parameter
+					                              int methodKey						// I chose an integer instead of another template parameter
                                    )
 {
   // Use tuples so we don't have to pass multiple things by reference.
@@ -351,7 +351,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
   Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
 
-  Multiply(matA, matB, rangeA_x, rangeA_y, rangeB_z, commWorld, srcPackage, methodKey);
+  Multiply(matA, matB, rangeB_x, rangeB_z, commWorld, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
   if (cutB)

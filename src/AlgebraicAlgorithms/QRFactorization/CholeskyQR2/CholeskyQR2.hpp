@@ -42,11 +42,9 @@ static std::tuple<
 }
 
 
-template<typename T,typename U,
-  template<typename,typename,template<typename,typename,int> class> class StructureA,		// Note: this vould be either rectangular or square.
-  template<typename,typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,StructureA,blasEngine>::Factor1D(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+template<typename T,typename U,template<typename,typename> class blasEngine>
+template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
+void CholeskyQR2<T,U,blasEngine>::Factor1D(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U globalDimensionM, U globalDimensionN, MPI_Comm commWorld)
 {
   // We assume data is owned relative to a 1D processor grid, so every processor owns a chunk of data consisting of
@@ -77,11 +75,9 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::Factor1D(Matrix<T,U,StructureA,Dist
     globalDimensionN, globalDimensionN, globalDimensionN, globalDimensionN, gemmPack1);
 }
 
-template<typename T,typename U,
-  template<typename,typename,template<typename,typename,int> class> class StructureA,		// Note: this vould be either rectangular or square.
-  template<typename,typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,StructureA,blasEngine>::Factor3D(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+template<typename T,typename U,template<typename,typename> class blasEngine>
+template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
+void CholeskyQR2<T,U,blasEngine>::Factor3D(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U globalDimensionM, U globalDimensionN, MPI_Comm commWorld)
 {
   // We assume data is owned relative to a 3D processor grid
@@ -116,17 +112,14 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::Factor3D(Matrix<T,U,StructureA,Dist
 
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
-  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixR2, matrixR1,
-    matrixR, localDimensionN, localDimensionN, localDimensionN, commWorld, gemmPack1);
+  MM3D<T,U,blasEngine>::Multiply(matrixR2, matrixR1, matrixR, localDimensionN, localDimensionN, localDimensionN, commWorld, gemmPack1, 0);
 
   MPI_Comm_free(&std::get<0>(commInfo3D));
 }
 
-template<typename T,typename U,
-  template<typename,typename,template<typename,typename,int> class> class StructureA,		// Note: this vould be either rectangular or square.
-  template<typename,typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+template<typename T,typename U,template<typename,typename> class blasEngine>
+template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
+void CholeskyQR2<T,U,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U globalDimensionM, U globalDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld)
 {
   // We assume data is owned relative to a 3D processor grid
@@ -161,8 +154,7 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable(Matrix<T,U,StructureA
 
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
-  MM3D<T,U,MatrixStructureSquare,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Multiply(matrixR2, matrixR1,
-    matrixR, localDimensionN, localDimensionN, localDimensionN, miniCubeComm, gemmPack1);
+  MM3D<T,U,blasEngine>::Multiply(matrixR2, matrixR1, matrixR, localDimensionN, localDimensionN, localDimensionN, miniCubeComm, gemmPack1, 0);
 
   MPI_Comm_free(&std::get<0>(tunableCommunicators));
   MPI_Comm_free(&std::get<1>(tunableCommunicators));
@@ -173,11 +165,9 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable(Matrix<T,U,StructureA
 }
 
 
-template<typename T,typename U,
-  template<typename,typename,template<typename,typename,int> class> class StructureA,		// Note: this vould be either rectangular or square.
-  template<typename,typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,StructureA,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+template<typename T,typename U,template<typename,typename> class blasEngine>
+template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
+void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, MPI_Comm commWorld)
 {
   int numPEs;
@@ -230,11 +220,9 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,
     localDimensionN, localDimensionM, localDimensionN, localDimensionM, gemmPack);
 }
 
-template<typename T,typename U,
-  template<typename,typename,template<typename,typename,int> class> class StructureA,		// Note: this vould be either rectangular or square.
-  template<typename,typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,StructureA,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+template<typename T,typename U,template<typename,typename> class blasEngine>
+template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
+void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, MPI_Comm commWorld)
 {
   int numPEs, myRank, pGridDimensionSize;
@@ -287,12 +275,11 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     localDimensionN*pGridDimensionSize, localDimensionN*pGridDimensionSize, true);
 
-  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionN, 'U', 0, commWorld);
+  CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionN, 'U', 0, commWorld);
 
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
-  MM3D<T,U,StructureA,MatrixStructureSquare,StructureA,blasEngine>::Multiply(matrixA, matrixRI,
-    matrixQ, localDimensionM, localDimensionN, localDimensionN, commWorld, gemmPack1);
+  MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, localDimensionM, localDimensionN, localDimensionN, commWorld, gemmPack1, 0);
 
   MPI_Comm_free(&rowComm);
   MPI_Comm_free(&columnComm);
@@ -300,11 +287,9 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,
   MPI_Comm_free(&depthComm);
 }
 
-template<typename T,typename U,
-  template<typename,typename,template<typename,typename,int> class> class StructureA,		// Note: this vould be either rectangular or square.
-  template<typename,typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+template<typename T,typename U,template<typename,typename> class blasEngine>
+template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
+void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
       std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators)
 {
@@ -363,21 +348,18 @@ void CholeskyQR2<T,U,StructureA,blasEngine>::FactorTunable_cqr(Matrix<T,U,Struct
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     localDimensionN*gridDimensionC, localDimensionN*gridDimensionC, true);
 
-  CFR3D<T,U,MatrixStructureSquare,MatrixStructureSquare,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionN, 'U', 0, miniCubeComm);
+  CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, localDimensionN, 'U', 0, miniCubeComm);
   MPI_Barrier(MPI_COMM_WORLD);
 
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
-  MM3D<T,U,StructureA,MatrixStructureSquare,StructureA,blasEngine>::Multiply(matrixA, matrixRI,
-    matrixQ, localDimensionM, localDimensionN, localDimensionN, miniCubeComm, gemmPack1);
+  MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, localDimensionM, localDimensionN, localDimensionN, miniCubeComm, gemmPack1, 0);
 
 }
 
 
-template<typename T,typename U,
-  template<typename,typename,template<typename,typename,int> class> class StructureA,		// Note: this vould be either rectangular or square.
-  template<typename,typename> class blasEngine>
-void CholeskyQR2<T,U,StructureA, blasEngine>::BroadcastPanels(
+template<typename T,typename U, template<typename,typename> class blasEngine>
+void CholeskyQR2<T,U,blasEngine>::BroadcastPanels(
 											std::vector<T>& data,
 											U size,
 											bool isRoot,

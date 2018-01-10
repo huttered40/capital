@@ -401,8 +401,7 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distributio
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
-  MM3D<T,U,MatrixStructureRectangle,MatrixStructureSquare,MatrixStructureRectangle,cblasEngine>::Multiply(myQ, myR, testA, localDimensionM, localDimensionN, localDimensionN,
-    commWorld, blasArgs);
+  MM3D<T,U,cblasEngine>::Multiply(myQ, myR, testA, localDimensionM, localDimensionN, localDimensionN, commWorld, blasArgs, 0);
 
   // Now we can just iterate over myA and testA and compare
   T error = 0;
@@ -468,7 +467,7 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distr
     transposePartner, 0, commWorld, MPI_STATUS_IGNORE);
 
   Matrix<T,U,MatrixStructureRectangle,Distribution> QT(std::move(Qvector), localDimensionM, localDimensionN, globalDimensionM, globalDimensionN, true);
-  MM3D<T,U,MatrixStructureRectangle,MatrixStructureRectangle,MatrixStructureSquare,cblasEngine>::Multiply(QT, myQ, myI, localDimensionN, localDimensionN, localDimensionM, commWorld, blasArgs);
+  MM3D<T,U,cblasEngine>::Multiply(QT, myQ, myI, localDimensionN, localDimensionN, localDimensionM, commWorld, blasArgs, 0);
 
   //if (myRank == 0) myQ.print();
 
@@ -531,8 +530,7 @@ T QRvalidate<T,U>::getResidualTunable(Matrix<T,U,MatrixStructureRectangle,Distri
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
-  MM3D<T,U,MatrixStructureRectangle,MatrixStructureSquare,MatrixStructureRectangle,cblasEngine>::Multiply(myQ, myR, testA, localDimensionM, localDimensionN, localDimensionN,
-    miniCubeComm, blasArgs);
+  MM3D<T,U,cblasEngine>::Multiply(myQ, myR, testA, localDimensionM, localDimensionN, localDimensionN, miniCubeComm, blasArgs, 0);
 
   // Now we can just iterate over myA and testA and compare
   T error = 0;

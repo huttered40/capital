@@ -1,5 +1,5 @@
 CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
-CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
+CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/multicore-linux-x86_64/bin/ampicxx
 CFLAGS = -g -Wall -O3 -std=c++11
 
 OBJS1 = CFR3D
@@ -19,13 +19,13 @@ $(OBJS1)MPI.o: CFR3D.h CFR3D.hpp
 	$(CCMPI) $(CFLAGS) -o $(OBJS1)MPI.o -c CFR3D.h
 
 $(OBJS2)AMPI: $(OBJS2)AMPI.o
-	$(CCMPI) $(CFLAGS) -o $(OBJS2)AMPI $(OBJS2)AMPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapack.a -lgfortran -lpthread
+	$(CCAMPI) $(CFLAGS) -o $(OBJS2)AMPI $(OBJS2)AMPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapack.a -lgfortran -lpthread
 
 $(OBJS2)AMPI.o: test.cpp CFR3D.h
-	$(CCMPI) $(CFLAGS) -o $(OBJS2)AMPI.o -c test.cpp
+	$(CCAMPI) $(CFLAGS) -o $(OBJS2)AMPI.o -c test.cpp
 
 $(OBJS1)AMPI.o: CFR3D.h CFR3D.hpp
-	$(CCMPI) $(CFLAGS) -o $(OBJS1)AMPI.o -c CFR3D.h
+	$(CCAMPI) $(CFLAGS) -o $(OBJS1)AMPI.o -c CFR3D.h
 
 clean:
-	-rm -f *.o *.err *.out *.gch test testSequentialValidationLower testPerformanceUpper testPerformanceLower
+	-rm -f *.o *.err *.out *.gch test*MPI

@@ -169,8 +169,10 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, packedMatrix,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
 
+  std::cout << "Here\n";
   transposeSwap(packedMatrix, rank, transposePartner, commWorld);
- 
+  std::cout << "End\n";
+
   blasEngineArgumentPackage_gemm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
   blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
@@ -179,6 +181,19 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   blasArgs.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
       0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, 0, true, false, true);
+/*
+  blasEngineArgumentPackage_trmm<T> blasArgs;
+  blasArgs.order = blasEngineOrder::AblasColumnMajor;
+  blasArgs.side = blasEngineSide::AblasRight;
+  blasArgs.uplo = blasEngineUpLo::AblasLower;
+  blasArgs.diag = blasEngineDiag::AblasNonUnit;
+  blasArgs.transposeA = blasEngineTranspose::AblasTrans;
+  blasArgs.alpha = 1.;
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixL,
+    matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift);
+  MM3D<T,U,blasEngine>::Multiply(packedMatrix, matrixL, 0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY,
+      commWorld, blasArgs, 0, false, true);
+*/
 
   // Now we need to perform L_{21}L_{21}^T via syrk
   //   Actually, I am havin trouble with SYRK, lets try gemm instead
@@ -191,7 +206,14 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   Matrix<T,U,MatrixStructureSquare,Distribution> squareLSwap = squareL;
 
   transposeSwap(squareLSwap, rank, transposePartner, commWorld);
-
+/*
+  blasEngineArgumentPackage_gemm<T> blasArgsGemm;
+  blasArgsGemm.order = blasEngineOrder::AblasColumnMajor;
+  blasArgsGemm.transposeA = blasEngineTranspose::AblasNoTrans;
+  blasArgsGemm.transposeB = blasEngineTranspose::AblasTrans;
+  blasArgsGemm.alpha = 1.;
+  blasArgsGemm.beta = 0.;
+*/
   MM3D<T,U,blasEngine>::Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, localShift, 0, localShift, 0, localShift,
       0, localShift, 0, localShift, commWorld, blasArgs, 0, false, false, false);
 
