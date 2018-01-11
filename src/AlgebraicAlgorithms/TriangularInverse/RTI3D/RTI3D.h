@@ -31,8 +31,7 @@ public:
   template<template<typename,typename,int> class Distribution>
   static void Invert(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
-                      U dimension,
+                      U localDimension,
                       char dir,
                       MPI_Comm commWorld
                     );
@@ -40,18 +39,36 @@ private:
   template<template<typename,typename,int> class Distribution>
   static void InvertLower(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
-                      U dimension,
+                      U localDimension,
+                      int key,
                       MPI_Comm commWorld
                     );
 
   template<template<typename,typename,int> class Distribution>
   static void InvertUpper(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
-                      U dimension,
+                      U localDimension,
+                      int key,
                       MPI_Comm commWorld
                     );
+
+  template<template<typename,typename,int> class Distribution>
+  static std::vector<T> blockedToCyclicTransformation(
+									Matrix<T,U,MatrixStructureSquare,Distribution>& matT,
+									U localDimension,
+									U globalDimension,
+									int pGridDimensionSize,
+									MPI_Comm slice2Dcomm
+								);
+
+  static void cyclicToLocalTransformation(
+								std::vector<T>& storeT,
+								U localDimension,
+								U globalDimension,
+								int pGridDimensionSize,
+								int rankSlice,
+								char dir
+							);
 };
 
 #include "RTI3D.hpp"

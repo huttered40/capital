@@ -28,4 +28,4 @@ $(OBJS1)AMPI.o: RTI3D.h RTI3D.hpp
 	$(CCAMPI) $(CFLAGS) -o $(OBJS1)AMPI.o -c RTI3D.h
 
 clean:
-	-rm -f *.o *.err *.out *.gch test*MPI
+	-rm -f *.o *.err *.out *.gch test*MPI charmrun
