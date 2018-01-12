@@ -55,9 +55,9 @@ int main(int argc, char** argv)
     int globalMatrixDimensionN = (1<<(atoi(argv[5])));
     int localMatrixDimensionM = globalMatrixDimensionM/size;
     int localMatrixDimensionN = globalMatrixDimensionN;
-    MatrixTypeR matA(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
-    MatrixTypeR matQ(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
-    MatrixTypeS matR(localMatrixDimensionN,localMatrixDimensionN,globalMatrixDimensionN,globalMatrixDimensionN);
+    MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, 1, size);
+    MatrixTypeR matQ(globalMatrixDimensionN,globalMatrixDimensionM, 1, size);
+    MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, 1, 1);
 
     matA.DistributeRandom(0, rank, 1, size, rank);
 
@@ -68,13 +68,13 @@ int main(int argc, char** argv)
     {
       myTimer.setStartTime();
       CholeskyQR2<double,int,cblasEngine>::
-        Factor1D(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, MPI_COMM_WORLD);
+        Factor1D(matA, matQ, matR, MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "1D-CQR2 iteration", i);
     }
     if (methodKey2 == 0)
     {
-      QRvalidate<double,int>::validateLocal1D(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, MPI_COMM_WORLD);
+      QRvalidate<double,int>::validateLocal1D(matA, matQ, matR, MPI_COMM_WORLD);
     }
   }
   else if (methodKey1 == 1)
@@ -94,9 +94,9 @@ int main(int argc, char** argv)
     int localMatrixDimensionN = globalMatrixDimensionN/pGridDimensionSize;
 
     // New protocol: CholeskyQR_3D only works properly with square matrix A. Rectangular matrices must use CholeskyQR_Tunable
-    MatrixTypeR matA(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
-    MatrixTypeR matQ(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
-    MatrixTypeS matR(localMatrixDimensionN,localMatrixDimensionN,globalMatrixDimensionN,globalMatrixDimensionN);
+    MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM,pGridDimensionSize,pGridDimensionSize);
+    MatrixTypeR matQ(globalMatrixDimensionN,globalMatrixDimensionM,pGridDimensionSize,pGridDimensionSize);
+    MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN,pGridDimensionSize,pGridDimensionSize);
 
     matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
 
@@ -107,13 +107,13 @@ int main(int argc, char** argv)
     {
       myTimer.setStartTime();
       CholeskyQR2<double,int,cblasEngine>::
-        Factor3D(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, MPI_COMM_WORLD);
+        Factor3D(matA, matQ, matR, MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "3D-CQR2 iteration", i);
     }
     if (methodKey2 == 0)
     {
-      QRvalidate<double,int>::validateLocal3D(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, MPI_COMM_WORLD);
+      QRvalidate<double,int>::validateLocal3D(matA, matQ, matR, MPI_COMM_WORLD);
     }
   }
   else if (methodKey1 == 2)
@@ -196,9 +196,9 @@ int main(int argc, char** argv)
     int localMatrixDimensionN = globalMatrixDimensionN/dimensionC;
 
     // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
-    MatrixTypeR matA(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
-    MatrixTypeR matQ(localMatrixDimensionN,localMatrixDimensionM,globalMatrixDimensionN,globalMatrixDimensionM);
-    MatrixTypeS matR(localMatrixDimensionN,localMatrixDimensionN,globalMatrixDimensionN,globalMatrixDimensionN);
+    MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
+    MatrixTypeR matQ(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
+    MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, dimensionC, dimensionC);
 
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
 
@@ -207,13 +207,13 @@ int main(int argc, char** argv)
     {
       myTimer.setStartTime();
       CholeskyQR2<double,int,cblasEngine>::
-        FactorTunable(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, dimensionD, dimensionC, MPI_COMM_WORLD);
+        FactorTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "Tunable CQR2 iteration", i);
     }
     if (methodKey2 == 0)
     {
-      QRvalidate<double,int>::validateLocalTunable(matA, matQ, matR, globalMatrixDimensionM, globalMatrixDimensionN, dimensionD, dimensionC, MPI_COMM_WORLD);
+      QRvalidate<double,int>::validateLocalTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD);
     }
   }
   else

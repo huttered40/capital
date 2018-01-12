@@ -53,9 +53,6 @@ public:
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         Matrix<T,U,StructureC,Distribution>& matrixC,
-                        U localDimensionM,
-                        U localDimensionN,
-                        U localDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
 			int methodKey
@@ -69,8 +66,6 @@ public:
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
-                        U localDimensionM,
-                        U localDimensionN,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
 			int methodKey
@@ -84,8 +79,6 @@ public:
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
-                        U localDimensionN,
-                        U localDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                       );
@@ -174,9 +167,6 @@ private:
   static void _start1(
   			Matrix<T,U,StructureArg1,Distribution>& matrixA,
 			Matrix<T,U,StructureArg2,Distribution>& matrixB,
-			U localDimensionM,
-			U localDimensionN,
-			U localDimensionK,
 			tupleStructure& commInfo3D,
 			T*& matrixAEnginePtr,
 			T*& matrixBEnginePtr,
@@ -195,9 +185,6 @@ private:
   static void _start2(
   			Matrix<T,U,StructureArg1,Distribution>& matrixA,
 			Matrix<T,U,StructureArg2,Distribution>& matrixB,
-			U localDimensionM,
-			U localDimensionN,
-			U localDimensionK,
 			tupleStructure& commInfo3D,
 			std::vector<T>& matrixAEngineVector,
 			std::vector<T>& matrixBEngineVector,

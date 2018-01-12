@@ -44,12 +44,6 @@ public:
                         Matrix<T,U,StructureArgA,Distribution>& matrixA,
                         Matrix<T,U,StructureArgB,Distribution>& matrixB,
                         Matrix<T,U,StructureArgC,Distribution>& matrixC,
-                        U localDimensionM,
-                        U localDimensionN,
-                        U localDimensionK,
-                        U globalDimensionM,
-                        U globalDimensionN,
-                        U globalDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage
                       );
@@ -63,10 +57,6 @@ public:
                         Matrix<T,U,StructureArgA,Distribution>& matrixA,
                         Matrix<T,U,StructureArgB,Distribution>& matrixBin,
                         Matrix<T,U,StructureArgB,Distribution>& matrixBout,
-                        U localDimensionM,
-                        U localDimensionN,
-                        U globalDimensionM,
-                        U globalDimensionN,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage
                       );
@@ -80,10 +70,6 @@ public:
                         Matrix<T,U,StructureArgA,Distribution>& matrixA,
                         Matrix<T,U,StructureArgB,Distribution>& matrixB,
                         Matrix<T,U,StructureArgB,Distribution>& matrixC,
-                        U localDimensionN,
-                        U localDimensionK,
-                        U globalDimensionN,
-                        U globalDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                       );
@@ -104,10 +90,6 @@ private:
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static std::vector<T> getReferenceMatrix(
 						Matrix<T,U,StructureArg,Distribution>& myMatrix,
-						U localNumColumns,
-						U localNumRows,
-						U globalNumColumns,
-						U globalNumRows,
 						U key,
 						std::tuple<MPI_Comm, int, int, int, int> commInfo
 					  );

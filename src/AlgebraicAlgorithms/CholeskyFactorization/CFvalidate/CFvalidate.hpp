@@ -28,8 +28,6 @@ template<template<typename,typename,int> class Distribution>
 void CFvalidate<T,U>::validateCF_Local(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
-                        U localDimension,
-                        U globalDimension,
                         char dir,
                         MPI_Comm commWorld
                       )
@@ -48,6 +46,8 @@ void CFvalidate<T,U>::validateCF_Local(
   U pGridCoordZ = std::get<3>(commInfo);
   U pGridDimensionSize = std::get<4>(commInfo);
 
+  U localDimension = matrixSol_CF.getNumRowsLocal();
+  U globalDimension = matrixSol_CF.getNumRowsGlobal();
   std::vector<T> globalMatrixA = getReferenceMatrix(matrixSol_CF, localDimension, globalDimension, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
 
   // for ease in finding Frobenius Norm
@@ -198,7 +198,7 @@ std::vector<T> CFvalidate<T,U>::getReferenceMatrix(
   int pGridDimensionSize = std::get<4>(commInfo);
 
   using MatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
-  MatrixType localMatrix(localDimension, localDimension, globalDimension, globalDimension);
+  MatrixType localMatrix(globalDimension, globalDimension, pGridDimensionSize, pGridDimensionSize);
   localMatrix.DistributeSymmetric(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key, true);
 
   U globalSize = globalDimension*globalDimension;
@@ -206,6 +206,7 @@ std::vector<T> CFvalidate<T,U>::getReferenceMatrix(
   std::vector<T> cyclicMatrix(globalSize);
   U localSize = localDimension*localDimension;
   MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
+  std::cout << "localsize - " << localSize << std::endl;
 
   U numCyclicBlocksPerRow = globalDimension/pGridDimensionSize;
   U numCyclicBlocksPerCol = globalDimension/pGridDimensionSize;

@@ -36,8 +36,6 @@ public:
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixSol_Q,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_R,
-                        U globalDimensionM,
-                        U globalDimensionN,
                         MPI_Comm commWorld
                       );
 
@@ -47,8 +45,6 @@ public:
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        U globalDimensionM,
-                        U globalDimensionN,
                         MPI_Comm commWorld
                       );
 
@@ -57,8 +53,6 @@ public:
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        U globalDimensionM,
-                        U globalDimensionN,
                         int gridDimensionD,
                         int gridDimensionC,
                         MPI_Comm commWorld

@@ -37,7 +37,6 @@ public:
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
-                      U dimension,
                       char dir,
                       int tune,
                       MPI_Comm commWorld

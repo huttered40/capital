@@ -23,15 +23,27 @@ void MatrixDistributerCyclic<T,U,0>::DistributeRandom
 
   srand48(key);
   U saveGlobalPosition = localPgridY + localPgridX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
-  for (U i=0; i<dimensionX; i++)
+  int padXlen = (((globalDimensionX % globalPgridX != 0) && ((dimensionX-1)*globalPgridX + localPgridX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int padYlen = (((globalDimensionY % globalPgridY != 0) && ((dimensionY-1)*globalPgridY + localPgridY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
+  for (U i=0; i<padXlen; i++)
   {
     U globalPosition = saveGlobalPosition;
-    for (U j=0; j<dimensionY; j++)
+    for (U j=0; j<padYlen; j++)
     {
       matrix[i][j] = drand48();			// Change this later.
       globalPosition += globalPgridY;
     }
+    // check for padding
+    if (padYlen != dimensionY) { matrix[i][dimensionY-1] = 0; }
     saveGlobalPosition += (globalPgridX*globalDimensionY);
+  }
+  // check for padding
+  if (padXlen != dimensionX)
+  {
+    for (U j=0; j<dimensionY; j++)
+    {
+      matrix[dimensionX-1][j] = 0;
+    }
   }
   return;
 }
@@ -55,7 +67,6 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
 {
   // Note: this is not fully implemented yet, as I have not decided on whether I need to perform a local transpose
   //       or local (but distributed based on the values each processor gets) transpose.
-
 
   srand48(key);
   U saveGlobalPositionX = localPgridX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
@@ -106,15 +117,27 @@ void MatrixDistributerCyclic<T,U,1>::DistributeRandom
 
   srand48(key);
   U saveGlobalPosition = localPgridY + localPgridX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
-  for (U i=0; i<dimensionX; i++)
+  int padXlen = (((globalDimensionX % globalPgridX != 0) && ((dimensionX-1)*globalPgridX + localPgridX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int padYlen = (((globalDimensionY % globalPgridY != 0) && ((dimensionY-1)*globalPgridY + localPgridY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
+  for (U i=0; i<padXlen; i++)
   {
     U globalPosition = saveGlobalPosition;
-    for (U j=0; j<dimensionY; j++)
+    for (U j=0; j<padYlen; j++)
     {
       matrix[i][j] = drand48();			// Change this later.
       globalPosition += globalPgridY;
     }
+    // check for padding
+    if (padYlen != dimensionY) { matrix[i][dimensionY-1] = 0; }
     saveGlobalPosition += (globalPgridX*globalDimensionY);
+  }
+  // check for padding
+  if (padXlen != dimensionX)
+  {
+    for (U j=0; j<dimensionY; j++)
+    {
+      matrix[dimensionX-1][j] = 0;
+    }
   }
   return;
 }
@@ -137,10 +160,12 @@ void MatrixDistributerCyclic<T,U,2>::DistributeRandom
 {
   srand48(key);
   U saveGlobalPosition = localPgridY + localPgridX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  int padXlen = (((globalDimensionX % globalPgridX != 0) && ((dimensionX-1)*globalPgridX + localPgridX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int padYlen = (((globalDimensionY % globalPgridY != 0) && ((dimensionY-1)*globalPgridY + localPgridY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
   U counter{1};
   U startIter;
   U endIter;
-  for (U i=0; i<dimensionX; i++)
+  for (U i=0; i<padXlen; i++)
   {
     U globalPosition = saveGlobalPosition;
     startIter = 0;
@@ -157,6 +182,14 @@ void MatrixDistributerCyclic<T,U,2>::DistributeRandom
     }
     counter++;
     saveGlobalPosition += (globalPgridX*globalDimensionY);
+  }
+  if (padXlen != dimensionX)
+  {
+    // fill in the last column with zeros
+    for (U j=0; j<dimensionY; j++)
+    {
+      matrix[dimensionX-1][j] = 0;
+    }
   }
   return;
 }
@@ -178,10 +211,12 @@ void MatrixDistributerCyclic<T,U,3>::DistributeRandom
 		 )
 {
   srand48(key);
+  int padXlen = (((globalDimensionX % globalPgridX != 0) && ((dimensionX-1)*globalPgridX + localPgridX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int padYlen = (((globalDimensionY % globalPgridY != 0) && ((dimensionY-1)*globalPgridY + localPgridY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
   U saveGlobalPosX = localPgridX;
   U saveGlobalPosY = localPgridY;
   U counter{0};
-  for (U i=0; i<dimensionX; i++)
+  for (U i=0; i<padXlen; i++)
   {
     // Special corner case: If a processor's last data on each row is out of bounds of the LT structure, then give a 0 value
     counter = 0;		// reset
@@ -193,7 +228,7 @@ void MatrixDistributerCyclic<T,U,3>::DistributeRandom
       counter++;
       saveGlobalPosY += globalPgridY;
     }
-    for (U j=counter; j<(dimensionY-i); j++)
+    for (U j=counter; j<(padYlen-i); j++)
     {
       // Maybe in the future, get rid of this inner if statementand try something else? If statements in inner
       //   nested loops can be very expensive.
@@ -207,8 +242,12 @@ void MatrixDistributerCyclic<T,U,3>::DistributeRandom
         U globalPos = saveGlobalPosY + saveGlobalPosX*globalDimensionY;
         matrix[i][j] = drand48();			// Change this later.
       }
+      // check padding
+      if (padXlen != dimensionX) { matrix[i][dimensionY-i] = 0; }
       saveGlobalPosY += globalPgridY;
     }
+    // check padding
+    if (padXlen != dimensionX) { matrix[dimensionX-1][0] = 0; }
     saveGlobalPosY = localPgridY;			// reset
     saveGlobalPosX += globalPgridX;
   }

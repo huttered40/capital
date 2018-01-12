@@ -68,9 +68,11 @@ int main(int argc, char** argv)
     uint64_t globalMatrixSizeK = (dimensionKey == 0 ? atoi(argv[7]) : (1<<(atoi(argv[7]))));
     uint64_t localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
 
-    MatrixTypeR matA(localMatrixSizeK,localMatrixSizeM,globalMatrixSizeK,globalMatrixSizeM);
-    MatrixTypeR matB(localMatrixSizeN,localMatrixSizeK,globalMatrixSizeN,globalMatrixSizeK);
-    MatrixTypeR matC(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
+    //cout << "localMatrixSizeM - " << localMatrixSizeM << "localMatrixSizeN - " << localMatrixSizeN << "localMatrixSizeK - " << localMatrixSizeK << endl;
+
+    MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
+    MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,pGridDimensionSize,pGridDimensionSize);
+    MatrixTypeR matC(globalMatrixSizeN,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
 
     // Don't use rank. Need to use the rank relative to the slice its on, since each slice will start off with the same matrix
     matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
@@ -89,7 +91,7 @@ int main(int argc, char** argv)
     {
       myTimer.setStartTime();
       MM3D<double,int,cblasEngine>::
-        Multiply(matA, matB, matC, localMatrixSizeM, localMatrixSizeN, localMatrixSizeK, MPI_COMM_WORLD, blasArgs, methodKey3);
+        Multiply(matA, matB, matC, MPI_COMM_WORLD, blasArgs, methodKey3);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D GEMM iteration", i);
       MPI_Barrier(MPI_COMM_WORLD);
@@ -97,8 +99,7 @@ int main(int argc, char** argv)
     if (methodKey2 == 0)
     {
       // Sequential validation after 1 iteration, since numIterations == 1
-      MMvalidate<double,int,cblasEngine>::validateLocal(matA, matB, matC, localMatrixSizeM, localMatrixSizeN, localMatrixSizeK,
-        globalMatrixSizeM, globalMatrixSizeN, globalMatrixSizeK, MPI_COMM_WORLD, blasArgs);
+      MMvalidate<double,int,cblasEngine>::validateLocal(matA, matB, matC, MPI_COMM_WORLD, blasArgs);
     }
   }
   else if (methodKey1 == 1)
@@ -125,8 +126,8 @@ int main(int argc, char** argv)
     // I guess I will go through all cases. Ugh!
     if ((matrixUpLo == 0) && (triangleSide == 0))
     {
-      MatrixTypeLT matA(localMatrixSizeM,localMatrixSizeM,globalMatrixSizeM,globalMatrixSizeM);
-      MatrixTypeR matB(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
+      MatrixTypeLT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
+      MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
 
       matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
       matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
@@ -143,7 +144,7 @@ int main(int argc, char** argv)
       {
         myTimer.setStartTime();
         MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs, methodKey3);
+          Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -151,13 +152,13 @@ int main(int argc, char** argv)
       if (methodKey2 == 0)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
       }
     }
     else if ((matrixUpLo == 0) && (triangleSide == 1))
     {
-      MatrixTypeR matB(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
-      MatrixTypeLT matA(localMatrixSizeN,localMatrixSizeN,globalMatrixSizeN,globalMatrixSizeN);
+      MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
+      MatrixTypeLT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
 
       matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
       matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
@@ -174,7 +175,7 @@ int main(int argc, char** argv)
       {
         myTimer.setStartTime();
         MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs, methodKey3);
+          Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -182,13 +183,13 @@ int main(int argc, char** argv)
       if (methodKey2 == 0)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 0))
     {
-      MatrixTypeUT matA(localMatrixSizeM,localMatrixSizeM,globalMatrixSizeM,globalMatrixSizeM);
-      MatrixTypeR matB(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
+      MatrixTypeUT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
+      MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
 
       matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
       matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
@@ -205,7 +206,7 @@ int main(int argc, char** argv)
       {
         myTimer.setStartTime();
         MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs, methodKey3);
+          Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -213,14 +214,14 @@ int main(int argc, char** argv)
       if (methodKey2 == 0)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
       }
 
     }
     else if ((matrixUpLo == 1) && (triangleSide == 1))
     {
-      MatrixTypeR matB(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
-      MatrixTypeUT matA(localMatrixSizeN,localMatrixSizeN,globalMatrixSizeN,globalMatrixSizeN);
+      MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
+      MatrixTypeUT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
 
       matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
       matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
@@ -237,7 +238,7 @@ int main(int argc, char** argv)
       {
         myTimer.setStartTime();
         MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, localMatrixSizeM, localMatrixSizeN, MPI_COMM_WORLD, blasArgs, methodKey3);
+          Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
         myTimer.setEndTime();
         myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         MPI_Barrier(MPI_COMM_WORLD);
@@ -245,7 +246,7 @@ int main(int argc, char** argv)
       if (methodKey2 == 0)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, localMatrixSizeM, localMatrixSizeN, globalMatrixSizeM, globalMatrixSizeN, MPI_COMM_WORLD, blasArgs);
+        MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
       }
 
     }

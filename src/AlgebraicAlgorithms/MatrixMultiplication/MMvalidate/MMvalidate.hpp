@@ -33,14 +33,8 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 		        Matrix<T,U,StructureArgA,Distribution>& matrixA,
 		        Matrix<T,U,StructureArgB,Distribution>& matrixB,
 		        Matrix<T,U,StructureArgC,Distribution>& matrixC,
-                        U localDimensionM,
-                        U localDimensionN,
-                        U localDimensionK,
-                        U globalDimensionM,
-                        U globalDimensionN,
-                        U globalDimensionK,
-                        MPI_Comm commWorld,
-                        const blasEngineArgumentPackage_gemm<T>& srcPackage
+            MPI_Comm commWorld,
+            const blasEngineArgumentPackage_gemm<T>& srcPackage
                       )
 {
   // What I want to do here is generate a full matrix with the correct values
@@ -60,8 +54,14 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 
   // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
   // Fast pass-by-value via modern C++ move semantics
-  std::vector<T> matrixAforEngine = getReferenceMatrix(matrixA, localDimensionK, localDimensionM, globalDimensionK, globalDimensionM, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
-  std::vector<T> matrixBforEngine = getReferenceMatrix(matrixB, localDimensionN, localDimensionK, globalDimensionN, globalDimensionK, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
+  U localDimensionM = matrixA.getNumRowsLocal();
+  U localDimensionN = matrixB.getNumColumnsLocal();
+  U localDimensionK = matrixA.getNumColumnsLocal();
+  U globalDimensionM = matrixA.getNumRowsGlobal();
+  U globalDimensionN = matrixB.getNumColumnsGlobal();
+  U globalDimensionK = matrixA.getNumColumnsGlobal();
+  std::vector<T> matrixAforEngine = getReferenceMatrix(matrixA, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
+  std::vector<T> matrixBforEngine = getReferenceMatrix(matrixB, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
   std::vector<T> matrixCforEngine(globalDimensionM*globalDimensionN, 0);	// No matrix needed for this. Only used in BLAS call
 
   // Assume column-major matrix and no transposes
@@ -90,10 +90,6 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
                         Matrix<T,U,StructureArgA,Distribution>& matrixA,
                         Matrix<T,U,StructureArgB,Distribution>& matrixBin,
                         Matrix<T,U,StructureArgB,Distribution>& matrixBout,
-                        U localDimensionM,
-                        U localDimensionN,
-                        U globalDimensionM,
-                        U globalDimensionN,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage
                       )
@@ -113,12 +109,16 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   int pGridCoordZ = std::get<3>(commInfo);
   int pGridDimensionSize = std::get<4>(commInfo);
 
+  U localDimensionM = matrixBin.getNumRowsLocal();
+  U localDimensionN = matrixBin.getNumColumnsLocal();
+  U globalDimensionM = matrixBin.getNumRowsGlobal();
+  U globalDimensionN = matrixBin.getNumColumnsGlobal();
   // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
   // Fast pass-by-value via modern C++ move semantics
   int localTriDim = (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN);
   int globalTriDim = (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionM : globalDimensionN);
-  std::vector<T> matrixAforEngine = getReferenceMatrix(matrixA, localTriDim, localTriDim, globalTriDim, globalTriDim, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
-  std::vector<T> matrixBforEngine = getReferenceMatrix(matrixBin, localDimensionN, localDimensionM, globalDimensionN, globalDimensionM, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
+  std::vector<T> matrixAforEngine = getReferenceMatrix(matrixA, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
+  std::vector<T> matrixBforEngine = getReferenceMatrix(matrixBin, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
 
   blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], globalDimensionM, globalDimensionN,
     (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionM : globalDimensionN),
@@ -146,10 +146,6 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
                         Matrix<T,U,StructureArgA,Distribution>& matrixA,
                         Matrix<T,U,StructureArgB,Distribution>& matrixB,
                         Matrix<T,U,StructureArgB,Distribution>& matrixC,
-                        U localDimensionN,
-                        U localDimensionK,
-                        U globalDimensionN,
-                        U globalDimensionK,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                       )
@@ -240,10 +236,6 @@ template<template<typename,typename, template<typename,typename,int> class> clas
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
 								Matrix<T,U,StructureArg,Distribution>& myMatrix,
-								U localNumColumns,
-								U localNumRows,
-								U globalNumColumns,
-								U globalNumRows,
 								U key,
 								std::tuple<MPI_Comm, int, int, int, int> commInfo
 							     )
@@ -259,6 +251,10 @@ std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
   localMatrix.DistributeRandom(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key);
 */
 
+  U localNumColumns = myMatrix.getNumColumnsLocal();
+  U localNumRows = myMatrix.getNumRowsLocal();
+  U globalNumColumns = myMatrix.getNumColumnsGlobal();
+  U globalNumRows = myMatrix.getNumRowsGlobal();
   // I first want to check whether or not I want to serialize into a rectangular buffer (I don't care too much about efficiency here,
   //   if I did, I would serialize after the AllGather, but whatever)
   T* matrixPtr = myMatrix.getRawData();

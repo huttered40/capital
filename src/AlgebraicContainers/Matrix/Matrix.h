@@ -39,7 +39,7 @@ class Matrix
 
 public:
   explicit Matrix() = delete;
-  explicit Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY);				// Regular constructor
+  explicit Matrix(U globalDimensionX, U globalDimensionY, int globalPgridX, int globalPgridY);				// Regular constructor
   explicit Matrix(std::vector<T>&& data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, bool assemble = false);	// Injection constructor
   Matrix(const Matrix& rhs);
   Matrix(Matrix&& rhs);

@@ -56,39 +56,39 @@ int main(int argc, char** argv)
 
   if (methodKey1 == 0)
   {
-    MatrixTypeA matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-    MatrixTypeR matL(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-    MatrixTypeR matLI(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+    MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
+    MatrixTypeR matL(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
+    MatrixTypeR matLI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
     if (methodKey2 == 1) {numIterations = atoi(argv[5]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      CFR3D<double,int,cblasEngine>::Factor(matA, matL, matLI, localMatrixSize, 'L', blockSizeMultiplier, MPI_COMM_WORLD);
+      CFR3D<double,int,cblasEngine>::Factor(matA, matL, matLI, 'L', blockSizeMultiplier, MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Lower", i);
     }
 
-    CFvalidate<double,int>::validateCF_Local(matL, matLI, localMatrixSize, globalMatrixSize, 'L', MPI_COMM_WORLD);
+    CFvalidate<double,int>::validateCF_Local(matL, matLI, 'L', MPI_COMM_WORLD);
   }
   else
   {
-    MatrixTypeA matA(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-    MatrixTypeR matR(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
-    MatrixTypeR matRI(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+    MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
+    MatrixTypeR matR(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
+    MatrixTypeR matRI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
     if (methodKey2 == 1) {numIterations = atoi(argv[5]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      CFR3D<double,int,cblasEngine>::Factor(matA, matR, matRI, localMatrixSize, 'U', blockSizeMultiplier, MPI_COMM_WORLD);
+      CFR3D<double,int,cblasEngine>::Factor(matA, matR, matRI, 'U', blockSizeMultiplier, MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Upper", i);
     }
 
-    CFvalidate<double,int>::validateCF_Local(matR, matRI, localMatrixSize, globalMatrixSize, 'U', MPI_COMM_WORLD);
+    CFvalidate<double,int>::validateCF_Local(matR, matRI, 'U', MPI_COMM_WORLD);
   }  
 
   MPI_Finalize();

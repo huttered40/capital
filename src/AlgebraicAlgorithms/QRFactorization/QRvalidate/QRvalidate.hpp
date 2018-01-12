@@ -29,8 +29,6 @@ void QRvalidate<T,U>::validateLocal1D(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        U globalDimensionM,
-                        U globalDimensionN,
                         MPI_Comm commWorld
                       )
 {
@@ -41,6 +39,9 @@ void QRvalidate<T,U>::validateLocal1D(
   int myRank,numPEs;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
+
+  U globalDimensionM = matrixA.getNumRowsGlobal();
+  U globalDimensionN = matrixA.getNumColumnsGlobal();
   U localDimensionM = globalDimensionM/numPEs;
 
   std::vector<T> globalMatrixA = getReferenceMatrix1D(matrixA, globalDimensionN, globalDimensionM, localDimensionM, myRank, commWorld);
@@ -91,8 +92,6 @@ void QRvalidate<T,U>::validateLocal3D(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        U globalDimensionM,
-                        U globalDimensionN,
                         MPI_Comm commWorld
                       )
 {
@@ -114,6 +113,8 @@ void QRvalidate<T,U>::validateLocal3D(
   int pGridDimensionSize = std::get<4>(commInfo3D);
 
   // Remember, we are assuming that the matrix is square here
+  U globalDimensionM = matrixA.getNumRowsGlobal();
+  U globalDimensionN = matrixA.getNumColumnsGlobal();
   U localDimensionM = globalDimensionM/pGridDimensionSize;
   U localDimensionN = globalDimensionN/pGridDimensionSize;
 
@@ -185,8 +186,6 @@ void QRvalidate<T,U>::validateLocalTunable(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        U globalDimensionM,
-                        U globalDimensionN,
                         int gridDimensionD,
                         int gridDimensionC,
                         MPI_Comm commWorld
@@ -204,6 +203,8 @@ void QRvalidate<T,U>::validateLocalTunable(
   MPI_Comm_rank(commWorld, &myRank);
 
   // generate A_computed = myQ*myR and compare against original A
+  U globalDimensionM = matrixA.getNumRowsGlobal();
+  U globalDimensionN = matrixA.getNumColumnsGlobal();
   T error1 = getResidualTunable(matrixA, myQ, myR, globalDimensionM, globalDimensionN, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators);
   MPI_Allreduce(MPI_IN_PLACE, &error1, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total residual error is " << error1 << std::endl;}
@@ -401,7 +402,7 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distributio
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
-  MM3D<T,U,cblasEngine>::Multiply(myQ, myR, testA, localDimensionM, localDimensionN, localDimensionN, commWorld, blasArgs, 0);
+  MM3D<T,U,cblasEngine>::Multiply(myQ, myR, testA, commWorld, blasArgs, 0);
 
   // Now we can just iterate over myA and testA and compare
   T error = 0;
@@ -467,7 +468,7 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distr
     transposePartner, 0, commWorld, MPI_STATUS_IGNORE);
 
   Matrix<T,U,MatrixStructureRectangle,Distribution> QT(std::move(Qvector), localDimensionM, localDimensionN, globalDimensionM, globalDimensionN, true);
-  MM3D<T,U,cblasEngine>::Multiply(QT, myQ, myI, localDimensionN, localDimensionN, localDimensionM, commWorld, blasArgs, 0);
+  MM3D<T,U,cblasEngine>::Multiply(QT, myQ, myI, commWorld, blasArgs, 0);
 
   //if (myRank == 0) myQ.print();
 
@@ -530,7 +531,7 @@ T QRvalidate<T,U>::getResidualTunable(Matrix<T,U,MatrixStructureRectangle,Distri
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
-  MM3D<T,U,cblasEngine>::Multiply(myQ, myR, testA, localDimensionM, localDimensionN, localDimensionN, miniCubeComm, blasArgs, 0);
+  MM3D<T,U,cblasEngine>::Multiply(myQ, myR, testA, miniCubeComm, blasArgs, 0);
 
   // Now we can just iterate over myA and testA and compare
   T error = 0;
@@ -567,7 +568,7 @@ std::vector<T> QRvalidate<T,U>::getReferenceMatrix1D(
   MPI_Comm_rank(commWorld, &myRank);
 
   using MatrixType = Matrix<T,U,MatrixStructureRectangle,Distribution>;
-  MatrixType localMatrix(globalDimensionX, localDimensionY, globalDimensionX, globalDimensionY);
+  MatrixType localMatrix(globalDimensionX, globalDimensionY, 1, numPEs);
   localMatrix.DistributeRandom(0, myRank, 1, numPEs, key);
 
   U globalSize = globalDimensionX*globalDimensionY;
@@ -616,7 +617,7 @@ std::vector<T> QRvalidate<T,U>::getReferenceMatrix3D(
 
   // Remember, assume this algorithm works on square matrices for now
   using MatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
-  MatrixType localMatrix(localDimensionN, localDimensionM, globalDimensionN, globalDimensionM);
+  MatrixType localMatrix(globalDimensionN, globalDimensionM, pGridDimensionSize, pGridDimensionSize);
   localMatrix.DistributeRandom(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key);
 
   U globalSize = globalDimensionN*globalDimensionM;

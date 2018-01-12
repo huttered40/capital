@@ -3,12 +3,16 @@
 // #include "Matrix.h"  -> Compiler needs the full definition of the templated class in order to instantiate it.
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-Matrix<T,U,Structure,Distributer>::Matrix(U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY)
+Matrix<T,U,Structure,Distributer>::Matrix(U globalDimensionX, U globalDimensionY, int globalPgridX, int globalPgridY)
 {
-  this->_dimensionX = {dimensionX};
-  this->_dimensionY = {dimensionY};
-  this->_globalDimensionX = {globalDimensionX};
-  this->_globalDimensionY = {globalDimensionY};
+  // Extra padding of zeros is at most 1 in either dimension
+  int pHelper = globalDimensionX%globalPgridX;
+  this->_dimensionX = {globalDimensionX/globalPgridX + (pHelper ? 1 : 0)};
+  pHelper = globalDimensionY%globalPgridY;
+  this->_dimensionY = {globalDimensionY/globalPgridY + (pHelper ? 1 : 0)};
+  // We also need to pad the global dimensions
+  this->_globalDimensionX = {this->_dimensionX*globalPgridX};
+  this->_globalDimensionY = {this->_dimensionY*globalPgridY};
 
   Structure<T,U,Distributer>::Assemble(this->_data, this->_matrix, this->_numElems, this->_dimensionX, this->_dimensionY);
   return;

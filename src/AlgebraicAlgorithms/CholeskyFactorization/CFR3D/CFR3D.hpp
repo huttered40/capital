@@ -7,7 +7,6 @@ void CFR3D<T,U,blasEngine>::Factor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
-  U dimension,								// Assume this dimension is of each local Matrix that each processor owns. Could change that later.
   char dir,
   int tune,
   MPI_Comm commWorld )
@@ -25,6 +24,7 @@ void CFR3D<T,U,blasEngine>::Factor(
   int pGridCoordZ = rank/helper;
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
 
+  U dimension = matrixA.getNumRowsLocal();
   U globalDimension = dimension*pGridDimensionSize;
   U bcDimension = globalDimension/helper;		// Can be tuned later.
 

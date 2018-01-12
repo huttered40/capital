@@ -33,8 +33,6 @@ public:
   static void validateCF_Local(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
-                        U localDimension,
-                        U globalDimension,
 			char dir,
                         MPI_Comm commWorld
                       );

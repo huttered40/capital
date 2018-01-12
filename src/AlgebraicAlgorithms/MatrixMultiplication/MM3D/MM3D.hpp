@@ -49,9 +49,6 @@ void MM3D<T,U,blasEngine>::Multiply(
                                    	Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         Matrix<T,U,StructureC,Distribution>& matrixC,
-                                        U localDimensionM,
-                                        U localDimensionN,
-                                        U localDimensionK,
                                         MPI_Comm commWorld,
                                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
 					int methodKey						// I chose an integer instead of another template parameter
@@ -69,17 +66,20 @@ void MM3D<T,U,blasEngine>::Multiply(
   std::vector<T> foreignB;
   bool serializeKeyA = false;
   bool serializeKeyB = false;
+  U localDimensionM = matrixA.getNumRowsLocal();
+  U localDimensionN = matrixB.getNumColumnsLocal();
+  U localDimensionK = matrixA.getNumColumnsLocal();
 
   if (methodKey == 0)
   {
-    _start1(matrixA,matrixB,localDimensionM,localDimensionN,localDimensionK,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,
+    _start1(matrixA,matrixB,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,
       matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
   }
   else if (methodKey == 1)
   {
     serializeKeyA = true;
     serializeKeyB = true;
-    _start2(matrixA,matrixB,localDimensionM,localDimensionN,localDimensionK,commInfo3D,
+    _start2(matrixA,matrixB,commInfo3D,
       matrixAEngineVector,matrixBEngineVector,serializeKeyA,serializeKeyB);
 /*
     // debugging
@@ -111,8 +111,6 @@ template<
 void MM3D<T,U,blasEngine>::Multiply(
                                    	    Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
-                                        U localDimensionM,
-                                        U localDimensionN,
                                         MPI_Comm commWorld,
                                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
 					                              int methodKey						// I chose an integer instead of another template parameter
@@ -130,22 +128,22 @@ void MM3D<T,U,blasEngine>::Multiply(
   std::vector<T> foreignB;
   bool serializeKeyA = false;
   bool serializeKeyB = false;
+  U localDimensionM = matrixB.getNumRowsLocal();
+  U localDimensionN = matrixB.getNumColumnsLocal();
 
   // soon, we will need a methodKey for the different MM algs
   if (srcPackage.side == blasEngineSide::AblasLeft)
   {
     if (methodKey == 0)
     {
-      _start1(matrixA, matrixB, localDimensionM, localDimensionN,localDimensionM,
-        commInfo3D, matrixAEnginePtr, matrixBEnginePtr, matrixAEngineVector, matrixBEngineVector, foreignA, foreignB,
+      _start1(matrixA, matrixB, commInfo3D, matrixAEnginePtr, matrixBEnginePtr, matrixAEngineVector, matrixBEngineVector, foreignA, foreignB,
         serializeKeyA, serializeKeyB);
     }
     else if (methodKey == 1)
     {
       serializeKeyA = true;
       serializeKeyB = true;
-      _start2(matrixA, matrixB, localDimensionM, localDimensionN,localDimensionM,
-        commInfo3D, matrixAEngineVector, matrixBEngineVector,
+      _start2(matrixA, matrixB, commInfo3D, matrixAEngineVector, matrixBEngineVector,
         serializeKeyA, serializeKeyB);
     }
     blasEngine<T,U>::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
@@ -156,15 +154,13 @@ void MM3D<T,U,blasEngine>::Multiply(
   {
     if (methodKey == 0)
     {
-      _start1(matrixB, matrixA,localDimensionM, localDimensionN, localDimensionN,
-        commInfo3D, matrixBEnginePtr, matrixAEnginePtr, matrixBEngineVector, matrixAEngineVector, foreignB, foreignA, serializeKeyB, serializeKeyA);
+      _start1(matrixB, matrixA, commInfo3D, matrixBEnginePtr, matrixAEnginePtr, matrixBEngineVector, matrixAEngineVector, foreignB, foreignA, serializeKeyB, serializeKeyA);
     }
     else if (methodKey == 1)
     {
       serializeKeyA = true;
       serializeKeyB = true;
-      _start2(matrixB, matrixA,localDimensionM, localDimensionN, localDimensionN,
-        commInfo3D, matrixBEngineVector, matrixAEngineVector, serializeKeyB, serializeKeyA);
+      _start2(matrixB, matrixA, commInfo3D, matrixBEngineVector, matrixAEngineVector, serializeKeyB, serializeKeyA);
     }
     blasEngine<T,U>::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
       localDimensionM, localDimensionN, localDimensionN, (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN),
@@ -183,8 +179,6 @@ template<
 void MM3D<T,U,blasEngine>::Multiply(
                                    	Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
-                                        U localDimensionN,
-                                        U localDimensionK,
                                         MPI_Comm commWorld,
                                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                                    )
@@ -298,7 +292,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
   Matrix<T,U,StructureC,Distribution>& matC = getSubMatrix(matrixC, subMatrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, globalDiffC, cutC);
 
-  Multiply(matA, matB, matC, rangeA_x, rangeA_y, rangeB_z, commWorld, srcPackage, methodKey);
+  Multiply(matA, matB, matC, commWorld, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC)
@@ -351,7 +345,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
   Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
 
-  Multiply(matA, matB, rangeB_x, rangeB_z, commWorld, srcPackage, methodKey);
+  Multiply(matA, matB, commWorld, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
   if (cutB)
@@ -426,9 +420,6 @@ template<template<typename,typename,int> class Distribution,
 void MM3D<T,U,blasEngine>::_start1(
 					Matrix<T,U,StructureArg1,Distribution>& matrixA,
 					Matrix<T,U,StructureArg2,Distribution>& matrixB,
-					U localDimensionM,
-					U localDimensionN,
-					U localDimensionK,
 					tupleStructure& commInfo3D,
 					T*& matrixAEnginePtr,
 					T*& matrixBEnginePtr,
@@ -449,6 +440,9 @@ void MM3D<T,U,blasEngine>::_start1(
   int pGridCoordY = std::get<5>(commInfo3D);
   int pGridCoordZ = std::get<6>(commInfo3D);
 
+  U localDimensionM = matrixA.getNumRowsLocal();
+  U localDimensionN = matrixB.getNumColumnsLocal();
+  U localDimensionK = matrixA.getNumColumnsLocal();
   std::vector<T>& dataA = matrixA.getVectorData(); 
   std::vector<T>& dataB = matrixB.getVectorData();
   U sizeA = matrixA.getNumElems();
@@ -521,9 +515,6 @@ template<template<typename,typename,int> class Distribution,
 void MM3D<T,U,blasEngine>::_start2(
 					Matrix<T,U,StructureArg1,Distribution>& matrixA,
 					Matrix<T,U,StructureArg2,Distribution>& matrixB,
-					U localDimensionM,
-					U localDimensionN,
-					U localDimensionK,
 					tupleStructure& commInfo3D,
 					std::vector<T>& matrixAEngineVector,
 					std::vector<T>& matrixBEngineVector,
@@ -549,6 +540,9 @@ void MM3D<T,U,blasEngine>::_start2(
     in that case obviously, but I also need to make sure that things are still in order, which I think is harder now than it was in _start1( method )
 */
 
+  U localDimensionM = matrixA.getNumRowsLocal();
+  U localDimensionN = matrixB.getNumColumnsLocal();
+  U localDimensionK = matrixA.getNumColumnsLocal();
   std::vector<T>& dataA = matrixA.getVectorData(); 
   std::vector<T>& dataB = matrixB.getVectorData();
   U sizeA = matrixA.getNumElems();
