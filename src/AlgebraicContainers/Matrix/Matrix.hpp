@@ -11,8 +11,14 @@ Matrix<T,U,Structure,Distributer>::Matrix(U globalDimensionX, U globalDimensionY
   pHelper = globalDimensionY%globalPgridY;
   this->_dimensionY = {globalDimensionY/globalPgridY + (pHelper ? 1 : 0)};
   // We also need to pad the global dimensions
+
+/*
+  I dont like this. I think its wrong to do this. If anything needs changed, its the validate code, which I think is the only thing causing the issue.
   this->_globalDimensionX = {this->_dimensionX*globalPgridX};
   this->_globalDimensionY = {this->_dimensionY*globalPgridY};
+*/
+  this->_globalDimensionX = {globalDimensionX};
+  this->_globalDimensionY = {globalDimensionY};
 
   Structure<T,U,Distributer>::Assemble(this->_data, this->_matrix, this->_numElems, this->_dimensionX, this->_dimensionY);
   return;

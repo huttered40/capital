@@ -29,18 +29,18 @@ int main(int argc, char** argv)
 
   /*
     Choices for methodKey1: 0) Gemm
-			    1) TRMM
+			                      1) TRMM
                             2) SYRK
   */
   int methodKey1 = atoi(argv[1]);
   /*
     Choices for methodKey2: 0) Sequential validation
-			    1) Performance testing
+			                      1) Performance testing
   */
   int methodKey2 = atoi(argv[2]);
   /*
     Choices for methodKey3: 0) Broadcast + Allreduce
-			    1) Allgather + Allreduce
+			                      1) Allgather + Allreduce
   */
   int methodKey3 = atoi(argv[3]);
 

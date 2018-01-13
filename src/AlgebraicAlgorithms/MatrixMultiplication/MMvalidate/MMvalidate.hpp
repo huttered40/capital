@@ -206,23 +206,29 @@ T MMvalidate<T,U,blasEngine>::getResidualSquare(
   T error = 0;
   int pCoordX = std::get<1>(commInfo);
   int pCoordY = std::get<2>(commInfo);
+  int pCoordZ = std::get<3>(commInfo);
   int pGridDimensionSize = std::get<4>(commInfo);
   U myIndex = 0;
   U solIndex = pCoordX *globalDimensionM + pCoordY;
 
-  for (U i=0; i<localDimensionN; i++)
+  // We want to truncate this to use only the data that we own
+  U trueDimensionM = globalDimensionM/pGridDimensionSize + ((pCoordY < (globalDimensionM%pGridDimensionSize)) ? 1 : 0);
+  U trueDimensionN = globalDimensionN/pGridDimensionSize + ((pCoordX < (globalDimensionN%pGridDimensionSize)) ? 1 : 0);
+  for (U i=0; i<trueDimensionN; i++)
   {
     U saveCountRef = solIndex;
-    for (U j=0; j<localDimensionM; j++)
+    U saveCountMy = myIndex;
+    for (U j=0; j<trueDimensionM; j++)
     {
       T errorSquare = std::abs(myValues[myIndex] - blasValues[solIndex]);
-      //std::cout << errorSquare << " " << myValues[myIndex] << " " << blasValues[solIndex] << std::endl;
+      //if ((pCoordX == 0) && (pCoordY == 1) && (pCoordZ == 0)) std::cout << errorSquare << " " << myValues[myIndex] << " " << blasValues[solIndex] << " at global index - " << solIndex << " And local index - " << myIndex << " and localDimensionM - " << localDimensionM << " And trueDimensionM - " << trueDimensionM << " And div - " << globalDimensionM/pGridDimensionSize << " and pCoordX - " << pCoordX << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       solIndex += pGridDimensionSize;
       myIndex++;
     }
     solIndex = saveCountRef + pGridDimensionSize*globalDimensionM;
+    myIndex = saveCountMy + localDimensionM;
   }
 
   //error = std::sqrt(error);
@@ -266,13 +272,17 @@ std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
     matrixPtr = matrixDest.getRawData();
   }
 
-  std::vector<T> blockedMatrix(globalNumColumns*globalNumRows);
-  std::vector<T> cyclicMatrix(globalNumColumns*globalNumRows);
+  U aggregNumRows = localNumRows*pGridDimensionSize;
+  U aggregNumColumns = localNumColumns*pGridDimensionSize;
   U localSize = localNumColumns*localNumRows;
+  U globalSize = globalNumColumns*globalNumRows;
+  U aggregSize = aggregNumRows*aggregNumColumns;
+  std::vector<T> blockedMatrix(aggregSize);
+  std::vector<T> cyclicMatrix(aggregSize);
   MPI_Allgather(matrixPtr, localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
 
-  U numCyclicBlocksPerRow = globalNumRows/pGridDimensionSize;
-  U numCyclicBlocksPerCol = globalNumColumns/pGridDimensionSize;
+  U numCyclicBlocksPerRow = localNumRows;
+  U numCyclicBlocksPerCol = localNumColumns;
   U writeIndex = 0;
   // MACRO loop over all cyclic "blocks" (dimensionX direction)
   for (U i=0; i<numCyclicBlocksPerCol; i++)
@@ -293,5 +303,19 @@ std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
     }
   }
 
+  // In case there are hidden zeros, we will recopy
+  if ((globalNumRows%pGridDimensionSize) || (globalNumColumns%pGridDimensionSize))
+  {
+    U index = 0;
+    for (U i=0; i<globalNumColumns; i++)
+    {
+      for (U j=0; j<globalNumRows; j++)
+      {
+        cyclicMatrix[index++] = cyclicMatrix[i*aggregNumRows+j];
+      }
+    }
+    // In this case, globalSize < aggregSize
+    cyclicMatrix.resize(globalSize);
+  }
   return cyclicMatrix;
 }
