@@ -226,7 +226,6 @@ private:
 				U matrixArgColumnEnd,
 				U matrixArgRowStart,
 				U matrixArgRowEnd,
-				U globalDiff,
 				bool getSub
 			  );
 

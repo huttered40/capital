@@ -17,12 +17,12 @@ template<typename T, typename U, template<typename,typename,int> class Distribut
 void MatrixStructureSquare<T,U,Distributer>::Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY)
 {
   // dimensionX must be equal to dimensionY, but I can't check this at compile time.
-  assert(dimensionX == dimensionY);
+  //assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionX);
-  matrixNumElems = dimensionX * dimensionX;
+  matrixNumElems = dimensionX * dimensionY;
   data.resize(matrixNumElems);
-  
+
   MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(data, matrix, dimensionX, dimensionY);
 }
 
@@ -62,7 +62,7 @@ template<typename T, typename U, template<typename,typename,int> class Distribut
 void MatrixStructureSquare<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY)
 {
   U numElems = 0;		// Just choose one dimension.
-  Assemble(data, matrix, numElems, dimensionX, dimensionX);	// Just choose one dimension.
+  Assemble(data, matrix, numElems, dimensionX, dimensionY);	// Just choose one dimension.
   std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
 

@@ -70,8 +70,14 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
 {
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
-  assert(rangeX == rangeY);
-
+/*  Commenting this assert out for now, since CFR3D requires non-square partitioning
+  if (rangeX != rangeY)
+  {
+    std::cout << "rangeX - " << rangeX << " and rangeY - " << rangeY << std::endl;
+    std::cout << "cutDimensionXstart - " << cutDimensionXstart << ", cutDimensionXend - " << cutDimensionXend << "cutDimensionYstart - " << cutDimensionYstart << ", cutDimensionYend - " << cutDimensionYend << std::endl;
+    assert(rangeX == rangeY);
+  }
+*/
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
   U smallNumRows = small.getNumRowsLocal();

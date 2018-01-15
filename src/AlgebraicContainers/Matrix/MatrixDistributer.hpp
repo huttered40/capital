@@ -69,12 +69,14 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
   //       or local (but distributed based on the values each processor gets) transpose.
 
   srand48(key);
+  int padXlen = (((globalDimensionX % globalPgridX != 0) && ((dimensionX-1)*globalPgridX + localPgridX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int padYlen = (((globalDimensionY % globalPgridY != 0) && ((dimensionY-1)*globalPgridY + localPgridY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
   U saveGlobalPositionX = localPgridX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   U saveGlobalPositionY = localPgridY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
-  for (U i=0; i<dimensionX; i++)
+  for (U i=0; i<padXlen; i++)
   {
     saveGlobalPositionY = localPgridY;
-    for (U j=0; j<dimensionY; j++)
+    for (U j=0; j<padYlen; j++)
     {
 /*
       if (saveGlobalPositionX > saveGlobalPositionY)
@@ -93,7 +95,17 @@ void MatrixDistributerCyclic<T,U,0>::DistributeSymmetric
       }
       saveGlobalPositionY += globalPgridY;
     }
+    // check for padding
+    if (padYlen != dimensionY) { matrix[i][dimensionY-1] = 0; }
     saveGlobalPositionX += globalPgridX;
+  }
+  // check for padding
+  if (padXlen != dimensionX)
+  {
+    for (U j=0; j<dimensionY; j++)
+    {
+      matrix[dimensionX-1][j] = 0;
+    }
   }
   return;
 }

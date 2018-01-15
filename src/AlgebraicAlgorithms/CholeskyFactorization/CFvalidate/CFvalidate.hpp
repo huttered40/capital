@@ -106,29 +106,33 @@ T CFvalidate<T,U>::getResidualTriangleLower(
   int pCoordY = std::get<2>(commInfo);
   int pCoordZ = std::get<3>(commInfo);
   bool isRank1 = false;
-  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 0))
+  if ((pCoordY == 2) && (pCoordX == 2) && (pCoordZ == 0))
   {
     isRank1 = true;
   }
-
   int pGridDimensionSize = std::get<4>(commInfo);
+
   U myIndex = 0;
   U solIndex = pCoordY + pCoordX*globalDimension;
+  // We want to truncate this to use only the data that we own
+  U trueDimensionM = globalDimension/pGridDimensionSize + ((pCoordY < (globalDimension%pGridDimensionSize)) ? 1 : 0);
+  U trueDimensionN = globalDimension/pGridDimensionSize + ((pCoordX < (globalDimension%pGridDimensionSize)) ? 1 : 0);
 
-  for (U i=0; i<localDimension; i++)
+  for (U i=0; i<trueDimensionN; i++)
   {
     U saveCountRef = solIndex;
-    for (U j=0; j<(localDimension-i); j++)
+    U saveCountMy = myIndex;
+    for (U j=0; j<trueDimensionM; j++)
     {
       T errorSquare = std::abs(myValues[myIndex] - lapackValues[solIndex]);
-      //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << std::endl;
+      //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       solIndex += pGridDimensionSize;
       myIndex++;
     }
     solIndex = saveCountRef + pGridDimensionSize*globalDimension;
-    myIndex += i;
+    myIndex = saveCountMy + localDimension;
   }
 
   error = std::sqrt(error);
@@ -151,7 +155,7 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
   int pCoordY = std::get<2>(commInfo);
   int pCoordZ = std::get<3>(commInfo);
   bool isRank1 = false;
-  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 0))
+  if ((pCoordY == 0) && (pCoordX == 1) && (pCoordZ == 0))
   {
     isRank1 = true;
   }
@@ -160,11 +164,14 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
   U myIndex = 0;
   U solIndex = pCoordX*globalDimension + pCoordY;
 
-  for (U i=0; i<localDimension; i++)
+  // We want to truncate this to use only the data that we own
+  U trueDimensionM = globalDimension/pGridDimensionSize + ((pCoordY < (globalDimension%pGridDimensionSize)) ? 1 : 0);
+  U trueDimensionN = globalDimension/pGridDimensionSize + ((pCoordX < (globalDimension%pGridDimensionSize)) ? 1 : 0);
+  for (U i=0; i<trueDimensionN; i++)
   {
     U saveCountRef = solIndex;
-    myIndex = i*localDimension;
-    for (U j=0; j<=i; j++)
+    U saveCountMy = myIndex;
+    for (U j=0; j<trueDimensionM; j++)
     {
       T errorSquare = std::abs(myValues[myIndex] - lapackValues[solIndex]);
       //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " i - " << i << ", j - " << j << std::endl;
@@ -174,6 +181,7 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
       myIndex++;
     }
     solIndex = saveCountRef + pGridDimensionSize*globalDimension;
+    myIndex = saveCountMy + localDimension;
   }
 
   error = std::sqrt(error);
@@ -201,15 +209,18 @@ std::vector<T> CFvalidate<T,U>::getReferenceMatrix(
   MatrixType localMatrix(globalDimension, globalDimension, pGridDimensionSize, pGridDimensionSize);
   localMatrix.DistributeSymmetric(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key, true);
 
-  U globalSize = globalDimension*globalDimension;
-  std::vector<T> blockedMatrix(globalSize);
-  std::vector<T> cyclicMatrix(globalSize);
+  U aggregNumRows = localDimension*pGridDimensionSize;
+  U aggregNumColumns = localDimension*pGridDimensionSize;
   U localSize = localDimension*localDimension;
+  U globalSize = globalDimension*globalDimension;
+  U aggregSize = aggregNumRows*aggregNumColumns;
+  std::vector<T> blockedMatrix(aggregSize);
+  std::vector<T> cyclicMatrix(aggregSize);
   MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
-  std::cout << "localsize - " << localSize << std::endl;
 
-  U numCyclicBlocksPerRow = globalDimension/pGridDimensionSize;
-  U numCyclicBlocksPerCol = globalDimension/pGridDimensionSize;
+
+  U numCyclicBlocksPerRow = localDimension;
+  U numCyclicBlocksPerCol = localDimension;
   U writeIndex = 0;
   // MACRO loop over all cyclic "blocks" (dimensionX direction)
   for (U i=0; i<numCyclicBlocksPerCol; i++)
@@ -228,6 +239,20 @@ std::vector<T> CFvalidate<T,U>::getReferenceMatrix(
         }
       }
     }
+  }
+  // In case there are hidden zeros, we will recopy
+  if ((globalDimension%pGridDimensionSize) || (globalDimension%pGridDimensionSize))
+  {
+    U index = 0;
+    for (U i=0; i<globalDimension; i++)
+    {
+      for (U j=0; j<globalDimension; j++)
+      {
+        cyclicMatrix[index++] = cyclicMatrix[i*aggregNumRows+j];
+      }
+    }
+    // In this case, globalSize < aggregSize
+    cyclicMatrix.resize(globalSize);
   }
 
   return cyclicMatrix;

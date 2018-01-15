@@ -69,7 +69,6 @@ int main(int argc, char** argv)
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Lower", i);
     }
-
     CFvalidate<double,int>::validateCF_Local(matL, matLI, 'L', MPI_COMM_WORLD);
   }
   else

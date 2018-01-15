@@ -66,9 +66,9 @@ void MM3D<T,U,blasEngine>::Multiply(
   std::vector<T> foreignB;
   bool serializeKeyA = false;
   bool serializeKeyB = false;
-  U localDimensionM = matrixA.getNumRowsLocal();
-  U localDimensionN = matrixB.getNumColumnsLocal();
-  U localDimensionK = matrixA.getNumColumnsLocal();
+  U localDimensionM = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixA.getNumRowsLocal() : matrixA.getNumColumnsLocal());
+  U localDimensionN = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? matrixB.getNumColumnsLocal() : matrixB.getNumRowsLocal());
+  U localDimensionK = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixA.getNumColumnsLocal() : matrixA.getNumRowsLocal());
 
   if (methodKey == 0)
   {
@@ -276,22 +276,27 @@ void MM3D<T,U,blasEngine>::Multiply(
   U rangeB_x = matrixBcutXend-matrixBcutXstart;
   U rangeC_z = matrixCcutZend - matrixCcutZstart;
   U rangeC_y = matrixCcutYend - matrixCcutYstart; 
-  U globalDiffA = matrixA.getNumRowsGlobal() / matrixA.getNumRowsLocal();		// picked rows arbitrarily
-  U globalDiffB = matrixB.getNumRowsGlobal() / matrixB.getNumRowsLocal();		// picked rows arbitrarily
-  U globalDiffC = matrixC.getNumRowsGlobal() / matrixC.getNumRowsLocal();		// picked rows arbitrarily
 
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
   U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
   U sizeC = matrixC.getNumElems(rangeC_y, rangeC_z);
 
-  // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  Matrix<T,U,StructureA,Distribution> subMatrixA(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*globalDiffA, rangeA_y*globalDiffA);
-  Matrix<T,U,StructureB,Distribution> subMatrixB(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*globalDiffB, rangeB_x*globalDiffB);
-  Matrix<T,U,StructureC,Distribution> subMatrixC(std::vector<T>(), rangeC_z, rangeC_y, rangeC_z*globalDiffC, rangeC_y*globalDiffC);
-  Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
-  Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
-  Matrix<T,U,StructureC,Distribution>& matC = getSubMatrix(matrixC, subMatrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, globalDiffC, cutC);
+  int size;
+  MPI_Comm_size(commWorld, &size);
+  int pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
 
+  // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
+  Matrix<T,U,StructureA,Distribution> subMatrixA(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*pGridDimensionSize, rangeA_y*pGridDimensionSize);
+  Matrix<T,U,StructureB,Distribution> subMatrixB(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*pGridDimensionSize, rangeB_x*pGridDimensionSize);
+  Matrix<T,U,StructureC,Distribution> subMatrixC(std::vector<T>(), rangeC_z, rangeC_y, rangeC_z*pGridDimensionSize, rangeC_y*pGridDimensionSize);
+  Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, cutA);
+  Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, cutB);
+  Matrix<T,U,StructureC,Distribution>& matC = getSubMatrix(matrixC, subMatrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, cutC);
+/*
+  std::cout << "matA local numRows - " << matA.getNumRowsLocal() << ", matA local columns - " << matA.getNumColumnsLocal() << std::endl;
+  std::cout << "matB local numRows - " << matB.getNumRowsLocal() << ", matB local columns - " << matB.getNumColumnsLocal() << std::endl;
+  std::cout << "matC local numRows - " << matC.getNumRowsLocal() << ", matC local columns - " << matC.getNumColumnsLocal() << std::endl;
+*/
   Multiply(matA, matB, matC, commWorld, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
@@ -333,17 +338,19 @@ void MM3D<T,U,blasEngine>::Multiply(
   U rangeA_y = matrixAcutYend-matrixAcutYstart;
   U rangeB_x = matrixBcutXend-matrixBcutXstart;
   U rangeB_z = matrixBcutZend-matrixBcutZstart;
-  U globalDiffA = matrixA.getNumRowsGlobal() / matrixA.getNumRowsLocal();		// picked rows arbitrarily
-  U globalDiffB = matrixB.getNumRowsGlobal() / matrixB.getNumRowsLocal();		// picked rows arbitrarily
+
+  int size;
+  MPI_Comm_size(commWorld, &size);
+  int pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
 
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
   U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  Matrix<T,U,StructureA,Distribution> subMatrixA(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*globalDiffA, rangeA_y*globalDiffA);
-  Matrix<T,U,StructureB,Distribution> subMatrixB(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*globalDiffB, rangeB_x*globalDiffB);
-  Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
-  Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
+  Matrix<T,U,StructureA,Distribution> subMatrixA(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*pGridDimensionSize, rangeA_y*pGridDimensionSize);
+  Matrix<T,U,StructureB,Distribution> subMatrixB(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*pGridDimensionSize, rangeB_x*pGridDimensionSize);
+  Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, cutA);
+  Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, cutB);
 
   Multiply(matA, matB, commWorld, srcPackage, methodKey);
 
@@ -704,7 +711,6 @@ Matrix<T,U,StructureArg,Distribution>& MM3D<T,U,blasEngine>::getSubMatrix(
 								U matrixArgColumnEnd,
 								U matrixArgRowStart,
 								U matrixArgRowEnd,
-								U globalDiff,
 								bool getSub
 						       )
 {
