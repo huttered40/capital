@@ -419,7 +419,7 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distributio
     {
       T errorSquare = 0;
       errorSquare = std::abs(myA.getRawData()[myIndex] - testA.getRawData()[myIndex]);
-      if (isRank1) std::cout << errorSquare << " " << myA.getRawData()[myIndex] << " " << testA.getRawData()[myIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
+      //if (isRank1) std::cout << errorSquare << " " << myA.getRawData()[myIndex] << " " << testA.getRawData()[myIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       myIndex++;
@@ -528,8 +528,8 @@ T QRvalidate<T,U>::getResidualTunable(Matrix<T,U,MatrixStructureRectangle,Distri
 {
   MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
 
-  U localDimensionM = globalDimensionM/gridDimensionD;
-  U localDimensionN = globalDimensionN/gridDimensionC;
+  U localDimensionM = myA.getNumRowsLocal();//globalDimensionM/gridDimensionD;
+  U localDimensionN = myA.getNumColumnsLocal();//globalDimensionN/gridDimensionC;
 
   Matrix<T,U,MatrixStructureRectangle,Distribution> testA = myA;			// Just copy here. No big deal because it will be overwritten soon
   blasEngineArgumentPackage_gemm<double> blasArgs;

@@ -39,22 +39,29 @@ int main(int argc, char** argv)
   */
   int methodKey1 = atoi(argv[1]);
   /*
-    methodKey1 -> 0) Sequential validaton
+    methodKey2 -> 0) Sequential validaton
                   1) Performance
   */
   int methodKey2 = atoi(argv[2]);
+  /*
+    methodKey3 -> 0) Non powers of 2
+                  1) Powers of 2
+  */
+  int methodKey3 = atoi(argv[3]);
   if (methodKey2 == 1)
   {
-    numIterations = atoi(argv[3]);
+    numIterations = atoi(argv[4]);
   }
 
   if (methodKey1 == 0)
   {
     // 1D
-    int globalMatrixDimensionM = (1<<(atoi(argv[4])));
-    int globalMatrixDimensionN = (1<<(atoi(argv[5])));
+    int globalMatrixDimensionM = (methodKey3 ? (1<<(atoi(argv[5]))) : atoi(argv[5]));
+    int globalMatrixDimensionN = (methodKey3 ? (1<<(atoi(argv[6]))) : atoi(argv[6]));
+/*
     int localMatrixDimensionM = globalMatrixDimensionM/size;
     int localMatrixDimensionN = globalMatrixDimensionN;
+*/
     MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, 1, size);
     MatrixTypeR matQ(globalMatrixDimensionN,globalMatrixDimensionM, 1, size);
     MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, 1, 1);
@@ -88,11 +95,12 @@ int main(int argc, char** argv)
     int pCoordY = (rank%helper)/pGridDimensionSize;
     int pCoordZ = rank/helper;
 
-    int globalMatrixDimensionM = (1<<(atoi(argv[4])));
-    int globalMatrixDimensionN = (1<<(atoi(argv[5])));
+    int globalMatrixDimensionM = (methodKey3 ? (1<<(atoi(argv[5]))) : atoi(argv[5]));
+    int globalMatrixDimensionN = (methodKey3 ? (1<<(atoi(argv[6]))) : atoi(argv[6]));
+/*
     int localMatrixDimensionM = globalMatrixDimensionM/pGridDimensionSize;
     int localMatrixDimensionN = globalMatrixDimensionN/pGridDimensionSize;
-
+*/
     // New protocol: CholeskyQR_3D only works properly with square matrix A. Rectangular matrices must use CholeskyQR_Tunable
     MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matQ(globalMatrixDimensionN,globalMatrixDimensionM,pGridDimensionSize,pGridDimensionSize);
@@ -120,24 +128,24 @@ int main(int argc, char** argv)
   {
     // Tunable
     /*
-      methodKey2 -> 0) User-defined grid
+      methodKey4 -> 0) User-defined grid
                     1) Optimal grid
     */
-    int methodKey3 = atoi(argv[4]);
+    int methodKey4 = atoi(argv[5]);
 
     // size -- total number of processors in the tunable grid
     int numIterations = 1;
-    int exponentM = atoi(argv[5]);
-    int exponentN = atoi(argv[6]);
-    int globalMatrixDimensionM = (1<<exponentM);
-    int globalMatrixDimensionN = (1<<exponentN);
+    int exponentM = atoi(argv[6]);
+    int exponentN = atoi(argv[7]);
+    int globalMatrixDimensionM = (methodKey3 ? (1<<exponentM) : exponentM);
+    int globalMatrixDimensionN = (methodKey3 ? (1<<exponentN) : exponentN);
  
     int dimensionC,dimensionD;
-    if (methodKey3 == 0)
+    if (methodKey4 == 0)
     {
       // Use the grid that the user specifies in the command line
-      int exponentD = atoi(argv[7]);
-      int exponentC = atoi(argv[8]);
+      int exponentD = atoi(argv[8]);
+      int exponentC = atoi(argv[9]);
 
 /*
     // Do an exponent check, but first we need the log-2 of numPEs(size)

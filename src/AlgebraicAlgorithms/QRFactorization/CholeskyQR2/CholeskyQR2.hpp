@@ -27,16 +27,6 @@ static std::tuple<
   MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
   MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
   
-// for debugging
-  int cubeSize, cubeRank;
-  MPI_Comm_size(miniCubeComm, &cubeSize);
-  MPI_Comm_rank(miniCubeComm, &cubeRank);
-
-  // Lets do an advanced MPI_Communicator debugging technique
-  int val = cubeInt/(pGridDimensionC*pGridDimensionC);
-  MPI_Allreduce(MPI_IN_PLACE, &val, 1, MPI_INT, MPI_MAX, miniCubeComm);
-  //std::cout << "size of cube comm - " << cubeSize << " and I have cube rank - " << cubeRank << " and true rank " << worldRank << " and Value  - " << val << std::endl;
-
   MPI_Comm_free(&columnComm);
   return std::make_tuple(rowComm, columnContigComm, columnAltComm, depthComm, sliceComm, miniCubeComm);
 }
@@ -63,8 +53,8 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D(Matrix<T,U,StructureA,Distribution>& 
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(globalDimensionN*globalDimensionN), globalDimensionN, globalDimensionN, globalDimensionN,
     globalDimensionN, true);
 
-  Factor1D_cqr(matrixA, matrixQ2, matrixR1, localDimensionM, globalDimensionN, commWorld);
-  Factor1D_cqr(matrixQ2, matrixQ, matrixR2, localDimensionM, globalDimensionN, commWorld);
+  Factor1D_cqr(matrixA, matrixQ2, matrixR1, commWorld);
+  Factor1D_cqr(matrixQ2, matrixQ, matrixR2, commWorld);
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -103,8 +93,8 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(Matrix<T,U,StructureA,Distribution>& 
     globalDimensionN, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
     globalDimensionN, true);
-  Factor3D_cqr(matrixA, matrixQ2, matrixR1, localDimensionM, localDimensionN, commWorld);
-  Factor3D_cqr(matrixQ2, matrixQ, matrixR2, localDimensionM, localDimensionN, commWorld);
+  Factor3D_cqr(matrixA, matrixQ2, matrixR1, commWorld);
+  Factor3D_cqr(matrixQ2, matrixQ, matrixR2, commWorld);
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -138,8 +128,8 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distributi
 
   U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
-  U localDimensionM = globalDimensionM/gridDimensionD;
-  U localDimensionN = globalDimensionN/gridDimensionC;
+  U localDimensionM = matrixA.getNumRowsLocal();//globalDimensionM/gridDimensionD;
+  U localDimensionN = matrixA.getNumColumnsLocal();//globalDimensionN/gridDimensionC;
 
   // Need to get the right global dimensions here, use a tunable package struct or something
   Matrix<T,U,StructureA,Distribution> matrixQ2(std::vector<T>(localDimensionN*localDimensionM,0), localDimensionN, localDimensionM, globalDimensionN,
@@ -148,8 +138,9 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distributi
     globalDimensionN, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
     globalDimensionN, true);
-  FactorTunable_cqr(matrixA, matrixQ2, matrixR1, localDimensionM, localDimensionN, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators);
-  FactorTunable_cqr(matrixQ2, matrixQ, matrixR2, localDimensionM, localDimensionN, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators);
+  FactorTunable_cqr(matrixA, matrixQ2, matrixR1, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators);
+  std::cout << "globalDimensionM - " << globalDimensionM << " and globalDimensionN - " << globalDimensionN << std::endl;
+  FactorTunable_cqr(matrixQ2, matrixQ, matrixR2, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators);
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -175,12 +166,14 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distributi
 template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, MPI_Comm commWorld)
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld)
 {
   int numPEs;
   MPI_Comm_size(commWorld, &numPEs);
 
   // Changed from syrk to gemm
+  U localDimensionM = matrixA.getNumRowsLocal();
+  U localDimensionN = matrixA.getNumColumnsGlobal();//globalDimensionM/numPEs;		// no error check here, but hopefully 
   std::vector<T> localMMvec(localDimensionN*localDimensionN);
   blasEngineArgumentPackage_syrk<T> syrkPack;
   syrkPack.order = blasEngineOrder::AblasColumnMajor;
@@ -230,7 +223,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,Distributio
 template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, MPI_Comm commWorld)
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld)
 {
   int numPEs, myRank, pGridDimensionSize;
   MPI_Comm_size(commWorld, &numPEs);
@@ -247,6 +240,8 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
   MPI_Comm_size(rowComm, &pGridDimensionSize);
 
   // Need to perform the multiple steps to get our partition of matrixA
+  U localDimensionN = matrixA.getNumColumnsLocal();		// no error check here, but hopefully 
+  U localDimensionM = matrixA.getNumRowsLocal();		// no error check here, but hopefully 
   std::vector<T>& dataA = matrixA.getVectorData();
   U sizeA = matrixA.getNumElems();
   std::vector<T> foreignA;	// dont fill with data first, because if root its a waste,
@@ -297,7 +292,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
 template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, U localDimensionM, U localDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
       std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators)
 {
   MPI_Comm rowComm = std::get<0>(tunableCommunicators);
@@ -318,6 +313,10 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
   MPI_Comm_rank(columnContigComm, &columnContigRank);
 
   // Need to perform the multiple steps to get our partition of matrixA
+  U globalDimensionM = matrixA.getNumRowsGlobal();
+  U globalDimensionN = matrixA.getNumColumnsGlobal();
+  U localDimensionM = matrixA.getNumRowsLocal();//globalDimensionM/gridDimensionD;
+  U localDimensionN = matrixA.getNumColumnsLocal();//globalDimensionN/gridDimensionC;
   std::vector<T>& dataA = matrixA.getVectorData();
   U sizeA = matrixA.getNumElems();
   std::vector<T> foreignA;	// dont fill with data first, because if root its a waste,
@@ -349,14 +348,14 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
 
   // Stuff localB vector into its own matrix so that we can pass it into CFR3D
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixB(std::move(localB), localDimensionN, localDimensionN,
-    localDimensionN*gridDimensionC, localDimensionN*gridDimensionC, true);
+    globalDimensionN, globalDimensionN, true);
 
   // Create an extra matrix for R-inverse
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
-    localDimensionN*gridDimensionC, localDimensionN*gridDimensionC, true);
+    globalDimensionN, globalDimensionN, true);
 
+  std::cout << "check these local values - " << matrixB.getNumRowsLocal() << " " << matrixB.getNumColumnsLocal() << " " << matrixR.getNumRowsLocal() << " " <<  matrixR.getNumColumnsLocal() << " " << matrixRI.getNumRowsLocal() << " " << matrixRI.getNumColumnsLocal() << std::endl;
   CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, 'U', 0, miniCubeComm);
-  MPI_Barrier(MPI_COMM_WORLD);
 
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
