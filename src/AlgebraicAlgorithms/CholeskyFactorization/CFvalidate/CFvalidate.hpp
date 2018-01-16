@@ -241,7 +241,7 @@ std::vector<T> CFvalidate<T,U>::getReferenceMatrix(
     }
   }
   // In case there are hidden zeros, we will recopy
-  if ((globalDimension%pGridDimensionSize) || (globalDimension%pGridDimensionSize))
+  if (globalDimension%pGridDimensionSize)
   {
     U index = 0;
     for (U i=0; i<globalDimension; i++)

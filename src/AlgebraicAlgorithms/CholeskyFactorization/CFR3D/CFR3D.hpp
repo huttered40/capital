@@ -84,6 +84,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 {
   if (globalDimension <= bcDimension)
   {
+    if (localDimension == 0) return;
 
     int tempRank; MPI_Comm_rank(MPI_COMM_WORLD, &tempRank);
 //    if (tempRank == 0) std::cout << "base case with localDimension - " << localDimension << ", globalDimension - " << globalDimension << " and bcDimension - " << bcDimension << std::endl;
@@ -436,6 +437,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 {
   if (globalDimension <= bcDimension)
   {
+    if (localDimension == 0) return;
     // First: AllGather matrix A so that every processor has the same replicated diagonal square partition of matrix A of dimension bcDimension
     //          Note that processors only want to communicate with those on their same 2D slice, since the matrices are replicated on every slice
     //          Note that before the AllGather, we need to serialize the matrix A into the small square matrix

@@ -54,7 +54,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D(Matrix<T,U,StructureA,Distribution>& 
   MPI_Comm_size(commWorld, &numPEs);
   U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
-  U localDimensionM = globalDimensionM/numPEs;		// no error check here, but hopefully 
+  U localDimensionM = matrixA.getNumRowsLocal();//globalDimensionM/numPEs;		// no error check here, but hopefully 
 
   Matrix<T,U,StructureA,Distribution> matrixQ2(std::vector<T>(localDimensionM*globalDimensionN), globalDimensionN, localDimensionM, globalDimensionN,
     globalDimensionM, true);
@@ -276,11 +276,11 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
 
   // Stuff localB vector into its own matrix so that we can pass it into CFR3D
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixB(std::move(localB), localDimensionN, localDimensionN,
-    localDimensionN*pGridDimensionSize, localDimensionN*pGridDimensionSize, true);
+    matrixA.getNumColumnsGlobal(), matrixA.getNumColumnsGlobal(), true);
 
   // Create an extra matrix for R-inverse
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
-    localDimensionN*pGridDimensionSize, localDimensionN*pGridDimensionSize, true);
+    matrixA.getNumColumnsGlobal(), matrixA.getNumColumnsGlobal(), true);
 
   CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, 'U', 0, commWorld);
 

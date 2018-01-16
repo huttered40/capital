@@ -42,10 +42,9 @@ void QRvalidate<T,U>::validateLocal1D(
 
   U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
-  U localDimensionM = globalDimensionM/numPEs;
+  U localDimensionM = matrixA.getNumRowsLocal();
 
   std::vector<T> globalMatrixA = getReferenceMatrix1D(matrixA, globalDimensionN, globalDimensionM, localDimensionM, myRank, commWorld);
-
   // Assume row-major
   std::vector<T> tau(globalDimensionN);
   std::vector<T> matrixQ = globalMatrixA;		// true copy
@@ -54,9 +53,8 @@ void QRvalidate<T,U>::validateLocal1D(
     globalDimensionM, &tau[0]);
 
   // Q is in globalMatrixA now
-
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidual1D_RowCyclic(myQ.getVectorData(), matrixQ, globalDimensionN, globalDimensionM, commWorld);
+  T error = getResidual1D_RowCyclic(myQ.getVectorData(), matrixQ, globalDimensionN, globalDimensionM, localDimensionM, commWorld);
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myQ - solQ is " << error << std::endl;}
@@ -73,11 +71,11 @@ void QRvalidate<T,U>::validateLocal1D(
   if (myRank == 0) {std::cout << "Total error of myR - solR is " << error2 << std::endl;}
 
   // generate A_computed = myQ*myR and compare against original A
-  T error3 = getResidual1D(matrixA.getVectorData(), myQ.getVectorData(), myR.getVectorData(), globalDimensionN, globalDimensionM, commWorld);
+  T error3 = getResidual1D(matrixA.getVectorData(), myQ.getVectorData(), myR.getVectorData(), globalDimensionN, globalDimensionM, localDimensionM, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error3, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total residual error is " << error3 << std::endl;}
 
-  T error4 = testOrthogonality1D(myQ.getVectorData(), globalDimensionN, globalDimensionM, commWorld);
+  T error4 = testOrthogonality1D(myQ.getVectorData(), globalDimensionN, globalDimensionM, localDimensionM, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error4, 1, MPI_DOUBLE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error4 << std::endl;}
 
@@ -115,8 +113,8 @@ void QRvalidate<T,U>::validateLocal3D(
   // Remember, we are assuming that the matrix is square here
   U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
-  U localDimensionM = globalDimensionM/pGridDimensionSize;
-  U localDimensionN = globalDimensionN/pGridDimensionSize;
+  U localDimensionM = matrixA.getNumRowsLocal();
+  U localDimensionN = matrixA.getNumColumnsLocal();
 
 // The block of code was used as a debugging tool, but is not strictly needed, so I commented it out
 /*
@@ -170,10 +168,11 @@ void QRvalidate<T,U>::validateLocal3D(
   MPI_Allreduce(MPI_IN_PLACE, &error1, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total residual error is " << error1 << std::endl;}
 
+/*
   T error2 = testOrthogonality3D(myQ, globalDimensionM, globalDimensionN, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error2 << std::endl;}
-
+*/
   MPI_Comm_free(&sliceComm);
   return;
 }
@@ -220,12 +219,11 @@ void QRvalidate<T,U>::validateLocalTunable(
 
 /* Used for comparing a matrix owned among processors in a 1D row-cyclic manner to a full matrix */
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld)
 {
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
-  U localDimensionY = globalDimensionY/numPEs;
 
   T error = 0;
   for (U i=0; i<globalDimensionX; i++)
@@ -234,6 +232,7 @@ T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector
     {
       U myIndex = i*localDimensionY+j;
       U solIndex = i*globalDimensionY+(j*numPEs+myRank);
+/*
       if (std::abs(myMatrix[myIndex] + solutionMatrix[solIndex]) <= 1e-12)
       {
         T errorSquare = std::abs(myMatrix[myIndex] + solutionMatrix[solIndex]);
@@ -241,6 +240,7 @@ T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector
         //error += errorSquare;
         continue;
       }
+*/
       T errorSquare = std::abs(myMatrix[myIndex] - solutionMatrix[solIndex]);
       //if (myRank==0) std::cout << errorSquare << " " << myMatrix[myIndex] << " " << solutionMatrix[solIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
@@ -254,12 +254,11 @@ T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector
 
 
 template<typename T, typename U>
-T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld)
 {
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
-  U localDimensionY = globalDimensionY/numPEs;
 
   // generate Q^T*Q and the compare against 0s and 1s, implicely forming the Identity matrix
   std::vector<T> myI(globalDimensionX*globalDimensionX,0);
@@ -298,26 +297,26 @@ T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, 
 
 // generate A_computed = myQ*myR and compare against original A
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>&myR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
+T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>&myR, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld)
 {
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
-  U localDimensionY = globalDimensionY/numPEs;
 
   std::vector<T> computedA(globalDimensionX*localDimensionY,0);
   // Again, for now, lets just use cblas, but I can encapsulate it into blasEngine later
   cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, localDimensionY, globalDimensionX, globalDimensionX,
     1., &myQ[0], localDimensionY, &myR[0], globalDimensionX, 0., &computedA[0], localDimensionY);
 
+  U trueDimensionY = globalDimensionY/numPEs + ((myRank < (globalDimensionY%numPEs)) ? 1 : 0);
   T error = 0;
   for (U i=0; i<globalDimensionX; i++)
   {
-    for (U j=0; j<localDimensionY; j++)
+    for (U j=0; j<trueDimensionY; j++)
     {
       U myIndex = i*localDimensionY+j;
       T errorSquare = std::abs(myA[myIndex] - computedA[myIndex]);
-      //if (myRank==0) std::cout << errorSquare << " " << myQ[myIndex] << " " << solQ[solIndex] << " i - " << i << ", j - " << j << std::endl;
+      //`if (myRank==0) std::cout << errorSquare << " " << myA[myIndex] << " " << computedA[myIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
     }
@@ -340,9 +339,10 @@ T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& 
   T error = 0;
   for (U i=0; i<globalDimensionX; i++)
   {
-    for (U j=i; j<globalDimensionX; j++)
+    for (U j=0; j<(i+1); j++)
     {
       U myIndex = i*globalDimensionX+j;
+/*
       if (std::abs(myMatrix[myIndex] + solutionMatrix[myIndex]) <= 1e-12)
       {
         T errorSquare = std::abs(myMatrix[myIndex] + solutionMatrix[myIndex]);
@@ -350,6 +350,7 @@ T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& 
         error += errorSquare;
         continue;
       }
+*/
       T errorSquare = std::abs(myMatrix[myIndex] - solutionMatrix[myIndex]);
       //if (myRank==0) std::cout << errorSquare << " " << myMatrix[myIndex] << " " << solutionMatrix[myIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
@@ -391,9 +392,14 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distributio
   int pGridCoordY = std::get<2>(commInfo3D);
   int pGridCoordZ = std::get<3>(commInfo3D);
   pGridDimensionSize = std::get<4>(commInfo3D);
+  bool isRank1 = false;
+  if ((pGridCoordY == 0) && (pGridCoordX == 0) && (pGridCoordZ == 0))
+  {
+    isRank1 = true;
+  }
 
-  U localDimensionM = globalDimensionM/pGridDimensionSize;
-  U localDimensionN = globalDimensionN/pGridDimensionSize;
+  U localDimensionM = myQ.getNumRowsLocal();
+  U localDimensionN = myQ.getNumColumnsLocal();
 
   Matrix<T,U,MatrixStructureRectangle,Distribution> testA = myA;			// Just copy here. No big deal because it will be overwritten soon
   blasEngineArgumentPackage_gemm<double> blasArgs;
@@ -407,12 +413,13 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distributio
   // Now we can just iterate over myA and testA and compare
   T error = 0;
   U myIndex = 0;
-  for (U i=0; i<localDimensionM; i++)
+  for (U i=0; i<localDimensionN; i++)
   {
-    for (U j=0; j<localDimensionN; j++)
+    for (U j=0; j<localDimensionM; j++)
     {
       T errorSquare = 0;
       errorSquare = std::abs(myA.getRawData()[myIndex] - testA.getRawData()[myIndex]);
+      if (isRank1) std::cout << errorSquare << " " << myA.getRawData()[myIndex] << " " << testA.getRawData()[myIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       myIndex++;
@@ -571,10 +578,10 @@ std::vector<T> QRvalidate<T,U>::getReferenceMatrix1D(
   MatrixType localMatrix(globalDimensionX, globalDimensionY, 1, numPEs);
   localMatrix.DistributeRandom(0, myRank, 1, numPEs, key);
 
-  U globalSize = globalDimensionX*globalDimensionY;
+  U globalSize = globalDimensionX*localMatrix.getNumRowsLocal()*numPEs/*globalDimensionY*/;
   std::vector<T> blockedMatrix(globalSize);
   std::vector<T> cyclicMatrix(globalSize);
-  U localSize = globalDimensionX*localDimensionY;
+  U localSize = localMatrix.getNumRowsLocal()*localMatrix.getNumColumnsLocal();
   MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, commWorld);
 
   U writeIndex = 0;
@@ -647,6 +654,7 @@ std::vector<T> QRvalidate<T,U>::getReferenceMatrix3D(
       }
     }
   }
+  // I could clip off the zeros as I did with CFvalidate, but its not necessary
 
   return cyclicMatrix;
 }

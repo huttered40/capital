@@ -61,7 +61,7 @@ int main(int argc, char** argv)
 
     matA.DistributeRandom(0, rank, 1, size, rank);
 
-    cout << "Rank " << rank << " has local dimensionN - " << localMatrixDimensionN << ", localDimensionM - " << localMatrixDimensionM << endl;
+    //cout << "Rank " << rank << " has local dimensionN - " << localMatrixDimensionN << ", localDimensionM - " << localMatrixDimensionM << endl;
 
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
@@ -100,7 +100,7 @@ int main(int argc, char** argv)
 
     matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
 
-    cout << "Rank " << rank << " has local localDimensionN - " << localMatrixDimensionN << ", localDimensionM - " << localMatrixDimensionM << endl;
+    //cout << "matrices have " << matA.getNumRowsLocal() << " local rows, and " << matA.getNumColumnsLocal() << " local columns\n";
 
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
