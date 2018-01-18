@@ -31,7 +31,6 @@ public:
   template<template<typename,typename,int> class Distribution>
   static void Invert(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
-                      U localDimension,
                       char dir,
                       MPI_Comm commWorld
                     );

@@ -6,11 +6,11 @@ template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void RTI3D<T,U,blasEngine>::Invert(
               Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
-              U localDimension,
               char dir,
               MPI_Comm commWorld
             )
 {
+  U localDimension = matrixT.getNumRowsLocal();
   if (dir == 'L')
   {
     // call InvertLower

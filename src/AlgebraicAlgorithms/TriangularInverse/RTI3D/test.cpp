@@ -46,24 +46,28 @@ int main(int argc, char** argv)
 		              1) Performance
   */
   int methodKey2 = atoi(argv[2]);
+  /*
+    methodKey3 -> 0) Non power of 2 dimenson
+		              1) Power of 2 dimension
+  */
+  int methodKey3 = atoi(argv[3]);
 
-  uint64_t globalMatrixSize = (1<<(atoi(argv[3])));
-  uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
+  uint64_t globalMatrixSize = (1<<(atoi(argv[4])));
 
   pTimer myTimer;
   int numIterations = 1;
 
   if (methodKey1 == 0)
   {
-    MatrixTypeL matL(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+    MatrixTypeL matL(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
     matL.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
     MatrixTypeL matLI = matL;
 
-    if (methodKey2 == 1) {numIterations = atoi(argv[4]);}
+    if (methodKey2 == 1) {numIterations = atoi(argv[5]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      RTI3D<double,int,cblasEngine>::Invert(matLI, localMatrixSize, 'L', MPI_COMM_WORLD);
+      RTI3D<double,int,cblasEngine>::Invert(matLI, 'L', MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "RTI3D Lower", i);
     }
@@ -72,7 +76,7 @@ int main(int argc, char** argv)
   }
   else
   {
-    MatrixTypeR matR(localMatrixSize,localMatrixSize,globalMatrixSize,globalMatrixSize);
+    MatrixTypeR matR(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
     matR.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
     MatrixTypeR matRI = matR;
 
@@ -80,7 +84,7 @@ int main(int argc, char** argv)
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      RTI3D<double,int,cblasEngine>::Invert(matRI, localMatrixSize, 'U', MPI_COMM_WORLD);
+      RTI3D<double,int,cblasEngine>::Invert(matRI, 'U', MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "RTI3D Upper", i);
     }
