@@ -38,7 +38,7 @@ int main(int argc, char** argv)
 
   /*
     methodKey1 -> 0) Lower
-		  1) Upper
+		              1) Upper
   */
   int methodKey1 = atoi(argv[1]);
   /*
@@ -46,10 +46,14 @@ int main(int argc, char** argv)
 		              1) Performance
   */
   int methodKey2 = atoi(argv[2]);
+  /*
+    methodKey3 -> 0) Non power of 2 dimenson
+		              1) Power of 2 dimension
+  */
+  int methodKey3 = atoi(argv[3]);
 
-  uint64_t globalMatrixSize = (1<<(atoi(argv[3])));
-  uint64_t localMatrixSize = globalMatrixSize/pGridDimensionSize;
-  int blockSizeMultiplier = atoi(argv[4]);
+  uint64_t globalMatrixSize = (methodKey3 ? (1<<(atoi(argv[4]))) : atoi(argv[4]));
+  int blockSizeMultiplier = atoi(argv[5]);
 
   pTimer myTimer;
   int numIterations = 1;
@@ -61,7 +65,7 @@ int main(int argc, char** argv)
     MatrixTypeR matLI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    if (methodKey2 == 1) {numIterations = atoi(argv[5]);}
+    if (methodKey2 == 1) {numIterations = atoi(argv[6]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
@@ -78,7 +82,7 @@ int main(int argc, char** argv)
     MatrixTypeR matRI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    if (methodKey2 == 1) {numIterations = atoi(argv[5]);}
+    if (methodKey2 == 1) {numIterations = atoi(argv[6]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();

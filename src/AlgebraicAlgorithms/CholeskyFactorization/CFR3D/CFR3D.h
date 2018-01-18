@@ -67,6 +67,7 @@ private:
                        U matLIstartY,
                        U matLIendY,
                        U tranposePartner,
+                       MPI_Comm slice2D,
                        MPI_Comm commWorld
                      );
 
@@ -93,6 +94,7 @@ private:
                        U matRIstartY,
                        U matRIendY,
                        U transposePartner,
+                       MPI_Comm slice2D,
                        MPI_Comm commWorld
                      );
 

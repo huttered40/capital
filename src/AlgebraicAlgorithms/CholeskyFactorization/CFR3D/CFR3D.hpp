@@ -24,6 +24,10 @@ void CFR3D<T,U,blasEngine>::Factor(
   int pGridCoordZ = rank/helper;
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
 
+  // Attain the communicator with only processors on the same 2D slice
+  MPI_Comm slice2D;
+  MPI_Comm_split(commWorld, pGridCoordZ, rank, &slice2D);
+
   U localDimension = matrixA.getNumRowsLocal();
   U globalDimension = matrixA.getNumRowsGlobal();
   // the division below may have a remainder, but I think integer division will be ok, as long as we change the base case condition to be <= and not just ==
@@ -47,12 +51,12 @@ void CFR3D<T,U,blasEngine>::Factor(
   if (dir == 'L')
   {
     rFactorLower(matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, commWorld);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, slice2D, commWorld);
   }
   else if (dir == 'U')
   {
     rFactorUpper(matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, commWorld);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, slice2D, commWorld);
   }
 }
 
@@ -80,14 +84,12 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   U matLIstartY,
   U matLIendY,
   U transposePartner,
+  MPI_Comm slice2D,
   MPI_Comm commWorld )	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
 {
   if (globalDimension <= bcDimension)
   {
     if (localDimension == 0) return;
-
-    int tempRank; MPI_Comm_rank(MPI_COMM_WORLD, &tempRank);
-//    if (tempRank == 0) std::cout << "base case with localDimension - " << localDimension << ", globalDimension - " << globalDimension << " and bcDimension - " << bcDimension << std::endl;
 
     // First: AllGather matrix A so that every processor has the same replicated diagonal square partition of matrix A of dimension bcDimension
     //          Note that processors only want to communicate with those on their same 2D slice, since the matrices are replicated on every slice
@@ -97,21 +99,11 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
     // Fourth: Save the data that each processor owns according to the cyclic rule.
 
-    int rankWorld, rankSlice;
-    int sizeWorld, sizeSlice;
-    MPI_Comm slice2D;
-    MPI_Comm_rank(commWorld, &rankWorld);
-    MPI_Comm_size(commWorld, &sizeWorld);
-
-    U pGridDimensionSize = ceil(pow(sizeWorld,1./3.));
-    U helper = pGridDimensionSize;
-    helper *= helper;
-    int pGridCoordZ = rankWorld/helper;
-
-    // Attain the communicator with only processors on the same 2D slice
-    MPI_Comm_split(commWorld, pGridCoordZ, rankWorld, &slice2D);
+    int rankSlice,sizeSlice,sizeComm;
+    MPI_Comm_size(commWorld, &sizeComm);
     MPI_Comm_rank(slice2D, &rankSlice);
     MPI_Comm_size(slice2D, &sizeSlice);
+    int pGridDimensionSize = std::nearbyint(std::pow(sizeComm,1./3.));
 
     // Should be fast pass-by-value via move semantics
     std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
@@ -267,7 +259,6 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, tempL, matLstartX, matLendX, matLstartY, matLendY, true);
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempLI, matLIstartX, matLIendX, matLIstartY, matLIendY, true);
     }
-    MPI_Comm_free(&slice2D);
     return;
   }
 
@@ -296,7 +287,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   rFactorLower(matrixA, matrixL, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift,
-    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, commWorld);
+    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, slice2D, commWorld);
 
   // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a square buffer
   Matrix<T,U,MatrixStructureLowerTriangular,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
@@ -383,7 +374,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   // Only need to change the argument for matrixA
   rFactorLower(holdSum, matrixL, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY,
-    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, commWorld);
+    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, slice2D, commWorld);
 
   // Next step : temp <- L_{21}*LI_{11}
   // We can re-use holdLsyrk as our temporary output matrix.
@@ -432,6 +423,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
                        U matRIstartY,
                        U matRIendY,
                        U transposePartner,
+                       MPI_Comm slice2D,
                        MPI_Comm commWorld
                      )
 {
@@ -446,21 +438,11 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
     // Fourth: Save the data that each processor owns according to the cyclic rule.
 
-    int rankWorld, rankSlice;
-    int sizeWorld, sizeSlice;
-    MPI_Comm slice2D;
-    MPI_Comm_rank(commWorld, &rankWorld);
-    MPI_Comm_size(commWorld, &sizeWorld);
-
-    U pGridDimensionSize = ceil(pow(sizeWorld,1./3.));
-    U helper = pGridDimensionSize;
-    helper *= helper;
-    int pGridCoordZ = rankWorld/helper;
-
-    // Attain the communicator with only processors on the same 2D slice
-    MPI_Comm_split(commWorld, pGridCoordZ, rankWorld, &slice2D);
+    int rankSlice,sizeSlice,sizeComm;
+    MPI_Comm_size(commWorld, &sizeComm);
     MPI_Comm_rank(slice2D, &rankSlice);
     MPI_Comm_size(slice2D, &sizeSlice);
+    int pGridDimensionSize = std::nearbyint(std::pow(sizeComm,1./3.));
 
     // Should be fast pass-by-value via move semantics
     std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
@@ -616,7 +598,6 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, tempR, matRstartX, matRendX, matRstartY, matRendY, true);
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixRI, tempRI, matRIstartX, matRIendX, matRIstartY, matRIendY, true);
     }
-    MPI_Comm_free(&slice2D);
     return;
   }
 
@@ -646,7 +627,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   rFactorUpper(matrixA, matrixR, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift,
-    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, commWorld);
+    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, slice2D, commWorld);
 
   // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a square buffer
   Matrix<T,U,MatrixStructureUpperTriangular,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
@@ -707,7 +688,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   // Only need to change the argument for matrixA
   rFactorUpper(holdSum, matrixR, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matRstartX+localShift, matRendX, matRstartY+localShift, matRendY,
-    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, commWorld);
+    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, slice2D, commWorld);
 
   // Next step : temp <- R_{12}*RI_{22}
   // We can re-use holdRsyrk as our temporary output matrix.
