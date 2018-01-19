@@ -39,6 +39,7 @@ void RTI3D<T,U,blasEngine>::InvertLower(
   if (commSize == 1)
   {
     // Invert
+    std::cout << "Hello\n";
     LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'L', 'N', localDimension, matrixL.getRawData(), localDimension);
     return;
   }
