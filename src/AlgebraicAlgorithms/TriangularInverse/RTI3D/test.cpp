@@ -10,7 +10,7 @@
 
 // Local includ#include "CFR3D.h"
 #include "RTI3D.h"
-//#include "../CFvalidate/CFvalidate.h"
+#include "../TIvalidate/TIvalidate.h"
 #include "../../../Timer/Timer.h"
 
 using namespace std;
@@ -52,7 +52,7 @@ int main(int argc, char** argv)
   */
   int methodKey3 = atoi(argv[3]);
 
-  uint64_t globalMatrixSize = (1<<(atoi(argv[4])));
+  uint64_t globalMatrixSize = (methodKey3 ? (1<<(atoi(argv[4]))) : atoi(argv[4]));
 
   pTimer myTimer;
   int numIterations = 1;
@@ -71,8 +71,10 @@ int main(int argc, char** argv)
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "RTI3D Lower", i);
     }
-
-    //TIvalidate<double,int>::validateTI_Local(matL, matLI, localMatrixSize, globalMatrixSize, 'L', MPI_COMM_WORLD);
+    if (methodKey2 == 0)
+    {
+      TIvalidate<double,int>::validateTI_Local(matLI, 'L', MPI_COMM_WORLD);
+    }
   }
   else
   {
@@ -89,7 +91,10 @@ int main(int argc, char** argv)
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "RTI3D Upper", i);
     }
 
-    //TIvalidate<double,int>::validateTI_Local(matR, matRI, localMatrixSize, globalMatrixSize, 'U', MPI_COMM_WORLD);
+    if (methodKey2 == 0)
+    {
+      TIvalidate<double,int>::validateTI_Local(matRI, 'U', MPI_COMM_WORLD);
+    }
   }  
 
   MPI_Finalize();
