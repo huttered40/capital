@@ -53,7 +53,7 @@ int main(int argc, char** argv)
 
   /*
     Choices for dimensionKey: 0) Non-power of 2
-			      1) Power of 2
+                  			      1) Power of 2
   */
   int dimensionKey = atoi(argv[4]);
   uint64_t globalMatrixSizeM = (dimensionKey == 0 ? atoi(argv[5]) : (1<<(atoi(argv[5]))));

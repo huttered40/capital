@@ -576,34 +576,35 @@ void MM3D<T,U,blasEngine>::_start2(
     for (U i=0; i<rowCommSize; i++)
     {
       U saveStepA = i*messageSizeA;
-      for (U j=0; j<messageSizeA; j++)
-      {
-        matrixAEngineVector[saveStepA+j] = collectMatrixA[shuffleAoffset+j];
-      }
+      memcpy(&matrixAEngineVector[saveStepA], &collectMatrixA[shuffleAoffset], messageSizeA*sizeof(T));
       shuffleAoffset += messageSizeA;
       shuffleAoffset %= sizeA;
     }
   }
 
-  // Allgathering matrixB is a problem
-  // Lets use MPI Derived datatypes for this.
+  // Now we Allgather partitions of matrix B
   U localNumRowsB = matrixB.getNumRowsLocal();
   U localNumColumnsB = matrixB.getNumColumnsLocal();
-  std::vector<T> collectMatrixB(sizeB);			// will need to change upon Serialize changes
-  shift = (pGridCoordZ + pGridCoordY) % columnCommSize;
   U blockLengthB = localNumRowsB/columnCommSize;
+  shift = (pGridCoordZ + pGridCoordY) % columnCommSize;
   U dataBOffset = blockLengthB*shift;
+  U messageSizeB = sizeB/columnCommSize;
+  std::vector<T> collectMatrixB(sizeB);			// will need to change upon Serialize changes
+  std::vector<T> partitionMatrixB(localNumColumnsB*blockLengthB);			// will need to change upon Serialize changes
+  // Special serialize. Can't use my MatrixSerializer here.
+  for (U i=0; i<localNumColumnsB; i++)
+  {
+    memcpy(&partitionMatrixB[i*blockLengthB], &matrixB.getRawData()[dataBOffset + i*localNumRowsB], blockLengthB*sizeof(T));
+  }
+  MPI_Allgather(&partitionMatrixB[0], partitionMatrixB.size(), MPI_DOUBLE, &collectMatrixB[0], partitionMatrixB.size(), MPI_DOUBLE, columnComm);
+
+/*
+  // Allgathering matrixB is a problem for AMPI when using derived datatypes
   MPI_Datatype matrixBcolumnData;
   MPI_Type_vector(localNumColumnsB,blockLengthB,localNumRowsB,MPI_DOUBLE,&matrixBcolumnData);
   MPI_Type_commit(&matrixBcolumnData);
   U messageSizeB = sizeB/columnCommSize;
   MPI_Allgather(&dataB[dataBOffset], 1, matrixBcolumnData, &collectMatrixB[0], messageSizeB, MPI_DOUBLE, columnComm);
-/* AMPI has trouble here. Check back with Sam. Then recheck for correctness.
-  // debugging
-  for (int i=0; i<sizeB; i++)
-  {
-    std::cout << "check val - " << collectMatrixB[i] << std::endl;
-  }
 */
 
   // Then need to re-shuffle the data in collectMatrixB because of the format Allgather puts the received data in 
@@ -624,10 +625,7 @@ void MM3D<T,U,blasEngine>::_start2(
       {
         U saveOffsetB = shuffleBoffset + i*blockLengthB;
         U saveStepB = i*localNumRowsB + j*blockLengthB;
-        for (U k=0; k<blockLengthB; k++)
-        {
-          matrixBEngineVector[saveStepB+k] = collectMatrixB[saveOffsetB+k];
-        }
+        memcpy(&matrixBEngineVector[saveStepB], &collectMatrixB[saveOffsetB], blockLengthB*sizeof(T));
         shuffleBoffset += messageSizeB;
         shuffleBoffset %= sizeB;
       }
