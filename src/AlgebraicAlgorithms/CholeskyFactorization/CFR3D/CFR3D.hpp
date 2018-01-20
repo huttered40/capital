@@ -9,7 +9,9 @@ void CFR3D<T,U,blasEngine>::Factor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
   char dir,
   int tune,
-  MPI_Comm commWorld )
+  MPI_Comm commWorld,
+  int MM_id
+  )
 {
   // Need to split up the commWorld communicator into a 3D grid similar to Summa3D
   int rank,size;
@@ -51,12 +53,12 @@ void CFR3D<T,U,blasEngine>::Factor(
   if (dir == 'L')
   {
     rFactorLower(matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, slice2D, commWorld);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
   }
   else if (dir == 'U')
   {
     rFactorUpper(matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, slice2D, commWorld);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
   }
 }
 
@@ -84,6 +86,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   U matLIstartY,
   U matLIendY,
   U transposePartner,
+  int MM_id,
   MPI_Comm slice2D,
   MPI_Comm commWorld )	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
 {
@@ -287,13 +290,20 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   rFactorLower(matrixA, matrixL, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift,
-    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, slice2D, commWorld);
+    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, MM_id, slice2D, commWorld);
 
-  // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a square buffer
+/* Note: the code below might actualy be a bit better than the uncommented-out code below it, because this code takes advantage of the triangular
+         structure of packedMatrix, allowing it to communicate half the words in the transpose. Only problem: because the Allgather+MM3D routine
+         doesn't currently work for non-square structure matrices, it crashes if I make this triangular.
+  // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a buffer
   Matrix<T,U,MatrixStructureLowerTriangular,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-//  std::cout << "yo, localShift - " << localShift << ", matLIstartX - " << matLIstartX << ", matLIstartX+localShift - " << matLIstartX+localShift << ", matLIstartY - " << matLIstartY << ", matLIstartY+localShift - " << matLIstartY+localShift << "\n";
   Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixLI, packedMatrix,
+    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
+*/
+  Matrix<T,U,MatrixStructureSquare,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+  // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, packedMatrix,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
 
   transposeSwap(packedMatrix, rank, transposePartner, commWorld);
@@ -305,7 +315,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
-      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, 0, true, false, true);
+      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, MM_id, true, false, true);
 /*
   blasEngineArgumentPackage_trmm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
@@ -349,9 +359,8 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   blasArgsGemm.beta = 0.;
 */
 
-//  std::cout << "rank " << rank << " has localShift - " << localShift << " and reverseDimLocal - " << reverseDimLocal << std::endl;
   MM3D<T,U,blasEngine>::Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal,
-      0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, 0, false, false, false);
+      0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, MM_id, false, false, false);
 
   // Next step: A_{22} - holdLsyrk.
   Matrix<T,U,MatrixStructureSquare,Distribution> holdSum(std::vector<T>(reverseDimLocal*reverseDimLocal), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
@@ -374,7 +383,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   // Only need to change the argument for matrixA
   rFactorLower(holdSum, matrixL, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY,
-    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, slice2D, commWorld);
+    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, MM_id, slice2D, commWorld);
 
   // Next step : temp <- L_{21}*LI_{11}
   // We can re-use holdLsyrk as our temporary output matrix.
@@ -389,13 +398,13 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   invPackage1.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI,
     tempInverse, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, matLIstartX, matLIstartX+localShift, matLIstartY,
-      matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, invPackage1, 0, true, true, false);
+      matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, invPackage1, MM_id, true, true, false);
 
   // Next step: finish the Triangular inverse calculation
   invPackage1.alpha = -1.;
   MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse,
     matrixLI, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY, 0, localShift, 0, reverseDimLocal,
-      matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, 0, true, false, true);
+      matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, MM_id, true, false, true);
 }
 
 
@@ -423,6 +432,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
                        U matRIstartY,
                        U matRIendY,
                        U transposePartner,
+                       int MM_id,
                        MPI_Comm slice2D,
                        MPI_Comm commWorld
                      )
@@ -627,7 +637,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   rFactorUpper(matrixA, matrixR, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift,
-    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, slice2D, commWorld);
+    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, MM_id, slice2D, commWorld);
 
   // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a square buffer
   Matrix<T,U,MatrixStructureUpperTriangular,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
@@ -644,7 +654,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(packedMatrix, matrixA, matrixR, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
-      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, 0, false, true, true);
+      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, MM_id, false, true, true);
 
   int sizeWorld;
   MPI_Comm_size(commWorld, &sizeWorld);
@@ -665,7 +675,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   transposeSwap(squareRSwap, rank, transposePartner, commWorld);
 
   MM3D<T,U,blasEngine>::Multiply(squareRSwap, squareR, holdRsyrk, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal, 0, localShift,
-      0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, 0, false, false, false);
+      0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, MM_id, false, false, false);
 
   // Next step: A_{22} - holdRsyrk.
   Matrix<T,U,MatrixStructureSquare,Distribution> holdSum(std::vector<T>(reverseDimLocal*reverseDimLocal), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
@@ -688,7 +698,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   // Only need to change the argument for matrixA
   rFactorUpper(holdSum, matrixR, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matRstartX+localShift, matRendX, matRstartY+localShift, matRendY,
-    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, slice2D, commWorld);
+    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, MM_id, slice2D, commWorld);
 
   // Next step : temp <- R_{12}*RI_{22}
   // We can re-use holdRsyrk as our temporary output matrix.
@@ -702,13 +712,13 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   invPackage1.alpha = 1.;
   invPackage1.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(matrixR, matrixRI,tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift,
-    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, invPackage1, 0, true, true, false);
+    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, invPackage1, MM_id, true, true, false);
 
   // Next step: finish the Triangular inverse calculation
   invPackage1.alpha = -1.;
   MM3D<T,U,blasEngine>::Multiply(matrixRI, tempInverse,
     matrixRI, matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift, 0, reverseDimLocal, 0, localShift,
-      matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, 0, true, false, true);
+      matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, MM_id, true, false, true);
 }
 
 

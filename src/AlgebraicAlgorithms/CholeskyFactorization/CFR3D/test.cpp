@@ -51,9 +51,14 @@ int main(int argc, char** argv)
 		              1) Power of 2 dimension
   */
   int methodKey3 = atoi(argv[3]);
+  /*
+    methodKey4: -> 0) Broadcast + Allreduce
+			             1) Allgather + Allreduce
+  */
+  int methodKey4 = atoi(argv[4]);
 
-  uint64_t globalMatrixSize = (methodKey3 ? (1<<(atoi(argv[4]))) : atoi(argv[4]));
-  int blockSizeMultiplier = atoi(argv[5]);
+  uint64_t globalMatrixSize = (methodKey3 ? (1<<(atoi(argv[5]))) : atoi(argv[5]));
+  int blockSizeMultiplier = atoi(argv[6]);
 
   pTimer myTimer;
   int numIterations = 1;
@@ -65,11 +70,11 @@ int main(int argc, char** argv)
     MatrixTypeR matLI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    if (methodKey2 == 1) {numIterations = atoi(argv[6]);}
+    if (methodKey2 == 1) {numIterations = atoi(argv[7]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      CFR3D<double,int,cblasEngine>::Factor(matA, matL, matLI, 'L', blockSizeMultiplier, MPI_COMM_WORLD);
+      CFR3D<double,int,cblasEngine>::Factor(matA, matL, matLI, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Lower", i);
     }
@@ -82,11 +87,11 @@ int main(int argc, char** argv)
     MatrixTypeR matRI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    if (methodKey2 == 1) {numIterations = atoi(argv[6]);}
+    if (methodKey2 == 1) {numIterations = atoi(argv[7]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      CFR3D<double,int,cblasEngine>::Factor(matA, matR, matRI, 'U', blockSizeMultiplier, MPI_COMM_WORLD);
+      CFR3D<double,int,cblasEngine>::Factor(matA, matR, matRI, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Upper", i);
     }

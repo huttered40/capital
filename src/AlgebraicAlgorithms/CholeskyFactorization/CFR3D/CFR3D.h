@@ -39,7 +39,8 @@ public:
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
                       char dir,
                       int tune,
-                      MPI_Comm commWorld
+                      MPI_Comm commWorld,
+                      int MM_id = 0
                     );
 
 
@@ -67,6 +68,7 @@ private:
                        U matLIstartY,
                        U matLIendY,
                        U tranposePartner,
+                       int MM_id,
                        MPI_Comm slice2D,
                        MPI_Comm commWorld
                      );
@@ -94,6 +96,7 @@ private:
                        U matRIstartY,
                        U matRIendY,
                        U transposePartner,
+                       int MM_id,
                        MPI_Comm slice2D,
                        MPI_Comm commWorld
                      );

@@ -616,7 +616,7 @@ void MM3D<T,U,blasEngine>::_start2(
     for (U i=0; i<rowCommSize; i++)
     {
       // Don't really need the 2nd if statement condition like the one above. Actually, neither do
-      U writeSize = ((((/*pGridCoordZ + */i) % rowCommSize) < modA) ? messageSizeA : divA*localNumRowsA);
+      U writeSize = (((i % rowCommSize) < modA) ? messageSizeA : divA*localNumRowsA);
       memcpy(&matrixAEngineVector[stepA], &collectMatrixA[shuffleAoffset], writeSize*sizeof(T));
       stepA += writeSize;
       shuffleAoffset += messageSizeA;
@@ -624,6 +624,7 @@ void MM3D<T,U,blasEngine>::_start2(
     }
   }
 
+  
   // Now we Allgather partitions of matrix B
   U localNumRowsB = matrixB.getNumRowsLocal();
   U localNumColumnsB = matrixB.getNumColumnsLocal();
@@ -644,7 +645,6 @@ void MM3D<T,U,blasEngine>::_start2(
     memcpy(&partitionMatrixB[i*blockLengthB], &matrixB.getRawData()[dataBOffset + i*localNumRowsB], writeSize*sizeof(T));
   }
   MPI_Allgather(&partitionMatrixB[0], partitionMatrixB.size(), MPI_DOUBLE, &collectMatrixB[0], partitionMatrixB.size(), MPI_DOUBLE, columnComm);
-
 /*
   // Allgathering matrixB is a problem for AMPI when using derived datatypes
   MPI_Datatype matrixBcolumnData;
@@ -653,9 +653,9 @@ void MM3D<T,U,blasEngine>::_start2(
   U messageSizeB = sizeB/columnCommSize;
   MPI_Allgather(&dataB[dataBOffset], 1, matrixBcolumnData, &collectMatrixB[0], messageSizeB, MPI_DOUBLE, columnComm);
 */
-
   // Then need to re-shuffle the data in collectMatrixB because of the format Allgather puts the received data in 
   // Note: there is a particular order to it beyond the AllGather order. Depends what z coordinate we are on (that determines the shift)
+
   if ((rowCommSize == 1) && (columnCommSize == 1) && (depthCommSize == 1))
   {
     matrixBEngineVector = std::move(collectMatrixB);
@@ -671,9 +671,15 @@ void MM3D<T,U,blasEngine>::_start2(
       U saveStepB = i*localNumRowsB;
       for (U j=0; j<columnCommSize; j++)
       {
-        U writeSize = (((modB == 0) || (((j/*+pGridCoordZ*/) % columnCommSize) < modB)) ? blockLengthB : blockLengthB-1);
-//        std::cout << "writeSize - " << writeSize << std::endl;
+        U writeSize = (((modB == 0) || ((j % columnCommSize) < modB)) ? blockLengthB : blockLengthB-1);
         U saveOffsetB = shuffleBoffset + i*blockLengthB;
+/*
+        if (saveStepB+writeSize > matrixBEngineVector.size())
+        {
+          std::cout << "saveStepB - " << saveStepB << ", writeSize - " << writeSize << ", matrixBEngineVector size - " << matrixBEngineVector.size() << ", j - " << j << ", columnCommSize - " << columnCommSize << ", i - " << i << ", localNumColumnsB - " << localNumColumnsB << ", localNumRowsB - " << localNumRowsB << ", blockSize - " << blockLengthB << ", sizeB - " << sizeB << ", size of collectMatrixB - " << collectMatrixB.size() << ", matrixB things - " << matrixB.getNumRowsLocal() << " " << matrixB.getNumColumnsLocal() << " " << matrixB.getNumElems() << std::endl;
+          assert(saveStepB+writeSize <= matrixBEngineVector.size());
+        }
+*/
         memcpy(&matrixBEngineVector[saveStepB], &collectMatrixB[saveOffsetB], writeSize*sizeof(T));
         saveStepB += writeSize;
         shuffleBoffset += messageSizeB;
