@@ -286,18 +286,10 @@ void MM3D<T,U,blasEngine>::Multiply(
   int pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  Matrix<T,U,StructureA,Distribution> subMatrixA(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*pGridDimensionSize, rangeA_y*pGridDimensionSize);
-  Matrix<T,U,StructureB,Distribution> subMatrixB(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*pGridDimensionSize, rangeB_x*pGridDimensionSize);
-  Matrix<T,U,StructureC,Distribution> subMatrixC(std::vector<T>(), rangeC_z, rangeC_y, rangeC_z*pGridDimensionSize, rangeC_y*pGridDimensionSize);
-  Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, cutA);
-  Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, cutB);
-  Matrix<T,U,StructureC,Distribution>& matC = getSubMatrix(matrixC, subMatrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, cutC);
-/*
-  std::cout << "matA local numRows - " << matA.getNumRowsLocal() << ", matA local columns - " << matA.getNumColumnsLocal() << std::endl;
-  std::cout << "matB local numRows - " << matB.getNumRowsLocal() << ", matB local columns - " << matB.getNumColumnsLocal() << std::endl;
-  std::cout << "matC local numRows - " << matC.getNumRowsLocal() << ", matC local columns - " << matC.getNumColumnsLocal() << std::endl;
-*/
-  Multiply(matA, matB, matC, commWorld, srcPackage, methodKey);
+  Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
+  Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
+  Matrix<T,U,StructureC,Distribution> matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, pGridDimensionSize, cutC);
+  Multiply((cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC)
@@ -347,11 +339,8 @@ void MM3D<T,U,blasEngine>::Multiply(
   U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  Matrix<T,U,StructureA,Distribution> subMatrixA(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*pGridDimensionSize, rangeA_y*pGridDimensionSize);
-  Matrix<T,U,StructureB,Distribution> subMatrixB(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*pGridDimensionSize, rangeB_x*pGridDimensionSize);
-  Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, cutA);
-  Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, cutB);
-
+  Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
+  Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
   Multiply(matA, matB, commWorld, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
@@ -758,26 +747,28 @@ void MM3D<T,U,blasEngine>::getEnginePtr(
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-Matrix<T,U,StructureArg,Distribution>& MM3D<T,U,blasEngine>::getSubMatrix(
-								Matrix<T,U,StructureArg, Distribution>& srcMatrix,	// pass by value via move constructor
-								Matrix<T,U,StructureArg, Distribution>& fillMatrix,	// pass by value via move constructor
+Matrix<T,U,StructureArg,Distribution> MM3D<T,U,blasEngine>::getSubMatrix(
+								Matrix<T,U,StructureArg, Distribution>& srcMatrix,
 								U matrixArgColumnStart,
 								U matrixArgColumnEnd,
 								U matrixArgRowStart,
 								U matrixArgRowEnd,
-								bool getSub
+		            int pGridDimensionSize, 
+    						bool getSub
 						       )
 {
   if (getSub)
   {
-    U rangeC_column = matrixArgColumnEnd - matrixArgColumnStart;
-    U rangeC_row = matrixArgRowEnd - matrixArgRowStart;
+    U numColumns = matrixArgColumnEnd - matrixArgColumnStart;
+    U numRows = matrixArgRowEnd - matrixArgRowStart;
+    Matrix<T,U,StructureArg,Distribution> fillMatrix(std::vector<T>(), numColumns, numRows, numColumns*pGridDimensionSize, numRows*pGridDimensionSize);
     Serializer<T,U,StructureArg,StructureArg>::Serialize(srcMatrix, fillMatrix,
       matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
-    return fillMatrix;			// I am returning a lvalue reference to a lvalue reference
+    return fillMatrix;			// I am returning an rvalue
   }
   else
   {
-    return srcMatrix;
+    // return cheap garbage.
+    return Matrix<T,U,StructureArg,Distribution>(0,0,1,1);
   }
 }
