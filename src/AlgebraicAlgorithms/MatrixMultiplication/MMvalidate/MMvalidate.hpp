@@ -221,7 +221,7 @@ T MMvalidate<T,U,blasEngine>::getResidualSquare(
     for (U j=0; j<trueDimensionM; j++)
     {
       T errorSquare = std::abs(myValues[myIndex] - blasValues[solIndex]);
-      //if ((pCoordX == 0) && (pCoordY == 1) && (pCoordZ == 0)) std::cout << errorSquare << " " << myValues[myIndex] << " " << blasValues[solIndex] << " at global index - " << solIndex << " And local index - " << myIndex << " and localDimensionM - " << localDimensionM << " And trueDimensionM - " << trueDimensionM << " And div - " << globalDimensionM/pGridDimensionSize << " and pCoordX - " << pCoordX << std::endl;
+      //if ((pCoordX == 0) && (pCoordY == 0) && (pCoordZ == 0)) std::cout << errorSquare << " " << myValues[myIndex] << " " << blasValues[solIndex] << " at global index - " << solIndex << " And local index - " << myIndex << " and localDimensionM - " << localDimensionM << " And trueDimensionM - " << trueDimensionM << " And div - " << globalDimensionM/pGridDimensionSize << " and pCoordX - " << pCoordX << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       solIndex += pGridDimensionSize;

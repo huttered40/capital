@@ -559,26 +559,29 @@ void MM3D<T,U,blasEngine>::_start2(
   // Note: using rowCommSize here instead of rowCommSize shouldn't matter for a 3D grid with uniform 2D slices
   U localNumRowsA = matrixA.getNumRowsLocal();
   U localNumColumnsA = matrixA.getNumColumnsLocal();
-  U gatherSizeA = (localNumColumnsA%rowCommSize == 0 ? sizeA : ((localNumColumnsA/rowCommSize)+1)*rowCommSize*localNumRowsA);
-  std::vector<T> collectMatrixA(gatherSizeA);			// will need to change upon Serialize changes
+  U modA = localNumColumnsA%rowCommSize;
+  U divA = localNumColumnsA/rowCommSize;
+  U gatherSizeA = (modA == 0 ? sizeA : (divA+1)*rowCommSize*localNumRowsA);
+  std::vector<T> collectMatrixA(gatherSizeA);
   U shift = (pGridCoordZ + pGridCoordX) % rowCommSize;
-  U dataAOffset = localNumRowsA*(localNumColumnsA/rowCommSize)*shift;
-  dataAOffset += std::min(shift,localNumColumnsA%rowCommSize)*localNumRowsA;
+  U dataAOffset = localNumRowsA*divA*shift;
+  dataAOffset += std::min(shift,modA)*localNumRowsA;
   // matrixAEngineVector can stay with sizeA elements, because when we move data into it, we will get rid of the zeros.
   matrixAEngineVector.resize(sizeA);			// will need to change upon Serialize changes
   U messageSizeA = gatherSizeA/rowCommSize;
 
   // Some processors will need to serialize
-  if ((localNumColumnsA%rowCommSize) && (pGridCoordX >= localNumColumnsA%rowCommSize))
+  if (modA && (shift >= modA))
   {
     std::vector<T> partitionMatrixA(messageSizeA,0);
-    memcpy(&partitionMatrixA[0], &dataA[dataAOffset], sizeA/rowCommSize);  // truncation should be fine here. Rest is zeros
+    memcpy(&partitionMatrixA[0], &dataA[dataAOffset], (messageSizeA - localNumRowsA)*sizeof(T));  // truncation should be fine here. Rest is zeros
     MPI_Allgather(&partitionMatrixA[0], messageSizeA, MPI_DOUBLE, &collectMatrixA[0], messageSizeA, MPI_DOUBLE, rowComm);
   }
   else
   {
     MPI_Allgather(&dataA[dataAOffset], messageSizeA, MPI_DOUBLE, &collectMatrixA[0], messageSizeA, MPI_DOUBLE, rowComm);
   }
+
 
   // If pGridCoordZ != 0, then we need to re-shuffle the data. AllGather did not put into optimal order.
   if (pGridCoordZ == 0)
@@ -591,15 +594,15 @@ void MM3D<T,U,blasEngine>::_start2(
     {
       // first serialize into collectMatrixA itself by removing excess zeros
       // then move into matrixAEngineVector
-      // Later optimizaion: avoid copying unless writeIndex < readIndex
+      // Later optimizaion: avoid copying unless writeIndex < readInde
       U readIndex = 0;
       U writeIndex = 0;
       for (U i=0; i<rowCommSize; i++)
       {
-        U writeSize = (((localNumColumnsA%rowCommSize == 0)) || (i < (localNumColumnsA%rowCommSize)) ? messageSizeA : (localNumColumnsA/rowCommSize)*localNumRowsA);
-        memcpy(&collectMatrixA[readIndex], &collectMatrixA[writeIndex], writeSize*sizeof(T));
-        writeIndex += messageSizeA;
-        readIndex += writeSize;
+        U writeSize = (((modA == 0) || (i < modA)) ? messageSizeA : divA*localNumRowsA);
+        memcpy(&collectMatrixA[writeIndex], &collectMatrixA[readIndex], writeSize*sizeof(T));
+        writeIndex += writeSize;
+        readIndex += messageSizeA;
       }
       collectMatrixA.resize(sizeA);
       matrixAEngineVector = std::move(collectMatrixA);
@@ -608,11 +611,12 @@ void MM3D<T,U,blasEngine>::_start2(
   else
   {
     matrixAEngineVector.resize(sizeA);
-    U shuffleAoffset = messageSizeA*pGridCoordZ;
+    U shuffleAoffset = messageSizeA*((rowCommSize - pGridCoordZ)%rowCommSize);
     U stepA = 0;
     for (U i=0; i<rowCommSize; i++)
     {
-      U writeSize = (((pGridCoordZ + i) % rowCommSize) < (localNumColumnsA%rowCommSize) ? messageSizeA : (localNumColumnsA/rowCommSize)*localNumRowsA);
+      // Don't really need the 2nd if statement condition like the one above. Actually, neither do
+      U writeSize = ((((/*pGridCoordZ + */i) % rowCommSize) < modA) ? messageSizeA : divA*localNumRowsA);
       memcpy(&matrixAEngineVector[stepA], &collectMatrixA[shuffleAoffset], writeSize*sizeof(T));
       stepA += writeSize;
       shuffleAoffset += messageSizeA;
@@ -620,20 +624,21 @@ void MM3D<T,U,blasEngine>::_start2(
     }
   }
 
-
   // Now we Allgather partitions of matrix B
   U localNumRowsB = matrixB.getNumRowsLocal();
   U localNumColumnsB = matrixB.getNumColumnsLocal();
-  U blockLengthB = (localNumRowsB%columnCommSize == 0 ? localNumRowsB/columnCommSize : localNumRowsB/columnCommSize +1);
+  U modB = localNumRowsB%columnCommSize;
+  U divB = localNumRowsB/columnCommSize;
+  U blockLengthB = (modB == 0 ? divB : divB +1);
   shift = (pGridCoordZ + pGridCoordY) % columnCommSize;
-  U dataBOffset = (localNumRowsB/columnCommSize)*shift;
-  dataBOffset += std::min(shift, localNumRowsB%columnCommSize);       // WATCH: could be wrong
+  U dataBOffset = divB*shift;
+  dataBOffset += std::min(shift, modB);       // WATCH: could be wrong
   U gatherSizeB = blockLengthB*columnCommSize*localNumColumnsB;
   U messageSizeB = gatherSizeB/columnCommSize;
   std::vector<T> collectMatrixB(gatherSizeB);			// will need to change upon Serialize changes
   std::vector<T> partitionMatrixB(messageSizeB,0);			// Important to fill with zeros first
   // Special serialize. Can't use my MatrixSerializer here.
-  U writeSize = (((localNumRowsB%columnCommSize == 0)) || (pGridCoordY < (localNumRowsB%columnCommSize)) ? blockLengthB : blockLengthB-1);
+  U writeSize = (((modB == 0)) || (shift < modB) ? blockLengthB : blockLengthB-1);
   for (U i=0; i<localNumColumnsB; i++)
   {
     memcpy(&partitionMatrixB[i*blockLengthB], &matrixB.getRawData()[dataBOffset + i*localNumRowsB], writeSize*sizeof(T));
@@ -662,11 +667,11 @@ void MM3D<T,U,blasEngine>::_start2(
     for (U i=0; i<localNumColumnsB; i++)
     {
       // We always start in the same offset in the gatherBuffer
-      U shuffleBoffset = messageSizeB*pGridCoordZ;
+      U shuffleBoffset = messageSizeB*((columnCommSize - pGridCoordZ)%columnCommSize);
       U saveStepB = i*localNumRowsB;
       for (U j=0; j<columnCommSize; j++)
       {
-        U writeSize = (((localNumRowsB%columnCommSize == 0) || (((j+pGridCoordZ) % columnCommSize) < (localNumRowsB%columnCommSize))) ? blockLengthB : blockLengthB-1);
+        U writeSize = (((modB == 0) || (((j/*+pGridCoordZ*/) % columnCommSize) < modB)) ? blockLengthB : blockLengthB-1);
 //        std::cout << "writeSize - " << writeSize << std::endl;
         U saveOffsetB = shuffleBoffset + i*blockLengthB;
         memcpy(&matrixBEngineVector[saveStepB], &collectMatrixB[saveOffsetB], writeSize*sizeof(T));
