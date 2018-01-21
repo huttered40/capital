@@ -55,7 +55,8 @@ public:
                         Matrix<T,U,StructureC,Distribution>& matrixC,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
-			int methodKey
+			                  int methodKey = 0,
+			                  int depthManipulation = 0
                       );
 
   template<
@@ -68,7 +69,8 @@ public:
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
-			int methodKey
+			                  int methodKey = 0,
+			                  int depthManipulation = 0
                       );
 
   template<
@@ -107,10 +109,11 @@ public:
                         U matrixCcutYend,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
-                  			int methodKey,
                         bool cutA,
                         bool cutB,
-                        bool cutC
+                        bool cutC,
+                  			int methodKey = 0,
+			                  int depthManipulation = 0
                       );
 
   template<
@@ -131,9 +134,10 @@ public:
                         U matrixBcutXend,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
-			                  int methodKey,
                         bool cutA,
-                        bool cutB
+                        bool cutB,
+                  			int methodKey = 0,
+			                  int depthManipulation = 0
                       );
 
   template<

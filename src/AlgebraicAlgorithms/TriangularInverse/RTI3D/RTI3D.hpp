@@ -45,6 +45,7 @@ void RTI3D<T,U,blasEngine>::InvertLower(
   int commSize,commRank;
   MPI_Comm_rank(commWorld, &commRank);
   MPI_Comm_size(commWorld, &commSize);
+
   if (commSize == 1)
   {
     // Invert (no serialization check needed, as we will never be in this case unless P=1
@@ -64,55 +65,155 @@ void RTI3D<T,U,blasEngine>::InvertLower(
     blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 0.;
-    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, 0, true, true, false);
+    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0);
     blasArgs.alpha = -1.;
-    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, 0, true, false, true);
+    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0);
     return;
   }
 
   MPI_Comm sliceComm;
-  int pGridDimensionSize = std::nearbyint(std::pow(commSize,1./3.));
-  int helper = pGridDimensionSize;
-  helper *= helper;
-  int pGridCoordX = commRank%pGridDimensionSize;
-  int pGridCoordY = (commRank%helper)/pGridDimensionSize;
-  int pGridCoordZ = commRank/helper;
+  U localShift = (localDimension>>1);
 
+  if (commSize%2 == 1)
+  {
+    // Special case. Not implemented yet.
+    MPI_Abort(MPI_COMM_WORLD,-1);
+  }
 
   // Divide one of the dimensions and reshuffle data
-  int splitDiv = pGridDimensionSize/2;
-  if (key%3 == 0)
+  int splitDiv = commSize/2;
+  if (key == 0)
   {
-    // Split along dimension z
-    MPI_Comm_split(commWorld,pGridCoordZ/splitDiv,commRank,&sliceComm);
-    /*
-    .. data swap
-    .. form up new matrix
-    .. recursive call
-    */
+    // Split along dimension z. No data movement necessary
+    int pGridDimensionSize = std::nearbyint(std::pow(commSize,1./3.));
+    int helper = pGridDimensionSize;
+/*
+    helper *= helper;
+    int pGridCoordX = commRank%pGridDimensionSize;
+    int pGridCoordY = (commRank%helper)/pGridDimensionSize;
+    int pGridCoordZ = commRank/helper;
+*/
+    int color = commRank/splitDiv;
+    MPI_Comm_split(commWorld,color,commRank,&sliceComm);
+    if (color == 0)
+    {
+      InvertLower(matrixL, matrixLI, localShift, startX, startX+localShift, startY, startY+localShift, 1, sliceComm);
+      // Expectation: these processors have matrixLI_1_1 distributed cyclically
+      // Exchange data along z dimension so that data is replicated along the 3D grid, to keep MM3D's invariant correct
+      // Future optimization: avoid copying twice, return data that we are about to exchange by fast rvalue!
+      Matrix<T,U,MatrixStructureSquare,Distribution> tempT(std::vector<T>(), localShift, localShift, localDimension, localDimension);
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempT, startX, startX+localShift, startY, startY+localShift);
+      // Now, exchange data via a MPI_Sendrecv_replace
+      MPI_Status stat;
+      int exchangePartner = (commRank+splitDiv)%commSize;
+      MPI_Sendrecv_replace(tempT.getRawData(), tempT.getNumElems(), MPI_DOUBLE, exchangePartner, 0, exchangePartner, 0, commWorld, &stat);
+      // perform another Serialization to load into matrixLI
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempT, startX+localShift, endX, startY+localShift, endY, true);
+    }
+    else
+    {
+      InvertLower(matrixL, matrixLI, localShift, startX+localShift, endX, startY+localShift, endY, 1, sliceComm);
+      // Expectation: these processors have matrixLI_2_2 distributed cyclically
+      // Exchange data along z dimension so that data is replicated along the 3D grid, to keep MM3D's invariant correct
+      // Future optimization: avoid copying twice, return data that we are about to exchange by fast rvalue!
+      Matrix<T,U,MatrixStructureSquare,Distribution> tempT(std::vector<T>(), localShift, localShift, localDimension, localDimension);
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempT, startX+localShift, endX, startY+localShift, endY);
+      // Now, exchange data via a MPI_Sendrecv_replace
+      MPI_Status stat;
+      int exchangePartner = (commRank+splitDiv)%commSize;
+      MPI_Sendrecv_replace(tempT.getRawData(), tempT.getNumElems(), MPI_DOUBLE, exchangePartner, 0, exchangePartner, 0, commWorld, &stat);
+      // perform another Serialization to load into matrixLI
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempT, startX, startX+localShift, startY, startY+localShift, true);
+    }
+
+    // Finish with 2 MM3D calls
+    // Future optimization: again, lots of copying. There is definitely a way to remove some of this.
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempInverse(std::vector<T>(localShift*localShift), localShift, localShift, localDimension, localDimension, true);
+    blasEngineArgumentPackage_gemm<T> blasArgs;
+    blasArgs.order = blasEngineOrder::AblasColumnMajor;
+    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+    blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+    blasArgs.alpha = 1.;
+    blasArgs.beta = 0.;
+    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0);
+    blasArgs.alpha = -1.;
+    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0);
     MPI_Comm_free(&sliceComm);
   }
-  else if (key%3 == 1)
+  else if (key == 1)
   {
-    // Split along dimension y
-    MPI_Comm_split(commWorld,pGridCoordY/splitDiv,commRank,&sliceComm);
-    /*
-    .. data swap
-    .. form up new matrix
-    .. recursive call
-    */
+    int bigDim = std::nearbyint(std::pow(2*commSize,1./3.));
+    int smallDim = (bigDim>>1);
+    int sliceRank = commRank%(bigDim*bigDim);
+    int color = sliceRank/(bigDim*smallDim);
+    //Split along dimension y (rows of p-grid)
+    MPI_Comm_split(commWorld,color,commRank,&sliceComm);
+
+    if (color == 0)
+    {
+      InvertLower(matrixL, matrixLI, localShift, startX, startX+localShift, startY, startY+localShift, 2, sliceComm);
+      // Expectation: these processors have matrixLI_1_1 distributed cyclically
+      // Exchange data along y dimension so that data is replicated along the 3D grid, to keep MM3D's invariant correct
+      // Future optimization: avoid copying twice, return data that we are about to exchange by fast rvalue!
+      Matrix<T,U,MatrixStructureSquare,Distribution> tempT(std::vector<T>(), localShift, localShift, localDimension, localDimension);
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempT, startX, startX+localShift, startY, startY+localShift);
+      // Now, exchange data via a MPI_Sendrecv_replace
+      MPI_Status stat;
+      int exchangePartner = commRank + bigDim*smallDim;
+      MPI_Sendrecv_replace(tempT.getRawData(), tempT.getNumElems(), MPI_DOUBLE, exchangePartner, 0, exchangePartner, 0, commWorld, &stat);
+      // perform another Serialization to load into matrixLI
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempT, startX+localShift, endX, startY+localShift, endY, true);
+    }
+    else
+    {
+      InvertLower(matrixL, matrixLI, localShift, startX+localShift, endX, startY+localShift, endY, 2, sliceComm);
+      // Expectation: these processors have matrixLI_2_2 distributed cyclically
+      // Exchange data along y dimension so that data is replicated along the 3D grid, to keep MM3D's invariant correct
+      // Future optimization: avoid copying twice, return data that we are about to exchange by fast rvalue!
+      Matrix<T,U,MatrixStructureSquare,Distribution> tempT(std::vector<T>(), localShift, localShift, localDimension, localDimension);
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempT, startX+localShift, endX, startY+localShift, endY);
+      // Now, exchange data via a MPI_Sendrecv_replace
+      MPI_Status stat;
+      int exchangePartner = commRank - bigDim*smallDim;
+      MPI_Sendrecv_replace(tempT.getRawData(), tempT.getNumElems(), MPI_DOUBLE, exchangePartner, 0, exchangePartner, 0, commWorld, &stat);
+      // perform another Serialization to load into matrixLI
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempT, startX, startX+localShift, startY, startY+localShift, true);
+    }
+
+    // Finish with 4 MM3D calls
+    // Future optimization: again, lots of copying. There is definitely a way to remove some of this.
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempInverse(std::vector<T>(localShift*localShift), localShift, localShift, localDimension, localDimension, true);
+    blasEngineArgumentPackage_gemm<T> blasArgs;
+    blasArgs.order = blasEngineOrder::AblasColumnMajor;
+    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+    blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+    blasArgs.alpha = 1.;
+    blasArgs.beta = 0.;
+    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0);
+    // One more MM3D call to complete the matrix multiplication
+    blasArgs.beta = 1;
+    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0, smallDim);
+
+    blasArgs.beta = 0;
+    blasArgs.alpha = -1.;
+    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0);
+    blasArgs.beta = 1;
+    // One more MM3D call to complete the matrix multiplication
+    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0, smallDim);
+
     MPI_Comm_free(&sliceComm);
+    return;
   }
-  else
+  else // key==2
   {
     // Split along dimension x
-    MPI_Comm_split(commWorld,pGridCoordX/splitDiv,commRank,&sliceComm);
+    //MPI_Comm_split(commWorld,pGridCoordX/splitDiv,commRank,&sliceComm);
     /*
     .. data swap
     .. form up new matrix
     .. recursive call
     */
-    MPI_Comm_free(&sliceComm);
+    //MPI_Comm_free(&sliceComm);
   }
 }
 

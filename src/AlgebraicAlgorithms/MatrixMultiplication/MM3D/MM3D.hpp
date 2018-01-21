@@ -5,10 +5,10 @@ static std::tuple<MPI_Comm,
                   MPI_Comm,
                   MPI_Comm,
                   MPI_Comm,
-		  int,
+		              int,
                   int,
                   int>
-                      setUpCommunicators(MPI_Comm commWorld)
+                  setUpCommunicators(MPI_Comm commWorld, int depthManipulation = 0)
 {
   int rank,size;
   MPI_Comm_rank(commWorld, &rank);
@@ -20,6 +20,7 @@ static std::tuple<MPI_Comm,
   int pGridCoordX = rank%pGridDimensionSize;
   int pGridCoordY = (rank%helper)/pGridDimensionSize;
   int pGridCoordZ = rank/helper;
+  pGridCoordZ += depthManipulation;
 
   MPI_Comm rowComm, columnComm, sliceComm, depthComm;
 
@@ -51,13 +52,14 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         Matrix<T,U,StructureC,Distribution>& matrixC,
                                         MPI_Comm commWorld,
                                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
-					int methodKey						// I chose an integer instead of another template parameter
+                  			                int methodKey, // I chose an integer instead of another template parameter
+			                                  int depthManipulation
                                    )
 {
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
-  auto commInfo3D = setUpCommunicators(commWorld);
+  auto commInfo3D = setUpCommunicators(commWorld, depthManipulation);
   T* matrixAEnginePtr;
   T* matrixBEnginePtr;
   std::vector<T> matrixAEngineVector;
@@ -113,13 +115,14 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         MPI_Comm commWorld,
                                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
-					                              int methodKey						// I chose an integer instead of another template parameter
+					                              int methodKey,						// I chose an integer instead of another template parameter
+			                                  int depthManipulation
                                    )
 {
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
-  auto commInfo3D = setUpCommunicators(commWorld);
+  auto commInfo3D = setUpCommunicators(commWorld, depthManipulation);
   T* matrixAEnginePtr;
   T* matrixBEnginePtr;
   std::vector<T> matrixAEngineVector;
@@ -262,10 +265,11 @@ void MM3D<T,U,blasEngine>::Multiply(
 				        U matrixCcutYend,
 				        MPI_Comm commWorld,
 				        const blasEngineArgumentPackage_gemm<T>& srcPackage,
-					      int methodKey,						// I chose an integer instead of another template parameter
 				        bool cutA,
 				        bool cutB,
-				        bool cutC
+				        bool cutC,
+                int methodKey, // I chose an integer instead of another template parameter
+			          int depthManipulation
                                    )
 {
   // We will set up 3 matrices and call the method above.
@@ -289,7 +293,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
   Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
   Matrix<T,U,StructureC,Distribution> matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, pGridDimensionSize, cutC);
-  Multiply((cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, srcPackage, methodKey);
+  Multiply((cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, srcPackage, methodKey, depthManipulation);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC)
@@ -319,9 +323,10 @@ void MM3D<T,U,blasEngine>::Multiply(
 				      U matrixBcutXend,
 				      MPI_Comm commWorld,
 				      const blasEngineArgumentPackage_trmm<T>& srcPackage,
-				      int methodKey,						// I chose an integer instead of another template parameter
 				      bool cutA,
-				      bool cutB
+				      bool cutB,
+              int methodKey, // I chose an integer instead of another template parameter
+			        int depthManipulation
                                     )
 {
   // We will set up 3 matrices and call the method above.
@@ -341,7 +346,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
   Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
   Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
-  Multiply(matA, matB, commWorld, srcPackage, methodKey);
+  Multiply(matA, matB, commWorld, srcPackage, methodKey, depthManipulation);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
   if (cutB)

@@ -315,7 +315,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
-      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, MM_id, true, false, true);
+      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true, MM_id);
 /*
   blasEngineArgumentPackage_trmm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
@@ -360,7 +360,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 */
 
   MM3D<T,U,blasEngine>::Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal,
-      0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, MM_id, false, false, false);
+      0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
 
   // Next step: A_{22} - holdLsyrk.
   Matrix<T,U,MatrixStructureSquare,Distribution> holdSum(std::vector<T>(reverseDimLocal*reverseDimLocal), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
@@ -398,13 +398,13 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   invPackage1.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI,
     tempInverse, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, matLIstartX, matLIstartX+localShift, matLIstartY,
-      matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, invPackage1, MM_id, true, true, false);
+      matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, invPackage1, true, true, false, MM_id);
 
   // Next step: finish the Triangular inverse calculation
   invPackage1.alpha = -1.;
   MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse,
     matrixLI, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY, 0, localShift, 0, reverseDimLocal,
-      matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, MM_id, true, false, true);
+      matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, true, false, true, MM_id);
 }
 
 
@@ -663,7 +663,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   blasArgs.alpha = 1.;
   blasArgs.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(packedMatrix, matrixA, matrixR, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
-      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, MM_id, false, true, true);
+      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, false, true, true, MM_id);
 
   int sizeWorld;
   MPI_Comm_size(commWorld, &sizeWorld);
@@ -684,7 +684,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   transposeSwap(squareRSwap, rank, transposePartner, commWorld);
 
   MM3D<T,U,blasEngine>::Multiply(squareRSwap, squareR, holdRsyrk, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal, 0, localShift,
-      0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, MM_id, false, false, false);
+      0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
 
   // Next step: A_{22} - holdRsyrk.
   Matrix<T,U,MatrixStructureSquare,Distribution> holdSum(std::vector<T>(reverseDimLocal*reverseDimLocal), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
@@ -721,13 +721,13 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   invPackage1.alpha = 1.;
   invPackage1.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(matrixR, matrixRI,tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift,
-    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, invPackage1, MM_id, true, true, false);
+    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, invPackage1, true, true, false, MM_id);
 
   // Next step: finish the Triangular inverse calculation
   invPackage1.alpha = -1.;
   MM3D<T,U,blasEngine>::Multiply(matrixRI, tempInverse,
     matrixRI, matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift, 0, reverseDimLocal, 0, localShift,
-      matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, MM_id, true, false, true);
+      matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, true, false, true, MM_id);
 }
 
 
