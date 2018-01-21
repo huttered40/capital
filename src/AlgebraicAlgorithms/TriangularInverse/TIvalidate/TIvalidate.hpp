@@ -54,8 +54,8 @@ void TIvalidate<T,U>::validateTI_Local(
   {
     for (U j=0; j<globalDimension; j++)
     {
-      if ((dir == 'L') && (i>j)) { globalMatrixA[i*globalDimension+j] = 0; matrixSol_TI.getRawData()[i*globalDimension+j] = 0;}
-      if ((dir == 'U') && (j>i)) { globalMatrixA[i*globalDimension+j] = 0; matrixSol_TI.getRawData()[i*globalDimension+j] = 0;}
+      if ((dir == 'L') && (i>j)) { globalMatrixA[i*globalDimension+j] = 0; /*matrixSol_TI.getRawData()[i*globalDimension+j] = 0;*/}
+      if ((dir == 'U') && (j>i)) { globalMatrixA[i*globalDimension+j] = 0; /*matrixSol_TI.getRawData()[i*globalDimension+j] = 0;*/}
     }
   }
 
@@ -92,7 +92,7 @@ T TIvalidate<T,U>::getResidualTriangleLower(
   int pCoordY = std::get<2>(commInfo);
   int pCoordZ = std::get<3>(commInfo);
   bool isRank1 = false;
-  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 0))
+  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 1))
   {
     isRank1 = true;
   }
@@ -111,7 +111,7 @@ T TIvalidate<T,U>::getResidualTriangleLower(
     for (U j=0; j<trueDimensionM; j++)
     {
       T errorSquare = std::abs(myValues[myIndex] - lapackValues[solIndex]);
-      if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
+      //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       solIndex += pGridDimensionSize;

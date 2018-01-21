@@ -6,20 +6,24 @@ template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void RTI3D<T,U,blasEngine>::Invert(
               Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
+              Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
               char dir,
               MPI_Comm commWorld
             )
 {
   U localDimension = matrixT.getNumRowsLocal();
+  U globalDimension = matrixT.getNumRowsGlobal();
+  // the division below may have a remainder, but I think integer division will be ok, as long as we change the base case condition to be <= and not just ==
+
   if (dir == 'L')
   {
     // call InvertLower
-    InvertLower(matrixT, localDimension, 0, commWorld);
+    InvertLower(matrixT, matrixTI, localDimension, 0, localDimension, 0, localDimension, 0, commWorld);
   }
   else
   {
     // call InverseUpper
-    InvertUpper(matrixT, localDimension, 0, commWorld);
+    InvertUpper(matrixT, matrixTI, localDimension, 0, commWorld);
   }
 }
 
@@ -27,7 +31,12 @@ template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void RTI3D<T,U,blasEngine>::InvertLower(
                   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
+                  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
                   U localDimension,
+                  U startX,
+                  U endX,
+                  U startY,
+                  U endY,
                   int key,
                   MPI_Comm commWorld
                 )
@@ -38,25 +47,26 @@ void RTI3D<T,U,blasEngine>::InvertLower(
   MPI_Comm_size(commWorld, &commSize);
   if (commSize == 1)
   {
-    // Invert
-    std::cout << "Hello\n";
+    // Invert (no serialization check needed, as we will never be in this case unless P=1
     LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'L', 'N', localDimension, matrixL.getRawData(), localDimension);
     return;
   }
 
-  if (commSize == 4)
+  if (commSize == 8)
   {
-    // Allgather, Invert, Shuffle data
-    // Should be fast pass-by-value via move semantics
-    std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(matrixL, localDimension, localDimension*2, 2, commWorld);
-
-    // Next: sequential triangular inverse.
-    LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'L', 'N', localDimension*2, &cyclicBaseCaseData[0], localDimension*2);
-
-    cyclicToLocalTransformation(cyclicBaseCaseData, localDimension, localDimension*2, 2, commRank, 'L');
-    // cut away extra data that isn't ours anymore
-    cyclicBaseCaseData.resize(localDimension*localDimension);
-    matrixL.getVectorData() = std::move(cyclicBaseCaseData);
+    // special case
+    sliceExchangeBase(matrixL, matrixLI, localDimension, startX, endX, startY, endY, commWorld, 'L');
+    U localShift = (localDimension>>1);
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempInverse(std::vector<T>(localShift*localShift), localShift, localShift, localDimension, localDimension, true);
+    blasEngineArgumentPackage_gemm<T> blasArgs;
+    blasArgs.order = blasEngineOrder::AblasColumnMajor;
+    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+    blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+    blasArgs.alpha = 1.;
+    blasArgs.beta = 0.;
+    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, 0, true, true, false);
+    blasArgs.alpha = -1.;
+    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, 0, true, false, true);
     return;
   }
 
@@ -68,14 +78,6 @@ void RTI3D<T,U,blasEngine>::InvertLower(
   int pGridCoordY = (commRank%helper)/pGridDimensionSize;
   int pGridCoordZ = commRank/helper;
 
-  if (commSize == 8)
-  {
-    // Split into two 2x2 faces based on z dimension of cubic processor grid.
-    MPI_Comm_split(commWorld,pGridCoordZ,commRank,&sliceComm);
-    InvertLower(matrixL, localDimension, key+1, sliceComm);
-    MPI_Comm_free(&sliceComm);
-    return;
-  }
 
   // Divide one of the dimensions and reshuffle data
   int splitDiv = pGridDimensionSize/2;
@@ -114,10 +116,12 @@ void RTI3D<T,U,blasEngine>::InvertLower(
   }
 }
 
+
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void RTI3D<T,U,blasEngine>::InvertUpper(
                   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
+                  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
                   U localDimension,
                   int key,
                   MPI_Comm commWorld
@@ -132,24 +136,105 @@ void RTI3D<T,U,blasEngine>::InvertUpper(
   }
 }
 
+
+template<typename T, typename U, template<typename, typename> class blasEngine>
+template<template<typename,typename,int> class Distribution>
+void RTI3D<T,U,blasEngine>::sliceExchangeBase(
+                  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
+                  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
+                  U localDimension,
+                  U startX,
+                  U endX,
+                  U startY,
+                  U endY,
+                  MPI_Comm commWorld,
+                  char dir
+                )
+{
+  // Note: this won't work for Upper yet. Do that when Lower is fully working.
+
+  // Processor grid has 8 processors. We do something special in this case
+  int commSize,commRank;
+  MPI_Comm_rank(commWorld, &commRank);
+  MPI_Comm_size(commWorld, &commSize);
+  MPI_Comm sliceComm;
+  int pGridDimensionSize = std::nearbyint(std::pow(commSize,1./3.));
+  int helper = pGridDimensionSize;
+  helper *= helper;
+  int pGridCoordX = commRank%pGridDimensionSize;
+  int pGridCoordY = (commRank%helper)/pGridDimensionSize;
+  int pGridCoordZ = commRank/helper;
+
+  MPI_Comm_split(commWorld,pGridCoordZ,commRank,&sliceComm);
+  U localShift = (localDimension>>1);   // will need to be changed in similar way to CFR3D when localDim is not a power of 2
+  U numColumns = endX - startX;
+  U numRows = endY - startY;
+
+  if (pGridCoordZ == 0)
+  {
+    // Should be fast pass-by-value via move semantics
+    std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(matrixT, localShift, localDimension, startX, startX+localShift, startY, startY+localShift, 2, sliceComm);
+    // Next: sequential triangular inverse.
+    LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'L', 'N', localDimension, &cyclicBaseCaseData[0], localDimension);
+    cyclicToLocalTransformation(cyclicBaseCaseData, localShift, localDimension, 2, commRank, 'L');
+    // cut away extra data that isn't ours anymore
+    cyclicBaseCaseData.resize(localShift*localShift);   // this will need changed for arbitrary dimensions.
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempT(std::move(cyclicBaseCaseData), localShift, localShift, localDimension, localDimension, true);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixTI, tempT, startX, startX+localShift, startY, startY+localShift, true);
+    // Now, exchange data via a MPI_Sendrecv_replace
+    MPI_Status stat;
+    MPI_Sendrecv_replace(tempT.getRawData(), tempT.getNumElems(), MPI_DOUBLE, (commRank+4)%8, 0, (commRank+4)%8, 0, commWorld, &stat);
+    // perform another Serialization
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixTI, tempT, startX+localShift, endX, startY+localShift, endY, true);
+  }
+  else
+  {
+    // Should be fast pass-by-value via move semantics
+    std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(matrixT, localShift, localDimension, startX+localShift, endX, startY+localShift, endY, 2, sliceComm);
+    // Next: sequential triangular inverse.
+    LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'L', 'N', localDimension, &cyclicBaseCaseData[0], localDimension);
+    cyclicToLocalTransformation(cyclicBaseCaseData, localShift, localDimension, 2, commRank-4, 'L');
+    // cut away extra data that isn't ours anymore
+    cyclicBaseCaseData.resize(localShift*localShift);   // this will need changed for arbitrary dimensions.
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempT(std::move(cyclicBaseCaseData), localShift, localShift, localDimension, localDimension, true);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixTI, tempT, startX+localShift, endX, startY+localShift, endY, true);
+    // Now, exchange data via a MPI_Sendrecv_replace
+    MPI_Status stat;
+    MPI_Sendrecv_replace(tempT.getRawData(), tempT.getNumElems(), MPI_DOUBLE, (commRank+4)%8, 0, (commRank+4)%8, 0, commWorld, &stat);
+    // perform another Serialization
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixTI, tempT, startX, startX+localShift, startY, startY+localShift, true);
+  }
+  MPI_Comm_free(&sliceComm);
+  return;
+}
+
+
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 std::vector<T> RTI3D<T,U,blasEngine>::blockedToCyclicTransformation(
 									Matrix<T,U,MatrixStructureSquare,Distribution>& matT,
 									U localDimension,
 									U globalDimension,
+									U matTstartX,
+									U matTendX,
+									U matTstartY,
+									U matTendY,
 									int pGridDimensionSize,
 									MPI_Comm slice2Dcomm
 								     )
 {
+  Matrix<T,U,MatrixStructureSquare,Distribution> baseCaseMatrixT(std::vector<T>(), localDimension, localDimension,
+    globalDimension, globalDimension);
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matT, baseCaseMatrixT, matTstartX,
+    matTendX, matTstartY, matTendY);
+
+  U aggregDim = localDimension*pGridDimensionSize;
   // Later optimization: Serialize non-packed triangular matrix into a packed triangular matrix before AllGather
   //    then unpack back into a square (In the 4-loop structure below) before LAPACK call
-
-  std::vector<T> blockedBaseCaseData(globalDimension*globalDimension);
-  std::vector<T> cyclicBaseCaseData(globalDimension*globalDimension);
-  MPI_Allgather(matT.getRawData(), matT.getNumElems(), MPI_DOUBLE,
-    &blockedBaseCaseData[0], matT.getNumElems(), MPI_DOUBLE, slice2Dcomm);
-
+  std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
+  std::vector<T> cyclicBaseCaseData(aggregDim*aggregDim);
+  MPI_Allgather(baseCaseMatrixT.getRawData(), baseCaseMatrixT.getNumElems(), MPI_DOUBLE,
+    &blockedBaseCaseData[0], baseCaseMatrixT.getNumElems(), MPI_DOUBLE, slice2Dcomm);
   // Right now, we assume matrixA has Square Structure, if we want to let the user pass in just the unique part via a Triangular Structure,
   //   then we will need to change this.
   //   Note: this operation is just not cache efficient due to hopping around blockedBaseCaseData. Locality is not what we would like,

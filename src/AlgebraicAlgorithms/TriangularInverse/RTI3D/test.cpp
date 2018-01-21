@@ -60,14 +60,14 @@ int main(int argc, char** argv)
   if (methodKey1 == 0)
   {
     MatrixTypeL matL(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
+    MatrixTypeL matLI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
     matL.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    MatrixTypeL matLI = matL;
 
     if (methodKey2 == 1) {numIterations = atoi(argv[5]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      RTI3D<double,int,cblasEngine>::Invert(matLI, 'L', MPI_COMM_WORLD);
+      RTI3D<double,int,cblasEngine>::Invert(matL, matLI, 'L', MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "RTI3D Lower", i);
     }
@@ -79,14 +79,14 @@ int main(int argc, char** argv)
   else
   {
     MatrixTypeR matR(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
+    MatrixTypeL matRI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
     matR.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    MatrixTypeR matRI = matR;
 
     if (methodKey2 == 1) {numIterations = atoi(argv[5]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      RTI3D<double,int,cblasEngine>::Invert(matRI, 'U', MPI_COMM_WORLD);
+      RTI3D<double,int,cblasEngine>::Invert(matR, matRI, 'U', MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "RTI3D Upper", i);
     }

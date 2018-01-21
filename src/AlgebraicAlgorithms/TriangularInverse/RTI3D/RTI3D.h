@@ -31,6 +31,7 @@ public:
   template<template<typename,typename,int> class Distribution>
   static void Invert(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
+                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
                       char dir,
                       MPI_Comm commWorld
                     );
@@ -38,7 +39,12 @@ private:
   template<template<typename,typename,int> class Distribution>
   static void InvertLower(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
+                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
                       U localDimension,
+                      U startX,
+                      U endX,
+                      U startY,
+                      U endY,
                       int key,
                       MPI_Comm commWorld
                     );
@@ -46,16 +52,34 @@ private:
   template<template<typename,typename,int> class Distribution>
   static void InvertUpper(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
+                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
                       U localDimension,
                       int key,
                       MPI_Comm commWorld
                     );
 
   template<template<typename,typename,int> class Distribution>
+  static void sliceExchangeBase(
+                  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
+                  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
+                  U localDimension,
+                  U startX,
+                  U endX,
+                  U startY,
+                  U endY,
+                  MPI_Comm commWorld,
+                  char dir
+                );
+
+  template<template<typename,typename,int> class Distribution>
   static std::vector<T> blockedToCyclicTransformation(
 									Matrix<T,U,MatrixStructureSquare,Distribution>& matT,
 									U localDimension,
 									U globalDimension,
+									U matTstartX,
+									U matTendX,
+									U matTstartY,
+									U matTendY,
 									int pGridDimensionSize,
 									MPI_Comm slice2Dcomm
 								);
