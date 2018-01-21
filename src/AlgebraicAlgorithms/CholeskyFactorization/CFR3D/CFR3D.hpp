@@ -639,10 +639,19 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift,
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, MM_id, slice2D, commWorld);
 
+/* Note: the code below might actualy be a bit better than the uncommented-out code below it, because this code takes advantage of the triangular
+         structure of packedMatrix, allowing it to communicate half the words in the transpose. Only problem: because the Allgather+MM3D routine
+         doesn't currently work for non-square structure matrices, it crashes if I make this triangular.
   // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a square buffer
   Matrix<T,U,MatrixStructureUpperTriangular,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
   Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>::Serialize(matrixRI, packedMatrix,
+    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
+*/
+
+  Matrix<T,U,MatrixStructureSquare,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+  // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixRI, packedMatrix,
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
 
   transposeSwap(packedMatrix, rank, transposePartner, commWorld);
