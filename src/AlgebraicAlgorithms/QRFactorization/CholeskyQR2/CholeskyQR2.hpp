@@ -117,7 +117,6 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distributi
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld)
 {
   // We assume data is owned relative to a 3D processor grid
-
   int numPEs, myRank, pGridDimensionSize;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
@@ -139,7 +138,6 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distributi
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
     globalDimensionN, true);
   FactorTunable_cqr(matrixA, matrixQ2, matrixR1, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators);
-  std::cout << "globalDimensionM - " << globalDimensionM << " and globalDimensionN - " << globalDimensionN << std::endl;
   FactorTunable_cqr(matrixQ2, matrixQ, matrixR2, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators);
 
   // Try gemm first, then try trmm later.
@@ -354,8 +352,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     globalDimensionN, globalDimensionN, true);
 
-  std::cout << "check these local values - " << matrixB.getNumRowsLocal() << " " << matrixB.getNumColumnsLocal() << " " << matrixR.getNumRowsLocal() << " " <<  matrixR.getNumColumnsLocal() << " " << matrixRI.getNumRowsLocal() << " " << matrixRI.getNumColumnsLocal() << std::endl;
-  CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, 'U', 0, miniCubeComm);
+//  CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, 'U', 0, miniCubeComm);
 
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
   gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
