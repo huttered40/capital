@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#ifndef CFR3D_H_
-#define CFR3D_H_
+#ifndef TRSM3D_H_
+#define TRSM3D_H_
 
 // System includes
 #include <iostream>
@@ -22,18 +22,18 @@
 //   to be LowerTriangular as well
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
-class CFR3D
+class TRSM3D
 {
 public:
   // Prevent instantiation of this class
-  CFR3D() = delete;
-  CFR3D(const CFR3D& rhs) = delete;
-  CFR3D(CFR3D&& rhs) = delete;
-  CFR3D& operator=(const CFR3D& rhs) = delete;
-  CFR3D& operator=(CFR3D&& rhs) = delete;
+  TRSM3D() = delete;
+  TRSM3D(const TRSM3D& rhs) = delete;
+  TRSM3D(TRSM3D&& rhs) = delete;
+  TRSM3D& operator=(const TRSM3D& rhs) = delete;
+  TRSM3D& operator=(TRSM3D&& rhs) = delete;
 
   template<template<typename,typename,int> class Distribution>
-  static void Factor(
+  static void Solve(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
@@ -46,7 +46,7 @@ public:
 
 private:
   template<template<typename,typename,int> class Distribution>
-  static void rFactorLower(
+  static void iSolveLower(
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
@@ -69,12 +69,11 @@ private:
                        U matLIendY,
                        U tranposePartner,
                        int MM_id,
-                       MPI_Comm slice2D,
                        MPI_Comm commWorld
                      );
 
   template<template<typename,typename,int> class Distribution>
-  static void rFactorUpper(
+  static void iSolveUpper(
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
@@ -97,7 +96,6 @@ private:
                        U matRIendY,
                        U transposePartner,
                        int MM_id,
-                       MPI_Comm slice2D,
                        MPI_Comm commWorld
                      );
 
@@ -109,34 +107,8 @@ private:
 				int transposeRank,
 				MPI_Comm commWorld
 			   );
-
-  template<template<typename,typename,int> class Distribution>
-  static std::vector<T> blockedToCyclicTransformation(
-							Matrix<T,U,MatrixStructureSquare,Distribution>& matA,
-							U localDimension,
-							U globalDimension,
-							U bcDimension,
-							U matAstartX,
-							U matAendX,
-							U matAstartY,
-							U matAendY,
-							int pGridDimensionSize,
-							MPI_Comm slice2Dcomm
-						     );
-
-  static void cyclicToLocalTransformation(
-						std::vector<T>& storeT,
-						std::vector<T>& storeTI,
-						U localDimension,
-						U globalDimension,
-						U bcDimension,
-						int pGridDimensionSize,
-						int rankSlice,
-						char dir
-					 );
-
 };
 
-#include "CFR3D.hpp"
+#include "TRSM3D.hpp"
 
-#endif /* CFR3D_H_ */
+#endif /* TRSM3D_H_ */
