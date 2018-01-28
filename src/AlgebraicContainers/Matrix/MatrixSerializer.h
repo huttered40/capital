@@ -190,7 +190,7 @@ public:
   static void Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest);
 
   template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
+  static void Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& big,Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
 
 private:

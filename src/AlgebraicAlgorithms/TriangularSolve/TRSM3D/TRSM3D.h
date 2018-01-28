@@ -31,30 +31,28 @@ public:
   TRSM3D(TRSM3D&& rhs) = delete;
   TRSM3D& operator=(const TRSM3D& rhs) = delete;
   TRSM3D& operator=(TRSM3D&& rhs) = delete;
-
+/*
   template<template<typename,typename,int> class Distribution>
   static void Solve(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
+                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixB,
+                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixC,
                       char dir,
                       int tune,
                       MPI_Comm commWorld,
                       int MM_id = 0
                     );
+*/
 
-
-private:
-  template<template<typename,typename,int> class Distribution>
-  static void iSolveLower(
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+  template<
+    template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution
+  >
+  static void iSolveLowerLeft(
+                       Matrix<T,U,StructureArg,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
-                       U localDimension,
-                       U trueLocalDimenion,
-                       U bcDimension,
-                       U globalDimension,
-                       U trueGlobalDimension,
+                       Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matAstartX,
                        U matAendX,
                        U matAstartY,
@@ -63,42 +61,90 @@ private:
                        U matLendX,
                        U matLstartY,
                        U matLendY,
-                       U matLIstartX,
-                       U matLIendX,
-                       U matLIstartY,
-                       U matLIendY,
-                       U tranposePartner,
+                       U matBstartX,
+                       U matBendX,
+                       U matBstartY,
+                       U matBendY,
                        int MM_id,
                        MPI_Comm commWorld
                      );
 
-  template<template<typename,typename,int> class Distribution>
-  static void iSolveUpper(
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
-                       U localDimension,
-                       U trueLocalDimension,
-                       U bcDimension,
-                       U globalDimension,
-                       U trueGlobalDimension,
+  template<
+    template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution
+  >
+  static void iSolveUpperLeft(
+                       Matrix<T,U,StructureArg,Distribution>& matrixA,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
+                       Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matAstartX,
                        U matAendX,
                        U matAstartY,
                        U matAendY,
-                       U matRstartX,
-                       U matRendX,
-                       U matRstartY,
-                       U matRendY,
-                       U matRIstartX,
-                       U matRIendX,
-                       U matRIstartY,
-                       U matRIendY,
-                       U transposePartner,
+                       U matUstartX,
+                       U matUendX,
+                       U matUstartY,
+                       U matUendY,
+                       U matBstartX,
+                       U matBendX,
+                       U matBstartY,
+                       U matBendY,
+                       int MM_id,
+                       MPI_Comm commWorld
+                     );
+  
+  template<
+    template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution
+  >
+  static void iSolveLowerRight(
+                       Matrix<T,U,StructureArg,Distribution>& matrixL,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+                       Matrix<T,U,StructureArg,Distribution>& matrixB,
+                       U matLstartX,
+                       U matLendX,
+                       U matLstartY,
+                       U matLendY,
+                       U matAstartX,
+                       U matAendX,
+                       U matAstartY,
+                       U matAendY,
+                       U matBstartX,
+                       U matBendX,
+                       U matBstartY,
+                       U matBendY,
                        int MM_id,
                        MPI_Comm commWorld
                      );
 
+  template<
+    template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution
+  >
+  static void iSolveUpperRight(
+                       Matrix<T,U,StructureArg,Distribution>& matrixU,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+                       Matrix<T,U,StructureArg,Distribution>& matrixB,
+                       U matUstartX,
+                       U matUendX,
+                       U matUstartY,
+                       U matUendY,
+                       U matAstartX,
+                       U matAendX,
+                       U matAstartY,
+                       U matAendY,
+                       U matBstartX,
+                       U matBendX,
+                       U matBstartY,
+                       U matBendY,
+                       int MM_id,
+                       MPI_Comm commWorld
+                     );
+
+private:
   template<template<typename,typename,template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>
   static void transposeSwap(

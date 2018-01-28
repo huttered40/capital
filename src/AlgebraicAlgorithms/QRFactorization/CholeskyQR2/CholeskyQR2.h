@@ -12,6 +12,7 @@
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 #include "./../../CholeskyFactorization/CFR3D/CFR3D.h"
+#include "./../../TriangularSolve/TRSM3D/TRSM3D.h"
 
 // Need template parameters for all 3 matrices (A,Q,R), as well as some other things, right?
 template<typename T,typename U,template<typename,typename> class blasEngine>

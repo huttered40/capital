@@ -135,7 +135,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureSquare,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
 {
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet\n";
+  std::cout << "Not fully implemented yet in MatrixSerializer Square -> Rectangle\n";
   return;
 }
 
@@ -145,7 +145,7 @@ void Serializer<T,U,MatrixStructureSquare,MatrixStructureRectangle>::Serialize(M
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet\n";
+  std::cout << "Not fully implemented yet in MatrixSerializer Square -> Rectangle\n";
   return;
 }
 
@@ -541,7 +541,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureRectangle,MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
 {
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet\n";
+  std::cout << "Not fully implemented yet in MatrixSerializer for Rectangle -> Square\n";
   return;
 }
 
@@ -551,7 +551,7 @@ void Serializer<T,U,MatrixStructureRectangle,MatrixStructureSquare>::Serialize(M
   U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet\n";
+  std::cout << "Not fully implemented yet in MatrixSerializer for Rectangle -> Square\n";
   return;
 }
 
@@ -559,18 +559,111 @@ template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
 {
-  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet\n";
+  // For now, just call Square counterpart, it should be the same --- Actually I can't unless I try to do a weird cast.
+  // Annoying code bloat here
+  U srcNumRows = src.getNumRowsLocal();
+  U srcNumColumns = src.getNumColumnsLocal();
+  U srcNumElems = srcNumRows*srcNumColumns;
+
+  std::vector<T>& srcVectorData = src.getVectorData();
+  std::vector<T*>& srcMatrixData = src.getMatrixData();
+  std::vector<T>& destVectorData = dest.getVectorData();
+  std::vector<T*>& destMatrixData = dest.getMatrixData();
+
+  bool assembleFinder = false;
+  if (static_cast<U>(destVectorData.size()) < srcNumElems)
+  {
+    assembleFinder = true;
+    destVectorData.resize(srcNumElems);
+  }
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
+  {
+    assembleFinder = true;
+    destMatrixData.resize(srcNumColumns);
+  }
+
+  // direction doesn't matter here since no indexing here
+  memcpy(&destVectorData[0], &srcVectorData[0], sizeof(T)*srcNumElems);
+
+  if (assembleFinder)
+  {
+    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
+    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
+    dest.setNumRowsLocal(srcNumRows);
+    dest.setNumColumnsLocal(srcNumColumns);
+    dest.setNumElems(srcNumElems);
+    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+  }
   return;
 }
 
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
+void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& big,Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
   U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
-  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet\n";
+  // For now, just call Square counterpart, it should be the same --- Actually I can't unless I try to do a weird cast.
+  // Annoying code bloat here
+  U rangeX = cutDimensionXend-cutDimensionXstart;
+  U rangeY = cutDimensionYend-cutDimensionYstart;
+/*  Commenting this assert out for now, since CFR3D requires non-square partitioning
+  if (rangeX != rangeY)
+  {
+    std::cout << "rangeX - " << rangeX << " and rangeY - " << rangeY << std::endl;
+    std::cout << "cutDimensionXstart - " << cutDimensionXstart << ", cutDimensionXend - " << cutDimensionXend << "cutDimensionYstart - " << cutDimensionYstart << ", cutDimensionYend - " << cutDimensionYend << std::endl;
+    assert(rangeX == rangeY);
+  }
+*/
+  U bigNumRows = big.getNumRowsLocal();
+  U bigNumColumns = big.getNumColumnsLocal();
+  U smallNumRows = small.getNumRowsLocal();
+  U smallNumColumns = small.getNumColumnsLocal();
+
+  std::vector<T>& bigVectorData = big.getVectorData();
+  std::vector<T*>& bigMatrixData = big.getMatrixData();
+  std::vector<T>& smallVectorData = small.getVectorData();
+  std::vector<T*>& smallMatrixData = small.getMatrixData();
+
+  // We assume that if dir==true, the user passed in a destination matrix that is properly sized
+  // If I find a use case where that is not true, then I can pass in big x and y dimensions, but I do not wan to do that.
+  // In most cases, the lae matri will be known and we are simply trying to fill in the smaller into the existing bigger
+
+  U numElems = (dir ? bigNumRows*bigNumColumns : rangeX*rangeY);
+  U numColumns = (dir ? bigNumColumns : rangeX);
+  bool assembleFinder = false;
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
+  {
+    assembleFinder = true;
+    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
+  }
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
+  {
+    assembleFinder = true;
+    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
+  }
+
+  U destIndex = (dir ? cutDimensionYstart+bigNumRows*cutDimensionXstart : 0);
+  U srcIndex = (dir ? 0 : cutDimensionYstart+bigNumRows*cutDimensionXstart);
+  U srcCounter = (dir ? rangeY : bigNumRows);
+  U destCounter = (dir ? bigNumRows : rangeY);
+  auto& destVectorData = dir ? bigVectorData : smallVectorData;
+  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  for (U i=0; i<rangeX; i++)
+  {
+    memcpy(&destVectorData[destIndex], &srcVectorData[srcIndex], sizeof(T)*rangeY);		// rangeX is fine. blocks of size rangeX are still being copied.
+    destIndex += destCounter;
+    srcIndex += srcCounter;
+  }
+
+  if (assembleFinder)
+  {
+    if (dir) {abort();}		// weird case that I want to check against
+    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
+    small.setNumRowsLocal(rangeY);
+    small.setNumColumnsLocal(numColumns);
+    small.setNumElems(numElems);
+    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+  }
   return;
 }
 

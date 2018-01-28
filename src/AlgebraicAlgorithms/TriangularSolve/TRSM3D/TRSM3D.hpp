@@ -1,13 +1,14 @@
 /* Author: Edward Hutter */
 
-
+/*
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void TRSM3D<T,U,blasEngine>::Solve(
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
-  char dir,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,      // AB=C. Triangular matrix can be either A or B
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixB,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixC,
+  char dir,       // Lower or Upper triangular matrix
+  char side,      // Is the unknown matrix on the left of right?
   int tune,
   MPI_Comm commWorld,
   int MM_id
@@ -41,38 +42,40 @@ void TRSM3D<T,U,blasEngine>::Solve(
     bcDimension *= 2;
   }
   bcDimension = std::min(bcDimension, globalDimension/pGridDimensionSize);
-/*
-  if (rank == 0)
-  {
-    std::cout << "localDimension - " << localDimension << std::endl;
-    std::cout << "globalDimension - " << globalDimension << std::endl;
-    std::cout << "bcDimension - " << bcDimension << std::endl;
-  }
-*/
 
-  if (dir == 'L')
+  if ((dir == 'L') && (side == 'L'))
   {
-    iSolveLower(matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+    iSolveLowerLeft(matrixA, matrixB, matrixC, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
       0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
   }
-  else if (dir == 'U')
+  else if ((dir == 'U') && (side == 'L'))
   {
-    iSolveUpper(matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+    iSolveUpperLeft(matrixA, matrixB, matrixC, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
+  }
+  else if ((dir == 'L') && (side == 'R'))
+  {
+    iSolveUpperRight(matrixA, matrixB, matrixC, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
+  }
+  else if ((dir == 'U') && (side == 'R'))
+  {
+    iSolveUpperRight(matrixA, matrixB, matrixC, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
       0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
   }
 }
+*/
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
-void TRSM3D<T,U,blasEngine>::iSolveLower(
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+template<
+  template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution
+>
+void TRSM3D<T,U,blasEngine>::iSolveLowerLeft(
+  Matrix<T,U,StructureArg,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
-  U localDimension,
-  U trueLocalDimension,
-  U bcDimension,
-  U globalDimension,
-  U trueGlobalDimension,
+  Matrix<T,U,StructureArg,Distribution>& matrixB,
   U matAstartX,
   U matAendX,
   U matAstartY,
@@ -81,14 +84,14 @@ void TRSM3D<T,U,blasEngine>::iSolveLower(
   U matLendX,
   U matLstartY,
   U matLendY,
-  U matLIstartX,
-  U matLIendX,
-  U matLIstartY,
-  U matLIendY,
-  U transposePartner,
+  U matBstartX,
+  U matBendX,
+  U matBstartY,
+  U matBendY,
   int MM_id,
   MPI_Comm commWorld )	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
 {
+/*
   .. the size of the triangular inverses will be attained via trueLocalDimension and bcDimensio
   U numBlockRows = ...
   U numBlockColumns = ...
@@ -116,64 +119,142 @@ void TRSM3D<T,U,blasEngine>::iSolveLower(
       MM3D<T,U,blasEngine>::Multiply(matrixA, matrixLI, matrixL, );
       // Then we update the next column
   }
+*/
 }
 
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
-void TRSM3D<T,U,blasEngine>::iSolveUpper(
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
-                       U localDimension,
-                       U trueLocalDimension,
-                       U bcDimension,
-                       U globalDimension,
-                       U trueGlobalDimension,
+template<
+  template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution
+>
+void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
+                       Matrix<T,U,StructureArg,Distribution>& matrixA,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
+                       Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matAstartX,
                        U matAendX,
                        U matAstartY,
                        U matAendY,
-                       U matRstartX,
-                       U matRendX,
-                       U matRstartY,
-                       U matRendY,
-                       U matRIstartX,
-                       U matRIendX,
-                       U matRIstartY,
-                       U matRIendY,
-                       U transposePartner,
+                       U matUstartX,
+                       U matUendX,
+                       U matUstartY,
+                       U matUendY,
+                       U matBstartX,
+                       U matBendX,
+                       U matBstartY,
+                       U matBendY,
                        int MM_id,
                        MPI_Comm commWorld
                      )
 {
-  .. the size of the triangular inverses will be attained via trueLocalDimension and bcDimensio
-  U numBlockRows = ...
-  U numBlockColumns = ...
+  int rank,size;
+  MPI_Comm_rank(commWorld, &rank);
+  MPI_Comm_size(commWorld, &size);
+  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  int helper = pGridDimensionSize;
+  helper *= helper;
+
+  // Note: matrixU will be square
+  U localInverseBlockSize = matrixU.getNumRowsLocal()/helper;
+  // corner case, I think its right, but I'll find out soon
+  if (((localInverseBlockSize & (localInverseBlockSize-1)) != 0))
+  {
+    localInverseBlockSize >>= 1;    // get next smallest power of 2
+  }
+
+  U numBlockColumns = matrixA.getNumColumnsLocal()/localInverseBlockSize;
   blasEngineArgumentPackage_gemm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
-  blasArgs.transposeA = blasEngineTranspose::AblasTrans;
+  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
   blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-  blasArgs.alpha = 1.;
-  blasArgs.beta = -1.;
-  MM3D<T,U,blasEngine>::Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
-      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true, MM_id);
+
   // Lets operate on individual columns at a time
   // Potential optimization 1): Don't use MM3D if the columns are too skinny in relation to the block size!
   //   Or this could just be taken care of when we tune block sizes?
-  for (U i=0; i<numBlockRows; i++)
+  for (U i=0; i<numBlockColumns; i++)
   {
       // Update the current column by accumulating the updates via MM
-      if (i>0)
+      blasArgs.alpha = -1;
+      blasArgs.beta = 1;
+      U offset1 = i*localInverseBlockSize;
+      U offset2 = (i+1)*localInverseBlockSize;
+      for (U j=0; j<i; j++)
       {
-        blasArgs.beta = -1;
+        U offset3 = j*localInverseBlockSize;
+        U offset4 = (j+1)*localInverseBlockSize;
+        MM3D<T,U,blasEngine>::Multiply(matrixA, matrixU, matrixB, matAstartX + offset3, matAstartX+offset4, matAstartY, matAendY,
+          matUstartX+offset1, matUstartX+offset2, matUstartY+offset3, matUstartY+offset4, matBstartX+offset1, matBstartX+offset2,
+            matBstartY, matBendY, commWorld, blasArgs, true, true, true, MM_id);
       }
+
       // Solve via MM
- 
+      // Future optimization: We are doing the same serialization over and over again between the updates and the MM. Try to reduce this!
+      blasArgs.alpha = 1;
       blasArgs.beta = 0;
-      MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixA, matrixR, );
-      // Then we update the next column
+      // Future optimization: for 1 processor, we don't want to serialize, so change true to false
+      // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
+      MM3D<T,U,blasEngine>::Multiply(matrixB, matrixUI, matrixA, matBstartX+offset1, matBstartX+offset2, matBstartY, matBendY,
+        matUstartX+offset1, matUstartX+offset2, matUstartY+offset1, matUstartY+offset2, matAstartX+offset1, matAstartX+offset2,
+          matAstartY, matAendY, commWorld, blasArgs, true, true, true, MM_id);
   }
+}
+
+
+template<typename T, typename U, template<typename, typename> class blasEngine>
+template<
+  template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution
+>
+void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
+  Matrix<T,U,StructureArg,Distribution>& matrixL,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+  Matrix<T,U,StructureArg,Distribution>& matrixB,
+  U matLstartX,
+  U matLendX,
+  U matLstartY,
+  U matLendY,
+  U matAstartX,
+  U matAendX,
+  U matAstartY,
+  U matAendY,
+  U matBstartX,
+  U matBendX,
+  U matBstartY,
+  U matBendY,
+  int MM_id,
+  MPI_Comm commWorld )	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
+{
+}
+
+
+template<typename T, typename U, template<typename, typename> class blasEngine>
+template<
+  template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution
+>
+void TRSM3D<T,U,blasEngine>::iSolveUpperRight(
+  Matrix<T,U,StructureArg,Distribution>& matrixU,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+  Matrix<T,U,StructureArg,Distribution>& matrixB,
+  U matUstartX,
+  U matUendX,
+  U matUstartY,
+  U matUendY,
+  U matAstartX,
+  U matAendX,
+  U matAstartY,
+  U matAendY,
+  U matBstartX,
+  U matBendX,
+  U matBstartY,
+  U matBendY,
+  int MM_id,
+  MPI_Comm commWorld )	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
+{
 }
 
 

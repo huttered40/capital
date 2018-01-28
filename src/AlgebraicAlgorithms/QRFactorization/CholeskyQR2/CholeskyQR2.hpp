@@ -277,9 +277,18 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
 
   CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, 'U', 0, commWorld);
 
+
+// For now, comment this out, because I am experimenting with using TriangularSolve TRSM instead of MM3D
+//   But later on once it works, use an integer or something to have both available, important when benchmarking
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
-  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
-  MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, commWorld, gemmPack1, 0);
+//  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
+//  MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, commWorld, gemmPack1, 0);
+
+  int MMid = 0;  // Broadcast + Allreduce
+  // For debugging purposes, I am using a copy of A instead of A itself
+  Matrix<T,U,StructureA,Distribution> matrixAcopy = matrixA;
+  TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixAcopy, 0, localDimensionN, 0, localDimensionM, 0, localDimensionN,
+    0, localDimensionN, 0, localDimensionN, 0, localDimensionM, MMid, commWorld);
 
   MPI_Comm_free(&rowComm);
   MPI_Comm_free(&columnComm);
