@@ -172,14 +172,16 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
 
   // Lets operate on individual columns at a time
   // Potential optimization 1): Don't use MM3D if the columns are too skinny in relation to the block size!
-  //   Or this could just be taken care of when we tune block sizes?
+     // Or this could just be taken care of when we tune block sizes?
+  // Potential optimization 2) Lots of serializing going on with each MM3D, this needs to be reduced.
   for (U i=0; i<numBlockColumns; i++)
   {
       // Update the current column by accumulating the updates via MM
       blasArgs.alpha = -1;
-      blasArgs.beta = 1;
+      blasArgs.beta = .5;
       U offset1 = i*localInverseBlockSize;
       U offset2 = (i+1)*localInverseBlockSize;
+
       for (U j=0; j<i; j++)
       {
         U offset3 = j*localInverseBlockSize;

@@ -293,6 +293,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
   Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
   Matrix<T,U,StructureC,Distribution> matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, pGridDimensionSize, cutC);
+
   Multiply((cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, srcPackage, methodKey, depthManipulation);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.

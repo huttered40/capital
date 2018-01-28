@@ -283,6 +283,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
 //  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
 //  MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, commWorld, gemmPack1, 0);
+//  if (myRank == 0) { std::cout << "\n\n"; matrixQ.print();}
 
   int MMid = 0;  // Broadcast + Allreduce
   // For debugging purposes, I am using a copy of A instead of A itself
