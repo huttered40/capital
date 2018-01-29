@@ -134,6 +134,7 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
   // to catch debugging issues, assert that this has at least one size
   assert(baseCaseDimList.size());
 
+/*
   if (rank == 0)
   {
     for (auto item : baseCaseDimList)
@@ -141,6 +142,7 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
       std::cout << item << std::endl;
     }
   }
+*/
 
 /*
   // Note: matrixU will be square
@@ -153,7 +155,6 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
 
   U numBlockColumns = matrixA.getNumColumnsLocal()/localInverseBlockSize;
 */
-  srcPackage.order = blasEngineOrder::AblasColumnMajor;
 
   // Lets operate on individual columns at a time
   // Potential optimization 1): Don't use MM3D if the columns are too skinny in relation to the block size!
@@ -161,7 +162,7 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
   // Potential optimization 2) Lots of serializing going on with each MM3D, this needs to be reduced.
 
   U offset1 = 0;
-  U offset2 = (baseCaseDimList.size() <= 1 ? matAendX : baseCaseDimList[0]);
+  U offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]);
   U offset3 = 0;
   for (U i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++)
   {
@@ -197,8 +198,15 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
         {
 //          U offset3 = (i-1)*localInverseBlockSize;
           // As i increases, the size of these updates gets smaller.
+          
+          // Special handling. This might only work since the triangular matrix is square, which should be ok
+          U arg1 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartX + offset1) : (matUstartY + offset3));
+          U arg2 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? matUendX : (matUstartY+offset1));
+          U arg3 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartY + offset3) : (matUstartX + offset1));
+          U arg4 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartY+offset1) : matUendX);
+
           MM3D<T,U,blasEngine>::Multiply(matrixA, matrixU, matrixB, matAstartX+offset3, matAstartX+offset1, matAstartY, matAendY,
-            matUstartX+offset1, matUendX, matUstartY+offset3, matUstartY+offset1, matBstartX+offset1, matBendX,
+            arg1, arg2, arg3, arg4, matBstartX+offset1, matBendX,
               matBstartY, matBendY, commWorld, srcPackage, true, true, true, MM_id);
         }
       }
@@ -219,12 +227,14 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
       offset3 = offset1;
       offset1 = offset2;
       offset2 += baseCaseDimList[i+1];
+/*
       if (rank == 0)
       {
         std::cout << "offset3 - " << offset3 << std::endl;
         std::cout << "offset1 - " << offset1 << std::endl;
         std::cout << "offset2 - " << offset2 << std::endl;
       }
+*/
     }
   }
 }
