@@ -97,6 +97,12 @@ int main(int argc, char** argv)
 
     int globalMatrixDimensionM = (methodKey3 ? (1<<(atoi(argv[5]))) : atoi(argv[5]));
     int globalMatrixDimensionN = (methodKey3 ? (1<<(atoi(argv[6]))) : atoi(argv[6]));
+
+    int MMid = atoi(argv[7]);
+    int TSid = atoi(argv[8]);
+    int INVid = atoi(argv[9]);
+    int inverseCutOffMultiplier = atoi(argv[10]);
+    int baseCaseMultiplier = atoi(argv[11]);
 /*
     int localMatrixDimensionM = globalMatrixDimensionM/pGridDimensionSize;
     int localMatrixDimensionN = globalMatrixDimensionN/pGridDimensionSize;
@@ -115,7 +121,7 @@ int main(int argc, char** argv)
     {
       myTimer.setStartTime();
       CholeskyQR2<double,int,cblasEngine>::
-        Factor3D(matA, matQ, matR, MPI_COMM_WORLD);
+        Factor3D(matA, matQ, matR, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "3D-CQR2 iteration", i);
     }
@@ -139,13 +145,19 @@ int main(int argc, char** argv)
     int exponentN = atoi(argv[7]);
     int globalMatrixDimensionM = (methodKey3 ? (1<<exponentM) : exponentM);
     int globalMatrixDimensionN = (methodKey3 ? (1<<exponentN) : exponentN);
+
+    int MMid = atoi(argv[8]);
+    int TSid = atoi(argv[9]);
+    int INVid = atoi(argv[10]);
+    int inverseCutOffMultiplier = atoi(argv[11]);
+    int baseCaseMultiplier = atoi(argv[12]);
  
     int dimensionC,dimensionD;
     if (methodKey4 == 0)
     {
       // Use the grid that the user specifies in the command line
-      int exponentD = atoi(argv[8]);
-      int exponentC = atoi(argv[9]);
+      int exponentD = atoi(argv[13]);
+      int exponentC = atoi(argv[14]);
 
 /*
     // Do an exponent check, but first we need the log-2 of numPEs(size)
@@ -215,7 +227,7 @@ int main(int argc, char** argv)
     {
       myTimer.setStartTime();
       CholeskyQR2<double,int,cblasEngine>::
-        FactorTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD);
+        FactorTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "Tunable CQR2 iteration", i);
     }

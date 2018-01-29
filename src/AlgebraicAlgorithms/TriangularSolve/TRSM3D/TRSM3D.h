@@ -66,6 +66,7 @@ public:
                        U matBstartY,
                        U matBendY,
                        int MM_id,
+                       blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld
                      );
 
@@ -90,8 +91,11 @@ public:
                        U matBendX,
                        U matBstartY,
                        U matBendY,
-                       int MM_id,
-                       MPI_Comm commWorld
+                       std::vector<U>& baseCaseDimList,
+                       blasEngineArgumentPackage_gemm<T>& srcPackage,
+                       MPI_Comm commWorld,
+                       int MM_id = 0,
+                       int TR_id = 1
                      );
   
   template<
@@ -116,6 +120,7 @@ public:
                        U matBstartY,
                        U matBendY,
                        int MM_id,
+                       blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld
                      );
 
@@ -141,6 +146,7 @@ public:
                        U matBstartY,
                        U matBendY,
                        int MM_id,
+                       blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld
                      );
 

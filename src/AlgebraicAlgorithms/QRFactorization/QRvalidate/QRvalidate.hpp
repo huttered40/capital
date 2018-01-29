@@ -419,7 +419,7 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distributio
     {
       T errorSquare = 0;
       errorSquare = std::abs(myA.getRawData()[myIndex] - testA.getRawData()[myIndex]);
-      //if (isRank1) std::cout << errorSquare << " " << myA.getRawData()[myIndex] << " " << testA.getRawData()[myIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
+      if (isRank1) std::cout << errorSquare << " " << myA.getRawData()[myIndex] << " " << testA.getRawData()[myIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       myIndex++;

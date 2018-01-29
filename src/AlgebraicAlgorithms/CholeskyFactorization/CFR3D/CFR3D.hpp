@@ -3,14 +3,16 @@
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-void CFR3D<T,U,blasEngine>::Factor(
+std::vector<U> CFR3D<T,U,blasEngine>::Factor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
+  U inverseCutOffGlobalDimension,
   char dir,
   int tune,
   MPI_Comm commWorld,
-  int MM_id
+  int MMid,
+  int TSid
   )
 {
   // Need to split up the commWorld communicator into a 3D grid similar to Summa3D
@@ -41,25 +43,34 @@ void CFR3D<T,U,blasEngine>::Factor(
     bcDimension *= 2;
   }
   bcDimension = std::min(bcDimension, globalDimension/pGridDimensionSize);
-/*
-  if (rank == 0)
+
+  int save = inverseCutOffGlobalDimension;
+  inverseCutOffGlobalDimension = bcDimension;
+  for (int i=0; i<save; i++)
   {
-    std::cout << "localDimension - " << localDimension << std::endl;
-    std::cout << "globalDimension - " << globalDimension << std::endl;
-    std::cout << "bcDimension - " << bcDimension << std::endl;
+    inverseCutOffGlobalDimension *= 2;
   }
-*/
+
+  std::vector<U> baseCaseDimList;
 
   if (dir == 'L')
   {
+    bool isInversePath = (inverseCutOffGlobalDimension == globalDimension ? true : false);
+    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
     rFactorLower(matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, slice2D, commWorld,
+        isInversePath, baseCaseDimList, inverseCutOffGlobalDimension);
   }
   else if (dir == 'U')
   {
+    bool isInversePath = (inverseCutOffGlobalDimension == globalDimension ? true : false);
+    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
     rFactorUpper(matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, slice2D, commWorld,
+        isInversePath, baseCaseDimList, inverseCutOffGlobalDimension);
   }
+
+  return baseCaseDimList;
 }
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
@@ -87,12 +98,24 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   U matLIendY,
   U transposePartner,
   int MM_id,
+  int TS_id,
   MPI_Comm slice2D,
-  MPI_Comm commWorld )	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
+  MPI_Comm commWorld, 	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
+  bool& isInversePath,
+  std::vector<U>& baseCaseDimList,
+  U inverseCutoffGlobalDimension)
 {
   if (globalDimension <= bcDimension)
   {
+    if (!isInversePath)
+    {
+      // Only save if we never got onto the inverse path
+      baseCaseDimList.push_back(localDimension);
+    }
+
     if (localDimension == 0) return;
+
+    // No matter what path we are on, if we get into the base case, we will do regular Cholesky + Triangular inverse
 
     // First: AllGather matrix A so that every processor has the same replicated diagonal square partition of matrix A of dimension bcDimension
     //          Note that processors only want to communicate with those on their same 2D slice, since the matrices are replicated on every slice
@@ -287,10 +310,19 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 //  std::cout << "localDimension - " << localDimension << " LOCALSHIFT - " << localShift << std::endl;
 
   U globalShift = (globalDimension>>1);
+  if (inverseCutoffGlobalDimension >= globalDimension)
+  {
+    if (isInversePath == false)
+    {
+      baseCaseDimList.push_back(localShift);
+    }
+    isInversePath = true;
+  }
   rFactorLower(matrixA, matrixL, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift,
-    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, MM_id, slice2D, commWorld);
+    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, MM_id, TS_id,
+    slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
 /* Note: the code below might actualy be a bit better than the uncommented-out code below it, because this code takes advantage of the triangular
          structure of packedMatrix, allowing it to communicate half the words in the transpose. Only problem: because the Allgather+MM3D routine
@@ -381,9 +413,18 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   }
 
   // Only need to change the argument for matrixA
+  if (inverseCutoffGlobalDimension >= globalDimension)
+  {
+    if (isInversePath == false)
+    {
+      baseCaseDimList.push_back(localShift);
+    }
+    isInversePath = true;
+  }
   rFactorLower(holdSum, matrixL, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY,
-    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, MM_id, slice2D, commWorld);
+    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, MM_id, TS_id,
+    slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   // Next step : temp <- L_{21}*LI_{11}
   // We can re-use holdLsyrk as our temporary output matrix.
@@ -433,12 +474,23 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
                        U matRIendY,
                        U transposePartner,
                        int MM_id,
+                       int TS_id,
                        MPI_Comm slice2D,
-                       MPI_Comm commWorld
+                       MPI_Comm commWorld,
+                       bool& isInversePath,
+                       std::vector<U>& baseCaseDimList,
+                       U inverseCutoffGlobalDimension
                      )
 {
   if (globalDimension <= bcDimension)
   {
+    if (!isInversePath)
+    {
+      // Only save if we never got onto the inverse path
+      baseCaseDimList.push_back(localDimension);
+    }
+
+
     if (localDimension == 0) return;
     // First: AllGather matrix A so that every processor has the same replicated diagonal square partition of matrix A of dimension bcDimension
     //          Note that processors only want to communicate with those on their same 2D slice, since the matrices are replicated on every slice
@@ -634,10 +686,19 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 
   U globalShift = (globalDimension>>1);
 
+  if (inverseCutoffGlobalDimension >= globalDimension)
+  {
+    if (isInversePath == false)
+    {
+      baseCaseDimList.push_back(localShift);
+    }
+    isInversePath = true;
+  }
   rFactorUpper(matrixA, matrixR, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift,
-    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, MM_id, slice2D, commWorld);
+    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, MM_id, TS_id,
+    slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
 /* Note: the code below might actualy be a bit better than the uncommented-out code below it, because this code takes advantage of the triangular
          structure of packedMatrix, allowing it to communicate half the words in the transpose. Only problem: because the Allgather+MM3D routine
@@ -705,9 +766,18 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   }
 
   // Only need to change the argument for matrixA
+  if (inverseCutoffGlobalDimension >= globalDimension)
+  {
+    if (isInversePath == false)
+    {
+      baseCaseDimList.push_back(localShift);
+    }
+    isInversePath = true;
+  }
   rFactorUpper(holdSum, matrixR, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matRstartX+localShift, matRendX, matRstartY+localShift, matRendY,
-    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, MM_id, slice2D, commWorld);
+    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, MM_id, TS_id,
+    slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   // Next step : temp <- R_{12}*RI_{22}
   // We can re-use holdRsyrk as our temporary output matrix.
