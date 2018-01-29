@@ -372,8 +372,13 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   U pGridDimensionSize = ceil(pow(sizeWorld,1./3.));
   U reverseDimLocal = localDimension-localShift;
   U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
+
+
 //  if (rank == 0) std::cout << "reverseDimGlobal - " << reverseDimLocal << " and global - " << reverseDimGlobal << std::endl;
-  Matrix<T,U,MatrixStructureSquare,Distribution> holdLsyrk(std::vector<T>(reverseDimLocal*reverseDimLocal), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
+//  Matrix<T,U,MatrixStructureSquare,Distribution> holdLsyrk(std::vector<T>(reverseDimLocal*reverseDimLocal), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
+  Matrix<T,U,MatrixStructureSquare,Distribution> holdLsyrk(std::vector<T>(), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal);
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, holdLsyrk, matAstartX+localShift,
+    matAendX, matAstartY+localShift, matAendY);
 
   Matrix<T,U,MatrixStructureSquare,Distribution> squareL(std::vector<T>(), localShift, reverseDimLocal, globalShift, reverseDimGlobal);
   // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
@@ -391,9 +396,12 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   blasArgsGemm.beta = 0.;
 */
 
+  blasArgs.alpha = -1;
+  blasArgs.beta = .5;
   MM3D<T,U,blasEngine>::Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal,
       0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
 
+/*
   // Next step: A_{22} - holdLsyrk.
   Matrix<T,U,MatrixStructureSquare,Distribution> holdSum(std::vector<T>(reverseDimLocal*reverseDimLocal), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixAquadrant4(std::vector<T>(), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal);
@@ -411,6 +419,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       holdVec[index] = matAVec[index] - syrkVec[index];
     }
   }
+*/
 
   // Only need to change the argument for matrixA
   if (inverseCutoffGlobalDimension >= globalDimension)
@@ -421,7 +430,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     }
     isInversePath = true;
   }
-  rFactorLower(holdSum, matrixL, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
+  rFactorLower(/*holdSum*/holdLsyrk, matrixL, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY,
     matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, MM_id, TS_id,
     slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
@@ -734,7 +743,9 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 
   // Now we need to perform R_{12}^T * R_{12} via syrk
   //   Actually, I am havin trouble with SYRK, lets try gemm instead
-  Matrix<T,U,MatrixStructureSquare,Distribution> holdRsyrk(std::vector<T>(reverseDimLocal*reverseDimLocal), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
+  Matrix<T,U,MatrixStructureSquare,Distribution> holdRsyrk(std::vector<T>(/*reverseDimLocal*reverseDimLocal*/), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
+  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, holdRsyrk, matAstartX+localShift,
+    matAendX, matAstartY+localShift, matAendY);
 
   Matrix<T,U,MatrixStructureSquare,Distribution> squareR(std::vector<T>(), reverseDimLocal, localShift, reverseDimGlobal, globalShift);
   // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
@@ -744,9 +755,12 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 
   transposeSwap(squareRSwap, rank, transposePartner, commWorld);
 
+  blasArgs.alpha = -1;
+  blasArgs.beta = .5;
   MM3D<T,U,blasEngine>::Multiply(squareRSwap, squareR, holdRsyrk, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal, 0, localShift,
       0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
 
+/*
   // Next step: A_{22} - holdRsyrk.
   Matrix<T,U,MatrixStructureSquare,Distribution> holdSum(std::vector<T>(reverseDimLocal*reverseDimLocal), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixAquadrant4(std::vector<T>(), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal);
@@ -764,6 +778,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       holdVec[index] = matAVec[index] - syrkVec[index];
     }
   }
+*/
 
   // Only need to change the argument for matrixA
   if (inverseCutoffGlobalDimension >= globalDimension)
@@ -774,7 +789,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     }
     isInversePath = true;
   }
-  rFactorUpper(holdSum, matrixR, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
+  rFactorUpper(/*holdSum*/holdRsyrk, matrixR, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matRstartX+localShift, matRendX, matRstartY+localShift, matRendY,
     matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, MM_id, TS_id,
     slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
