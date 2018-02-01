@@ -366,12 +366,10 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 
     // create a new subvector
     U len = saveIndexAfter - saveIndexPrev;
-    std::cout << "len - " << len << std::endl;
     std::vector<U> subBaseCaseDimList(len);
     for (U i=saveIndexPrev; i<saveIndexAfter; i++)
     {
       subBaseCaseDimList[i-saveIndexPrev] = baseCaseDimList[i];
-      std::cout << "check - " << subBaseCaseDimList[i-saveIndexPrev] << std::endl;
     }
     // make extra copy to avoid corrupting matrixA
     // Future optimization: Copy a part of A into matrixAcopy, to avoid excessing copying
@@ -740,6 +738,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 
   U globalShift = (globalDimension>>1);
   bool saveSwitch = isInversePath;
+  int saveIndexPrev = baseCaseDimList.size();
   if (inverseCutoffGlobalDimension >= globalDimension)
   {
     if (isInversePath == false)
@@ -755,6 +754,9 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   isInversePath = saveSwitch;
+  int saveIndexAfter = baseCaseDimList.size();
+
+
 
 /* Note: the code below might actualy be a bit better than the uncommented-out code below it, because this code takes advantage of the triangular
          structure of packedMatrix, allowing it to communicate half the words in the transpose. Only problem: because the Allgather+MM3D routine
@@ -772,7 +774,48 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
 
   transposeSwap(packedMatrix, rank, transposePartner, commWorld);
- 
+
+  blasEngineArgumentPackage_gemm<T> blasArgs;
+  blasArgs.order = blasEngineOrder::AblasColumnMajor;
+  blasArgs.transposeA = blasEngineTranspose::AblasTrans;
+  blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+  blasArgs.alpha = 1.;
+  blasArgs.beta = 0.;
+
+  if (isInversePath)
+  {
+    MM3D<T,U,blasEngine>::Multiply(packedMatrix, matrixA, matrixR, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
+      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, false, true, true, MM_id);
+  }
+  else
+  {
+    blasEngineArgumentPackage_gemm<T> trsmArgs;
+    trsmArgs.order = blasEngineOrder::AblasColumnMajor;
+    trsmArgs.transposeA = blasEngineTranspose::AblasTrans;
+    trsmArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+
+    // create a new subvector
+    U len = saveIndexAfter - saveIndexPrev;
+    std::vector<U> subBaseCaseDimList(len);
+    for (U i=saveIndexPrev; i<saveIndexAfter; i++)
+    {
+      subBaseCaseDimList[i-saveIndexPrev] = baseCaseDimList[i];
+    }
+    // make extra copy to avoid corrupting matrixA
+    // Future optimization: Copy a part of A into matrixAcopy, to avoid excessing copying
+    Matrix<T,U,MatrixStructureSquare,Distribution> matrixAcopy = matrixA;
+    // Also need to serialize top-left quadrant of matrixL so that its size matches packedMatrix
+    Matrix<T,U,MatrixStructureSquare,Distribution> packedMatrixR(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+    // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, packedMatrixR,
+      matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift);
+    // Swap, same as we did with inverse
+    transposeSwap(packedMatrixR, rank, transposePartner, commWorld);
+    TRSM3D<T,U,blasEngine>::iSolveLowerRight(packedMatrixR, packedMatrix, matrixR, matrixAcopy, 0, localShift, 0, localShift, matRstartX+localShift, matRendX,
+      matRstartY, matRstartY+localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift, subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
+  }
+
+/* 
   blasEngineArgumentPackage_gemm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
   blasArgs.transposeA = blasEngineTranspose::AblasTrans;
@@ -781,6 +824,8 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   blasArgs.beta = 0.;
   MM3D<T,U,blasEngine>::Multiply(packedMatrix, matrixA, matrixR, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
       matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, false, true, true, MM_id);
+*/
+
 
   int sizeWorld;
   MPI_Comm_size(commWorld, &sizeWorld);
@@ -847,22 +892,25 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   // Next step : temp <- R_{12}*RI_{22}
   // We can re-use holdRsyrk as our temporary output matrix.
 
-  Matrix<T,U,MatrixStructureSquare,Distribution>& tempInverse = squareR/*holdRsyrk*/;
-  
-  blasEngineArgumentPackage_gemm<T> invPackage1;
-  invPackage1.order = blasEngineOrder::AblasColumnMajor;
-  invPackage1.transposeA = blasEngineTranspose::AblasNoTrans;
-  invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
-  invPackage1.alpha = 1.;
-  invPackage1.beta = 0.;
-  MM3D<T,U,blasEngine>::Multiply(matrixR, matrixRI,tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift,
-    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, invPackage1, true, true, false, MM_id);
+  if (isInversePath)
+  {
+    Matrix<T,U,MatrixStructureSquare,Distribution>& tempInverse = squareR/*holdRsyrk*/;
 
-  // Next step: finish the Triangular inverse calculation
-  invPackage1.alpha = -1.;
-  MM3D<T,U,blasEngine>::Multiply(matrixRI, tempInverse,
-    matrixRI, matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift, 0, reverseDimLocal, 0, localShift,
-      matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, true, false, true, MM_id);
+    blasEngineArgumentPackage_gemm<T> invPackage1;
+    invPackage1.order = blasEngineOrder::AblasColumnMajor;
+    invPackage1.transposeA = blasEngineTranspose::AblasNoTrans;
+    invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
+    invPackage1.alpha = 1.;
+    invPackage1.beta = 0.;
+    MM3D<T,U,blasEngine>::Multiply(matrixR, matrixRI,tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift,
+      matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, invPackage1, true, true, false, MM_id);
+
+    // Next step: finish the Triangular inverse calculation
+    invPackage1.alpha = -1.;
+    MM3D<T,U,blasEngine>::Multiply(matrixRI, tempInverse,
+      matrixRI, matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift, 0, reverseDimLocal, 0, localShift,
+        matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, true, false, true, MM_id);
+  }
 }
 
 

@@ -65,9 +65,11 @@ public:
                        U matBendX,
                        U matBstartY,
                        U matBendY,
-                       int MM_id,
+                       std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
-                       MPI_Comm commWorld
+                       MPI_Comm commWorld,
+                       int MM_id = 0,
+                       int TR_id = 1
                      );
 
   template<
@@ -119,9 +121,11 @@ public:
                        U matBendX,
                        U matBstartY,
                        U matBendY,
-                       int MM_id,
+                       std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
-                       MPI_Comm commWorld
+                       MPI_Comm commWorld,
+                       int MM_id = 0,
+                       int TR_id = 1         // allows for benchmarking to see which version is faster 
                      );
 
   template<
@@ -145,9 +149,11 @@ public:
                        U matBendX,
                        U matBstartY,
                        U matBendY,
-                       int MM_id,
+                       std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
-                       MPI_Comm commWorld
+                       MPI_Comm commWorld,
+                       int MM_id = 0,
+                       int TR_id = 1
                      );
 
 private:

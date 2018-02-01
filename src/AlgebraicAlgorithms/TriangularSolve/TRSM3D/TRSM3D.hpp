@@ -88,13 +88,16 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerLeft(
   U matBendX,
   U matBstartY,
   U matBendY,
-  int MM_id,
+  std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
-  MPI_Comm commWorld )	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
+  MPI_Comm commWorld,
+  int MM_id,
+  int TR_id)
 {
 }
 
 
+// For solving AL=B for A
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<
   template<typename,typename, template<typename,typename,int> class> class StructureArg,
@@ -133,16 +136,6 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
 
   // to catch debugging issues, assert that this has at least one size
   assert(baseCaseDimList.size());
-
-/*
-  if (rank == 0)
-  {
-    for (auto item : baseCaseDimList)
-    {
-      std::cout << item << std::endl;
-    }
-  }
-*/
 
 /*
   // Note: matrixU will be square
@@ -228,33 +221,26 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
       offset3 = offset1;
       offset1 = offset2;
       offset2 += baseCaseDimList[i+1];
-/*
-      if (rank == 0)
-      {
-        std::cout << "offset3 - " << offset3 << std::endl;
-        std::cout << "offset1 - " << offset1 << std::endl;
-        std::cout << "offset2 - " << offset2 << std::endl;
-      }
-*/
     }
   }
 }
 
 
+// For solving RA=B for A
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<
   template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution
 >
 void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
-  Matrix<T,U,StructureArg,Distribution>& matrixL,
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
+  Matrix<T,U,StructureArg,Distribution>& matrixR,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,StructureArg,Distribution>& matrixB,
-  U matLstartX,
-  U matLendX,
-  U matLstartY,
-  U matLendY,
+  U matRstartX,
+  U matRendX,
+  U matRstartY,
+  U matRendY,
   U matAstartX,
   U matAendX,
   U matAstartY,
@@ -263,10 +249,109 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
   U matBendX,
   U matBstartY,
   U matBendY,
-  int MM_id,
+  std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
-  MPI_Comm commWorld )	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
+  MPI_Comm commWorld,
+  int MM_id,
+  int TR_id)         // allows for benchmarking to see which version is faster 
 {
+  int rank,size;
+  MPI_Comm_rank(commWorld, &rank);
+  MPI_Comm_size(commWorld, &size);
+  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  int helper = pGridDimensionSize;
+  helper *= helper;
+
+  // to catch debugging issues, assert that this has at least one size
+  assert(baseCaseDimList.size());
+
+/*
+  // Note: matrixU will be square
+  U localInverseBlockSize = matrixU.getNumRowsLocal()/helper;
+  // corner case, I think its right, but I'll find out soon
+  if (((localInverseBlockSize & (localInverseBlockSize-1)) != 0))
+  {
+    localInverseBlockSize >>= 1;    // get next smallest power of 2
+  }
+
+  U numBlockColumns = matrixA.getNumColumnsLocal()/localInverseBlockSize;
+*/
+
+  // Lets operate on individual columns at a time
+  // Potential optimization 1): Don't use MM3D if the columns are too skinny in relation to the block size!
+     // Or this could just be taken care of when we tune block sizes?
+  // Potential optimization 2) Lots of serializing going on with each MM3D, this needs to be reduced.
+
+  U offset1 = 0;
+  U offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]);
+  U offset3 = 0;
+  for (U i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++)
+  {
+      // Update the current column by accumulating the updates via MM
+      srcPackage.alpha = -1;
+      srcPackage.beta = 1.;
+//      U offset1 = i*localInverseBlockSize;
+//      U offset2 = (i+1)*localInverseBlockSize;
+
+      if (TR_id == 0)
+      {
+        assert(0);        // Fix this code path. I don't think its correct, but its probably less efficient than the path below
+        U offset3 = 0;
+        U offset4 = baseCaseDimList[0];
+        for (U j=0; j<i; j++)
+        {
+//          U offset3 = j*localInverseBlockSize;
+//          U offset4 = (j+1)*localInverseBlockSize;
+          MM3D<T,U,blasEngine>::Multiply(matrixR, matrixA, matrixB, matRstartX+offset1, matRstartX+offset2, matRstartY+offset3, matRstartY+offset4,
+           matAstartX + offset3, matAstartX+offset4, matAstartY, matAendY, matBstartX+offset1, matBstartX+offset2,
+              matBstartY, matBendY, commWorld, srcPackage, true, true, true, MM_id);
+          offset3 = offset4;
+          // check prevents a stupid seg fault
+          if ((j+1) < i)
+          {
+            offset4 += baseCaseDimList[j+1];
+          }
+        }
+      }
+      else // TR_id == 1
+      {
+        // Only update once first panel is solved
+        if (i>0)
+        {
+//          U offset3 = (i-1)*localInverseBlockSize;
+          // As i increases, the size of these updates gets smaller.
+          
+          // Special handling. This might only work since the triangular matrix is square, which should be ok
+
+          // Note that the beginning cases might not be correct. They are not currently used for anything though.
+          U arg1 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY + offset3) : (matRstartX + offset1));
+          U arg2 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY+offset1) : matRendX);
+          U arg3 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY + offset3) : (matRstartY + offset3));
+          U arg4 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY+offset1) : matRstartY+offset1);
+
+          MM3D<T,U,blasEngine>::Multiply(matrixR, matrixA, matrixB, arg1, arg2, arg3, arg4, matAstartX, matAendX, matAstartY+offset3, matAstartY+offset1,
+            matBstartX, matBendX, matBstartY+offset1, matBendY, commWorld, srcPackage, true, true, true, MM_id);
+        }
+      }
+
+      // Solve via MM
+      // Future optimization: We are doing the same serialization over and over again between the updates and the MM. Try to reduce this!
+      srcPackage.alpha = 1;
+      srcPackage.beta = 0;
+      // Future optimization: for 1 processor, we don't want to serialize, so change true to false
+      // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
+      MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixB, matrixA, matRstartX+offset1, matRstartX+offset2, matRstartY+offset1, matRstartY+offset2,
+        matBstartX, matBendX, matBstartY+offset1, matBstartY+offset2, matAstartX, matAendX,
+          matAstartY+offset1, matAstartY+offset2, commWorld, srcPackage, true, true, true, MM_id);
+
+    if ((i+1) < baseCaseDimList.size())
+    {
+      // Update the offsets
+      offset3 = offset1;
+      offset1 = offset2;
+      offset2 += baseCaseDimList[i+1];
+    }
+  }
 }
 
 
@@ -292,9 +377,11 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperRight(
   U matBendX,
   U matBstartY,
   U matBendY,
-  int MM_id,
+  std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
-  MPI_Comm commWorld )	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
+  MPI_Comm commWorld,
+  int MM_id,
+  int TR_id)         // allows for benchmarking to see which version is faster 
 {
 }
 
