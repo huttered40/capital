@@ -373,9 +373,23 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
 
   std::vector<U> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, miniCubeComm, MMid, TSid);
 
-  // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
-  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
-  MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, miniCubeComm, gemmPack1, MMid);
+  if (INVid)
+  {
+    gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
+    MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, miniCubeComm, gemmPack1, MMid);
+  }
+  else
+  {
+    // For debugging purposes, I am using a copy of A instead of A itself
+    Matrix<T,U,StructureA,Distribution> matrixAcopy = matrixA;
+    gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
+    gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
+    // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
+    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixAcopy, 0, localDimensionN, 0, localDimensionM, 0, localDimensionN,
+      0, localDimensionN, 0, localDimensionN, 0, localDimensionM, baseCaseDimList, gemmPack1, miniCubeComm, MMid, TSid);
+  }
+
+
 
 }
 
