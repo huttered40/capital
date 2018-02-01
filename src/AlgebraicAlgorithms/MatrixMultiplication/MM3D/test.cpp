@@ -77,21 +77,24 @@ int main(int argc, char** argv)
     // Don't use rank. Need to use the rank relative to the slice its on, since each slice will start off with the same matrix
     matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
     matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+    matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
 
     blasEngineArgumentPackage_gemm<double> blasArgs;
     blasArgs.order = blasEngineOrder::AblasColumnMajor;
     blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
     blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-    blasArgs.alpha = 1.;
-    blasArgs.beta = 0;
+    blasArgs.alpha = 0.;
+    blasArgs.beta = 1;
   
     int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
+      if (rank == 0) { std::cout << "\n\nbefore\n\n"; matC.print(); }
       MM3D<double,int,cblasEngine>::
         Multiply(matA, matB, matC, MPI_COMM_WORLD, blasArgs, methodKey3);
+      if (rank == 0) { std::cout << "\n\nafter\n\n"; matC.print(); }
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D GEMM iteration", i);
       MPI_Barrier(MPI_COMM_WORLD);

@@ -168,12 +168,13 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
   {
       // Update the current column by accumulating the updates via MM
       srcPackage.alpha = -1;
-      srcPackage.beta = .5;
+      srcPackage.beta = 1.;
 //      U offset1 = i*localInverseBlockSize;
 //      U offset2 = (i+1)*localInverseBlockSize;
 
       if (TR_id == 0)
       {
+        assert(0);        // Fix this code path. I don't think its correct, but its probably less efficient than the path below
         U offset3 = 0;
         U offset4 = baseCaseDimList[0];
         for (U j=0; j<i; j++)

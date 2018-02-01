@@ -435,7 +435,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 */
 
   blasArgs.alpha = -1;
-  blasArgs.beta = .5;
+  blasArgs.beta = 1;
   MM3D<T,U,blasEngine>::Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal,
       0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
 
@@ -803,7 +803,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   transposeSwap(squareRSwap, rank, transposePartner, commWorld);
 
   blasArgs.alpha = -1;
-  blasArgs.beta = .5;
+  blasArgs.beta = 1;
   MM3D<T,U,blasEngine>::Multiply(squareRSwap, squareR, holdRsyrk, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal, 0, localShift,
       0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
 

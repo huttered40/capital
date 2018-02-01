@@ -83,25 +83,37 @@ void MM3D<T,U,blasEngine>::Multiply(
     serializeKeyB = true;
     _start2(matrixA,matrixB,commInfo3D,
       matrixAEngineVector,matrixBEngineVector,serializeKeyA,serializeKeyB);
-/*
-    // debugging
-    for (int i=0; i<localDimensionN*localDimensionK; i++)
-    {
-      std::cout << "val - " << matrixBEngineVector[i] << std::endl;
-    }
-*/
   }
 
   // Assume, for now, that matrixC has Rectangular Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
+
+  // Massive bug fix. Need to use a separate array if beta != 0
+
   T* matrixCforEnginePtr = matrixC.getRawData();
-
-  blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
-    matrixCforEnginePtr, localDimensionM, localDimensionN, localDimensionK,
-    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
-    (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
-    localDimensionM, srcPackage);
-
-  _end1(matrixCforEnginePtr,matrixC,commInfo3D);
+  if (srcPackage.beta == 0)
+  {
+    blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+      matrixCforEnginePtr, localDimensionM, localDimensionN, localDimensionK,
+      (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
+      (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
+      localDimensionM, srcPackage);
+    _end1(matrixCforEnginePtr,matrixC,commInfo3D);
+   }
+   else
+   {
+     // This cancels out any affect beta could have. Beta is just not compatable with MM3D and must be handled separately
+     std::vector<T> holdProduct(matrixC.getNumElems(),0);
+     blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+       &holdProduct[0], localDimensionM, localDimensionN, localDimensionK,
+       (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
+       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
+       localDimensionM, srcPackage); 
+    _end1(&holdProduct[0],matrixC,commInfo3D,1);
+    for (U i=0; i<holdProduct.size(); i++)
+    {
+      matrixC.getRawData()[i] = srcPackage.beta*matrixC.getRawData()[i] + holdProduct[i];
+    }
+  }
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
@@ -121,6 +133,9 @@ void MM3D<T,U,blasEngine>::Multiply(
 {
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
+
+  // Need to do the end_1 fix, same as above.
+  assert(0);
 
   auto commInfo3D = setUpCommunicators(commWorld, depthManipulation);
   T* matrixAEnginePtr;
@@ -482,7 +497,8 @@ template<template<typename,typename, template<typename,typename,int> class> clas
 void MM3D<T,U,blasEngine>::_end1(
 					T* matrixEnginePtr,
 					Matrix<T,U,StructureArg,Distribution>& matrix,
-					tupleStructure& commInfo3D
+					tupleStructure& commInfo3D,
+          int dir
 				)
 {
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
@@ -494,7 +510,7 @@ void MM3D<T,U,blasEngine>::_end1(
   U numElems = matrix.getNumElems();
 
   // Prevents buffer aliasing, which MPI does not like.
-  if (matrixEnginePtr == matrix.getRawData())
+  if ((dir) || (matrixEnginePtr == matrix.getRawData()))
   {
     MPI_Allreduce(MPI_IN_PLACE,matrixEnginePtr, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
   }

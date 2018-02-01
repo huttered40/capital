@@ -201,8 +201,9 @@ private:
   static void _end1(
 			T* matrixEnginePtr,
   			Matrix<T,U,StructureArg,Distribution>& matrix,
-			tupleStructure& commInfo3D
-		   );
+			tupleStructure& commInfo3D,
+		   int dir = 0
+       );
 
   static void BroadcastPanels(
 				std::vector<T>& data,
