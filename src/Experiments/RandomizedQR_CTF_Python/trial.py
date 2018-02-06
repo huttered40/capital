@@ -1,8 +1,8 @@
-#! /usr/bin/python3
+#!/usr/bin/env python
 
-import sys
-sys.path.append('../../../../ExternalLibraries/CTF/ctf/lib_python/')
 import numpy as np
+#import sys
+#sys.path.append('../../../../ExternalLibraries/CTF/ctf/lib_python/')
 import ctf
 
 n=4

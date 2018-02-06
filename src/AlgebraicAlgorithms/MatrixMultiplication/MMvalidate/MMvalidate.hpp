@@ -62,6 +62,7 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   U globalDimensionK = matrixA.getNumColumnsGlobal();
   std::vector<T> matrixAforEngine = getReferenceMatrix(matrixA, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
   std::vector<T> matrixBforEngine = getReferenceMatrix(matrixB, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
+  // Note: If I am comparing with srcPackage.beta = 1, then this test should fail, since matrixC is started at 0.
   std::vector<T> matrixCforEngine(globalDimensionM*globalDimensionN, 0);	// No matrix needed for this. Only used in BLAS call
 
   // Assume column-major matrix and no transposes
@@ -69,7 +70,7 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
     globalDimensionK, globalDimensionM, globalDimensionK, globalDimensionM, srcPackage);
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualSquare(matrixC.getVectorData(), matrixCforEngine, localDimensionM, localDimensionN, globalDimensionM,
+  T error = getResidual(matrixC.getVectorData(), matrixCforEngine, localDimensionM, localDimensionN, globalDimensionM,
     globalDimensionN, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
@@ -125,7 +126,7 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
     (srcPackage.order == blasEngineOrder::AblasColumnMajor ? globalDimensionM : globalDimensionN), srcPackage);
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualSquare(matrixBout.getVectorData(), matrixBforEngine, localDimensionM, localDimensionN, globalDimensionM,
+  T error = getResidual(matrixBout.getVectorData(), matrixBforEngine, localDimensionM, localDimensionN, globalDimensionM,
     globalDimensionN, commInfo);
 
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
@@ -193,7 +194,7 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 }
   
 template<typename T, typename U, template<typename,typename> class blasEngine>
-T MMvalidate<T,U,blasEngine>::getResidualSquare(
+T MMvalidate<T,U,blasEngine>::getResidual(
 		     std::vector<T>& myValues,
 		     std::vector<T>& blasValues,
 		     U localDimensionM,

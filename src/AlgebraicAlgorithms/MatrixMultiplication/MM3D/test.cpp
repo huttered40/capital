@@ -83,18 +83,19 @@ int main(int argc, char** argv)
     blasArgs.order = blasEngineOrder::AblasColumnMajor;
     blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
     blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-    blasArgs.alpha = 0.;
+    blasArgs.alpha = 0;
     blasArgs.beta = 1;
   
+    // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
+    MM3D<double,int,cblasEngine>::Multiply(matA, matB, matC, MPI_COMM_WORLD, blasArgs, methodKey3);
+
     int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      if (rank == 0) { std::cout << "\n\nbefore\n\n"; matC.print(); }
       MM3D<double,int,cblasEngine>::
         Multiply(matA, matB, matC, MPI_COMM_WORLD, blasArgs, methodKey3);
-      if (rank == 0) { std::cout << "\n\nafter\n\n"; matC.print(); }
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D GEMM iteration", i);
       MPI_Barrier(MPI_COMM_WORLD);
@@ -103,6 +104,10 @@ int main(int argc, char** argv)
     {
       // Sequential validation after 1 iteration, since numIterations == 1
       MMvalidate<double,int,cblasEngine>::validateLocal(matA, matB, matC, MPI_COMM_WORLD, blasArgs);
+    }
+    else
+    {
+      myTimer.printRunStats(MPI_COMM_WORLD, "MM3D GEMM");
     }
   }
   else if (methodKey1 == 1)
@@ -141,6 +146,9 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
  
+      // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
+      MM3D<double,int,cblasEngine>::Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
@@ -156,6 +164,10 @@ int main(int argc, char** argv)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
         MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
+      }
+      else
+      {
+        myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
       }
     }
     else if ((matrixUpLo == 0) && (triangleSide == 1))
@@ -172,6 +184,9 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
   
+      // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
+      MM3D<double,int,cblasEngine>::Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
@@ -187,6 +202,10 @@ int main(int argc, char** argv)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
         MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
+      }
+      else
+      {
+        myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 0))
@@ -203,6 +222,9 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
 
+      // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
+      MM3D<double,int,cblasEngine>::Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
@@ -219,7 +241,10 @@ int main(int argc, char** argv)
         // Sequential validation after 1 iteration, since numIterations == 1
         MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
       }
-
+      else
+      {
+        myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
+      }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 1))
     {
@@ -234,6 +259,9 @@ int main(int argc, char** argv)
 
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
+
+      // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
+      MM3D<double,int,cblasEngine>::Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
   
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
@@ -251,7 +279,10 @@ int main(int argc, char** argv)
         // Sequential validation after 1 iteration, since numIterations == 1
         MMvalidate<double,int,cblasEngine>::validateLocal(matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
       }
-
+      else
+      {
+        myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
+      }
     }
     else
     {

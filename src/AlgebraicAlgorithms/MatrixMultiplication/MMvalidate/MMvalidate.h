@@ -76,7 +76,7 @@ public:
 
 private:
 
-  static T getResidualSquare(
+  static T getResidual(
 				std::vector<T>& myValues,
 				std::vector<T>& blasValues,
 				U localDimensionM,

@@ -69,6 +69,8 @@ int main(int argc, char** argv)
     matA.DistributeRandom(0, rank, 1, size, rank);
 
     //cout << "Rank " << rank << " has local dimensionN - " << localMatrixDimensionN << ", localDimensionM - " << localMatrixDimensionM << endl;
+    // Perform "cold run"
+    CholeskyQR2<double,int,cblasEngine>::Factor1D(matA, matQ, matR, MPI_COMM_WORLD);
 
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
@@ -82,6 +84,10 @@ int main(int argc, char** argv)
     if (methodKey2 == 0)
     {
       QRvalidate<double,int>::validateLocal1D(matA, matQ, matR, MPI_COMM_WORLD);
+    }
+    else
+    {
+      myTimer.printRunStats(MPI_COMM_WORLD, "1D-CQR2");
     }
   }
   else if (methodKey1 == 1)
@@ -115,6 +121,9 @@ int main(int argc, char** argv)
     matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
 
     //cout << "matrices have " << matA.getNumRowsLocal() << " local rows, and " << matA.getNumColumnsLocal() << " local columns\n";
+    // Perform "cold run"
+    CholeskyQR2<double,int,cblasEngine>::
+      Factor3D(matA, matQ, matR, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
 
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
@@ -128,6 +137,10 @@ int main(int argc, char** argv)
     if (methodKey2 == 0)
     {
       QRvalidate<double,int>::validateLocal3D(matA, matQ, matR, MPI_COMM_WORLD);
+    }
+    else
+    {
+      myTimer.printRunStats(MPI_COMM_WORLD, "3D-CQR2");
     }
   }
   else if (methodKey1 == 2)
@@ -222,6 +235,10 @@ int main(int argc, char** argv)
 
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
 
+    // Perform "cold run"
+    CholeskyQR2<double,int,cblasEngine>::
+      FactorTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
@@ -234,6 +251,10 @@ int main(int argc, char** argv)
     if (methodKey2 == 0)
     {
       QRvalidate<double,int>::validateLocalTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD);
+    }
+    else
+    {
+      myTimer.printRunStats(MPI_COMM_WORLD, "Tunable CQR2");
     }
   }
   else
