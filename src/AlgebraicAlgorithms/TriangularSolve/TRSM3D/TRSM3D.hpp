@@ -233,18 +233,6 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
   // to catch debugging issues, assert that this has at least one size
   assert(baseCaseDimList.size());
 
-/*
-  // Note: matrixU will be square
-  U localInverseBlockSize = matrixU.getNumRowsLocal()/helper;
-  // corner case, I think its right, but I'll find out soon
-  if (((localInverseBlockSize & (localInverseBlockSize-1)) != 0))
-  {
-    localInverseBlockSize >>= 1;    // get next smallest power of 2
-  }
-
-  U numBlockColumns = matrixA.getNumColumnsLocal()/localInverseBlockSize;
-*/
-
   // Lets operate on individual columns at a time
   // Potential optimization 1): Don't use MM3D if the columns are too skinny in relation to the block size!
      // Or this could just be taken care of when we tune block sizes?
