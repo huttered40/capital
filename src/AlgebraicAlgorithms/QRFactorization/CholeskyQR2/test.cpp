@@ -242,6 +242,8 @@ int main(int argc, char** argv)
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
+      // reset the matrix before timer starts
+      //matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
       myTimer.setStartTime();
       CholeskyQR2<double,int,cblasEngine>::
         FactorTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
@@ -250,6 +252,8 @@ int main(int argc, char** argv)
     }
     if (methodKey2 == 0)
     {
+      // reset the matrix that was corrupted by TRSM in CQR2
+      //matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
       QRvalidate<double,int>::validateLocalTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD);
     }
     else

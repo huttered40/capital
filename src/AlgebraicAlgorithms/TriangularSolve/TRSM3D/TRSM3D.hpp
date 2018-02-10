@@ -137,18 +137,6 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
   // to catch debugging issues, assert that this has at least one size
   assert(baseCaseDimList.size());
 
-/*
-  // Note: matrixU will be square
-  U localInverseBlockSize = matrixU.getNumRowsLocal()/helper;
-  // corner case, I think its right, but I'll find out soon
-  if (((localInverseBlockSize & (localInverseBlockSize-1)) != 0))
-  {
-    localInverseBlockSize >>= 1;    // get next smallest power of 2
-  }
-
-  U numBlockColumns = matrixA.getNumColumnsLocal()/localInverseBlockSize;
-*/
-
   // Lets operate on individual columns at a time
   // Potential optimization 1): Don't use MM3D if the columns are too skinny in relation to the block size!
      // Or this could just be taken care of when we tune block sizes?
@@ -164,61 +152,36 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
   U offset3 = 0;
   for (U i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++)
   {
-      // Update the current column by accumulating the updates via MM
-      srcPackage.alpha = -1;
-      srcPackage.beta = 1.;
-//      U offset1 = i*localInverseBlockSize;
-//      U offset2 = (i+1)*localInverseBlockSize;
+    // Update the current column by accumulating the updates via MM
+    srcPackage.alpha = -1;
+    srcPackage.beta = 1.;
+//  U offset1 = i*localInverseBlockSize;
+//  U offset2 = (i+1)*localInverseBlockSize;
 
-      if (TR_id == 0)
-      {
-        assert(0);        // Fix this code path. I don't think its correct, but its probably less efficient than the path below
-        U offset3 = 0;
-        U offset4 = baseCaseDimList[0];
-        for (U j=0; j<i; j++)
-        {
-//          U offset3 = j*localInverseBlockSize;
-//          U offset4 = (j+1)*localInverseBlockSize;
-          MM3D<T,U,blasEngine>::Multiply(matrixA, matrixU, matrixB, matAstartX + offset3, matAstartX+offset4, matAstartY, matAendY,
-            matUstartX+offset1, matUstartX+offset2, matUstartY+offset3, matUstartY+offset4, matBstartX+offset1, matBstartX+offset2,
-              matBstartY, matBendY, commWorld, srcPackage, true, true, true, MM_id);
-          offset3 = offset4;
-          // check prevents a stupid seg fault
-          if ((j+1) < i)
-          {
-            offset4 += baseCaseDimList[j+1];
-          }
-        }
-      }
-      else // TR_id == 1
-      {
-        // Only update once first panel is solved
-        if (i>0)
-        {
-//          U offset3 = (i-1)*localInverseBlockSize;
-          // As i increases, the size of these updates gets smaller.
-          
-          // Special handling. This might only work since the triangular matrix is square, which should be ok
-          U arg1 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartX + offset1) : (matUstartY + offset3));
-          U arg2 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? matUendX : (matUstartY+offset1));
-          U arg3 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartY + offset3) : (matUstartX + offset1));
-          U arg4 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartY+offset1) : matUendX);
+    // Only update once first panel is solved
+    if (i>0)
+    {
+//    U offset3 = (i-1)*localInverseBlockSize;
+      // As i increases, the size of these updates gets smaller.
+      // Special handling. This might only work since the triangular matrix is square, which should be ok
+      U arg1 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartX + offset1) : (matUstartY + offset3));
+      U arg2 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? matUendX : (matUstartY+offset1));
+      U arg3 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartY + offset3) : (matUstartX + offset1));
+      U arg4 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartY+offset1) : matUendX);
 
-          MM3D<T,U,blasEngine>::Multiply(matrixA, matrixU, matrixB, matAstartX+offset3, matAstartX+offset1, matAstartY, matAendY,
-            arg1, arg2, arg3, arg4, matBstartX+offset1, matBendX,
-              matBstartY, matBendY, commWorld, srcPackage, true, true, true, MM_id);
-        }
-      }
+      MM3D<T,U,blasEngine>::Multiply(matrixA, matrixU, matrixB, matAstartX+offset3, matAstartX+offset1, matAstartY, matAendY,
+        arg1, arg2, arg3, arg4, matBstartX+offset1, matBendX, matBstartY, matBendY, commWorld, srcPackage, true, true, true, MM_id);
+    }
 
-      // Solve via MM
-      // Future optimization: We are doing the same serialization over and over again between the updates and the MM. Try to reduce this!
-      srcPackage.alpha = 1;
-      srcPackage.beta = 0;
-      // Future optimization: for 1 processor, we don't want to serialize, so change true to false
-      // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
-      MM3D<T,U,blasEngine>::Multiply(matrixB, matrixUI, matrixA, matBstartX+offset1, matBstartX+offset2, matBstartY, matBendY,
-        matUstartX+offset1, matUstartX+offset2, matUstartY+offset1, matUstartY+offset2, matAstartX+offset1, matAstartX+offset2,
-          matAstartY, matAendY, commWorld, srcPackage, true, true, true, MM_id);
+    // Solve via MM
+    // Future optimization: We are doing the same serialization over and over again between the updates and the MM. Try to reduce this!
+    srcPackage.alpha = 1;
+    srcPackage.beta = 0;
+    // Future optimization: for 1 processor, we don't want to serialize, so change true to false
+    // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
+    MM3D<T,U,blasEngine>::Multiply(matrixB, matrixUI, matrixA, matBstartX+offset1, matBstartX+offset2, matBstartY, matBendY,
+      matUstartX+offset1, matUstartX+offset2, matUstartY+offset1, matUstartY+offset2, matAstartX+offset1, matAstartX+offset2,
+      matAstartY, matAendY, commWorld, srcPackage, true, true, true, MM_id);
 
     if ((i+1) < baseCaseDimList.size())
     {
@@ -292,62 +255,38 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
   U offset3 = 0;
   for (U i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++)
   {
-      // Update the current column by accumulating the updates via MM
-      srcPackage.alpha = -1;
-      srcPackage.beta = 1.;
-//      U offset1 = i*localInverseBlockSize;
-//      U offset2 = (i+1)*localInverseBlockSize;
+    // Update the current column by accumulating the updates via MM
+    srcPackage.alpha = -1;
+    srcPackage.beta = 1.;
+//  U offset1 = i*localInverseBlockSize;
+//  U offset2 = (i+1)*localInverseBlockSize;
 
-      if (TR_id == 0)
-      {
-        assert(0);        // Fix this code path. I don't think its correct, but its probably less efficient than the path below
-        U offset3 = 0;
-        U offset4 = baseCaseDimList[0];
-        for (U j=0; j<i; j++)
-        {
-//          U offset3 = j*localInverseBlockSize;
-//          U offset4 = (j+1)*localInverseBlockSize;
-          MM3D<T,U,blasEngine>::Multiply(matrixR, matrixA, matrixB, matRstartX+offset1, matRstartX+offset2, matRstartY+offset3, matRstartY+offset4,
-           matAstartX + offset3, matAstartX+offset4, matAstartY, matAendY, matBstartX+offset1, matBstartX+offset2,
-              matBstartY, matBendY, commWorld, srcPackage, true, true, true, MM_id);
-          offset3 = offset4;
-          // check prevents a stupid seg fault
-          if ((j+1) < i)
-          {
-            offset4 += baseCaseDimList[j+1];
-          }
-        }
-      }
-      else // TR_id == 1
-      {
-        // Only update once first panel is solved
-        if (i>0)
-        {
-//          U offset3 = (i-1)*localInverseBlockSize;
-          // As i increases, the size of these updates gets smaller.
-          
-          // Special handling. This might only work since the triangular matrix is square, which should be ok
+    // Only update once first panel is solved
+    if (i>0)
+    {
+//    U offset3 = (i-1)*localInverseBlockSize;
+      // As i increases, the size of these updates gets smaller.
+      // Special handling. This might only work since the triangular matrix is square, which should be ok
 
-          // Note that the beginning cases might not be correct. They are not currently used for anything though.
-          U arg1 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY + offset3) : (matRstartX + offset1));
-          U arg2 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY+offset1) : matRendX);
-          U arg3 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY + offset3) : (matRstartY + offset3));
-          U arg4 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY+offset1) : matRstartY+offset1);
+      // Note that the beginning cases might not be correct. They are not currently used for anything though.
+      U arg1 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY + offset3) : (matRstartX + offset1));
+      U arg2 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY+offset1) : matRendX);
+      U arg3 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY + offset3) : (matRstartY + offset3));
+      U arg4 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY+offset1) : matRstartY+offset1);
 
-          MM3D<T,U,blasEngine>::Multiply(matrixR, matrixA, matrixB, arg1, arg2, arg3, arg4, matAstartX, matAendX, matAstartY+offset3, matAstartY+offset1,
-            matBstartX, matBendX, matBstartY+offset1, matBendY, commWorld, srcPackage, true, true, true, MM_id);
-        }
-      }
+      MM3D<T,U,blasEngine>::Multiply(matrixR, matrixA, matrixB, arg1, arg2, arg3, arg4, matAstartX, matAendX, matAstartY+offset3, matAstartY+offset1,
+        matBstartX, matBendX, matBstartY+offset1, matBendY, commWorld, srcPackage, true, true, true, MM_id);
+    }
 
-      // Solve via MM
-      // Future optimization: We are doing the same serialization over and over again between the updates and the MM. Try to reduce this!
-      srcPackage.alpha = 1;
-      srcPackage.beta = 0;
-      // Future optimization: for 1 processor, we don't want to serialize, so change true to false
-      // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
-      MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixB, matrixA, matRstartX+offset1, matRstartX+offset2, matRstartY+offset1, matRstartY+offset2,
-        matBstartX, matBendX, matBstartY+offset1, matBstartY+offset2, matAstartX, matAendX,
-          matAstartY+offset1, matAstartY+offset2, commWorld, srcPackage, true, true, true, MM_id);
+    // Solve via MM
+    // Future optimization: We are doing the same serialization over and over again between the updates and the MM. Try to reduce this!
+    srcPackage.alpha = 1;
+    srcPackage.beta = 0;
+    // Future optimization: for 1 processor, we don't want to serialize, so change true to false
+    // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
+    MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixB, matrixA, matRstartX+offset1, matRstartX+offset2, matRstartY+offset1, matRstartY+offset2,
+      matBstartX, matBendX, matBstartY+offset1, matBstartY+offset2, matAstartX, matAendX,
+        matAstartY+offset1, matAstartY+offset2, commWorld, srcPackage, true, true, true, MM_id);
 
     if ((i+1) < baseCaseDimList.size())
     {

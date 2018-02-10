@@ -381,10 +381,17 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, packedMatrixL,
       matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift);
+    Matrix<T,U,MatrixStructureSquare,Distribution> matrixLcopy(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, matrixLcopy,
+      matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY);
     // Swap, same as we did with inverse
     transposeSwap(packedMatrixL, rank, transposePartner, commWorld);
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixL,packedMatrixL, packedMatrix, matrixAcopy, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY,
+    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixLcopy,packedMatrixL, packedMatrix, matrixAcopy, 0, localShift, 0, localShift,
       0, localShift, 0, localShift, 0, localShift, 0, localShift, subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
+
+    // inject matrixLcopy back into matrixL
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, matrixLcopy,
+      matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, true);
   }
 /*
   blasEngineArgumentPackage_trmm<T> blasArgs;
@@ -813,10 +820,17 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, packedMatrixR,
       matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift);
+    Matrix<T,U,MatrixStructureSquare,Distribution> matrixRcopy(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, matrixRcopy,
+      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift);
     // Swap, same as we did with inverse
     transposeSwap(packedMatrixR, rank, transposePartner, commWorld);
-    TRSM3D<T,U,blasEngine>::iSolveLowerRight(packedMatrixR, packedMatrix, matrixR, matrixAcopy, 0, localShift, 0, localShift, matRstartX+localShift, matRendX,
-      matRstartY, matRstartY+localShift, 0, localShift, 0, localShift, subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
+    TRSM3D<T,U,blasEngine>::iSolveLowerRight(packedMatrixR, packedMatrix, matrixRcopy, matrixAcopy, 0, localShift, 0, localShift,
+      0, localShift, 0, localShift, 0, localShift, 0, localShift, subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
+
+    // Inject back into matrixR
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, matrixRcopy,
+      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, true);
   }
 
 /* 

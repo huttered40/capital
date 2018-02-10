@@ -291,11 +291,10 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
   else
   {
     // For debugging purposes, I am using a copy of A instead of A itself
-    Matrix<T,U,StructureA,Distribution> matrixAcopy = matrixA;
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixAcopy, 0, localDimensionN, 0, localDimensionM, 0, localDimensionN,
+    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixA, 0, localDimensionN, 0, localDimensionM, 0, localDimensionN,
       0, localDimensionN, 0, localDimensionN, 0, localDimensionM, baseCaseDimList, gemmPack1, commWorld, MMid, TSid);
   }
 
@@ -381,11 +380,10 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
   else
   {
     // For debugging purposes, I am using a copy of A instead of A itself
-    Matrix<T,U,StructureA,Distribution> matrixAcopy = matrixA;
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixAcopy, 0, localDimensionN, 0, localDimensionM, 0, localDimensionN,
+    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixA, 0, localDimensionN, 0, localDimensionM, 0, localDimensionN,
       0, localDimensionN, 0, localDimensionN, 0, localDimensionM, baseCaseDimList, gemmPack1, miniCubeComm, MMid, TSid);
   }
 
