@@ -83,8 +83,8 @@ int main(int argc, char** argv)
     blasArgs.order = blasEngineOrder::AblasColumnMajor;
     blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
     blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-    blasArgs.alpha = 0;
-    blasArgs.beta = 1;
+    blasArgs.alpha = 1;
+    blasArgs.beta = 0;
   
     // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
     MM3D<double,int,cblasEngine>::Multiply(matA, matB, matC, MPI_COMM_WORLD, blasArgs, methodKey3);
@@ -103,6 +103,9 @@ int main(int argc, char** argv)
     if (methodKey2 == 0)
     {
       // Sequential validation after 1 iteration, since numIterations == 1
+      // Lets make sure matrixA and matrixB are set correctly by re-setting their values
+      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+      matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
       MMvalidate<double,int,cblasEngine>::validateLocal(matA, matB, matC, MPI_COMM_WORLD, blasArgs);
     }
     else

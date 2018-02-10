@@ -1,4 +1,3 @@
-
 import ctf
 import ctf.random
 import numpy as np

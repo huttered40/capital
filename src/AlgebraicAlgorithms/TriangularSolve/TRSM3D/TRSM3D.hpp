@@ -97,7 +97,7 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerLeft(
 }
 
 
-// For solving AL=B for A
+// For solving AU=B for A
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<
   template<typename,typename, template<typename,typename,int> class> class StructureArg,
@@ -153,6 +153,11 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
   // Potential optimization 1): Don't use MM3D if the columns are too skinny in relation to the block size!
      // Or this could just be taken care of when we tune block sizes?
   // Potential optimization 2) Lots of serializing going on with each MM3D, this needs to be reduced.
+
+  // Communicate matrixA and matrixU and matrixUI immediately.
+    // These 3 matrices should never need to be communicated again.
+  // matrixB however will need to be AllReduced at each iteration so that final results can be summed and updated before next iteration
+
 
   U offset1 = 0;
   U offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]);

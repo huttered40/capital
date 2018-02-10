@@ -73,13 +73,13 @@ int main(int argc, char** argv)
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
 
     // Perform a "cold run" first before keeping tracking of times
-    CFR3D<double,int,cblasEngine>::Factor(matA, matL, matLI, globalMatrixSize, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+    CFR3D<double,int,cblasEngine>::Factor(matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
 
     if (methodKey2 == 1) {numIterations = atoi(argv[8]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      CFR3D<double,int,cblasEngine>::Factor(matA, matL, matLI, globalMatrixSize, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+      CFR3D<double,int,cblasEngine>::Factor(matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Lower", i);
     }
@@ -101,13 +101,13 @@ int main(int argc, char** argv)
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
 
     // Perform a "cold run" first before keeping tracking of times
-    CFR3D<double,int,cblasEngine>::Factor(matA, matR, matRI, globalMatrixSize, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+    CFR3D<double,int,cblasEngine>::Factor(matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
 
     if (methodKey2 == 1) {numIterations = atoi(argv[8]);}
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      CFR3D<double,int,cblasEngine>::Factor(matA, matR, matRI, globalMatrixSize, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+      CFR3D<double,int,cblasEngine>::Factor(matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Upper", i);
     }
