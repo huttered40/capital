@@ -35,3 +35,66 @@ std::vector<T> util<T,U>::blockedToCyclic(std::vector<T>& blockedData, U localDi
   return cyclicData;
 
 }
+
+template<typename T, typename U>
+template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
+std::vector<T> util<T,U>::getReferenceMatrix(
+              Matrix<T,U,StructureArg,Distribution>& myMatrix,
+							U key,
+							std::tuple<MPI_Comm, int, int, int, int> commInfo
+						  )
+{
+  MPI_Comm sliceComm = std::get<0>(commInfo);
+  int pGridCoordX = std::get<1>(commInfo);
+  int pGridCoordY = std::get<2>(commInfo);
+  int pGridCoordZ = std::get<3>(commInfo);
+  int pGridDimensionSize = std::get<4>(commInfo);
+
+  U localNumColumns = myMatrix.getNumColumnsLocal();
+  U localNumRows = myMatrix.getNumRowsLocal();
+  U globalNumColumns = myMatrix.getNumColumnsGlobal();
+  U globalNumRows = myMatrix.getNumRowsGlobal();
+/*
+  using MatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
+  MatrixType localMatrix(globalNumColumns, globalNumRows, pGridDimensionSize, pGridDimensionSize);
+  localMatrix.DistributeSymmetric(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key, true);
+*/
+  // I first want to check whether or not I want to serialize into a rectangular buffer (I don't care too much about efficiency here,
+  //   if I did, I would serialize after the AllGather, but whatever)
+  T* matrixPtr = myMatrix.getRawData();
+  Matrix<T,U,MatrixStructureRectangle,Distribution> matrixDest(std::vector<T>(), localNumColumns, localNumRows, globalNumColumns, globalNumRows);
+  if ((!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+    && (!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+  {
+    Serializer<T,U,StructureArg,MatrixStructureRectangle>::Serialize(myMatrix, matrixDest);
+    matrixPtr = matrixDest.getRawData();
+  }
+
+  U aggregNumRows = localNumRows*pGridDimensionSize;
+  U aggregNumColumns = localNumColumns*pGridDimensionSize;
+  U localSize = localNumColumns*localNumRows;
+  U globalSize = globalNumColumns*globalNumRows;
+  U aggregSize = aggregNumRows*aggregNumColumns;
+  std::vector<T> blockedMatrix(aggregSize);
+//  std::vector<T> cyclicMatrix(aggregSize);
+  MPI_Allgather(matrixPtr, localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
+
+  std::vector<T> cyclicMatrix = util<T,U>::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, pGridDimensionSize);
+
+  // In case there are hidden zeros, we will recopy
+  if ((globalNumRows%pGridDimensionSize) || (globalNumColumns%pGridDimensionSize))
+  {
+    U index = 0;
+    for (U i=0; i<globalNumColumns; i++)
+    {
+      for (U j=0; j<globalNumRows; j++)
+      {
+        cyclicMatrix[index++] = cyclicMatrix[i*aggregNumRows+j];
+      }
+    }
+    // In this case, globalSize < aggregSize
+    cyclicMatrix.resize(globalSize);
+  }
+  return cyclicMatrix;
+}

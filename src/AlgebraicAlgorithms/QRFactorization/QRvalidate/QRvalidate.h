@@ -12,8 +12,8 @@
 
 // Local includes
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
-#include "./../../../AlgebraicContainers/Matrix/Matrix.h"
-#include "./../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
+#include "./../../../Matrix/Matrix.h"
+#include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors

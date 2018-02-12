@@ -11,9 +11,10 @@
 #include "/home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/LAPACKE/include/lapacke.h"
 
 // Local includes
-#include "./../../../AlgebraicContainers/Matrix/Matrix.h"
-#include "./../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
+#include "./../../../Matrix/Matrix.h"
+#include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../Timer/Timer.h"
+#include "./../../../Util/util.h"
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
@@ -31,9 +32,9 @@ public:
 
   template<template<typename,typename,int> class Distribution>
   static void validateLocal(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
-			char dir,
+			                  char dir,
                         MPI_Comm commWorld
                       );
 
@@ -54,15 +55,6 @@ private:
 				U globalDimension,
 		                std::tuple<MPI_Comm, int, int, int, int> commInfo
 			    );
-
-  template<template<typename,typename,int> class Distribution>
-  static std::vector<T> getReferenceMatrix(
-                        			Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
-						U localDimension,
-						U globalDimension,
-						U key,
-						std::tuple<MPI_Comm, int, int, int, int> commInfo
-					  );
 };
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)

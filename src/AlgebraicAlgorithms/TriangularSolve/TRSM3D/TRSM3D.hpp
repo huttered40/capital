@@ -272,9 +272,9 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
     srcPackage.beta = 0;
     // Future optimization: for 1 processor, we don't want to serialize, so change true to false
     // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
-    MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixB, matrixA, matRstartX+offset1, matRstartX+offset2, matRstartY+offset1, matRstartY+offset2,
-      matBstartX, matBendX, matBstartY+offset1, matBstartY+offset2, matAstartX, matAendX,
-        matAstartY+offset1, matAstartY+offset2, commWorld, srcPackage, true, true, true, MM_id);
+//    MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixB, matrixA, matRstartX+offset1, matRstartX+offset2, matRstartY+offset1, matRstartY+offset2,
+//      matBstartX, matBendX, matBstartY+offset1, matBstartY+offset2, matAstartX, matAendX,
+//        matAstartY+offset1, matAstartY+offset2, commWorld, srcPackage, true, true, true, MM_id);
 
     if ((i+1) < baseCaseDimList.size())
     {

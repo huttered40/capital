@@ -26,8 +26,8 @@ static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm co
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void CFvalidate<T,U>::validateLocal(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
                         char dir,
                         MPI_Comm commWorld
                       )
@@ -48,7 +48,7 @@ void CFvalidate<T,U>::validateLocal(
 
   U localDimension = matrixSol_CF.getNumRowsLocal();
   U globalDimension = matrixSol_CF.getNumRowsGlobal();
-  std::vector<T> globalMatrixA = getReferenceMatrix(matrixSol_CF, localDimension, globalDimension, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
+  std::vector<T> globalMatrixA = util<T,U>::getReferenceMatrix(matrixA, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
 
   // for ease in finding Frobenius Norm
   for (U i=0; i<globalDimension; i++)
@@ -73,6 +73,8 @@ void CFvalidate<T,U>::validateLocal(
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total error = " << error << std::endl;}
 
+// Forget testing the inverse.
+/*
   myTimer.setStartTime();
   LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', globalDimension, &globalMatrixA[0], globalDimension);
   myTimer.setEndTime();
@@ -85,10 +87,23 @@ void CFvalidate<T,U>::validateLocal(
   // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total error = " << error2 << std::endl;}
-
+*/
   MPI_Comm_free(&sliceComm);
 }
 
+/*
+template<typename T, typename U>
+template<template<typename,typename,int> class Distribution>
+void CFvalidate<T,U>::validateParallel(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
+                        char dir,
+                        MPI_Comm commWorld
+                      )
+{
+
+}
+*/
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
 template<typename T, typename U>
@@ -186,73 +201,4 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
   error = std::sqrt(error);
   //if (isRank1) std::cout << "Total error - " << error << "\n\n\n";
   return error;		// return 2-norm
-}
-
-template<typename T, typename U>
-template<template<typename,typename,int> class Distribution>
-std::vector<T> CFvalidate<T,U>::getReferenceMatrix(
-                        				Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
-							U localDimension,
-							U globalDimension,
-							U key,
-							std::tuple<MPI_Comm, int, int, int, int> commInfo
-						  )
-{
-  MPI_Comm sliceComm = std::get<0>(commInfo);
-  int pGridCoordX = std::get<1>(commInfo);
-  int pGridCoordY = std::get<2>(commInfo);
-  int pGridCoordZ = std::get<3>(commInfo);
-  int pGridDimensionSize = std::get<4>(commInfo);
-
-  using MatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
-  MatrixType localMatrix(globalDimension, globalDimension, pGridDimensionSize, pGridDimensionSize);
-  localMatrix.DistributeSymmetric(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key, true);
-
-  U aggregNumRows = localDimension*pGridDimensionSize;
-  U aggregNumColumns = localDimension*pGridDimensionSize;
-  U localSize = localDimension*localDimension;
-  U globalSize = globalDimension*globalDimension;
-  U aggregSize = aggregNumRows*aggregNumColumns;
-  std::vector<T> blockedMatrix(aggregSize);
-  std::vector<T> cyclicMatrix(aggregSize);
-  MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
-
-
-  U numCyclicBlocksPerRow = localDimension;
-  U numCyclicBlocksPerCol = localDimension;
-  U writeIndex = 0;
-  // MACRO loop over all cyclic "blocks" (dimensionX direction)
-  for (U i=0; i<numCyclicBlocksPerCol; i++)
-  {
-    // Inner loop over all columns in a cyclic "block"
-    for (U j=0; j<pGridDimensionSize; j++)
-    {
-      // Inner loop over all cyclic "blocks"
-      for (U k=0; k<numCyclicBlocksPerRow; k++)
-      {
-        // Inner loop over all elements along columns
-        for (U z=0; z<pGridDimensionSize; z++)
-        {
-          U readIndex = i*numCyclicBlocksPerRow + j*localSize + k + z*pGridDimensionSize*localSize;
-          cyclicMatrix[writeIndex++] = blockedMatrix[readIndex];
-        }
-      }
-    }
-  }
-  // In case there are hidden zeros, we will recopy
-  if (globalDimension%pGridDimensionSize)
-  {
-    U index = 0;
-    for (U i=0; i<globalDimension; i++)
-    {
-      for (U j=0; j<globalDimension; j++)
-      {
-        cyclicMatrix[index++] = cyclicMatrix[i*aggregNumRows+j];
-      }
-    }
-    // In this case, globalSize < aggregSize
-    cyclicMatrix.resize(globalSize);
-  }
-
-  return cyclicMatrix;
 }

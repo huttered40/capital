@@ -9,8 +9,8 @@
 #include <cmath>
 
 // Local includes
-#include "./../../../AlgebraicContainers/Matrix/Matrix.h"
-#include "./../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
+#include "./../../../Matrix/Matrix.h"
+#include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../../../Util/util.h"
 
@@ -73,14 +73,6 @@ private:
 				U globalDimensionN,
 		                std::tuple<MPI_Comm, int, int, int, int> commInfo
 			    );
-
-  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
-    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-  static std::vector<T> getReferenceMatrix(
-						Matrix<T,U,StructureArg,Distribution>& myMatrix,
-						U key,
-						std::tuple<MPI_Comm, int, int, int, int> commInfo
-					  );
 };
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)

@@ -85,7 +85,7 @@ int main(int argc, char** argv)
     }
     if (methodKey2 == 0)
     {
-      CFvalidate<double,int>::validateLocal(matL, matLI, 'L', MPI_COMM_WORLD);
+      CFvalidate<double,int>::validateLocal(matA, matL, 'L', MPI_COMM_WORLD);
     }
     else
     {
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
     }
     if (methodKey2 == 0)
     {
-      CFvalidate<double,int>::validateLocal(matR, matRI, 'U', MPI_COMM_WORLD);
+      CFvalidate<double,int>::validateLocal(matA, matR, 'U', MPI_COMM_WORLD);
     }
     else
     {

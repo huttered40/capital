@@ -10,8 +10,8 @@
 #include "/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
 // Local includes
-#include "./../../../AlgebraicContainers/Matrix/Matrix.h"
-#include "./../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
+#include "./../../../Matrix/Matrix.h"
+#include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 

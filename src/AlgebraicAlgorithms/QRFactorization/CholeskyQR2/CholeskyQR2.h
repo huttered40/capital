@@ -8,7 +8,7 @@
 #include <mpi.h>
 
 // Local includes
-#include "../../../AlgebraicContainers/Matrix/Matrix.h"
+#include "../../../Matrix/Matrix.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 #include "./../../CholeskyFactorization/CFR3D/CFR3D.h"
