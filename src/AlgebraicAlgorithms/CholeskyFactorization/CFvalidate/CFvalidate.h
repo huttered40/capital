@@ -30,7 +30,7 @@ public:
   CFvalidate& operator=(CFvalidate&& rhs) = delete;
 
   template<template<typename,typename,int> class Distribution>
-  static void validateCF_Local(
+  static void validateLocal(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
 			char dir,

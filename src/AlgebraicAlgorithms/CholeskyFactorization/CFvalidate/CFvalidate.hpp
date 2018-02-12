@@ -25,7 +25,7 @@ static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm co
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void CFvalidate<T,U>::validateCF_Local(
+void CFvalidate<T,U>::validateLocal(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
                         char dir,
