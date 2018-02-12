@@ -12,6 +12,7 @@
 #include "./../../../AlgebraicContainers/Matrix/Matrix.h"
 #include "./../../../AlgebraicContainers/Matrix/MatrixSerializer.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
+#include "./../../../Util/util.h"
 
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors
@@ -59,19 +60,6 @@ public:
                         Matrix<T,U,StructureArgB,Distribution>& matrixBout,
                         MPI_Comm commWorld,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage
-                      );
-
-  template<
-    template<typename,typename, template<typename,typename,int> class> class StructureArgA,
-    template<typename,typename, template<typename,typename,int> class> class StructureArgB,
-    template<typename,typename,int> class Distribution
-          >
-  static void validateLocal(
-                        Matrix<T,U,StructureArgA,Distribution>& matrixA,
-                        Matrix<T,U,StructureArgB,Distribution>& matrixB,
-                        Matrix<T,U,StructureArgB,Distribution>& matrixC,
-                        MPI_Comm commWorld,
-                        const blasEngineArgumentPackage_syrk<T>& srcPackage
                       );
 
 private:

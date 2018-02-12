@@ -137,61 +137,6 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   MPI_Comm_free(&sliceComm);
 }
 
-template<typename T, typename U, template<typename,typename> class blasEngine>
-template<
-  template<typename,typename, template<typename,typename,int> class> class StructureArgA,
-  template<typename,typename, template<typename,typename,int> class> class StructureArgB,
-  template<typename,typename,int> class Distribution
-        >
-void MMvalidate<T,U,blasEngine>::validateLocal(
-                        Matrix<T,U,StructureArgA,Distribution>& matrixA,
-                        Matrix<T,U,StructureArgB,Distribution>& matrixB,
-                        Matrix<T,U,StructureArgB,Distribution>& matrixC,
-                        MPI_Comm commWorld,
-                        const blasEngineArgumentPackage_syrk<T>& srcPackage
-                      )
-{
- // Wait till TRMM is correct to redo this.
-/*
-  // not quite correct yet
-  abort();
-
-  // What I want to do here is generate a full matrix with the correct values
-  //   and then compare with the local part of matrixSol.
-  //   Finally, we can AllReduce the residuals.
-
-  int myRank,sliceRank;
-  MPI_Comm_rank(commWorld, &myRank);
-
-  std::tuple<MPI_Comm, int, int, int, int> commInfo = getCommunicatorSlice(commWorld);
-  MPI_Comm sliceComm = std::get<0>(commInfo);
-  MPI_Comm_rank(sliceComm, &sliceRank);
-  int pGridCoordX = std::get<1>(commInfo);
-  int pGridCoordY = std::get<2>(commInfo);
-  int pGridCoordZ = std::get<3>(commInfo);
-  int pGridDimensionSize = std::get<4>(commInfo);
-
-  // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
-  // Fast pass-by-value via modern C++ move semantics
-  std::vector<T> matrixAforEngine = getReferenceMatrix(myMatrix, localDimensionK, localDimensionN, globalDimensionK, globalDimensionN, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
-  std::vector<T> matrixBforEngine(globalDimensionN*globalDimensionK);	// Instead of using C for output matrix, lets use B as we did in SquareMM3D
-
-  // Assume column major and no transpose and that the matrix A is square.
-  blasEngine<T,U>::_syrk(&matrixAforEngine[0], &matrixBforEngine[0], globalDimensionK, globalDimensionN,
-    globalDimensionK, globalDimensionN, srcPackage);
-
-  // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidualSquare(myMatrix.getVectorData(), matrixBforEngine, localDimensionN, localDimensionK, globalDimensionN,
-    globalDimensionK, commInfo);
-
-  // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
-  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  error = std::sqrt(error);
-  if (sliceRank == 0) {std::cout << "Total error = " << error << std::endl;}
-
-  MPI_Comm_free(&sliceComm);
-*/
-}
   
 template<typename T, typename U, template<typename,typename> class blasEngine>
 T MMvalidate<T,U,blasEngine>::getResidual(
@@ -279,9 +224,12 @@ std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
   U globalSize = globalNumColumns*globalNumRows;
   U aggregSize = aggregNumRows*aggregNumColumns;
   std::vector<T> blockedMatrix(aggregSize);
-  std::vector<T> cyclicMatrix(aggregSize);
+//  std::vector<T> cyclicMatrix(aggregSize);
   MPI_Allgather(matrixPtr, localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
 
+  std::vector<T> cyclicMatrix = util<T,U>::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, pGridDimensionSize);
+  std::cout << "Yoyo\n";
+/*
   U numCyclicBlocksPerRow = localNumRows;
   U numCyclicBlocksPerCol = localNumColumns;
   U writeIndex = 0;
@@ -303,6 +251,7 @@ std::vector<T> MMvalidate<T,U,blasEngine>::getReferenceMatrix(
       }
     }
   }
+*/
 
   // In case there are hidden zeros, we will recopy
   if ((globalNumRows%pGridDimensionSize) || (globalNumColumns%pGridDimensionSize))

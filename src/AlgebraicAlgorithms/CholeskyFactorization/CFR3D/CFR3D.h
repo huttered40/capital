@@ -15,6 +15,7 @@
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 #include "./../../TriangularSolve/TRSM3D/TRSM3D.h"
+#include "./../../../Util/util.h"
 
 // Lets use partial template specialization
 // So only declare the fully templated class
