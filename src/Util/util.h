@@ -27,6 +27,14 @@ public:
 							U key,
 							std::tuple<MPI_Comm, int, int, int, int> commInfo
 						  );
+
+  template< template<typename,typename,template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution>
+  static void transposeSwap(
+					Matrix<T,U,StructureArg,Distribution>& mat,
+				  int myRank,
+					int transposeRank,
+					MPI_Comm commWorld
+					);
 };
 
 #include "util.hpp"

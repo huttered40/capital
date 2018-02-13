@@ -343,7 +343,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, packedMatrix,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
 
-  transposeSwap(packedMatrix, rank, transposePartner, commWorld);
+  util<T,U>::transposeSwap(packedMatrix, rank, transposePartner, commWorld);
 
   blasEngineArgumentPackage_gemm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
@@ -385,7 +385,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, matrixLcopy,
       matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY);
     // Swap, same as we did with inverse
-    transposeSwap(packedMatrixL, rank, transposePartner, commWorld);
+    util<T,U>::transposeSwap(packedMatrixL, rank, transposePartner, commWorld);
     TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixLcopy,packedMatrixL, packedMatrix, matrixAcopy, 0, localShift, 0, localShift,
       0, localShift, 0, localShift, 0, localShift, 0, localShift, subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
 
@@ -431,7 +431,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY);
   Matrix<T,U,MatrixStructureSquare,Distribution> squareLSwap = squareL;
 
-  transposeSwap(squareLSwap, rank, transposePartner, commWorld);
+  util<T,U>::transposeSwap(squareLSwap, rank, transposePartner, commWorld);
 /*
   blasEngineArgumentPackage_gemm<T> blasArgsGemm;
   blasArgsGemm.order = blasEngineOrder::AblasColumnMajor;
@@ -782,7 +782,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixRI, packedMatrix,
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
 
-  transposeSwap(packedMatrix, rank, transposePartner, commWorld);
+  util<T,U>::transposeSwap(packedMatrix, rank, transposePartner, commWorld);
 
   blasEngineArgumentPackage_gemm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
@@ -824,7 +824,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, matrixRcopy,
       matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift);
     // Swap, same as we did with inverse
-    transposeSwap(packedMatrixR, rank, transposePartner, commWorld);
+    util<T,U>::transposeSwap(packedMatrixR, rank, transposePartner, commWorld);
     TRSM3D<T,U,blasEngine>::iSolveLowerRight(packedMatrixR, packedMatrix, matrixRcopy, matrixAcopy, 0, localShift, 0, localShift,
       0, localShift, 0, localShift, 0, localShift, 0, localShift, subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
 
@@ -863,7 +863,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift);
   Matrix<T,U,MatrixStructureSquare,Distribution> squareRSwap = squareR;
 
-  transposeSwap(squareRSwap, rank, transposePartner, commWorld);
+  util<T,U>::transposeSwap(squareRSwap, rank, transposePartner, commWorld);
 
   blasArgs.alpha = -1;
   blasArgs.beta = 1;
@@ -928,30 +928,6 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     MM3D<T,U,blasEngine>::Multiply(matrixRI, tempInverse,
       matrixRI, matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift, 0, reverseDimLocal, 0, localShift,
         matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, true, false, true, MM_id);
-  }
-}
-
-
-template<typename T, typename U, template<typename, typename> class blasEngine>
-template<
-  template<typename,typename,template<typename,typename,int> class> class StructureArg,
-  template<typename,typename,int> class Distribution>
-void CFR3D<T,U,blasEngine>::transposeSwap(
-											Matrix<T,U,StructureArg,Distribution>& mat,
-											int myRank,
-											int transposeRank,
-											MPI_Comm commWorld
-										     )
-{
-  if (myRank != transposeRank)
-  {
-    // Transfer with transpose rank
-    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), MPI_DOUBLE, transposeRank, 0, transposeRank, 0, commWorld, MPI_STATUS_IGNORE);
-
-    // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
-    //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
-    //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
-
   }
 }
 

@@ -98,3 +98,24 @@ std::vector<T> util<T,U>::getReferenceMatrix(
   }
   return cyclicMatrix;
 }
+
+template<typename T, typename U>
+template< template<typename,typename,template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution>
+void util<T,U>::transposeSwap(
+											Matrix<T,U,StructureArg,Distribution>& mat,
+											int myRank,
+											int transposeRank,
+											MPI_Comm commWorld
+										     )
+{
+  if (myRank != transposeRank)
+  {
+    // Transfer with transpose rank
+    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), MPI_DOUBLE, transposeRank, 0, transposeRank, 0, commWorld, MPI_STATUS_IGNORE);
+
+    // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
+    //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
+    //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
+
+  }
+}

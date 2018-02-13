@@ -91,19 +91,16 @@ void CFvalidate<T,U>::validateLocal(
   MPI_Comm_free(&sliceComm);
 }
 
-/*
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void CFvalidate<T,U>::validateParallel(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_TI,
                         char dir,
                         MPI_Comm commWorld
                       )
 {
-
 }
-*/
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
 template<typename T, typename U>

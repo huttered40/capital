@@ -38,6 +38,14 @@ public:
                         MPI_Comm commWorld
                       );
 
+  template<template<typename,typename,int> class Distribution>
+  static void validateParallel(
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
+                        char dir,
+                        MPI_Comm commWorld
+                      );
+
 private:
 
   static T getResidualTriangleLower(
