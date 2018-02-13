@@ -119,28 +119,42 @@ void CFvalidate<T,U>::validateParallel(
   T error = 0;
   U localNumRows = matrixA.getNumRowsLocal();
   U localNumColumns = matrixA.getNumColumnsLocal();
+  U globalX = pGridCoordX;
+  U globalY = pGridCoordY;
   for (U i=0; i<localNumColumns; i++)
   {
+    globalY = pGridCoordY;    // reset
     if (dir == 'L')
     {
-      for (int j=i; j<localNumRows; j++)
+      for (int j=0; j<localNumRows; j++)
       {
-        T val = matrixA.getRawData()[i*localNumRows+j];
-        val *= val;
-        error += std::abs(val);
+        if (globalY >= globalX)
+        {
+          T val = matrixA.getRawData()[i*localNumRows+j];
+          val *= val;
+          //if (rank == 5) std::cout << val << " " << i << " " << j << std::endl;
+          error += std::abs(val);
+        }
+        globalY += pGridDimensionSize;
       }
     }
     else
     {
-      for (int j=0; j<=i; j++)
+      for (int j=0; j<localNumRows; j++)
       {
-        T val = matrixA.getRawData()[i*localNumRows+j];
-        val *= val;
-        error += std::abs(val);
+        if (globalY <= globalX)
+        {
+          T val = matrixA.getRawData()[i*localNumRows+j];
+          val *= val;
+          error += std::abs(val);
+        }
+        globalY += pGridDimensionSize;
       }
     }
+    globalX += pGridDimensionSize;
   }
   error = std::sqrt(error);
+  std::cout << "localError = " << error << std::endl;
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (rank == 0) {std::cout << "Total error = " << error << std::endl;}
 }

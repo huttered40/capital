@@ -358,10 +358,8 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distr
 {
   int myRank;
   MPI_Comm_rank(commWorld, &myRank);
-
   auto commInfo3D = getCommunicatorSlice(commWorld);
 
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   int pGridDimensionSize;
   MPI_Comm sliceComm = std::get<0>(commInfo3D);
   int pGridCoordX = std::get<1>(commInfo3D);

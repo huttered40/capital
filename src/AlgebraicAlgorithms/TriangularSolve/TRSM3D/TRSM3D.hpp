@@ -73,8 +73,8 @@ template<
 >
 void TRSM3D<T,U,blasEngine>::iSolveLowerLeft(
   Matrix<T,U,StructureArg,Distribution>& matrixA,
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
+  Matrix<T,U,StructureArg,Distribution>& matrixL,
+  Matrix<T,U,StructureArg,Distribution>& matrixLI,
   Matrix<T,U,StructureArg,Distribution>& matrixB,
   U matAstartX,
   U matAendX,
@@ -105,8 +105,8 @@ template<
 >
 void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
+                       Matrix<T,U,StructureArg,Distribution>& matrixU,
+                       Matrix<T,U,StructureArg,Distribution>& matrixUI,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matAstartX,
                        U matAendX,
@@ -155,13 +155,10 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
     // Update the current column by accumulating the updates via MM
     srcPackage.alpha = -1;
     srcPackage.beta = 1.;
-//  U offset1 = i*localInverseBlockSize;
-//  U offset2 = (i+1)*localInverseBlockSize;
 
     // Only update once first panel is solved
     if (i>0)
     {
-//    U offset3 = (i-1)*localInverseBlockSize;
       // As i increases, the size of these updates gets smaller.
       // Special handling. This might only work since the triangular matrix is square, which should be ok
       U arg1 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartX + offset1) : (matUstartY + offset3));
@@ -202,8 +199,8 @@ template<
 >
 void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
   Matrix<T,U,StructureArg,Distribution>& matrixR,
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+  Matrix<T,U,StructureArg,Distribution>& matrixRI,
+  Matrix<T,U,StructureArg,Distribution>& matrixA,
   Matrix<T,U,StructureArg,Distribution>& matrixB,
   U matRstartX,
   U matRendX,
@@ -243,16 +240,14 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
   U offset3 = 0;
   for (U i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++)
   {
+
     // Update the current column by accumulating the updates via MM
     srcPackage.alpha = -1;
     srcPackage.beta = 1.;
-//  U offset1 = i*localInverseBlockSize;
-//  U offset2 = (i+1)*localInverseBlockSize;
 
     // Only update once first panel is solved
     if (i>0)
     {
-//    U offset3 = (i-1)*localInverseBlockSize;
       // As i increases, the size of these updates gets smaller.
       // Special handling. This might only work since the triangular matrix is square, which should be ok
 
@@ -272,9 +267,9 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
     srcPackage.beta = 0;
     // Future optimization: for 1 processor, we don't want to serialize, so change true to false
     // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
-//    MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixB, matrixA, matRstartX+offset1, matRstartX+offset2, matRstartY+offset1, matRstartY+offset2,
-//      matBstartX, matBendX, matBstartY+offset1, matBstartY+offset2, matAstartX, matAendX,
-//        matAstartY+offset1, matAstartY+offset2, commWorld, srcPackage, true, true, true, MM_id);
+    MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixB, matrixA, matRstartX+offset1, matRstartX+offset2, matRstartY+offset1, matRstartY+offset2,
+      matBstartX, matBendX, matBstartY+offset1, matBstartY+offset2, matAstartX, matAendX,
+        matAstartY+offset1, matAstartY+offset2, commWorld, srcPackage, true, true, true, MM_id);
 
     if ((i+1) < baseCaseDimList.size())
     {
@@ -294,8 +289,8 @@ template<
 >
 void TRSM3D<T,U,blasEngine>::iSolveUpperRight(
   Matrix<T,U,StructureArg,Distribution>& matrixU,
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+  Matrix<T,U,StructureArg,Distribution>& matrixUI,
+  Matrix<T,U,StructureArg,Distribution>& matrixA,
   Matrix<T,U,StructureArg,Distribution>& matrixB,
   U matUstartX,
   U matUendX,
@@ -316,29 +311,3 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperRight(
   int TR_id)         // allows for benchmarking to see which version is faster 
 {
 }
-
-
-template<typename T, typename U, template<typename, typename> class blasEngine>
-template<
-  template<typename,typename,template<typename,typename,int> class> class StructureArg,
-  template<typename,typename,int> class Distribution>
-void TRSM3D<T,U,blasEngine>::transposeSwap(
-											Matrix<T,U,StructureArg,Distribution>& mat,
-											int myRank,
-											int transposeRank,
-											MPI_Comm commWorld
-										     )
-{
-  if (myRank != transposeRank)
-  {
-    // Transfer with transpose rank
-    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), MPI_DOUBLE, transposeRank, 0, transposeRank, 0, commWorld, MPI_STATUS_IGNORE);
-
-    // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
-    //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
-    //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
-
-  }
-}
-
-

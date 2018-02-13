@@ -50,8 +50,8 @@ public:
   >
   static void iSolveLowerLeft(
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
+                       Matrix<T,U,StructureArg,Distribution>& matrixL,
+                       Matrix<T,U,StructureArg,Distribution>& matrixLI,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matAstartX,
                        U matAendX,
@@ -78,8 +78,8 @@ public:
   >
   static void iSolveUpperLeft(
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
+                       Matrix<T,U,StructureArg,Distribution>& matrixU,
+                       Matrix<T,U,StructureArg,Distribution>& matrixUI,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matAstartX,
                        U matAendX,
@@ -106,8 +106,8 @@ public:
   >
   static void iSolveLowerRight(
                        Matrix<T,U,StructureArg,Distribution>& matrixL,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+                       Matrix<T,U,StructureArg,Distribution>& matrixLI,
+                       Matrix<T,U,StructureArg,Distribution>& matrixA,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matLstartX,
                        U matLendX,
@@ -134,8 +134,8 @@ public:
   >
   static void iSolveUpperRight(
                        Matrix<T,U,StructureArg,Distribution>& matrixU,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+                       Matrix<T,U,StructureArg,Distribution>& matrixUI,
+                       Matrix<T,U,StructureArg,Distribution>& matrixA,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matUstartX,
                        U matUendX,
@@ -155,16 +155,6 @@ public:
                        int MM_id = 0,
                        int TR_id = 1
                      );
-
-private:
-  template<template<typename,typename,template<typename,typename,int> class> class StructureArg,
-    template<typename,typename,int> class Distribution>
-  static void transposeSwap(
-				Matrix<T,U,StructureArg,Distribution>& mat,
-				int myRank,
-				int transposeRank,
-				MPI_Comm commWorld
-			   );
 };
 
 #include "TRSM3D.hpp"
