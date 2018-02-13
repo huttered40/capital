@@ -314,8 +314,8 @@ void MM3D<T,U,blasEngine>::Multiply(
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC)
   {
-//    Serializer<T,U,StructureC,StructureC>::Serialize(matrixC, matC,
-//      matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
+    Serializer<T,U,StructureC,StructureC>::Serialize(matrixC, matC,
+      matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
   }
 }
 
