@@ -1,27 +1,5 @@
 /* Author: Edward Hutter */
 
-/*  Already defined in MMvalidate
-static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm commWorld)
-{
-  int rank,size;
-  MPI_Comm_rank(commWorld, &rank);
-  MPI_Comm_size(commWorld, &size);
-
-  int pGridDimensionSize = ceil(pow(size,1./3.));
-  
-  int helper = pGridDimensionSize;
-  helper *= helper;
-  int pCoordX = rank%pGridDimensionSize;
-  int pCoordY = (rank%helper)/pGridDimensionSize;
-  int pCoordZ = rank/helper;
-
-  MPI_Comm sliceComm;
-  MPI_Comm_split(commWorld, pCoordZ, rank, &sliceComm);
-  return std::make_tuple(sliceComm, pCoordX, pCoordY, pCoordZ, pGridDimensionSize); 
-}
-*/
-
-
 /* Validation against sequential BLAS/LAPACK constructs */
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
