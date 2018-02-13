@@ -31,18 +31,6 @@ public:
   TRSM3D(TRSM3D&& rhs) = delete;
   TRSM3D& operator=(const TRSM3D& rhs) = delete;
   TRSM3D& operator=(TRSM3D&& rhs) = delete;
-/*
-  template<template<typename,typename,int> class Distribution>
-  static void Solve(
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixB,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixC,
-                      char dir,
-                      int tune,
-                      MPI_Comm commWorld,
-                      int MM_id = 0
-                    );
-*/
 
   template<
     template<typename,typename, template<typename,typename,int> class> class StructureArg,
@@ -50,8 +38,8 @@ public:
   >
   static void iSolveLowerLeft(
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
-                       Matrix<T,U,StructureArg,Distribution>& matrixL,
-                       Matrix<T,U,StructureArg,Distribution>& matrixLI,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matAstartX,
                        U matAendX,
@@ -78,8 +66,8 @@ public:
   >
   static void iSolveUpperLeft(
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
-                       Matrix<T,U,StructureArg,Distribution>& matrixU,
-                       Matrix<T,U,StructureArg,Distribution>& matrixUI,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matAstartX,
                        U matAendX,
@@ -105,8 +93,8 @@ public:
     template<typename,typename,int> class Distribution
   >
   static void iSolveLowerRight(
-                       Matrix<T,U,StructureArg,Distribution>& matrixL,
-                       Matrix<T,U,StructureArg,Distribution>& matrixLI,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matLstartX,
@@ -133,8 +121,8 @@ public:
     template<typename,typename,int> class Distribution
   >
   static void iSolveUpperRight(
-                       Matrix<T,U,StructureArg,Distribution>& matrixU,
-                       Matrix<T,U,StructureArg,Distribution>& matrixUI,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matUstartX,

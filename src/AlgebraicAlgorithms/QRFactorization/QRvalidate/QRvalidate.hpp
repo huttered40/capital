@@ -64,7 +64,7 @@ void QRvalidate<T,U>::validateLocal1D(
 /* Validation against sequential BLAS/LAPACK constructs */
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void QRvalidate<T,U>::validateLocal3D(
+void QRvalidate<T,U>::validateParallel3D(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -99,11 +99,9 @@ void QRvalidate<T,U>::validateLocal3D(
   MPI_Allreduce(MPI_IN_PLACE, &error1, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Total residual error is " << error1 << std::endl;}
 
-/*
   T error2 = testOrthogonality3D(myQ, globalDimensionM, globalDimensionN, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error2 << std::endl;}
-*/
   MPI_Comm_free(&sliceComm);
   return;
 }
@@ -112,7 +110,7 @@ void QRvalidate<T,U>::validateLocal3D(
 /* Validation against sequential BLAS/LAPACK constructs */
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void QRvalidate<T,U>::validateLocalTunable(
+void QRvalidate<T,U>::validateParallelTunable(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,

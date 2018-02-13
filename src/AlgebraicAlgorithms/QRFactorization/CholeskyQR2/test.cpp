@@ -136,7 +136,7 @@ int main(int argc, char** argv)
     }
     if (methodKey2 == 0)
     {
-      QRvalidate<double,int>::validateLocal3D(matA, matQ, matR, MPI_COMM_WORLD);
+      QRvalidate<double,int>::validateParallel3D(matA, matQ, matR, MPI_COMM_WORLD);
     }
     else
     {
@@ -254,7 +254,7 @@ int main(int argc, char** argv)
     {
       // reset the matrix that was corrupted by TRSM in CQR2
       //matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
-      QRvalidate<double,int>::validateLocalTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD);
+      QRvalidate<double,int>::validateParallelTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD);
     }
     else
     {

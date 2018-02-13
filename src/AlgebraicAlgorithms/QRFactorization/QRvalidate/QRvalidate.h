@@ -41,7 +41,7 @@ public:
 
   // We require that for a 3D algorithm, Q is square and R is square
   template<template<typename,typename,int> class Distribution>
-  static void validateLocal3D(
+  static void validateParallel3D(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -49,7 +49,7 @@ public:
                       );
 
   template<template<typename,typename,int> class Distribution>
-  static void validateLocalTunable(
+  static void validateParallelTunable(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,

@@ -1,71 +1,5 @@
 /* Author: Edward Hutter */
 
-/*
-template<typename T, typename U, template<typename, typename> class blasEngine>
-template<template<typename,typename,int> class Distribution>
-void TRSM3D<T,U,blasEngine>::Solve(
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,      // AB=C. Triangular matrix can be either A or B
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixB,
-  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixC,
-  char dir,       // Lower or Upper triangular matrix
-  char side,      // Is the unknown matrix on the left of right?
-  int tune,
-  MPI_Comm commWorld,
-  int MM_id
-  )
-{
-  // Need to split up the commWorld communicator into a 3D grid similar to Summa3D
-  int rank,size;
-  MPI_Comm_rank(commWorld, &rank);
-  MPI_Comm_size(commWorld, &size);
-
-  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  int helper = pGridDimensionSize;
-  helper *= helper;
-  int pGridCoordX = rank%pGridDimensionSize;
-  int pGridCoordY = (rank%helper)/pGridDimensionSize;
-  int pGridCoordZ = rank/helper;
-  int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
-
-  // Attain the communicator with only processors on the same 2D slice
-  MPI_Comm slice2D;
-  MPI_Comm_split(commWorld, pGridCoordZ, rank, &slice2D);
-
-  U localDimension = matrixA.getNumRowsLocal();
-  U globalDimension = matrixA.getNumRowsGlobal();
-  // the division below may have a remainder, but I think integer division will be ok, as long as we change the base case condition to be <= and not just ==
-  U bcDimension = globalDimension/helper;		// Can be tuned later.
-
-  // Basic tuner was added
-  for (int i=0; i<tune; i++)
-  {
-    bcDimension *= 2;
-  }
-  bcDimension = std::min(bcDimension, globalDimension/pGridDimensionSize);
-
-  if ((dir == 'L') && (side == 'L'))
-  {
-    iSolveLowerLeft(matrixA, matrixB, matrixC, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
-  }
-  else if ((dir == 'U') && (side == 'L'))
-  {
-    iSolveUpperLeft(matrixA, matrixB, matrixC, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
-  }
-  else if ((dir == 'L') && (side == 'R'))
-  {
-    iSolveUpperRight(matrixA, matrixB, matrixC, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
-  }
-  else if ((dir == 'U') && (side == 'R'))
-  {
-    iSolveUpperRight(matrixA, matrixB, matrixC, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MM_id, slice2D, commWorld);
-  }
-}
-*/
-
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<
   template<typename,typename, template<typename,typename,int> class> class StructureArg,
@@ -73,8 +7,8 @@ template<
 >
 void TRSM3D<T,U,blasEngine>::iSolveLowerLeft(
   Matrix<T,U,StructureArg,Distribution>& matrixA,
-  Matrix<T,U,StructureArg,Distribution>& matrixL,
-  Matrix<T,U,StructureArg,Distribution>& matrixLI,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
   Matrix<T,U,StructureArg,Distribution>& matrixB,
   U matAstartX,
   U matAendX,
@@ -105,8 +39,8 @@ template<
 >
 void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
-                       Matrix<T,U,StructureArg,Distribution>& matrixU,
-                       Matrix<T,U,StructureArg,Distribution>& matrixUI,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
+                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        U matAstartX,
                        U matAendX,
@@ -198,8 +132,8 @@ template<
   template<typename,typename,int> class Distribution
 >
 void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
-  Matrix<T,U,StructureArg,Distribution>& matrixR,
-  Matrix<T,U,StructureArg,Distribution>& matrixRI,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
   Matrix<T,U,StructureArg,Distribution>& matrixA,
   Matrix<T,U,StructureArg,Distribution>& matrixB,
   U matRstartX,
@@ -288,8 +222,8 @@ template<
   template<typename,typename,int> class Distribution
 >
 void TRSM3D<T,U,blasEngine>::iSolveUpperRight(
-  Matrix<T,U,StructureArg,Distribution>& matrixU,
-  Matrix<T,U,StructureArg,Distribution>& matrixUI,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
   Matrix<T,U,StructureArg,Distribution>& matrixA,
   Matrix<T,U,StructureArg,Distribution>& matrixB,
   U matUstartX,
