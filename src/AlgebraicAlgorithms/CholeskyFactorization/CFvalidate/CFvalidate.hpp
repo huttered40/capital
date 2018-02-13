@@ -100,6 +100,72 @@ void CFvalidate<T,U>::validateParallel(
                         MPI_Comm commWorld
                       )
 {
+  int rank,size;
+  MPI_Comm_rank(commWorld, &rank);
+  MPI_Comm_size(commWorld, &size);
+
+  auto commInfo = getCommunicatorSlice(commWorld);
+  MPI_Comm sliceComm = std::get<0>(commInfo);
+  U pGridCoordX = std::get<1>(commInfo);
+  U pGridCoordY = std::get<2>(commInfo);
+  U pGridCoordZ = std::get<3>(commInfo);
+  U pGridDimensionSize = std::get<4>(commInfo);
+  int helper = pGridDimensionSize;
+  helper *= helper;
+
+  int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
+  Matrix<T,U,MatrixStructureSquare,Distribution> matrixT = matrixSol_CF;
+  util<T,U>::transposeSwap(matrixT, rank, transposePartner, MPI_COMM_WORLD);
+
+  if (dir == 'L')
+  {
+    blasEngineArgumentPackage_gemm<T> blasArgs;
+    blasArgs.order = blasEngineOrder::AblasColumnMajor;
+    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+    blasArgs.transposeB = blasEngineTranspose::AblasTrans;
+    blasArgs.alpha = 1.;
+    blasArgs.beta = -1.;
+    MM3D<T,U,cblasEngine>::Multiply(matrixSol_CF, matrixT, matrixA, commWorld, blasArgs);
+  }
+  else
+  {
+    blasEngineArgumentPackage_gemm<T> blasArgs;
+    blasArgs.order = blasEngineOrder::AblasColumnMajor;
+    blasArgs.transposeA = blasEngineTranspose::AblasTrans;
+    blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+    blasArgs.alpha = 1.;
+    blasArgs.beta = -1.;
+    MM3D<T,U,cblasEngine>::Multiply(matrixT, matrixSol_CF, matrixA, commWorld, blasArgs);
+  }
+
+  // Now just calculate residual
+  T error = 0;
+  U localNumRows = matrixA.getNumRowsLocal();
+  U localNumColumns = matrixA.getNumColumnsLocal();
+  for (U i=0; i<localNumColumns; i++)
+  {
+    if (dir == 'L')
+    {
+      for (int j=i; j<localNumRows; j++)
+      {
+        T val = matrixA.getRawData()[i*localNumRows+j];
+        val *= val;
+        error += std::abs(val);
+      }
+    }
+    else
+    {
+      for (int j=0; j<=i; j++)
+      {
+        T val = matrixA.getRawData()[i*localNumRows+j];
+        val *= val;
+        error += std::abs(val);
+      }
+    }
+  }
+  error = std::sqrt(error);
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
+  if (rank == 0) {std::cout << "Total error = " << error << std::endl;}
 }
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.

@@ -44,6 +44,7 @@ int main(int argc, char** argv)
   /*
     methodKey2 -> 0) Sequential Validation
 		              1) Performance
+                  2) Distributed validation
   */
   int methodKey2 = atoi(argv[2]);
   /*
@@ -87,6 +88,10 @@ int main(int argc, char** argv)
     {
       CFvalidate<double,int>::validateLocal(matA, matL, 'L', MPI_COMM_WORLD);
     }
+    else if (methodKey2 == 2)
+    {
+      CFvalidate<double,int>::validateParallel(matA, matL, 'L', MPI_COMM_WORLD);
+    }
     else
     {
       myTimer.printRunStats(MPI_COMM_WORLD, "CFR3D Lower");
@@ -114,6 +119,10 @@ int main(int argc, char** argv)
     if (methodKey2 == 0)
     {
       CFvalidate<double,int>::validateLocal(matA, matR, 'U', MPI_COMM_WORLD);
+    }
+    else if (methodKey2 == 2)
+    {
+      CFvalidate<double,int>::validateParallel(matA, matR, 'U', MPI_COMM_WORLD);
     }
     else
     {
