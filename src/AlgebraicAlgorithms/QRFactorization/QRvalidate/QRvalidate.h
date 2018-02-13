@@ -63,7 +63,6 @@ private:
   static T getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
   static T testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld);
   static T getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>& myR, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld);
-  static T testComputedQR(std::vector<T>& myR, std::vector<T>& solR, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld);
 
   // 3D helper routines
   template<template<typename,typename,int> class Distribution>
@@ -92,18 +91,6 @@ private:
 						U key,
 						MPI_Comm commWorld
 					    );
-
-  template<template<typename,typename,int> class Distribution>
-  static std::vector<T> getReferenceMatrix3D(
-                        			Matrix<T,U,MatrixStructureSquare,Distribution>& myMatrix,
-						U localDimensionN,
-						U localDimensionM,
-						U globalDimensionN,
-						U globalDimensionM,
-						U key,
-						std::tuple<MPI_Comm, int, int, int, int> commInfo
-					    );
-
 };
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)
