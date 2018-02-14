@@ -119,3 +119,108 @@ void util<T,U>::transposeSwap(
 
   }
 }
+
+template<typename T, typename U>
+std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(MPI_Comm commWorld)
+{
+  int rank,size;
+  MPI_Comm_rank(commWorld, &rank);
+  MPI_Comm_size(commWorld, &size);
+
+  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  
+  int helper = pGridDimensionSize;
+  helper *= helper;
+  int pCoordX = rank%pGridDimensionSize;
+  int pCoordY = (rank%helper)/pGridDimensionSize;
+  int pCoordZ = rank/helper;
+
+  MPI_Comm sliceComm;
+  MPI_Comm_split(commWorld, pCoordZ, rank, &sliceComm);
+  return std::make_tuple(sliceComm, pCoordX, pCoordY, pCoordZ, pGridDimensionSize); 
+}
+
+template<typename T, typename U>
+template< template<typename,typename,template<typename,typename,int> class> class StructureArg1,
+  template<typename,typename,template<typename,typename,int> class> class StructureArg2,
+  template<typename,typename,template<typename,typename,int> class> class StructureArg3,
+  template<typename,typename,int> class Distribution>
+void util<T,U>::validateResidualParallel(
+                        Matrix<T,U,StructureArg1,Distribution>& matrixA,
+                        Matrix<T,U,StructureArg2,Distribution>& matrixB,
+                        Matrix<T,U,StructureArg3,Distribution>& matrixC,
+                        char dir,
+                        MPI_Comm commWorld
+                      )
+{
+  int rank,size;
+  MPI_Comm_rank(commWorld, &rank);
+  MPI_Comm_size(commWorld, &size);
+
+  auto commInfo = getCommunicatorSlice(commWorld);
+  MPI_Comm sliceComm = std::get<0>(commInfo);
+  U pGridCoordX = std::get<1>(commInfo);
+  U pGridCoordY = std::get<2>(commInfo);
+  U pGridCoordZ = std::get<3>(commInfo);
+  U pGridDimensionSize = std::get<4>(commInfo);
+  int helper = pGridDimensionSize;
+  helper *= helper;
+
+  if (dir == 'L')
+  {
+    blasEngineArgumentPackage_gemm<T> blasArgs;
+    blasArgs.order = blasEngineOrder::AblasColumnMajor;
+    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+    blasArgs.transposeB = blasEngineTranspose::AblasTrans;
+    blasArgs.alpha = 1.;
+    blasArgs.beta = -1.;
+    MM3D<T,U,cblasEngine>::Multiply(matrixA, matrixB, matrixC, commWorld, blasArgs);
+  }
+  else if (dir == 'U')
+  {
+    blasEngineArgumentPackage_gemm<T> blasArgs;
+    blasArgs.order = blasEngineOrder::AblasColumnMajor;
+    blasArgs.transposeA = blasEngineTranspose::AblasTrans;
+    blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+    blasArgs.alpha = 1.;
+    blasArgs.beta = -1.;
+    MM3D<T,U,cblasEngine>::Multiply(matrixA, matrixB, matrixC, commWorld, blasArgs);
+  }
+  else
+  {
+    blasEngineArgumentPackage_gemm<T> blasArgs;
+    blasArgs.order = blasEngineOrder::AblasColumnMajor;
+    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+    blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+    blasArgs.alpha = 1.;
+    blasArgs.beta = -1.;
+    MM3D<T,U,cblasEngine>::Multiply(matrixA, matrixB, matrixC, commWorld, blasArgs);
+  }
+
+  // Now just calculate residual
+  T error = 0;
+  U localNumRows = matrixA.getNumRowsLocal();
+  U localNumColumns = matrixA.getNumColumnsLocal();
+  U globalX = pGridCoordX;
+  U globalY = pGridCoordY;
+  for (U i=0; i<localNumColumns; i++)
+  {
+    globalY = pGridCoordY;    // reset
+    for (int j=0; j<localNumRows; j++)
+    {
+      if ((dir == 'F') || ((dir == 'L') && (globalY >= globalX)) || ((dir == 'U') && (globalY <= globalX)))
+      {
+        T val = matrixA.getRawData()[i*localNumRows+j];
+        val *= val;
+        //if (rank == 5) std::cout << val << " " << i << " " << j << std::endl;
+        error += std::abs(val);
+      }
+      globalY += pGridDimensionSize;
+    }
+    globalX += pGridDimensionSize;
+  }
+  error = std::sqrt(error);
+  std::cout << "localError = " << error << std::endl;
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
+  if (rank == 0) {std::cout << "Total error = " << error << std::endl;}
+}

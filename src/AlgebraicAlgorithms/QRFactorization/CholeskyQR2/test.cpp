@@ -41,6 +41,7 @@ int main(int argc, char** argv)
   /*
     methodKey2 -> 0) Sequential validaton
                   1) Performance
+                  2) Parallel validation
   */
   int methodKey2 = atoi(argv[2]);
   /*
@@ -85,6 +86,10 @@ int main(int argc, char** argv)
     {
       QRvalidate<double,int>::validateLocal1D(matA, matQ, matR, MPI_COMM_WORLD);
     }
+    else if (methodKey2 == 2)
+    {
+      // No parallel validation yet for 1D. Might not want it or need it
+    }
     else
     {
       myTimer.printRunStats(MPI_COMM_WORLD, "1D-CQR2");
@@ -109,10 +114,7 @@ int main(int argc, char** argv)
     int INVid = atoi(argv[9]);
     int inverseCutOffMultiplier = atoi(argv[10]);
     int baseCaseMultiplier = atoi(argv[11]);
-/*
-    int localMatrixDimensionM = globalMatrixDimensionM/pGridDimensionSize;
-    int localMatrixDimensionN = globalMatrixDimensionN/pGridDimensionSize;
-*/
+
     // New protocol: CholeskyQR_3D only works properly with square matrix A. Rectangular matrices must use CholeskyQR_Tunable
     MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matQ(globalMatrixDimensionN,globalMatrixDimensionM,pGridDimensionSize,pGridDimensionSize);
@@ -120,7 +122,6 @@ int main(int argc, char** argv)
 
     matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
 
-    //cout << "matrices have " << matA.getNumRowsLocal() << " local rows, and " << matA.getNumColumnsLocal() << " local columns\n";
     // Perform "cold run"
     CholeskyQR2<double,int,cblasEngine>::
       Factor3D(matA, matQ, matR, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
@@ -128,6 +129,8 @@ int main(int argc, char** argv)
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
+      std::cout << "Hey!\n";
+      //matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
       myTimer.setStartTime();
       CholeskyQR2<double,int,cblasEngine>::
         Factor3D(matA, matQ, matR, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
@@ -136,6 +139,12 @@ int main(int argc, char** argv)
     }
     if (methodKey2 == 0)
     {
+      // No sequential validation right now. Not really necessary anymore.
+    }
+    if (methodKey2 == 2)
+    {
+      // matrix A was corrupted in CQR2, so reset it.
+      //matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
       QRvalidate<double,int>::validateParallel3D(matA, matQ, matR, MPI_COMM_WORLD);
     }
     else
@@ -243,7 +252,7 @@ int main(int argc, char** argv)
     for (int i=0; i<numIterations; i++)
     {
       // reset the matrix before timer starts
-      //matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+      matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
       myTimer.setStartTime();
       CholeskyQR2<double,int,cblasEngine>::
         FactorTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
@@ -252,8 +261,12 @@ int main(int argc, char** argv)
     }
     if (methodKey2 == 0)
     {
+      // Currently no sequential validation. Not really necessary anymore.
+    }
+    else if (methodKey2 == 2)
+    {
       // reset the matrix that was corrupted by TRSM in CQR2
-      //matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+      matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
       QRvalidate<double,int>::validateParallelTunable(matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD);
     }
     else

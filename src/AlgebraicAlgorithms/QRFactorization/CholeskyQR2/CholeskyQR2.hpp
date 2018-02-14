@@ -283,7 +283,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
 //   But later on once it works, use an integer or something to have both available, important when benchmarking
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
 
-  if (INVid)
+  if (1/*INVid*/)
   {
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, commWorld, gemmPack1, 0);

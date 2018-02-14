@@ -15,7 +15,6 @@
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
-#include "./../MMvalidate/MMvalidate.h"
 
 /*
   We can implement square MM for now, but soon, we will need triangular MM

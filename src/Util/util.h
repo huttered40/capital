@@ -4,8 +4,10 @@
 #define UTIL_H_
 
 #include <vector>
+#include <tuple>
 
 #include "../Matrix/Matrix.h"
+#include "../AlgebraicAlgorithms/MatrixMultiplication/MM3D/MM3D.h"
 
 template<typename T, typename U>
 class util
@@ -35,6 +37,20 @@ public:
 					int transposeRank,
 					MPI_Comm commWorld
 					);
+
+  static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm commWorld);
+
+  template< template<typename,typename,template<typename,typename,int> class> class StructureArg1,
+    template<typename,typename,template<typename,typename,int> class> class StructureArg2,
+    template<typename,typename,template<typename,typename,int> class> class StructureArg3,
+    template<typename,typename,int> class Distribution>
+  static void validateResidualParallel(
+                        Matrix<T,U,StructureArg1,Distribution>& matrixA,
+                        Matrix<T,U,StructureArg2,Distribution>& matrixB,
+                        Matrix<T,U,StructureArg3,Distribution>& matrixC,
+                        char dir,
+                        MPI_Comm commWorld
+                      );
 };
 
 #include "util.hpp"

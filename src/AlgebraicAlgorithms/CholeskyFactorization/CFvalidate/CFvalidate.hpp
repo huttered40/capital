@@ -16,7 +16,7 @@ void CFvalidate<T,U>::validateLocal(
   int myRank;
   MPI_Comm_rank(commWorld, &myRank);
 
-  auto commInfo = getCommunicatorSlice(commWorld);
+  auto commInfo = util<T,U>::getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
   U pGridCoordY = std::get<2>(commInfo);
@@ -72,7 +72,7 @@ template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void CFvalidate<T,U>::validateParallel(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
+                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTri,
                         char dir,
                         MPI_Comm commWorld
                       )
@@ -81,7 +81,7 @@ void CFvalidate<T,U>::validateParallel(
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(commWorld, &size);
 
-  auto commInfo = getCommunicatorSlice(commWorld);
+  auto commInfo = util<T,U>::getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
   U pGridCoordY = std::get<2>(commInfo);
@@ -91,72 +91,9 @@ void CFvalidate<T,U>::validateParallel(
   helper *= helper;
 
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
-  Matrix<T,U,MatrixStructureSquare,Distribution> matrixT = matrixSol_CF;
-  util<T,U>::transposeSwap(matrixT, rank, transposePartner, MPI_COMM_WORLD);
-
-  if (dir == 'L')
-  {
-    blasEngineArgumentPackage_gemm<T> blasArgs;
-    blasArgs.order = blasEngineOrder::AblasColumnMajor;
-    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-    blasArgs.transposeB = blasEngineTranspose::AblasTrans;
-    blasArgs.alpha = 1.;
-    blasArgs.beta = -1.;
-    MM3D<T,U,cblasEngine>::Multiply(matrixSol_CF, matrixT, matrixA, commWorld, blasArgs);
-  }
-  else
-  {
-    blasEngineArgumentPackage_gemm<T> blasArgs;
-    blasArgs.order = blasEngineOrder::AblasColumnMajor;
-    blasArgs.transposeA = blasEngineTranspose::AblasTrans;
-    blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-    blasArgs.alpha = 1.;
-    blasArgs.beta = -1.;
-    MM3D<T,U,cblasEngine>::Multiply(matrixT, matrixSol_CF, matrixA, commWorld, blasArgs);
-  }
-
-  // Now just calculate residual
-  T error = 0;
-  U localNumRows = matrixA.getNumRowsLocal();
-  U localNumColumns = matrixA.getNumColumnsLocal();
-  U globalX = pGridCoordX;
-  U globalY = pGridCoordY;
-  for (U i=0; i<localNumColumns; i++)
-  {
-    globalY = pGridCoordY;    // reset
-    if (dir == 'L')
-    {
-      for (int j=0; j<localNumRows; j++)
-      {
-        if (globalY >= globalX)
-        {
-          T val = matrixA.getRawData()[i*localNumRows+j];
-          val *= val;
-          //if (rank == 5) std::cout << val << " " << i << " " << j << std::endl;
-          error += std::abs(val);
-        }
-        globalY += pGridDimensionSize;
-      }
-    }
-    else
-    {
-      for (int j=0; j<localNumRows; j++)
-      {
-        if (globalY <= globalX)
-        {
-          T val = matrixA.getRawData()[i*localNumRows+j];
-          val *= val;
-          error += std::abs(val);
-        }
-        globalY += pGridDimensionSize;
-      }
-    }
-    globalX += pGridDimensionSize;
-  }
-  error = std::sqrt(error);
-  std::cout << "localError = " << error << std::endl;
-  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  if (rank == 0) {std::cout << "Total error = " << error << std::endl;}
+  Matrix<T,U,MatrixStructureSquare,Distribution> matrixTriTrans = matrixTri;
+  util<T,U>::transposeSwap(matrixTriTrans, rank, transposePartner, MPI_COMM_WORLD);
+  util<T,U>::validateResidualParallel((dir == 'L' ? matrixTri : matrixTriTrans), (dir == 'L' ? matrixTriTrans : matrixTri), matrixA, dir, commWorld);
 }
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
