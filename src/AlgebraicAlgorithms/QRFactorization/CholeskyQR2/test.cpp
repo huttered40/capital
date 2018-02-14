@@ -129,7 +129,6 @@ int main(int argc, char** argv)
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
-      std::cout << "Hey!\n";
       //matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
       myTimer.setStartTime();
       CholeskyQR2<double,int,cblasEngine>::

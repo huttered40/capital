@@ -51,6 +51,13 @@ public:
                         char dir,
                         MPI_Comm commWorld
                       );
+
+  template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution>
+  static void validateOrthogonalityParallel(
+                        Matrix<T,U,StructureArg,Distribution>& matrixQ,
+                        MPI_Comm commWorld
+                      );
 };
 
 #include "util.hpp"

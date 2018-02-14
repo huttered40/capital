@@ -73,7 +73,7 @@ void QRvalidate<T,U>::validateParallel3D(
 {
   // generate A_computed = myQ*myR and compare against original A
   util<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', commWorld);
-  //T error2 = testOrthogonality3D(myQ, globalDimensionM, globalDimensionN, commWorld);
+  util<T,U>::validateOrthogonalityParallel(myQ,commWorld);
   return;
 }
 
@@ -93,6 +93,7 @@ void QRvalidate<T,U>::validateParallelTunable(
   auto tunableCommunicators = getTunableCommunicators(commWorld, gridDimensionD, gridDimensionC);
   MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
   util<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', miniCubeComm);
+  util<T,U>::validateOrthogonalityParallel(myQ, commWorld);
   MPI_Comm_free(&std::get<0>(tunableCommunicators));
   MPI_Comm_free(&std::get<1>(tunableCommunicators));
   MPI_Comm_free(&std::get<2>(tunableCommunicators));
