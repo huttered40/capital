@@ -150,7 +150,8 @@ void util<T,U>::validateResidualParallel(
                         Matrix<T,U,StructureArg2,Distribution>& matrixB,
                         Matrix<T,U,StructureArg3,Distribution>& matrixC,
                         char dir,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        MPI_Comm columnAltComm
                       )
 {
   int rank,size;
@@ -205,6 +206,11 @@ void util<T,U>::validateResidualParallel(
     blasArgs.alpha = 1.;
     blasArgs.beta = 0;
     MM3D<T,U,cblasEngine>::Multiply(matrixA, matrixB, matrixC, commWorld, blasArgs);
+    if (columnAltComm != MPI_COMM_WORLD)
+    {
+      MPI_Allreduce(MPI_IN_PLACE, matrixC.getRawData(), matrixC.getNumElems(), MPI_DOUBLE,
+        MPI_SUM, columnAltComm);
+    }
   }
   else
   {
@@ -237,7 +243,7 @@ void util<T,U>::validateResidualParallel(
         {
           val = matrixC.getRawData()[i*localNumRows+j];
         }
-        if (matrixC.getRawData()[i*localNumRows+j] > .5) {std::cout << "CHECK THIS at global " << globalX << " " << globalY <<  std::endl;}
+        //if (matrixC.getRawData()[i*localNumRows+j] > .5) {std::cout << "CHECK THIS at global " << globalX << " " << globalY <<  std::endl;}
       }
       val *= val;
       //if (rank == 0) std::cout << val << " " << i << " " << j << std::endl;
@@ -258,7 +264,8 @@ template< template<typename,typename,template<typename,typename,int> class> clas
   template<typename,typename,int> class Distribution>
 void util<T,U>::validateOrthogonalityParallel(
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        MPI_Comm columnAltComm
                       )
 {
   int rank,size;
@@ -279,11 +286,10 @@ void util<T,U>::validateOrthogonalityParallel(
   util<T,U>::transposeSwap(matrixQtrans, rank, transposePartner, commWorld);
   U localNumRows = matrixQtrans.getNumColumnsLocal();
   U localNumColumns = matrixQ.getNumColumnsLocal();
-  std::cout << "check these - " << localNumRows << " " << localNumColumns << std::endl;
   U globalNumRows = matrixQtrans.getNumColumnsGlobal();
   U globalNumColumns = matrixQ.getNumColumnsGlobal();
   U numElems = localNumRows*localNumColumns;
   Matrix<T,U,StructureArg,Distribution> matrixI(std::vector<T>(numElems,0), localNumColumns, localNumRows, globalNumColumns, globalNumRows, true);
-  util<T,U>::validateResidualParallel(matrixQtrans,matrixQ,matrixI,'I',commWorld);
+  util<T,U>::validateResidualParallel(matrixQtrans,matrixQ,matrixI,'I',commWorld, columnAltComm);
   MPI_Comm_free(&sliceComm);
 }

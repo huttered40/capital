@@ -92,8 +92,9 @@ void QRvalidate<T,U>::validateParallelTunable(
 {
   auto tunableCommunicators = getTunableCommunicators(commWorld, gridDimensionD, gridDimensionC);
   MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
+  MPI_Comm columnAltComm = std::get<2>(tunableCommunicators);
   util<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', miniCubeComm);
-  util<T,U>::validateOrthogonalityParallel(myQ, commWorld);
+  util<T,U>::validateOrthogonalityParallel(myQ, miniCubeComm, columnAltComm);
   MPI_Comm_free(&std::get<0>(tunableCommunicators));
   MPI_Comm_free(&std::get<1>(tunableCommunicators));
   MPI_Comm_free(&std::get<2>(tunableCommunicators));

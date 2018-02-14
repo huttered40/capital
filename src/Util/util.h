@@ -49,14 +49,16 @@ public:
                         Matrix<T,U,StructureArg2,Distribution>& matrixB,
                         Matrix<T,U,StructureArg3,Distribution>& matrixC,
                         char dir,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        MPI_Comm columnAltComm = MPI_COMM_WORLD
                       );
 
   template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>
   static void validateOrthogonalityParallel(
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        MPI_Comm columnAltComm = MPI_COMM_WORLD
                       );
 };
 
