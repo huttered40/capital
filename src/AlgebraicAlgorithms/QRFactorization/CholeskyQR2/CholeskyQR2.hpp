@@ -77,7 +77,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(Matrix<T,U,StructureA,Distribution>& 
   int numPEs, myRank, pGridDimensionSize;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_size(commWorld, &myRank);
-  auto commInfo3D = getCommunicatorSlice(commWorld);
+  auto commInfo3D = util<T,U>::getCommunicatorSlice(commWorld);
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   pGridDimensionSize = std::get<4>(commInfo3D);
@@ -283,7 +283,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
 //   But later on once it works, use an integer or something to have both available, important when benchmarking
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
 
-  if (1/*INVid*/)
+  if (!INVid)
   {
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, commWorld, gemmPack1, 0);
@@ -372,7 +372,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
 
   std::vector<U> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, miniCubeComm, MMid, TSid);
 
-  if (INVid)
+  if (!INVid)
   {
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, miniCubeComm, gemmPack1, MMid);
@@ -390,7 +390,6 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
 
 
 }
-
 
 template<typename T,typename U, template<typename,typename> class blasEngine>
 void CholeskyQR2<T,U,blasEngine>::BroadcastPanels(
@@ -411,4 +410,3 @@ void CholeskyQR2<T,U,blasEngine>::BroadcastPanels(
     MPI_Bcast(&data[0], size, MPI_DOUBLE, pGridCoordZ, panelComm);
   }
 }
-

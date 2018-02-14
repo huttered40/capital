@@ -199,8 +199,8 @@ void util<T,U>::validateResidualParallel(
 
   // Now just calculate residual
   T error = 0;
-  U localNumRows = matrixA.getNumRowsLocal();
-  U localNumColumns = matrixA.getNumColumnsLocal();
+  U localNumRows = matrixC.getNumRowsLocal();
+  U localNumColumns = matrixC.getNumColumnsLocal();
   U globalX = pGridCoordX;
   U globalY = pGridCoordY;
   for (U i=0; i<localNumColumns; i++)
@@ -210,9 +210,9 @@ void util<T,U>::validateResidualParallel(
     {
       if ((dir == 'F') || ((dir == 'L') && (globalY >= globalX)) || ((dir == 'U') && (globalY <= globalX)))
       {
-        T val = matrixA.getRawData()[i*localNumRows+j];
+        T val = matrixC.getRawData()[i*localNumRows+j];
         val *= val;
-        //if (rank == 5) std::cout << val << " " << i << " " << j << std::endl;
+        if (rank == 0) std::cout << val << " " << i << " " << j << std::endl;
         error += std::abs(val);
       }
       globalY += pGridDimensionSize;
@@ -222,5 +222,5 @@ void util<T,U>::validateResidualParallel(
   error = std::sqrt(error);
   std::cout << "localError = " << error << std::endl;
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  if (rank == 0) {std::cout << "Total error = " << error << std::endl;}
+  if (rank == 0) {std::cout << "Residual error = " << error << std::endl;}
 }

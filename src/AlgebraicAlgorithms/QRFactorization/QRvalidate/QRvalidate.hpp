@@ -71,38 +71,10 @@ void QRvalidate<T,U>::validateParallel3D(
                         MPI_Comm commWorld
                       )
 {
-  // What I want to do here is generate a full matrix with the correct values
-  //   and then compare with the local part of matrixSol.
-  //   Finally, we can AllReduce the residuals.
-
-  int myRank,numPEs;
-  MPI_Comm_size(commWorld, &numPEs);
-  MPI_Comm_rank(commWorld, &myRank);
-
-  auto commInfo3D = getCommunicatorSlice(commWorld);
-
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  MPI_Comm sliceComm = std::get<0>(commInfo3D);
-  int pCoordX = std::get<1>(commInfo3D);
-  int pCoordY = std::get<2>(commInfo3D);
-  int pCoordZ = std::get<3>(commInfo3D);
-  int pGridDimensionSize = std::get<4>(commInfo3D);
-
-  // Remember, we are assuming that the matrix is square here
-  U globalDimensionM = matrixA.getNumRowsGlobal();
-  U globalDimensionN = matrixA.getNumColumnsGlobal();
-  U localDimensionM = matrixA.getNumRowsLocal();
-  U localDimensionN = matrixA.getNumColumnsLocal();
-
   // generate A_computed = myQ*myR and compare against original A
-  T error1 = getResidual3D(matrixA, myQ, myR, globalDimensionM, globalDimensionN, commWorld);
-  MPI_Allreduce(MPI_IN_PLACE, &error1, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  if (myRank == 0) {std::cout << "Total residual error is " << error1 << std::endl;}
+  util<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', commWorld);
 
-  T error2 = testOrthogonality3D(myQ, globalDimensionM, globalDimensionN, commWorld);
-  MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error2 << std::endl;}
-  MPI_Comm_free(&sliceComm);
+  //T error2 = testOrthogonality3D(myQ, globalDimensionM, globalDimensionN, commWorld);
   return;
 }
 
@@ -291,7 +263,7 @@ T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& 
   return error;
 }
 
-
+/*
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myA,
@@ -299,7 +271,7 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distributio
                          Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
                          U globalDimensionM, U globalDimensionN, MPI_Comm commWorld)
 {
-  auto commInfo3D = getCommunicatorSlice(commWorld);
+  auto commInfo3D = util<T,U>::getCommunicatorSlice(commWorld);
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   int pGridDimensionSize;
@@ -347,7 +319,7 @@ T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distributio
   MPI_Comm_free(&sliceComm);
   return error;  
 }
-
+*/
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
@@ -356,7 +328,7 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distr
 {
   int myRank;
   MPI_Comm_rank(commWorld, &myRank);
-  auto commInfo3D = getCommunicatorSlice(commWorld);
+  auto commInfo3D = util<T,U>::getCommunicatorSlice(commWorld);
 
   int pGridDimensionSize;
   MPI_Comm sliceComm = std::get<0>(commInfo3D);
