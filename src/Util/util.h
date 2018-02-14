@@ -60,6 +60,7 @@ public:
                         MPI_Comm commWorld,
                         MPI_Comm columnAltComm = MPI_COMM_WORLD
                       );
+  static U getNextPowerOf2(U localShift);
 };
 
 #include "util.hpp"

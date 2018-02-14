@@ -289,26 +289,11 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   }
 
   int rank;
-  // use MPI_COMM_WORLD for this p2p communication for transpose, but could use a smaller communicator
   MPI_Comm_rank(commWorld, &rank);
   // globalDimension will always be a power of 2, but localDimension won't
   U localShift = (localDimension>>1);
-  // We need localShift to be a power of 2
-  if ((localShift & (localShift-1)) != 0)
-  {
-    // move localShift up to the next power of 2
-    localShift--;
-    localShift |= (localShift >> 1);
-    localShift |= (localShift >> 2);
-    localShift |= (localShift >> 4);
-    localShift |= (localShift >> 8);
-    localShift |= (localShift >> 16);
-    // corner case: if dealing with 64-bit integers, shift the 32
-    localShift |= (localShift >> 32);
-    localShift++;
-  }
-//  std::cout << "localDimension - " << localDimension << " LOCALSHIFT - " << localShift << std::endl;
-
+  // move localShift up to the next power of 2
+  localShift = util<T,U>::getNextPowerOf2(localShift);
   U globalShift = (globalDimension>>1);
   bool saveSwitch = isInversePath;
   int saveIndexPrev = baseCaseDimList.size();
@@ -731,22 +716,8 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   MPI_Comm_rank(commWorld, &rank);
   // globalDimension will always be a power of 2, but localDimension won't
   U localShift = (localDimension>>1);
-  // We need localShift to be a power of 2
-  if ((localShift & (localShift-1)) != 0)
-  {
-    // move localShift up to the next power of 2
-    localShift--;
-    localShift |= (localShift >> 1);
-    localShift |= (localShift >> 2);
-    localShift |= (localShift >> 4);
-    localShift |= (localShift >> 8);
-    localShift |= (localShift >> 16);
-    // corner case: if dealing with 64-bit integers, shift the 32
-    localShift |= (localShift >> 32);
-    localShift++;
-  }
-//  std::cout << "localDimension - " << localDimension << " LOCALSHIFT - " << localShift << std::endl;
-
+  // move localShift up to the next power of 2
+  localShift = util<T,U>::getNextPowerOf2(localShift);
   U globalShift = (globalDimension>>1);
   bool saveSwitch = isInversePath;
   int saveIndexPrev = baseCaseDimList.size();

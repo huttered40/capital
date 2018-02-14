@@ -293,3 +293,22 @@ void util<T,U>::validateOrthogonalityParallel(
   util<T,U>::validateResidualParallel(matrixQtrans,matrixQ,matrixI,'I',commWorld, columnAltComm);
   MPI_Comm_free(&sliceComm);
 }
+
+template<typename T, typename U>
+U util<T,U>::getNextPowerOf2(U localShift)
+{
+  if ((localShift & (localShift-1)) != 0)
+  {
+    // move localShift up to the next power of 2
+    localShift--;
+    localShift |= (localShift >> 1);
+    localShift |= (localShift >> 2);
+    localShift |= (localShift >> 4);
+    localShift |= (localShift >> 8);
+    localShift |= (localShift >> 16);
+    // corner case: if dealing with 64-bit integers, shift the 32
+    localShift |= (localShift >> 32);
+    localShift++;
+  }
+  return localShift;
+}
