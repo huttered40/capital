@@ -73,7 +73,6 @@ void QRvalidate<T,U>::validateParallel3D(
 {
   // generate A_computed = myQ*myR and compare against original A
   util<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', commWorld);
-
   //T error2 = testOrthogonality3D(myQ, globalDimensionM, globalDimensionN, commWorld);
   return;
 }
@@ -91,24 +90,9 @@ void QRvalidate<T,U>::validateParallelTunable(
                         MPI_Comm commWorld
                       )
 {
-  // What I want to do here is generate a full matrix with the correct values
-  //   and then compare with the local part of matrixSol.
-  //   Finally, we can AllReduce the residuals.
-
   auto tunableCommunicators = getTunableCommunicators(commWorld, gridDimensionD, gridDimensionC);
-
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  MPI_Comm sliceComm = std::get<4>(tunableCommunicators);
-  int myRank;
-  MPI_Comm_rank(commWorld, &myRank);
-
-  // generate A_computed = myQ*myR and compare against original A
-  U globalDimensionM = matrixA.getNumRowsGlobal();
-  U globalDimensionN = matrixA.getNumColumnsGlobal();
-  T error1 = getResidualTunable(matrixA, myQ, myR, globalDimensionM, globalDimensionN, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators);
-  MPI_Allreduce(MPI_IN_PLACE, &error1, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  if (myRank == 0) {std::cout << "Total residual error is " << error1 << std::endl;}
-
+  MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
+  util<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', miniCubeComm);
   MPI_Comm_free(&std::get<0>(tunableCommunicators));
   MPI_Comm_free(&std::get<1>(tunableCommunicators));
   MPI_Comm_free(&std::get<2>(tunableCommunicators));
@@ -263,64 +247,6 @@ T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& 
   return error;
 }
 
-/*
-template<typename T, typename U>
-template<template<typename,typename,int> class Distribution>
-T QRvalidate<T,U>::getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myA,
-                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
-                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                         U globalDimensionM, U globalDimensionN, MPI_Comm commWorld)
-{
-  auto commInfo3D = util<T,U>::getCommunicatorSlice(commWorld);
-
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  int pGridDimensionSize;
-  MPI_Comm sliceComm = std::get<0>(commInfo3D);
-  int pGridCoordX = std::get<1>(commInfo3D);
-  int pGridCoordY = std::get<2>(commInfo3D);
-  int pGridCoordZ = std::get<3>(commInfo3D);
-  pGridDimensionSize = std::get<4>(commInfo3D);
-  bool isRank1 = false;
-  if ((pGridCoordY == 0) && (pGridCoordX == 0) && (pGridCoordZ == 0))
-  {
-    isRank1 = true;
-  }
-
-  U localDimensionM = myQ.getNumRowsLocal();
-  U localDimensionN = myQ.getNumColumnsLocal();
-
-  Matrix<T,U,MatrixStructureRectangle,Distribution> testA = myA;			// Just copy here. No big deal because it will be overwritten soon
-  blasEngineArgumentPackage_gemm<double> blasArgs;
-  blasArgs.order = blasEngineOrder::AblasColumnMajor;
-  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-  blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-  blasArgs.alpha = 1.;
-  blasArgs.beta = 0.;
-  MM3D<T,U,cblasEngine>::Multiply(myQ, myR, testA, commWorld, blasArgs, 0);
-
-  // Now we can just iterate over myA and testA and compare
-  T error = 0;
-  U myIndex = 0;
-  for (U i=0; i<localDimensionN; i++)
-  {
-    for (U j=0; j<localDimensionM; j++)
-    {
-      T errorSquare = 0;
-      errorSquare = std::abs(myA.getRawData()[myIndex] - testA.getRawData()[myIndex]);
-      if (isRank1) std::cout << errorSquare << " " << myA.getRawData()[myIndex] << " " << testA.getRawData()[myIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
-      errorSquare *= errorSquare;
-      error += errorSquare;
-      myIndex++;
-    }
-  }
-
-  error = std::sqrt(error);
-  std::cout << "local error - " << error << std::endl;
-  MPI_Comm_free(&sliceComm);
-  return error;  
-}
-*/
-
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
@@ -403,47 +329,6 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distr
   return error;		// return 2-norm
 }
 
-
-template<typename T, typename U>
-template<template<typename,typename,int> class Distribution>
-T QRvalidate<T,U>::getResidualTunable(Matrix<T,U,MatrixStructureRectangle,Distribution>& myA,
-                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
-                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                         U globalDimensionM, U globalDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
-                         std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators)
-{
-  MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
-
-  U localDimensionM = myA.getNumRowsLocal();//globalDimensionM/gridDimensionD;
-  U localDimensionN = myA.getNumColumnsLocal();//globalDimensionN/gridDimensionC;
-
-  Matrix<T,U,MatrixStructureRectangle,Distribution> testA = myA;			// Just copy here. No big deal because it will be overwritten soon
-  blasEngineArgumentPackage_gemm<double> blasArgs;
-  blasArgs.order = blasEngineOrder::AblasColumnMajor;
-  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-  blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-  blasArgs.alpha = 1.;
-  blasArgs.beta = 0.;
-  MM3D<T,U,cblasEngine>::Multiply(myQ, myR, testA, miniCubeComm, blasArgs, 0);
-
-  // Now we can just iterate over myA and testA and compare
-  T error = 0;
-  U myIndex = 0;
-  for (U i=0; i<localDimensionM; i++)
-  {
-    for (U j=0; j<localDimensionN; j++)
-    {
-      T errorSquare = 0;
-      errorSquare = std::abs(myA.getRawData()[myIndex] - testA.getRawData()[myIndex]);
-      errorSquare *= errorSquare;
-      error += errorSquare;
-      myIndex++;
-    }
-  }
-
-  error = std::sqrt(error);
-  return error;  
-}
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>

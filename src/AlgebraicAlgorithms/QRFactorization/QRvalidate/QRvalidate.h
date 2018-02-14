@@ -65,23 +65,9 @@ private:
   static T testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld);
   static T getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>& myR, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld);
 
-  // 3D helper routines
-  template<template<typename,typename,int> class Distribution>
-  static T getResidual3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myA,
-                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
-                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                         U globalDimensionM, U globalDimensionN, MPI_Comm commWorld);
-
   template<template<typename,typename,int> class Distribution>
   static T testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                                U globalDimensionM, U globalDimensionN, MPI_Comm commWorld);
-
-  template<template<typename,typename,int> class Distribution>
-  static T getResidualTunable(Matrix<T,U,MatrixStructureRectangle,Distribution>& myA,
-                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
-                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                         U globalDimensionM, U globalDimensionN, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
-                         std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators);
 
   template<template<typename,typename,int> class Distribution>
   static std::vector<T> getReferenceMatrix1D(
