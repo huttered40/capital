@@ -294,8 +294,8 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixA, 0, localDimensionN, 0, localDimensionM, 0, localDimensionN,
-      0, localDimensionN, 0, localDimensionN, 0, localDimensionM, baseCaseDimList, gemmPack1, commWorld, MMid, TSid);
+    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixA,
+      baseCaseDimList, gemmPack1, commWorld, MMid, TSid);
   }
 
   MPI_Comm_free(&rowComm);
@@ -383,8 +383,8 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixA, 0, localDimensionN, 0, localDimensionM, 0, localDimensionN,
-      0, localDimensionN, 0, localDimensionN, 0, localDimensionM, baseCaseDimList, gemmPack1, miniCubeComm, MMid, TSid);
+    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixA,
+      baseCaseDimList, gemmPack1, miniCubeComm, MMid, TSid);
   }
 
 
