@@ -95,13 +95,13 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
     {
       // As i increases, the size of these updates gets smaller.
       // Special handling. This might only work since the triangular matrix is square, which should be ok
-      U arg1 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartX + offset1) : (matUstartY + offset3));
-      U arg2 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? matUendX : (matUstartY+offset1));
-      U arg3 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartY + offset3) : (matUstartX + offset1));
-      U arg4 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? (matUstartY+offset1) : matUendX);
+      U arg1 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset1 : offset3);
+      U arg2 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? matUendX : offset1);
+      U arg3 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset3 : offset1);
+      U arg4 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset1 : matUendX);
 
-      MM3D<T,U,blasEngine>::Multiply(matrixA, matrixU, matrixB, matAstartX+offset3, matAstartX+offset1, matAstartY, matAendY,
-        arg1, arg2, arg3, arg4, matBstartX+offset1, matBendX, matBstartY, matBendY, commWorld, srcPackage, true, true, true, MM_id);
+      MM3D<T,U,blasEngine>::Multiply(matrixA, matrixU, matrixB, offset3, offset1, 0, matAendY,
+        arg1, arg2, arg3, arg4, offset1, matBendX, 0, matBendY, commWorld, srcPackage, true, true, true, MM_id);
     }
 
     // Solve via MM
@@ -110,9 +110,9 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
     srcPackage.beta = 0;
     // Future optimization: for 1 processor, we don't want to serialize, so change true to false
     // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
-    MM3D<T,U,blasEngine>::Multiply(matrixB, matrixUI, matrixA, matBstartX+offset1, matBstartX+offset2, matBstartY, matBendY,
-      matUstartX+offset1, matUstartX+offset2, matUstartY+offset1, matUstartY+offset2, matAstartX+offset1, matAstartX+offset2,
-      matAstartY, matAendY, commWorld, srcPackage, true, true, true, MM_id);
+    MM3D<T,U,blasEngine>::Multiply(matrixB, matrixUI, matrixA, offset1, offset2, 0, matBendY,
+      offset1, offset2, offset1, offset2, offset1, offset2,
+      0, matAendY, commWorld, srcPackage, true, true, true, MM_id);
 
     if ((i+1) < baseCaseDimList.size())
     {
@@ -186,13 +186,13 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
       // Special handling. This might only work since the triangular matrix is square, which should be ok
 
       // Note that the beginning cases might not be correct. They are not currently used for anything though.
-      U arg1 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY + offset3) : (matRstartX + offset1));
-      U arg2 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY+offset1) : matRendX);
-      U arg3 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY + offset3) : (matRstartY + offset3));
-      U arg4 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? (matRstartY+offset1) : matRstartY+offset1);
+      U arg1 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset3 : offset1);
+      U arg2 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset1 : matRendX);
+      U arg3 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset3 : offset3);
+      U arg4 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset1 : offset1);
 
-      MM3D<T,U,blasEngine>::Multiply(matrixR, matrixA, matrixB, arg1, arg2, arg3, arg4, matAstartX, matAendX, matAstartY+offset3, matAstartY+offset1,
-        matBstartX, matBendX, matBstartY+offset1, matBendY, commWorld, srcPackage, true, true, true, MM_id);
+      MM3D<T,U,blasEngine>::Multiply(matrixR, matrixA, matrixB, arg1, arg2, arg3, arg4, 0, matAendX, offset3, offset1,
+        0, matBendX, offset1, matBendY, commWorld, srcPackage, true, true, true, MM_id);
     }
 
     // Solve via MM
@@ -201,9 +201,9 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
     srcPackage.beta = 0;
     // Future optimization: for 1 processor, we don't want to serialize, so change true to false
     // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
-    MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixB, matrixA, matRstartX+offset1, matRstartX+offset2, matRstartY+offset1, matRstartY+offset2,
-      matBstartX, matBendX, matBstartY+offset1, matBstartY+offset2, matAstartX, matAendX,
-        matAstartY+offset1, matAstartY+offset2, commWorld, srcPackage, true, true, true, MM_id);
+    MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixB, matrixA, offset1, offset2, offset1, offset2,
+      0, matBendX, offset1, offset2, 0, matAendX,
+      offset1, offset2, commWorld, srcPackage, true, true, true, MM_id);
 
     if ((i+1) < baseCaseDimList.size())
     {
