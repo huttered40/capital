@@ -10,18 +10,6 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerLeft(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
   Matrix<T,U,StructureArg,Distribution>& matrixB,
-  U matAstartX,
-  U matAendX,
-  U matAstartY,
-  U matAendY,
-  U matLstartX,
-  U matLendX,
-  U matLstartY,
-  U matLendY,
-  U matBstartX,
-  U matBendX,
-  U matBstartY,
-  U matBendY,
   std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
   MPI_Comm commWorld,
@@ -42,18 +30,6 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
-                       U matAstartX,
-                       U matAendX,
-                       U matAstartY,
-                       U matAendY,
-                       U matUstartX,
-                       U matUendX,
-                       U matUstartY,
-                       U matUendY,
-                       U matBstartX,
-                       U matBendX,
-                       U matBstartY,
-                       U matBendY,
                        std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld,
@@ -80,6 +56,12 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
     // These 3 matrices should never need to be communicated again.
   // matrixB however will need to be AllReduced at each iteration so that final results can be summed and updated before next iteration
 
+  U matAendX = matrixA.getNumColumnsLocal();
+  U matAendY = matrixA.getNumRowsLocal();
+  U matUendX = matrixU.getNumColumnsLocal();
+  U matUendY = matrixU.getNumRowsLocal();
+  U matBendX = matrixB.getNumColumnsLocal();
+  U matBendY = matrixB.getNumRowsLocal();
 
   U offset1 = 0;
   U offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]);
@@ -136,18 +118,6 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
   Matrix<T,U,StructureArg,Distribution>& matrixA,
   Matrix<T,U,StructureArg,Distribution>& matrixB,
-  U matRstartX,
-  U matRendX,
-  U matRstartY,
-  U matRendY,
-  U matAstartX,
-  U matAendX,
-  U matAstartY,
-  U matAendY,
-  U matBstartX,
-  U matBendX,
-  U matBstartY,
-  U matBendY,
   std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
   MPI_Comm commWorld,
@@ -168,6 +138,13 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
   // Potential optimization 1): Don't use MM3D if the columns are too skinny in relation to the block size!
      // Or this could just be taken care of when we tune block sizes?
   // Potential optimization 2) Lots of serializing going on with each MM3D, this needs to be reduced.
+
+  U matAendX = matrixA.getNumColumnsLocal();
+  U matAendY = matrixA.getNumRowsLocal();
+  U matRendX = matrixR.getNumColumnsLocal();
+  U matRendY = matrixR.getNumRowsLocal();
+  U matBendX = matrixB.getNumColumnsLocal();
+  U matBendY = matrixB.getNumRowsLocal();
 
   U offset1 = 0;
   U offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]);
@@ -226,18 +203,6 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperRight(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
   Matrix<T,U,StructureArg,Distribution>& matrixA,
   Matrix<T,U,StructureArg,Distribution>& matrixB,
-  U matUstartX,
-  U matUendX,
-  U matUstartY,
-  U matUendY,
-  U matAstartX,
-  U matAendX,
-  U matAstartY,
-  U matAendY,
-  U matBstartX,
-  U matBendX,
-  U matBstartY,
-  U matBendY,
   std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
   MPI_Comm commWorld,

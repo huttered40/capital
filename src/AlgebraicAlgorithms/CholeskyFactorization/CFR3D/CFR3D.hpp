@@ -372,8 +372,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY);
     // Swap, same as we did with inverse
     util<T,U>::transposeSwap(packedMatrixL, rank, transposePartner, commWorld);
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixLcopy,packedMatrixL, packedMatrix, matrixAcopy, 0, matrixLcopy.getNumColumnsLocal(), 0,
-      matrixLcopy.getNumRowsLocal(), 0, localShift, 0, localShift, 0, matrixAcopy.getNumColumnsLocal(), 0, matrixAcopy.getNumRowsLocal(),
+    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixLcopy,packedMatrixL, packedMatrix, matrixAcopy,
       subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
 
     // inject matrixLcopy back into matrixL
@@ -799,9 +798,8 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift);
     // Swap, same as we did with inverse
     util<T,U>::transposeSwap(packedMatrixR, rank, transposePartner, commWorld);
-    TRSM3D<T,U,blasEngine>::iSolveLowerRight(packedMatrixR, packedMatrix, matrixRcopy, matrixAcopy, 0, localShift, 0, localShift,
-      0, matrixRcopy.getNumColumnsLocal(), 0, matrixRcopy.getNumRowsLocal(), 0, matrixAcopy.getNumColumnsLocal(), 0,
-      matrixAcopy.getNumRowsLocal(), subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
+    TRSM3D<T,U,blasEngine>::iSolveLowerRight(packedMatrixR, packedMatrix, matrixRcopy, matrixAcopy,
+      subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
 
     // Inject back into matrixR
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, matrixRcopy,
