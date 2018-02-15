@@ -24,7 +24,7 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   int myRank,sliceRank;
   MPI_Comm_rank(commWorld, &myRank);
 
-  std::tuple<MPI_Comm, int, int, int, int> commInfo = getCommunicatorSlice(commWorld);
+  std::tuple<MPI_Comm, int, int, int, int> commInfo = util<T,U>::getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   MPI_Comm_rank(sliceComm, &sliceRank);
   int pGridCoordX = std::get<1>(commInfo);
@@ -82,7 +82,7 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   int myRank,sliceRank;
   MPI_Comm_rank(commWorld, &myRank);
 
-  std::tuple<MPI_Comm, int, int, int, int> commInfo = getCommunicatorSlice(commWorld);
+  std::tuple<MPI_Comm, int, int, int, int> commInfo = util<T,U>::getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   MPI_Comm_rank(sliceComm, &sliceRank);
   int pGridCoordX = std::get<1>(commInfo);

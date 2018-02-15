@@ -42,6 +42,21 @@ public:
   // New design: user will specify via an argument to the overloaded Multiply() method what underlying BLAS routine he wants called.
   //             I think this is a reasonable assumption to make and will allow me to optimize each routine.
 
+  static void Multiply(
+                 T* matrixA,
+                 T* matrixB,
+                 T* matrixC,
+                 U matrixAnumColumns,
+                 U matrixAnumRows,
+                 U matrixBnumColumns,
+                 U matrixBnumRows,
+                 U matrixCnumColumns,
+                 U matrixCnumRows,
+                 MPI_Comm commWorld,
+                 const blasEngineArgumentPackage_gemm<T>& srcPackage,
+                 int depthManipulation = 0
+             );
+
   template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
   		template<typename,typename, template<typename,typename,int> class> class StructureB,
@@ -211,6 +226,14 @@ private:
 				int pGridCoordZ,
 				MPI_Comm panelComm
 			     );
+
+  static void BroadcastPanels(
+						T*& data,
+						U size,
+						bool isRoot,
+						int pGridCoordZ,
+						MPI_Comm panelComm
+					   );
 
   template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method

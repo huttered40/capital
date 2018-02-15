@@ -82,8 +82,15 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
       U arg3 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset3 : offset1);
       U arg4 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset1 : matUendX);
 
+      Matrix<T,U,MatrixStructureSquare,Distribution> matrixUpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*pGridDimensionSize, (arg4-arg3)*pGridDimensionSize);
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixU, matrixUpartition,
+        arg1, arg2, arg3, arg4);
+      MM3D<T,U,blasEngine>::Multiply(matrixA.getRawData()+(offset3*matAendY), matrixUpartition.getRawData(), matrixB.getRawData()+(offset1*matBendY),
+        offset1-offset3, matAendY, arg2-arg1, arg4-arg3, matBendX-offset1, matBendY, commWorld, srcPackage);
+/*
       MM3D<T,U,blasEngine>::Multiply(matrixA, matrixU, matrixB, offset3, offset1, 0, matAendY,
         arg1, arg2, arg3, arg4, offset1, matBendX, 0, matBendY, commWorld, srcPackage, true, true, true, MM_id);
+*/
     }
 
     // Solve via MM
@@ -92,10 +99,17 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
     srcPackage.beta = 0;
     // Future optimization: for 1 processor, we don't want to serialize, so change true to false
     // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
+    U save1 = offset2-offset1;
+    Matrix<T,U,MatrixStructureSquare,Distribution> matrixUIpartition(std::vector<T>(), save1, save1, save1*pGridDimensionSize, save1*pGridDimensionSize);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixUI, matrixUIpartition,
+      offset1, offset2, offset1, offset2);
+    MM3D<T,U,blasEngine>::Multiply(matrixB.getRawData()+(offset1*matBendY), matrixUIpartition.getRawData(), matrixA.getRawData()+(offset1*matAendY),
+      offset2-offset1, matBendY, save1, save1, save1, matAendY, commWorld, srcPackage);
+/*
     MM3D<T,U,blasEngine>::Multiply(matrixB, matrixUI, matrixA, offset1, offset2, 0, matBendY,
       offset1, offset2, offset1, offset2, offset1, offset2,
       0, matAendY, commWorld, srcPackage, true, true, true, MM_id);
-
+*/
     if ((i+1) < baseCaseDimList.size())
     {
       // Update the offsets

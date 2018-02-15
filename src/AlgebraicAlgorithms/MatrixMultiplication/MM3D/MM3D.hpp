@@ -34,6 +34,89 @@ static std::tuple<MPI_Comm,
   return std::make_tuple(rowComm, columnComm, sliceComm, depthComm, pGridCoordX, pGridCoordY, pGridCoordZ);
 }
 
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+void MM3D<T,U,blasEngine>::Multiply(
+                                   	    T* matrixA,
+                                        T* matrixB,
+                                        T* matrixC,
+                                        U matrixAnumColumns,
+                                        U matrixAnumRows,
+                                        U matrixBnumColumns,
+                                        U matrixBnumRows,
+                                        U matrixCnumColumns,
+                                        U matrixCnumRows,
+                                        MPI_Comm commWorld,
+                                        const blasEngineArgumentPackage_gemm<T>& srcPackage,
+			                                  int depthManipulation
+                                   )
+{
+  // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
+  //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
+  //       Also, I only allow method1, not Allgather-based method2
+
+  T* matrixAEnginePtr;
+  T* matrixBEnginePtr;
+  T* foreignA;
+  T* foreignB;
+  U localDimensionM = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixAnumRows : matrixAnumColumns);
+  U localDimensionN = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? matrixBnumColumns : matrixBnumRows);
+  U localDimensionK = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixAnumColumns : matrixAnumRows);
+
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  auto commInfo3D = setUpCommunicators(commWorld, depthManipulation);
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm columnComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
+
+  U sizeA = matrixAnumRows*matrixAnumColumns;
+  U sizeB = matrixBnumRows*matrixBnumColumns;
+  U sizeC = matrixCnumRows*matrixCnumColumns;
+  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
+  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
+
+  BroadcastPanels((isRootRow ? matrixA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
+  BroadcastPanels((isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+
+  matrixAEnginePtr = (isRootRow ? matrixA : foreignA);
+  matrixBEnginePtr = (isRootColumn ? matrixB : foreignB);
+
+  // Massive bug fix. Need to use a separate array if beta != 0
+
+  T* matrixCforEnginePtr = matrixC;
+  if (srcPackage.beta == 0)
+  {
+    blasEngine<T,U>::_gemm(matrixAEnginePtr, matrixBEnginePtr, matrixCforEnginePtr, localDimensionM, localDimensionN, localDimensionK,
+      (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
+      (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
+      localDimensionM, srcPackage);
+    MPI_Allreduce(MPI_IN_PLACE,matrixCforEnginePtr, sizeC, MPI_DOUBLE, MPI_SUM, depthComm);
+  }
+  else
+  {
+    // This cancels out any affect beta could have. Beta is just not compatable with MM3D and must be handled separately
+     std::vector<T> holdProduct(sizeC,0);
+     blasEngine<T,U>::_gemm(matrixAEnginePtr, matrixBEnginePtr, &holdProduct[0], localDimensionM, localDimensionN, localDimensionK,
+       (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
+       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
+       localDimensionM, srcPackage); 
+    MPI_Allreduce(MPI_IN_PLACE, &holdProduct[0], sizeC, MPI_DOUBLE, MPI_SUM, depthComm);
+    for (U i=0; i<sizeC; i++)
+    {
+      matrixC[i] = srcPackage.beta*matrixC[i] + holdProduct[i];
+    }
+  }
+  if (!isRootRow) delete[] foreignA;
+  if (!isRootColumn) delete[] foreignB;
+  MPI_Comm_free(&rowComm);
+  MPI_Comm_free(&columnComm);
+  MPI_Comm_free(&sliceComm);
+  MPI_Comm_free(&depthComm);
+}
+
 
 // This algorithm with underlying gemm BLAS routine will allow any Matrix Structure.
 //   Of course we will serialize into Square Structure if not in Square Structure already in order to be compatible
@@ -736,6 +819,26 @@ void MM3D<T,U,blasEngine>::BroadcastPanels(
   {
     data.resize(size);
     MPI_Bcast(&data[0], size, MPI_DOUBLE, pGridCoordZ, panelComm);
+  }
+}
+
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+void MM3D<T,U,blasEngine>::BroadcastPanels(
+						T*& data,
+						U size,
+						bool isRoot,
+						int pGridCoordZ,
+						MPI_Comm panelComm
+					   )
+{
+  if (isRoot)
+  {
+    MPI_Bcast(data, size, MPI_DOUBLE, pGridCoordZ, panelComm);
+  }
+  else
+  {
+    data = new double[size];
+    MPI_Bcast(data, size, MPI_DOUBLE, pGridCoordZ, panelComm);
   }
 }
 
