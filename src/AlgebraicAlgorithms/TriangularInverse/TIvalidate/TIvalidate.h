@@ -12,6 +12,7 @@
 
 // Local includes
 #include "./../../../Util/shared.h"
+#include "./../../../Timer/Timer.h"
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../Timer/Timer.h"

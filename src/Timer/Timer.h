@@ -11,14 +11,68 @@
 #include <mpi.h>
 #include <chrono>
 #include <climits>
+#include <algorithm>
+#include <map>
+#include <vector>
+
+static bool compareFunctionInfo(const std::pair<std::string,double>& info1, const std::pair<std::string,double>& info2)
+{
+  return info1.second < info2.second;
+}
 
 class pTimer
 {
 public:
-  pTimer() {this->count = 0; this->totalMin = std::numeric_limits<double>::max(); this->totalMax = 0;}
+  pTimer() {/*this->count = 0; this->totalMin = std::numeric_limits<double>::max(); this->totalMax = 0;*/}
+
+  void clear()
+  {
+    this->table.clear();
+    this->functionNames.clear();
+    this->functionTimes.clear();
+  }
+
+  void finalize(MPI_Comm commWorld)
+  {
+    // Obtain max time spent in each function
+    // Number of such calls should be the same accross all processes
+    for (auto mapIter = this->table.begin(); mapIter != this->table.end(); mapIter++)
+    {
+      this->functionTimes.push_back(mapIter->second.second);
+      this->functionNames.push_back(mapIter->first);    // Yes, I know I could have used std::move or emplace_back.
+    }
+
+    int rank;
+    MPI_Comm_rank(commWorld, &rank);
+    MPI_Allreduce(MPI_IN_PLACE, &this->functionTimes[0], this->functionTimes.size(), MPI_DOUBLE, MPI_MAX, commWorld);
+
+    // Now put into a single buffer that can be sorted
+    std::vector<std::pair<std::string,double> > functionInfo(this->functionNames.size());
+    for (int i=0; i<functionInfo.size(); i++)
+    {
+      functionInfo[i] = std::make_pair(this->functionNames[i], this->functionTimes[i]);
+    }
+
+    std::sort(functionInfo.begin(), functionInfo.end(), compareFunctionInfo);
+
+    // Now lets display the results
+    if (rank == 0)
+    {
+      std::cout << "\n\n\n\n";
+      for (size_t i=0; i<functionInfo.size(); i++)
+      {
+        std::cout << "      " << functionInfo[i].first << " -- Number of calls: " << this->table[functionInfo[i].first].first.size() << ", total time: " << functionInfo[i].second << std::endl;
+        std::cout << "\n";
+      }
+      std::cout << "\n\n\n\n";
+    }
+    this->clear();
+  }
+
 
   void printParallelTime(double tolerance, MPI_Comm comm, const std::string& str, int iteration = 0)
   {
+/*
     int myRank,numPEs;
     double maxTime,minTime,avgTime;
     MPI_Comm_rank(comm, &myRank);
@@ -36,19 +90,6 @@ public:
     this->totalMax = std::max(this->totalMax, maxTime);
     this->totalAvg += maxTime;
 
-    /*
-    if (std::abs(count-maxTime) <= tolerance)
-    {
-      std::cout << "Max time is on processor " << myRank << " for " << str << " on iteration " << iteration << " has a wall-clock time of " << maxTime << std::endl;
-    }
-
-    MPI_Barrier(comm);
-
-    if (std::abs(count-minTime) <= tolerance)
-    {
-      std::cout << "Min time is on processor " << myRank << " for " << str << " on iteration " << iteration << " has a wall-clock time of " << maxTime << std::endl;
-    }
-    */
     if (myRank == 0)
     {
       std::cout << "Max time for " << str << " on iteration " << iteration << " has a wall-clock time of " << maxTime << std::endl;
@@ -56,10 +97,12 @@ public:
       std::cout << "Average time for " << str << " on iteration " << iteration << " has a wall-clock time of " << avgTime << std::endl;
     }
     MPI_Barrier(comm);
+*/
   }
 
   void printRunStats(MPI_Comm comm, const std::string& str)
   {
+/*
     int myRank,numPEs;
     MPI_Comm_rank(comm, &myRank);
 
@@ -70,23 +113,38 @@ public:
       std::cout << "Min time for " << str << " over all runs has a wall-clock time of " << this->totalMin << std::endl;
       std::cout << "Average time for " << str << " over all runs has a wall-clock time of " << this->totalAvg << std::endl;
     }
+*/
   }
 
-  void setStartTime()
+  size_t setStartTime(const std::string& funcName)
   {
-    this->start = std::chrono::system_clock::now();
+    if (table.find(funcName) != table.end())
+    {
+      this->table[funcName].first.push_back(std::chrono::system_clock::now());
+    }
+    else
+    {// Difference between this and above is the necessary initialization of double timer
+      this->table[funcName].first.push_back(std::chrono::system_clock::now());
+      this->table[funcName].second = 0;
+    }
+    return table[funcName].first.size()-1;
   }
 
-  void setEndTime()
+  void setEndTime(const std::string& funcName, size_t index)
   {
-    this->end = std::chrono::system_clock::now();
+    std::chrono::time_point<std::chrono::system_clock> temp = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = temp - table[funcName].first[index];
+    double numSec = elapsed_seconds.count();
+    this->table[funcName].second += numSec;
   }
+
+  std::vector<double> functionTimes;
+  std::vector<std::string> functionNames;
 
 private:
-  std::chrono::time_point<std::chrono::system_clock> start;
-  std::chrono::time_point<std::chrono::system_clock> end;
-  double totalMin, totalAvg, totalMax;                        // These are for keeping track of data from many runs
-  int count;
+  std::map<std::string,std::pair<std::vector<std::chrono::time_point<std::chrono::system_clock> >,double> > table;
+//  double totalMin, totalAvg, totalMax;                        // These are for keeping track of data from many runs
+//  int count;
 };
 
 #endif /* TIMER_H_ */

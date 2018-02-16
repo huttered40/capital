@@ -12,6 +12,7 @@
 
 // Local includes -> Note that this class should need to know nothing about the Matrix class.
 #include "./../Util/shared.h"
+#include "./../Timer/Timer.h"
 
 // In order to use a partial specialization of a fully templated class, we must first
 //   define a partial specialized class, and in order to do that, we must declare/define a
@@ -69,6 +70,8 @@ public:
   MatrixDistributerCyclic<T,U,1>& operator=(MatrixDistributerCyclic&& rhs) = delete;
   ~MatrixDistributerCyclic() = delete;
 
+  static pTimer timer;
+
 //protected:
   static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX,
     U localPgridDimY, U globalPgridDimX, U globalPgridDimY, U key);
@@ -89,6 +92,8 @@ public:
   MatrixDistributerCyclic<T,U,2>& operator=(MatrixDistributerCyclic&& rhs) = delete;
   ~MatrixDistributerCyclic() = delete;
 
+  static pTimer timer;
+
 //protected:
   static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY,
     U globalPgridDimX, U globalPgridDimY, U key);
@@ -108,6 +113,8 @@ public:
   MatrixDistributerCyclic<T,U,3>& operator=(const MatrixDistributerCyclic& rhs) = delete;
   MatrixDistributerCyclic<T,U,3>& operator=(MatrixDistributerCyclic&& rhs) = delete;
   ~MatrixDistributerCyclic() = delete;
+
+  static pTimer timer;
 
 //protected:
   static void DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U localPgridDimX, U localPgridDimY,

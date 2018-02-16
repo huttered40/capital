@@ -13,6 +13,7 @@
 
 // Local includes
 #include "./../../../Util/shared.h"
+#include "./../../../Timer/Timer.h"
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
@@ -44,6 +45,9 @@ public:
   //             I think this is a reasonable assumption to make and will allow me to optimize each routine.
 
   static void Multiply(
+#ifdef TIMER
+                 pTimer& timer,
+#endif
                  T* matrixA,
                  T* matrixB,
                  T* matrixC,
@@ -65,6 +69,9 @@ public:
   		template<typename,typename,int> class Distribution
 	  >
   static void Multiply(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         Matrix<T,U,StructureC,Distribution>& matrixC,
@@ -80,6 +87,9 @@ public:
   		template<typename,typename,int> class Distribution
 	  >
   static void Multiply(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         MPI_Comm commWorld,
@@ -94,6 +104,9 @@ public:
   		template<typename,typename,int> class Distribution
 	  >
   static void Multiply(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
                         MPI_Comm commWorld,
@@ -107,6 +120,9 @@ public:
   		template<typename,typename,int> class Distribution
 	  >
   static void Multiply(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         Matrix<T,U,StructureC,Distribution>& matrixC,
@@ -137,6 +153,9 @@ public:
   		template<typename,typename,int> class Distribution
 	  >
   static void Multiply(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         U matrixAcutXstart,
@@ -161,6 +180,9 @@ public:
   		template<typename,typename,int> class Distribution
 	  >
   static void Multiply(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
                         U matrixAcutXstart,
@@ -184,7 +206,10 @@ private:
     template<typename,typename, template<typename,typename,int> class> class StructureArg2,
     typename tupleStructure>
   static void _start1(
-  			Matrix<T,U,StructureArg1,Distribution>& matrixA,
+#ifdef TIMER
+      pTimer& timer,
+#endif
+  		Matrix<T,U,StructureArg1,Distribution>& matrixA,
 			Matrix<T,U,StructureArg2,Distribution>& matrixB,
 			tupleStructure& commInfo3D,
 			T*& matrixAEnginePtr,
@@ -202,7 +227,10 @@ private:
     template<typename,typename, template<typename,typename,int> class> class StructureArg2,
     typename tupleStructure>
   static void _start2(
-  			Matrix<T,U,StructureArg1,Distribution>& matrixA,
+#ifdef TIMER
+      pTimer& timer,
+#endif
+  	  Matrix<T,U,StructureArg1,Distribution>& matrixA,
 			Matrix<T,U,StructureArg2,Distribution>& matrixB,
 			tupleStructure& commInfo3D,
 			std::vector<T>& matrixAEngineVector,
@@ -214,6 +242,9 @@ private:
   template<template<typename,typename, template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution,
     typename tupleStructure>
   static void _end1(
+#ifdef TIMER
+      pTimer& timer,
+#endif
 			T* matrixEnginePtr,
   			Matrix<T,U,StructureArg,Distribution>& matrix,
 			tupleStructure& commInfo3D,
@@ -221,6 +252,9 @@ private:
        );
 
   static void BroadcastPanels(
+#ifdef TIMER
+        pTimer& timer,
+#endif
 				std::vector<T>& data,
 				U size,
 				bool isRoot,
@@ -229,6 +263,9 @@ private:
 			     );
 
   static void BroadcastPanels(
+#ifdef TIMER
+            pTimer& timer,
+#endif
 						T*& data,
 						U size,
 						bool isRoot,
@@ -239,6 +276,9 @@ private:
   template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static void getEnginePtr(
+#ifdef TIMER
+        pTimer& timer,
+#endif
 				Matrix<T,U,StructureArg, Distribution>& matrixArg,
 				Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
 				std::vector<T>& data,
@@ -248,6 +288,9 @@ private:
   template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static Matrix<T,U,StructureArg,Distribution> getSubMatrix(
+#ifdef TIMER
+        pTimer& timer,
+#endif
 				Matrix<T,U,StructureArg, Distribution>& srcMatrix,
 				U matrixArgColumnStart,
 				U matrixArgColumnEnd,

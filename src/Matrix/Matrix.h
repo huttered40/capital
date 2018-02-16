@@ -9,6 +9,7 @@
 
 // Local includes -- the policy classes
 #include "./../Util/shared.h"
+#include "./../Timer/Timer.h"
 #include "MatrixStructure.h"
 
 /*

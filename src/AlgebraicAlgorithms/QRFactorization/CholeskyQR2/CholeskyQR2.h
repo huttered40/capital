@@ -9,6 +9,7 @@
 
 // Local includes
 #include "./../../../Util/shared.h"
+#include "./../../../Timer/Timer.h"
 #include "../../../Matrix/Matrix.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"

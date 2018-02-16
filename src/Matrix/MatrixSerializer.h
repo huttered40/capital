@@ -10,6 +10,7 @@
 
 // Local includes
 #include "./../Util/shared.h"
+#include "./../Timer/Timer.h"
 #include "Matrix.h"
 #include "MatrixStructure.h"		// Should be included from within Matrix.h, but whatever because I used a ifndef
 
@@ -62,6 +63,8 @@ public:
   Serializer<T,U,MatrixStructureSquare,MatrixStructureRectangle>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureSquare,MatrixStructureRectangle>& operator=(Serializer&& rhs) = delete;
 
+  static pTimer timer;
+
   // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
   //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
   //   to stand for a template class that takes 3 template parameters as shown above.
@@ -87,6 +90,8 @@ public:
   Serializer(Serializer&& rhs) = delete;
   Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
+
+  static pTimer timer;
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest);
@@ -122,6 +127,8 @@ public:
   Serializer(Serializer&& rhs) = delete;
   Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
+
+  static pTimer timer;
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest);
@@ -159,6 +166,8 @@ public:
   Serializer<T,U,MatrixStructureRectangle,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureRectangle,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
 
+  static pTimer timer;
+
   // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
   //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
   //   to stand for a template class that takes 3 template parameters as shown above.
@@ -183,6 +192,8 @@ public:
   Serializer(Serializer&& rhs) = delete;
   Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>& operator=(Serializer&& rhs) = delete;
+
+  static pTimer timer;
 
   // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
   //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
@@ -209,6 +220,8 @@ public:
   Serializer<T,U,MatrixStructureRectangle,MatrixStructureUpperTriangular>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureRectangle,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
 
+  static pTimer timer;
+
   // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
   //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
   //   to stand for a template class that takes 3 template parameters as shown above.
@@ -234,6 +247,8 @@ public:
   Serializer<T,U,MatrixStructureRectangle,MatrixStructureLowerTriangular>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureRectangle,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
 
+  static pTimer timer;
+
   // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
   //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
   //   to stand for a template class that takes 3 template parameters as shown above.
@@ -258,6 +273,8 @@ public:
   Serializer(Serializer&& rhs) = delete;
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
+
+  static pTimer timer;
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest);
@@ -288,6 +305,8 @@ public:
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureRectangle>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureRectangle>& operator=(Serializer&& rhs) = delete;
 
+  static pTimer timer;
+
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest);
 
@@ -317,6 +336,8 @@ public:
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
 
+  static pTimer timer;
+
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest);
 
@@ -339,6 +360,8 @@ public:
   Serializer(Serializer&& rhs) = delete;
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
+
+  static pTimer timer;
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest);
@@ -368,6 +391,8 @@ public:
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureRectangle>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureRectangle>& operator=(Serializer&& rhs) = delete;
 
+  static pTimer timer;
+
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest);
 
@@ -396,6 +421,8 @@ public:
   Serializer(Serializer&& rhs) = delete;
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureLowerTriangular>& operator=(const Serializer& rhs) = delete;
   Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
+
+  static pTimer timer;
 
   template<template<typename, typename,int> class Distributer>
   static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest);

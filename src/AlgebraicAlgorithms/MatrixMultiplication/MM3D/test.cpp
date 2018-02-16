@@ -88,18 +88,27 @@ int main(int argc, char** argv)
     blasArgs.beta = 0;
   
     // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
-    MM3D<double,int,cblasEngine>::Multiply(matA, matB, matC, MPI_COMM_WORLD, blasArgs, methodKey3);
+    MM3D<double,int,cblasEngine>::Multiply(
+#ifdef TIMER
+      myTimer,
+#endif
+      matA, matB, matC, MPI_COMM_WORLD, blasArgs, methodKey3);
+    myTimer.clear();
 
     int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
-      myTimer.setStartTime();
-      MM3D<double,int,cblasEngine>::
-        Multiply(matA, matB, matC, MPI_COMM_WORLD, blasArgs, methodKey3);
-      myTimer.setEndTime();
-      myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D GEMM iteration", i);
-      MPI_Barrier(MPI_COMM_WORLD);
+      size_t index1 = myTimer.setStartTime("MM3D::Multiply");
+      MM3D<double,int,cblasEngine>::Multiply(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matB, matC, MPI_COMM_WORLD, blasArgs, methodKey3);
+      myTimer.setEndTime("MM3D::Multiply", index1);
+      myTimer.finalize(MPI_COMM_WORLD);
+      //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D GEMM iteration", i);
+      //MPI_Barrier(MPI_COMM_WORLD);
     }
     if (methodKey2 == 0)
     {
@@ -111,7 +120,9 @@ int main(int argc, char** argv)
     }
     else
     {
-      myTimer.printRunStats(MPI_COMM_WORLD, "MM3D GEMM");
+//      TimeController<double,int, MatrixStructureSquare,MatrixDistributerCyclic, cblasEngine> t;
+//      t.displayResults();
+      //myTimer.printRunStats(MPI_COMM_WORLD, "MM3D GEMM");
     }
   }
   else if (methodKey1 == 1)
@@ -151,18 +162,27 @@ int main(int argc, char** argv)
       MatrixTypeR matBcopy = matB;
  
       // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
-      MM3D<double,int,cblasEngine>::Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+      MM3D<double,int,cblasEngine>::Multiply(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+      myTimer.clear();
 
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        myTimer.setStartTime();
-        MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
-        myTimer.setEndTime();
-        myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
-        MPI_Barrier(MPI_COMM_WORLD);
+        size_t index1 = myTimer.setStartTime("MM3D::Multiply");
+        MM3D<double,int,cblasEngine>::Multiply(
+#ifdef TIMER
+          myTimer,
+#endif
+          matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+        myTimer.setEndTime("MM3D::Multiply", index1);
+        myTimer.finalize(MPI_COMM_WORLD);
+        //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
+        //MPI_Barrier(MPI_COMM_WORLD);
       }
       if (methodKey2 == 0)
       {
@@ -171,7 +191,9 @@ int main(int argc, char** argv)
       }
       else
       {
-        myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
+        //myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
+        //TimeController<double,int, MatrixStructureSquare,MatrixDistributerCyclic, cblasEngine> t;
+        //t.displayResults();
       }
     }
     else if ((matrixUpLo == 0) && (triangleSide == 1))
@@ -189,18 +211,27 @@ int main(int argc, char** argv)
       MatrixTypeR matBcopy = matB;
   
       // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
-      MM3D<double,int,cblasEngine>::Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+      MM3D<double,int,cblasEngine>::Multiply(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+      myTimer.clear();
 
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        myTimer.setStartTime();
-        MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
-        myTimer.setEndTime();
-        myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
-        MPI_Barrier(MPI_COMM_WORLD);
+        size_t index1 = myTimer.setStartTime("MM3D::Multiply");
+        MM3D<double,int,cblasEngine>::Multiply(
+#ifdef TIMER
+          myTimer,
+#endif
+          matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+        myTimer.setEndTime("MM3D::Multiply", index1);
+        myTimer.finalize(MPI_COMM_WORLD);
+        //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
+        //MPI_Barrier(MPI_COMM_WORLD);
       }
       if (methodKey2 == 0)
       {
@@ -209,7 +240,9 @@ int main(int argc, char** argv)
       }
       else
       {
-        myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
+        //myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
+        //TimeController<double,int, MatrixStructureSquare,MatrixDistributerCyclic, cblasEngine> t;
+        //t.displayResults();
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 0))
@@ -227,18 +260,27 @@ int main(int argc, char** argv)
       MatrixTypeR matBcopy = matB;
 
       // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
-      MM3D<double,int,cblasEngine>::Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+      MM3D<double,int,cblasEngine>::Multiply(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+      myTimer.clear();
 
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        myTimer.setStartTime();
-        MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
-        myTimer.setEndTime();
-        myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
-        MPI_Barrier(MPI_COMM_WORLD);
+        size_t index1 = myTimer.setStartTime("MM3D::Multiply");
+        MM3D<double,int,cblasEngine>::Multiply(
+#ifdef TIMER
+          myTimer,
+#endif
+          matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+        myTimer.setEndTime("MM3D::Multiply", index1);
+        myTimer.finalize(MPI_COMM_WORLD);
+        //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
+        //MPI_Barrier(MPI_COMM_WORLD);
       }
       if (methodKey2 == 0)
       {
@@ -247,7 +289,9 @@ int main(int argc, char** argv)
       }
       else
       {
-        myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
+        //myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
+        //TimeController<double,int, MatrixStructureSquare,MatrixDistributerCyclic, cblasEngine> t;
+        //t.displayResults();
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 1))
@@ -265,18 +309,27 @@ int main(int argc, char** argv)
       MatrixTypeR matBcopy = matB;
 
       // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
-      MM3D<double,int,cblasEngine>::Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+      MM3D<double,int,cblasEngine>::Multiply(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+      myTimer.clear();
   
       int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        myTimer.setStartTime();
-        MM3D<double,int,cblasEngine>::
-          Multiply(matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
-        myTimer.setEndTime();
-        myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
-        MPI_Barrier(MPI_COMM_WORLD);
+        size_t index1 = myTimer.setStartTime("MM3D::Multiply");
+        MM3D<double,int,cblasEngine>::Multiply(
+#ifdef TIMER
+          myTimer,
+#endif
+          matA, matB, MPI_COMM_WORLD, blasArgs, methodKey3);
+        myTimer.setEndTime("MM3D::Multiply", index1);
+        myTimer.finalize(MPI_COMM_WORLD);
+        //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
+        //MPI_Barrier(MPI_COMM_WORLD);
       }
       if (methodKey2 == 0)
       {
@@ -285,7 +338,9 @@ int main(int argc, char** argv)
       }
       else
       {
-        myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
+        //myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
+        //TimeController<double,int, MatrixStructureSquare,MatrixDistributerCyclic, cblasEngine> t;
+        //t.displayResults();
       }
     }
     else

@@ -7,6 +7,7 @@
 #include <tuple>
 
 #include "shared.h"
+#include "./../Timer/Timer.h"
 #include "../Matrix/Matrix.h"
 #include "../AlgebraicAlgorithms/MatrixMultiplication/MM3D/MM3D.h"
 
@@ -20,6 +21,8 @@ public:
   util(util&& rhs) = delete;
   util& operator=(const util& rhs) = delete;
   util& operator=(util&& rhs) = delete;
+
+  static pTimer timer;
 
   static std::vector<T> blockedToCyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize);
 

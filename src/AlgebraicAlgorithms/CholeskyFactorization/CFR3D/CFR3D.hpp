@@ -4,6 +4,9 @@
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 std::vector<U> CFR3D<T,U,blasEngine>::Factor(
+#ifdef TIMER
+  pTimer& timer,
+#endif
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
@@ -17,8 +20,18 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
 {
   // Need to split up the commWorld communicator into a 3D grid similar to Summa3D
   int rank,size;
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("MPI_Comm_rank");
+#endif
   MPI_Comm_rank(commWorld, &rank);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_rank", index1);
+  size_t index2 = timer.setStartTime("MPI_Comm_size");
+#endif
   MPI_Comm_size(commWorld, &size);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_size", index2);
+#endif
 
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   int helper = pGridDimensionSize;
@@ -30,7 +43,13 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
 
   // Attain the communicator with only processors on the same 2D slice
   MPI_Comm slice2D;
+#ifdef TIMER
+  size_t index3 = timer.setStartTime("MPI_Comm_split");
+#endif
   MPI_Comm_split(commWorld, pGridCoordZ, rank, &slice2D);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_split", index3);
+#endif
 
   U localDimension = matrixA.getNumRowsLocal();
   U globalDimension = matrixA.getNumRowsGlobal();
@@ -57,17 +76,37 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
   {
     bool isInversePath = (inverseCutOffGlobalDimension == globalDimension ? true : false);
     if (isInversePath) { baseCaseDimList.push_back(localDimension); }
-    rFactorLower(matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+#ifdef TIMER
+    size_t index4 = timer.setStartTime("rFactorLower");
+#endif
+    rFactorLower(
+#ifdef TIMER
+      pTimer& timer,
+#endif
+      matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
       0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, slice2D, commWorld,
         isInversePath, baseCaseDimList, inverseCutOffGlobalDimension);
+#ifdef TIMER
+    timer.setEndTime("rFactorLower", index4);
+#endif
   }
   else if (dir == 'U')
   {
     bool isInversePath = (inverseCutOffGlobalDimension == globalDimension ? true : false);
     if (isInversePath) { baseCaseDimList.push_back(localDimension); }
-    rFactorUpper(matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+#ifdef TIMER
+    size_t index4 = timer.setStartTime("rFactorUpper");
+#endif
+    rFactorUpper(
+#ifdef TIMER
+      pTimer& timer,
+#endif
+      matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
       0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, slice2D, commWorld,
         isInversePath, baseCaseDimList, inverseCutOffGlobalDimension);
+#ifdef TIMER
+    timer.setEndTime("rFactorUpper", index4);
+#endif
   }
 
   return baseCaseDimList;
@@ -76,6 +115,9 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void CFR3D<T,U,blasEngine>::rFactorLower(
+#ifdef TIMER
+  pTimer& timer,
+#endif
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
@@ -305,7 +347,11 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     }
     isInversePath = true;
   }
-  rFactorLower(matrixA, matrixL, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
+  rFactorLower(
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    matrixA, matrixL, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, MM_id, TS_id,
@@ -420,7 +466,11 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     }
     isInversePath = true;
   }
-  rFactorLower(/*holdSum*/holdLsyrk, matrixL, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
+  rFactorLower(/*holdSum*/
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    holdLsyrk, matrixL, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY,
     matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, MM_id, TS_id,
     slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
@@ -457,6 +507,9 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 void CFR3D<T,U,blasEngine>::rFactorUpper(
+#ifdef TIMER
+                       pTimer& timer,
+#endif
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
@@ -686,7 +739,11 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     }
     isInversePath = true;
   }
-  rFactorUpper(matrixA, matrixR, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
+  rFactorUpper(
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    matrixA, matrixR, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift,
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, MM_id, TS_id,
@@ -799,7 +856,11 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     }
     isInversePath = true;
   }
-  rFactorUpper(/*holdSum*/holdRsyrk, matrixR, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
+  rFactorUpper(/*holdSum*/
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    holdRsyrk, matrixR, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matRstartX+localShift, matRendX, matRstartY+localShift, matRendY,
     matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, MM_id, TS_id,
     slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
@@ -834,6 +895,9 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
 std::vector<T> CFR3D<T,U,blasEngine>::blockedToCyclicTransformation(
+#ifdef TIMER
+                  pTimer& timer,
+#endif
 									Matrix<T,U,MatrixStructureSquare,Distribution>& matA,
 									U localDimension,
 									U globalDimension,
@@ -866,6 +930,9 @@ std::vector<T> CFR3D<T,U,blasEngine>::blockedToCyclicTransformation(
 //   we may need to separate into two different functions
 template<typename T, typename U, template<typename, typename> class blasEngine>
 void CFR3D<T,U,blasEngine>::cyclicToLocalTransformation(
+#ifdef TIMER
+                pTimer& timer,
+#endif
 								std::vector<T>& storeT,
 								std::vector<T>& storeTI,
 								U localDimension,
