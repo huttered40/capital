@@ -9,6 +9,7 @@
 #include <cmath>
 
 // Local includes
+#include "./../../../Util/shared.h"
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"

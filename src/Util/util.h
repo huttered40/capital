@@ -6,6 +6,7 @@
 #include <vector>
 #include <tuple>
 
+#include "shared.h"
 #include "../Matrix/Matrix.h"
 #include "../AlgebraicAlgorithms/MatrixMultiplication/MM3D/MM3D.h"
 

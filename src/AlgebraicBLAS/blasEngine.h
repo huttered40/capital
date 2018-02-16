@@ -3,6 +3,7 @@
 #ifndef BLASENGINE_H_
 #define BLASENGINE_H_
 
+#include "./../Util/shared.h"
 // Goal: Have a BLAS Policy with the particular BLAS implementation as one of the Policy classes
 //       This will allow for easier switching when needing alternate BLAS implementations
 

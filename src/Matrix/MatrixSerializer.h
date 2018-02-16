@@ -9,6 +9,7 @@
 #include <cstring>
 
 // Local includes
+#include "./../Util/shared.h"
 #include "Matrix.h"
 #include "MatrixStructure.h"		// Should be included from within Matrix.h, but whatever because I used a ifndef
 

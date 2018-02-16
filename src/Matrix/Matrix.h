@@ -8,6 +8,7 @@
 #include <iostream>
 
 // Local includes -- the policy classes
+#include "./../Util/shared.h"
 #include "MatrixStructure.h"
 
 /*

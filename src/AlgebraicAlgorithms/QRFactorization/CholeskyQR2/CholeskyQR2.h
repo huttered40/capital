@@ -8,6 +8,7 @@
 #include <mpi.h>
 
 // Local includes
+#include "./../../../Util/shared.h"
 #include "../../../Matrix/Matrix.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
