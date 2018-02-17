@@ -44,8 +44,18 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
                      )
 {
   int rank,size;
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("MPI_Comm_rank");
+#endif
   MPI_Comm_rank(commWorld, &rank);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_rank", index1);
+  size_t index2 = timer.setStartTime("MPI_Comm_size");
+#endif
   MPI_Comm_size(commWorld, &size);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_size", index2);
+#endif
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   int helper = pGridDimensionSize;
   helper *= helper;
@@ -89,14 +99,24 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
       U arg4 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset1 : matUendX);
 
       Matrix<T,U,MatrixStructureSquare,Distribution> matrixUpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*pGridDimensionSize, (arg4-arg3)*pGridDimensionSize);
+#ifdef TIMER
+      size_t index3 = timer.setStartTime("Serializer");
+#endif
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixU, matrixUpartition,
         arg1, arg2, arg3, arg4);
+#ifdef TIMER
+      timer.setEndTime("Serializer", index3);
+      size_t index4 = timer.setStartTime("MM3D::MultiplyCut");
+#endif
       MM3D<T,U,blasEngine>::Multiply(
 #ifdef TIMER
         timer,
 #endif
         matrixA.getRawData()+(offset3*matAendY), matrixUpartition.getRawData(), matrixB.getRawData()+(offset1*matBendY),
         offset1-offset3, matAendY, arg2-arg1, arg4-arg3, matBendX-offset1, matBendY, commWorld, srcPackage);
+#ifdef TIMER
+      timer.setEndTime("MM3D::MultiplyCut", index4);
+#endif
 /*
       MM3D<T,U,blasEngine>::Multiply(matrixA, matrixU, matrixB, offset3, offset1, 0, matAendY,
         arg1, arg2, arg3, arg4, offset1, matBendX, 0, matBendY, commWorld, srcPackage, true, true, true, MM_id);
@@ -111,14 +131,24 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
     // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
     U save1 = offset2-offset1;
     Matrix<T,U,MatrixStructureSquare,Distribution> matrixUIpartition(std::vector<T>(), save1, save1, save1*pGridDimensionSize, save1*pGridDimensionSize);
+#ifdef TIMER
+    size_t index5 = timer.setStartTime("Serializer");
+#endif
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixUI, matrixUIpartition,
       offset1, offset2, offset1, offset2);
+#ifdef TIMER
+    timer.setEndTime("Serializer", index5);
+    size_t index6 = timer.setStartTime("MM3D::MultiplyCut");
+#endif
     MM3D<T,U,blasEngine>::Multiply(
 #ifdef TIMER
       timer,
 #endif
       matrixB.getRawData()+(offset1*matBendY), matrixUIpartition.getRawData(), matrixA.getRawData()+(offset1*matAendY),
       offset2-offset1, matBendY, save1, save1, save1, matAendY, commWorld, srcPackage);
+#ifdef TIMER
+    timer.setEndTime("MM3D::MultiplyCut", index6);
+#endif
 /*
     MM3D<T,U,blasEngine>::Multiply(matrixB, matrixUI, matrixA, offset1, offset2, 0, matBendY,
       offset1, offset2, offset1, offset2, offset1, offset2,
@@ -156,8 +186,18 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
   int TR_id)         // allows for benchmarking to see which version is faster 
 {
   int rank,size;
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("MPI_Comm_rank");
+#endif
   MPI_Comm_rank(commWorld, &rank);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_rank", index1);
+  size_t index2 = timer.setStartTime("MPI_Comm_size");
+#endif
   MPI_Comm_size(commWorld, &size);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_size", index2);
+#endif
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   int helper = pGridDimensionSize;
   helper *= helper;
@@ -199,12 +239,18 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
       U arg3 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset3 : offset3);
       U arg4 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset1 : offset1);
 
+#ifdef TIMER
+      size_t index3 = timer.setStartTime("MM3D::MultiplyCut");
+#endif
       MM3D<T,U,blasEngine>::Multiply(
 #ifdef TIMER
         timer,
 #endif
         matrixR, matrixA, matrixB, arg1, arg2, arg3, arg4, 0, matAendX, offset3, offset1,
         0, matBendX, offset1, matBendY, commWorld, srcPackage, true, true, true, MM_id);
+#ifdef TIMER
+      timer.setEndTime("MM3D::MultiplyCut", index3);
+#endif
     }
 
     // Solve via MM
@@ -213,6 +259,9 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
     srcPackage.beta = 0;
     // Future optimization: for 1 processor, we don't want to serialize, so change true to false
     // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
+#ifdef TIMER
+    size_t index4 = timer.setStartTime("MM3D::MultiplyCut");
+#endif
     MM3D<T,U,blasEngine>::Multiply(
 #ifdef TIMER
       timer,
@@ -220,6 +269,9 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
       matrixRI, matrixB, matrixA, offset1, offset2, offset1, offset2,
       0, matBendX, offset1, offset2, 0, matAendX,
       offset1, offset2, commWorld, srcPackage, true, true, true, MM_id);
+#ifdef TIMER
+    timer.setEndTime("MM3D::MultiplyCut", index4);
+#endif
 
     if ((i+1) < baseCaseDimList.size())
     {

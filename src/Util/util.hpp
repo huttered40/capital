@@ -142,8 +142,18 @@ std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(
   MPI_Comm commWorld)
 {
   int rank,size;
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("MPI_Comm_rank");
+#endif
   MPI_Comm_rank(commWorld, &rank);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_rank", index1);
+  size_t index2 = timer.setStartTime("MPI_Comm_size");
+#endif
   MPI_Comm_size(commWorld, &size);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_size", index2);
+#endif
 
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   
@@ -154,7 +164,13 @@ std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(
   int pCoordZ = rank/helper;
 
   MPI_Comm sliceComm;
+#ifdef TIMER
+  size_t index3 = timer.setStartTime("MPI_Comm_split");
+#endif
   MPI_Comm_split(commWorld, pCoordZ, rank, &sliceComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_split", index3);
+#endif
   return std::make_tuple(sliceComm, pCoordX, pCoordY, pCoordZ, pGridDimensionSize); 
 }
 
