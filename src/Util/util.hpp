@@ -1,7 +1,11 @@
 /* Author: Edward Hutter */
 
 template<typename T, typename U>
-std::vector<T> util<T,U>::blockedToCyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize)
+std::vector<T> util<T,U>::blockedToCyclic(
+#ifdef TIMER
+  pTimer& timer,
+#endif
+  std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize)
 {
   U aggregNumRows = localDimensionRows*pGridDimensionSize;
   U aggregNumColumns = localDimensionColumns*pGridDimensionSize;
@@ -40,6 +44,9 @@ template<typename T, typename U>
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 std::vector<T> util<T,U>::getReferenceMatrix(
+#ifdef TIMER
+              pTimer& timer,
+#endif
               Matrix<T,U,StructureArg,Distribution>& myMatrix,
 							U key,
 							std::tuple<MPI_Comm, int, int, int, int> commInfo
@@ -80,7 +87,11 @@ std::vector<T> util<T,U>::getReferenceMatrix(
 //  std::vector<T> cyclicMatrix(aggregSize);
   MPI_Allgather(matrixPtr, localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
 
-  std::vector<T> cyclicMatrix = util<T,U>::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, pGridDimensionSize);
+  std::vector<T> cyclicMatrix = util<T,U>::blockedToCyclic(
+#ifdef TIMER
+    timer,
+#endif
+    blockedMatrix, localNumRows, localNumColumns, pGridDimensionSize);
 
   // In case there are hidden zeros, we will recopy
   if ((globalNumRows%pGridDimensionSize) || (globalNumColumns%pGridDimensionSize))
@@ -102,6 +113,9 @@ std::vector<T> util<T,U>::getReferenceMatrix(
 template<typename T, typename U>
 template< template<typename,typename,template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution>
 void util<T,U>::transposeSwap(
+#ifdef TIMER
+                      pTimer& timer,
+#endif
 											Matrix<T,U,StructureArg,Distribution>& mat,
 											int myRank,
 											int transposeRank,
@@ -121,7 +135,11 @@ void util<T,U>::transposeSwap(
 }
 
 template<typename T, typename U>
-std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(MPI_Comm commWorld)
+std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(
+#ifdef TIMER
+  pTimer& timer,
+#endif
+  MPI_Comm commWorld)
 {
   int rank,size;
   MPI_Comm_rank(commWorld, &rank);
@@ -146,6 +164,9 @@ template< template<typename,typename,template<typename,typename,int> class> clas
   template<typename,typename,template<typename,typename,int> class> class StructureArg3,
   template<typename,typename,int> class Distribution>
 void util<T,U>::validateResidualParallel(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,StructureArg1,Distribution>& matrixA,
                         Matrix<T,U,StructureArg2,Distribution>& matrixB,
                         Matrix<T,U,StructureArg3,Distribution>& matrixC,
@@ -158,7 +179,11 @@ void util<T,U>::validateResidualParallel(
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(commWorld, &size);
 
-  auto commInfo = getCommunicatorSlice(commWorld);
+  auto commInfo = getCommunicatorSlice(
+#ifdef TIMER
+      timer,
+#endif
+    commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
   U pGridCoordY = std::get<2>(commInfo);
@@ -175,7 +200,11 @@ void util<T,U>::validateResidualParallel(
     blasArgs.transposeB = blasEngineTranspose::AblasTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = -1.;
-    MM3D<T,U,cblasEngine>::Multiply(matrixA, matrixB, matrixC, commWorld, blasArgs);
+    MM3D<T,U,cblasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixA, matrixB, matrixC, commWorld, blasArgs);
   }
   else if (dir == 'U')
   {
@@ -185,7 +214,11 @@ void util<T,U>::validateResidualParallel(
     blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = -1.;
-    MM3D<T,U,cblasEngine>::Multiply(matrixA, matrixB, matrixC, commWorld, blasArgs);
+    MM3D<T,U,cblasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixA, matrixB, matrixC, commWorld, blasArgs);
   }
   else if (dir == 'F')
   {
@@ -195,7 +228,11 @@ void util<T,U>::validateResidualParallel(
     blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = -1.;
-    MM3D<T,U,cblasEngine>::Multiply(matrixA, matrixB, matrixC, commWorld, blasArgs);
+    MM3D<T,U,cblasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixA, matrixB, matrixC, commWorld, blasArgs);
   }
   else if (dir == 'I')
   {
@@ -205,7 +242,11 @@ void util<T,U>::validateResidualParallel(
     blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 0;
-    MM3D<T,U,cblasEngine>::Multiply(matrixA, matrixB, matrixC, commWorld, blasArgs);
+    MM3D<T,U,cblasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixA, matrixB, matrixC, commWorld, blasArgs);
     if (columnAltComm != MPI_COMM_WORLD)
     {
       MPI_Allreduce(MPI_IN_PLACE, matrixC.getRawData(), matrixC.getNumElems(), MPI_DOUBLE,
@@ -263,6 +304,9 @@ template<typename T, typename U>
 template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>
 void util<T,U>::validateOrthogonalityParallel(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
                         MPI_Comm commWorld,
                         MPI_Comm columnAltComm
@@ -272,7 +316,11 @@ void util<T,U>::validateOrthogonalityParallel(
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(commWorld, &size);
 
-  auto commInfo = getCommunicatorSlice(commWorld);
+  auto commInfo = getCommunicatorSlice(
+#ifdef TIMER
+    timer,
+#endif
+    commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
   U pGridCoordY = std::get<2>(commInfo);
@@ -283,14 +331,22 @@ void util<T,U>::validateOrthogonalityParallel(
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
 
   Matrix<T,U,StructureArg,Distribution> matrixQtrans = matrixQ;
-  util<T,U>::transposeSwap(matrixQtrans, rank, transposePartner, commWorld);
+  util<T,U>::transposeSwap(
+#ifdef TIMER
+    timer,
+#endif
+    matrixQtrans, rank, transposePartner, commWorld);
   U localNumRows = matrixQtrans.getNumColumnsLocal();
   U localNumColumns = matrixQ.getNumColumnsLocal();
   U globalNumRows = matrixQtrans.getNumColumnsGlobal();
   U globalNumColumns = matrixQ.getNumColumnsGlobal();
   U numElems = localNumRows*localNumColumns;
   Matrix<T,U,StructureArg,Distribution> matrixI(std::vector<T>(numElems,0), localNumColumns, localNumRows, globalNumColumns, globalNumRows, true);
-  util<T,U>::validateResidualParallel(matrixQtrans,matrixQ,matrixI,'I',commWorld, columnAltComm);
+  util<T,U>::validateResidualParallel(
+#ifdef TIMER
+    timer,
+#endif
+    matrixQtrans,matrixQ,matrixI,'I',commWorld, columnAltComm);
   MPI_Comm_free(&sliceComm);
 }
 

@@ -22,13 +22,18 @@ public:
   util& operator=(const util& rhs) = delete;
   util& operator=(util&& rhs) = delete;
 
-  static pTimer timer;
-
-  static std::vector<T> blockedToCyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize);
+  static std::vector<T> blockedToCyclic(
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize);
 
   template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static std::vector<T> getReferenceMatrix(
+#ifdef TIMER
+              pTimer& timer,
+#endif
               Matrix<T,U,StructureArg,Distribution>& myMatrix,
 							U key,
 							std::tuple<MPI_Comm, int, int, int, int> commInfo
@@ -36,19 +41,29 @@ public:
 
   template< template<typename,typename,template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution>
   static void transposeSwap(
+#ifdef TIMER
+          pTimer& timer,
+#endif
 					Matrix<T,U,StructureArg,Distribution>& mat,
 				  int myRank,
 					int transposeRank,
 					MPI_Comm commWorld
 					);
 
-  static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(MPI_Comm commWorld);
+  static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    MPI_Comm commWorld);
 
   template< template<typename,typename,template<typename,typename,int> class> class StructureArg1,
     template<typename,typename,template<typename,typename,int> class> class StructureArg2,
     template<typename,typename,template<typename,typename,int> class> class StructureArg3,
     template<typename,typename,int> class Distribution>
   static void validateResidualParallel(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,StructureArg1,Distribution>& matrixA,
                         Matrix<T,U,StructureArg2,Distribution>& matrixB,
                         Matrix<T,U,StructureArg3,Distribution>& matrixC,
@@ -60,6 +75,9 @@ public:
   template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>
   static void validateOrthogonalityParallel(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
                         MPI_Comm commWorld,
                         MPI_Comm columnAltComm = MPI_COMM_WORLD

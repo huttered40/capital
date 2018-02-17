@@ -81,7 +81,7 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
 #endif
     rFactorLower(
 #ifdef TIMER
-      pTimer& timer,
+      timer,
 #endif
       matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
       0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, slice2D, commWorld,
@@ -99,7 +99,7 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
 #endif
     rFactorUpper(
 #ifdef TIMER
-      pTimer& timer,
+      timer,
 #endif
       matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
       0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, slice2D, commWorld,
@@ -168,14 +168,38 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     // Fourth: Save the data that each processor owns according to the cyclic rule.
 
     int rankSlice,sizeSlice,sizeComm;
+#ifdef TIMER
+    size_t index1 = timer.setStartTime("MPI_Comm_size");
+#endif
     MPI_Comm_size(commWorld, &sizeComm);
+#ifdef TIMER
+    timer.setEndTime("MPI_Comm_size", index1);
+    size_t index2 = timer.setStartTime("MPI_Comm_rank");
+#endif
     MPI_Comm_rank(slice2D, &rankSlice);
+#ifdef TIMER
+    timer.setEndTime("MPI_Comm_rank", index2);
+    size_t index3 = timer.setStartTime("MPI_Comm_size");
+#endif
     MPI_Comm_size(slice2D, &sizeSlice);
+#ifdef TIMER
+    timer.setEndTime("MPI_Comm_size", index3);
+#endif
     int pGridDimensionSize = std::nearbyint(std::pow(sizeComm,1./3.));
 
     // Should be fast pass-by-value via move semantics
-    std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
+#ifdef TIMER
+    size_t index4 = timer.setStartTime("CFR3D::blockedToCyclicTransformation");
+#endif
+    std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
+#ifdef TIMER
+      timer,
+#endif
+      matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
       matAstartY, matAendY, pGridDimensionSize, slice2D);
+#ifdef TIMER
+    timer.setEndTime("CFR3D::blockedToCyclicTransformation", index4);
+#endif
 
     // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
     //   I want to be able to mix and match.
@@ -194,30 +218,14 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
           deepBaseCase[i*finalDim+j] = cyclicBaseCaseData[i*checkDim+j];
         }
       }
-/*
-      if (tempRank == 0)
-      {
-        std::cout << "check local A values\n";
-        for (int i=0; i<deepBaseCase.size(); i++)
-        {
-          std::cout << deepBaseCase[i] << " ";
-        }
-        std::cout << "\n";
-      }
-*/
       // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
+#ifdef TIMER
+      size_t index5 = timer.setStartTime("LAPACK_DPOTRF");
+#endif
       LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'L', finalDim/*bcDimension*/, &deepBaseCase[0], finalDim/*bcDimension*/);
-/*
-      if (tempRank == 0)
-      {
-        std::cout << "check local CF values\n";
-        for (int i=0; i<deepBaseCase.size(); i++)
-        {
-          std::cout << deepBaseCase[i] << " ";
-        }
-        std::cout << "\n";
-      }
-*/
+#ifdef TIMER
+      timer.setEndTime("LAPACK_DPOTRF", index5);
+#endif
       // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
       //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
       //   Only then, can we call Serializer into the real matrixL. WRONG! We need to find the data we own according to the cyclic rule first!
@@ -226,18 +234,13 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 
       // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
       std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
+#ifdef TIMER
+      size_t index6 = timer.setStartTime("LAPACK_DTRTRI");
+#endif
       LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'L', 'N', finalDim/*bcDimension*/, &deepBaseCaseInv[0], finalDim/*bcDimension*/);
-/*
-      if (tempRank == 0)
-      {
-        std::cout << "check local TI values\n";
-        for (int i=0; i<deepBaseCaseInv.size(); i++)
-        {
-          std::cout << deepBaseCaseInv[i] << " ";
-        }
-        std::cout << "\n";
-      }
-*/
+#ifdef TIMER
+      timer.setEndTime("LAPACK_DTRTRI", index6);
+#endif
       // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 
       // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
@@ -262,18 +265,17 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
         }
       }
 
-      cyclicToLocalTransformation(deepBaseCaseFill, deepBaseCaseInvFill, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'L');
-/*
-      if (tempRank == 0)
-      {
-        std::cout << "check MY TI values\n";
-        for (int i=0; i<deepBaseCaseInvFill.size(); i++)
-        {
-          std::cout << deepBaseCaseInvFill[i] << " ";
-        }
-        std::cout << "\n";
-      }
-*/
+#ifdef TIMER
+      size_t index7 = timer.setStartTime("CFR3D::cyclicToLocalTransformation");
+#endif
+      cyclicToLocalTransformation(
+#ifdef TIMER
+        timer,
+#endif
+        deepBaseCaseFill, deepBaseCaseInvFill, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'L');
+#ifdef TIMER
+      timer.setEndTime("CFR3D::cyclicToLocalTransformation", index7);
+#endif
       // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
       //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
       //    variables, this should be ok.
@@ -283,15 +285,31 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 
       // Serialize into the existing Matrix data structures owned by the user
 //      if (tempRank == 0) { std::cout << "check these 4 numbers - " << matLstartX << "," << matLendX << "," << matLstartY << "," << matLendY << std::endl;}
+#ifdef TIMER
+      size_t index8 = timer.setStartTime("Serializer");
+#endif
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, tempL, matLstartX, matLendX, matLstartY, matLendY, true);
+#ifdef TIMER
+      timer.setEndTime("Serializer", index8);
+      size_t index9 = timer.setStartTime("Serializer");
+#endif
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempLI, matLIstartX, matLIendX, matLIstartY, matLIendY, true);
+#ifdef TIMER
+      timer.setEndTime("Serializer", index9);
+#endif
     }
     else
     {
       std::vector<T>& storeL = cyclicBaseCaseData;
 
       // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
+#ifdef TIMER
+      size_t index5 = timer.setStartTime("LAPACK_DPOTRF");
+#endif
       LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'L', localDimension*pGridDimensionSize/*bcDimension*/, &storeL[0], localDimension*pGridDimensionSize/*bcDimension*/);
+#ifdef TIMER
+      timer.setEndTime("LAPACK_DPOTRF", index5);
+#endif
 
       // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
       //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
@@ -301,7 +319,13 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 
       // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
       std::vector<T> storeLI = storeL;		// true copy because we have to, unless we want to iterate (see below) two different times
+#ifdef TIMER
+      size_t index6 = timer.setStartTime("LAPACK_DTRTRI");
+#endif
       LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'L', 'N', localDimension*pGridDimensionSize/*bcDimension*/, &storeLI[0], localDimension*pGridDimensionSize/*bcDimension*/);
+#ifdef TIMER
+      timer.setEndTime("LAPACK_DTRTRI", index6);
+#endif
 
       // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 
@@ -314,7 +338,17 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
       //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
 
-      cyclicToLocalTransformation(storeL, storeLI, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'L');
+#ifdef TIMER
+      size_t index7 = timer.setStartTime("CFR3D::cyclicToLocalTransformation");
+#endif
+      cyclicToLocalTransformation(
+#ifdef TIMER
+        timer,
+#endif
+        storeL, storeLI, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'L');
+#ifdef TIMER
+      timer.setEndTime("CFR3D::cyclicToLocalTransformation", index7);
+#endif
 
       // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
       //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
@@ -324,14 +358,30 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       Matrix<T,U,MatrixStructureSquare,Distribution> tempLI(std::move(storeLI), localDimension, localDimension, globalDimension, globalDimension, true);
 
       // Serialize into the existing Matrix data structures owned by the user
+#ifdef TIMER
+      size_t index8 = timer.setStartTime("Serializer");
+#endif
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, tempL, matLstartX, matLendX, matLstartY, matLendY, true);
+#ifdef TIMER
+      timer.setEndTime("Serializer", index8);
+      size_t index9 = timer.setStartTime("Serializer");
+#endif
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempLI, matLIstartX, matLIendX, matLIstartY, matLIendY, true);
+#ifdef TIMER
+      timer.setEndTime("Serializer", index9);
+#endif
     }
     return;
   }
 
   int rank;
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("MPI_Comm_rank");
+#endif
   MPI_Comm_rank(commWorld, &rank);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_rank", index1);
+#endif
   // globalDimension will always be a power of 2, but localDimension won't
   U localShift = (localDimension>>1);
   // move localShift up to the next power of 2
@@ -349,7 +399,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   }
   rFactorLower(
 #ifdef TIMER
-    pTimer& timer,
+    timer,
 #endif
     matrixA, matrixL, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
@@ -371,10 +421,26 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 */
   Matrix<T,U,MatrixStructureSquare,Distribution> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
+#ifdef TIMER
+  size_t index3 = timer.setStartTime("Serializer");
+#endif
   Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, packedMatrix,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
+#ifdef TIMER
+  timer.setEndTime("Serializer", index3);
+#endif
 
-  util<T,U>::transposeSwap(packedMatrix, rank, transposePartner, commWorld);
+#ifdef TIMER
+  size_t index4 = timer.setStartTime("transposeSwap");
+#endif
+  util<T,U>::transposeSwap(
+#ifdef TIMER
+    timer,
+#endif
+    packedMatrix, rank, transposePartner, commWorld);
+#ifdef TIMER
+  timer.setEndTime("transposeSwap", index4);
+#endif
 
   blasEngineArgumentPackage_gemm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
@@ -385,8 +451,18 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 
   if (isInversePath)
   {
-    MM3D<T,U,blasEngine>::Multiply(matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
-        0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true, MM_id);
+#ifdef TIMER
+    size_t index5 = timer.setStartTime("Multiply");
+#endif
+    MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true, MM_id);
+#ifdef TIMER
+    timer.setEndTime("Multiply", index5);
+#endif
   }
   else
   {
@@ -406,24 +482,68 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     // Future optimization: Copy a part of A into matrixAcopy, to avoid excessing copying
     // Note: some of these globalShifts are wrong, but I don't know any easy way to fix them. Everything might still work though.
     Matrix<T,U,MatrixStructureSquare,Distribution> matrixAcopy(std::vector<T>(), localShift, matAendY-(matAstartY+localShift), globalShift, globalShift);
+#ifdef TIMER
+    size_t index6 = timer.setStartTime("Serializer");
+#endif
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixAcopy,
       matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
+#ifdef TIMER
+    timer.setEndTime("Serializer", index6);
+#endif
     // Also need to serialize top-left quadrant of matrixL so that its size matches packedMatrix
     Matrix<T,U,MatrixStructureSquare,Distribution> packedMatrixL(std::vector<T>(), localShift, localShift, globalShift, globalShift);
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
+#ifdef TIMER
+    size_t index7 = timer.setStartTime("Serializer");
+#endif
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, packedMatrixL,
       matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift);
+#ifdef TIMER
+    timer.setEndTime("Serializer", index7);
+#endif
     Matrix<T,U,MatrixStructureSquare,Distribution> matrixLcopy(std::vector<T>(), localShift, matLendY-(matLstartY+localShift), globalShift, globalShift);
+#ifdef TIMER
+    size_t index8 = timer.setStartTime("Serializer");
+#endif
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, matrixLcopy,
       matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY);
+#ifdef TIMER
+    timer.setEndTime("Serializer", index8);
+#endif
     // Swap, same as we did with inverse
-    util<T,U>::transposeSwap(packedMatrixL, rank, transposePartner, commWorld);
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixLcopy,packedMatrixL, packedMatrix, matrixAcopy,
+#ifdef TIMER
+    size_t index9 = timer.setStartTime("transposeSwap");
+#endif
+    util<T,U>::transposeSwap(
+#ifdef TIMER
+      timer,
+#endif
+      packedMatrixL, rank, transposePartner, commWorld);
+#ifdef TIMER
+    timer.setEndTime("transposeSwap", index9);
+#endif
+#ifdef TIMER
+    size_t index10 = timer.setStartTime("TRSM::iSolveUpperLeft");
+#endif
+    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
+#ifdef TIMER
+      timer,
+#endif
+      matrixLcopy,packedMatrixL, packedMatrix, matrixAcopy,
       subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
+#ifdef TIMER
+    timer.setEndTime("TRSM::iSolveUpperLeft", index10);
+#endif
 
     // inject matrixLcopy back into matrixL
+#ifdef TIMER
+    size_t index11 = timer.setStartTime("Serializer");
+#endif
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, matrixLcopy,
       matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, true);
+#ifdef TIMER
+    timer.setEndTime("Serializer", index11);
+#endif
   }
 
   // Now we need to perform L_{21}L_{21}^T via syrk
@@ -440,21 +560,53 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 
 //  Matrix<T,U,MatrixStructureSquare,Distribution> holdLsyrk(std::vector<T>(reverseDimLocal*reverseDimLocal), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> holdLsyrk(std::vector<T>(), reverseDimLocal, reverseDimLocal, reverseDimGlobal, reverseDimGlobal);
+#ifdef TIMER
+  size_t index6 = timer.setStartTime("Serializer");
+#endif
   Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, holdLsyrk, matAstartX+localShift,
     matAendX, matAstartY+localShift, matAendY);
+#ifdef TIMER
+  timer.setEndTime("Serializer", index6);
+#endif
 
   Matrix<T,U,MatrixStructureSquare,Distribution> squareL(std::vector<T>(), localShift, reverseDimLocal, globalShift, reverseDimGlobal);
   // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
+#ifdef TIMER
+  size_t index7 = timer.setStartTime("Serializer");
+#endif
   Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, squareL,
     matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY);
+#ifdef TIMER
+  timer.setEndTime("Serializer", index7);
+#endif
   Matrix<T,U,MatrixStructureSquare,Distribution> squareLSwap = squareL;
 
-  util<T,U>::transposeSwap(squareLSwap, rank, transposePartner, commWorld);
+#ifdef TIMER
+  size_t index8 = timer.setStartTime("transposeSwap");
+#endif
+  util<T,U>::transposeSwap(
+#ifdef TIMER
+    timer,
+#endif
+    squareLSwap, rank, transposePartner, commWorld);
+#ifdef TIMER
+  timer.setEndTime("transposeSwap", index8);
+#endif
 
   blasArgs.alpha = -1;
   blasArgs.beta = 1;
-  MM3D<T,U,blasEngine>::Multiply(squareL, squareLSwap, holdLsyrk, 0, localShift, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal,
-      0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
+#ifdef TIMER
+  size_t index9 = timer.setStartTime("Multiply");
+#endif
+  MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+    squareL, squareLSwap, holdLsyrk, 0, localShift, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal,
+    0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
+#ifdef TIMER
+  timer.setEndTime("Multiply", index9);
+#endif
 
   // Only need to change the argument for matrixA
   saveSwitch = isInversePath;
@@ -468,7 +620,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   }
   rFactorLower(/*holdSum*/
 #ifdef TIMER
-    pTimer& timer,
+    timer,
 #endif
     holdLsyrk, matrixL, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY,
@@ -491,15 +643,35 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
     invPackage1.alpha = 1.;
     invPackage1.beta = 0.;
-    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI,
+#ifdef TIMER
+    size_t index10 = timer.setStartTime("Multiply");
+#endif
+    MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixL, matrixLI,
       tempInverse, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, matLIstartX, matLIstartX+localShift, matLIstartY,
         matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, invPackage1, true, true, false, MM_id);
+#ifdef TIMER
+    timer.setEndTime("Multiply", index10);
+#endif
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
-    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse,
+#ifdef TIMER
+    size_t index11 = timer.setStartTime("Multiply");
+#endif
+    MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixLI, tempInverse,
       matrixLI, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY, 0, localShift, 0, reverseDimLocal,
         matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, true, false, true, MM_id);
+#ifdef TIMER
+    timer.setEndTime("Multiply", index11);
+#endif
   }
 }
 
@@ -565,7 +737,11 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     int pGridDimensionSize = std::nearbyint(std::pow(sizeComm,1./3.));
 
     // Should be fast pass-by-value via move semantics
-    std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
+    std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
+#ifdef TIMER
+      timer,
+#endif
+      matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
       matAstartY, matAendY, pGridDimensionSize, slice2D);
 
     // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
@@ -585,30 +761,8 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
           deepBaseCase[i*finalDim+j] = cyclicBaseCaseData[i*checkDim+j];
         }
       }
-/*
-      if (tempRank == 0)
-      {
-        std::cout << "check local A values\n";
-        for (int i=0; i<deepBaseCase.size(); i++)
-        {
-          std::cout << deepBaseCase[i] << " ";
-        }
-        std::cout << "\n";
-      }
-*/
       // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
       LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', finalDim/*bcDimension*/, &deepBaseCase[0], finalDim/*bcDimension*/);
-/*
-      if (tempRank == 0)
-      {
-        std::cout << "check local CF values\n";
-        for (int i=0; i<deepBaseCase.size(); i++)
-        {
-          std::cout << deepBaseCase[i] << " ";
-        }
-        std::cout << "\n";
-      }
-*/
       // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
       //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
       //   Only then, can we call Serializer into the real matrixL. WRONG! We need to find the data we own according to the cyclic rule first!
@@ -618,17 +772,6 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
       std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
       LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', finalDim/*bcDimension*/, &deepBaseCaseInv[0], finalDim/*bcDimension*/);
-/*
-      if (tempRank == 0)
-      {
-        std::cout << "check local TI values\n";
-        for (int i=0; i<deepBaseCaseInv.size(); i++)
-        {
-          std::cout << deepBaseCaseInv[i] << " ";
-        }
-        std::cout << "\n";
-      }
-*/
       // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 
       // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
@@ -653,18 +796,11 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
         }
       }
 
-      cyclicToLocalTransformation(deepBaseCaseFill, deepBaseCaseInvFill, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'U');
-/*
-      if (tempRank == 0)
-      {
-        std::cout << "check MY TI values\n";
-        for (int i=0; i<deepBaseCaseInvFill.size(); i++)
-        {
-          std::cout << deepBaseCaseInvFill[i] << " ";
-        }
-        std::cout << "\n";
-      }
-*/
+      cyclicToLocalTransformation(
+#ifdef TIMER
+        timer,
+#endif
+        deepBaseCaseFill, deepBaseCaseInvFill, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'U');
       // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
       //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
       //    variables, this should be ok.
@@ -705,7 +841,11 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
       //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
 
-      cyclicToLocalTransformation(storeR, storeRI, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'U');
+      cyclicToLocalTransformation(
+#ifdef TIMER
+        timer,
+#endif
+        storeR, storeRI, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'U');
 
       // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
       //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
@@ -741,7 +881,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   }
   rFactorUpper(
 #ifdef TIMER
-    pTimer& timer,
+    timer,
 #endif
     matrixA, matrixR, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
@@ -769,7 +909,11 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixRI, packedMatrix,
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
 
-  util<T,U>::transposeSwap(packedMatrix, rank, transposePartner, commWorld);
+  util<T,U>::transposeSwap(
+#ifdef TIMER
+    timer,
+#endif
+    packedMatrix, rank, transposePartner, commWorld);
 
   blasEngineArgumentPackage_gemm<T> blasArgs;
   blasArgs.order = blasEngineOrder::AblasColumnMajor;
@@ -780,7 +924,11 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 
   if (isInversePath)
   {
-    MM3D<T,U,blasEngine>::Multiply(packedMatrix, matrixA, matrixR, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
+    MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      packedMatrix, matrixA, matrixR, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
       matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, false, true, true, MM_id);
   }
   else
@@ -812,8 +960,16 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, matrixRcopy,
       matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift);
     // Swap, same as we did with inverse
-    util<T,U>::transposeSwap(packedMatrixR, rank, transposePartner, commWorld);
-    TRSM3D<T,U,blasEngine>::iSolveLowerRight(packedMatrixR, packedMatrix, matrixRcopy, matrixAcopy,
+    util<T,U>::transposeSwap(
+#ifdef TIMER
+      timer,
+#endif
+      packedMatrixR, rank, transposePartner, commWorld);
+    TRSM3D<T,U,blasEngine>::iSolveLowerRight(
+#ifdef TIMER
+      timer,
+#endif
+      packedMatrixR, packedMatrix, matrixRcopy, matrixAcopy,
       subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
 
     // Inject back into matrixR
@@ -839,12 +995,20 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift);
   Matrix<T,U,MatrixStructureSquare,Distribution> squareRSwap = squareR;
 
-  util<T,U>::transposeSwap(squareRSwap, rank, transposePartner, commWorld);
+  util<T,U>::transposeSwap(
+#ifdef TIMER
+    timer,
+#endif
+    squareRSwap, rank, transposePartner, commWorld);
 
   blasArgs.alpha = -1;
   blasArgs.beta = 1;
-  MM3D<T,U,blasEngine>::Multiply(squareRSwap, squareR, holdRsyrk, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal, 0, localShift,
-      0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
+  MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+    timer,
+#endif
+    squareRSwap, squareR, holdRsyrk, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal, 0, localShift,
+    0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
 
   // Only need to change the argument for matrixA
   saveSwitch = isInversePath;
@@ -858,7 +1022,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   }
   rFactorUpper(/*holdSum*/
 #ifdef TIMER
-    pTimer& timer,
+    timer,
 #endif
     holdRsyrk, matrixR, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matRstartX+localShift, matRendX, matRstartY+localShift, matRendY,
@@ -880,12 +1044,20 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     invPackage1.transposeB = blasEngineTranspose::AblasNoTrans;
     invPackage1.alpha = 1.;
     invPackage1.beta = 0.;
-    MM3D<T,U,blasEngine>::Multiply(matrixR, matrixRI,tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift,
+    MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixR, matrixRI,tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift,
       matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, invPackage1, true, true, false, MM_id);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
-    MM3D<T,U,blasEngine>::Multiply(matrixRI, tempInverse,
+    MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixRI, tempInverse,
       matrixRI, matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift, 0, reverseDimLocal, 0, localShift,
         matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, true, false, true, MM_id);
   }
@@ -912,15 +1084,31 @@ std::vector<T> CFR3D<T,U,blasEngine>::blockedToCyclicTransformation(
 {
   Matrix<T,U,MatrixStructureSquare,Distribution> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension,
     globalDimension, globalDimension);
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("Serializer");
+#endif
   Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matA, baseCaseMatrixA, matAstartX,
     matAendX, matAstartY, matAendY);
+#ifdef TIMER
+  timer.setEndTime("Serializer", index1);
+#endif
 
   U aggregDim = localDimension*pGridDimensionSize;
   std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
+#ifdef TIMER
+  size_t index2 = timer.setStartTime("MPI_Allgather");
+#endif
   MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DOUBLE,
     &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DOUBLE, slice2Dcomm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Allgather", index2);
+#endif
 
-  return util<T,U>::blockedToCyclic(blockedBaseCaseData, localDimension, localDimension, pGridDimensionSize);
+  return util<T,U>::blockedToCyclic(
+#ifdef TIMER
+    timer,
+#endif
+    blockedBaseCaseData, localDimension, localDimension, pGridDimensionSize);
 }
 
 

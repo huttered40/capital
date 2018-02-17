@@ -6,6 +6,9 @@ template<
   template<typename,typename,int> class Distribution
 >
 void TRSM3D<T,U,blasEngine>::iSolveLowerLeft(
+#ifdef TIMER
+  pTimer& timer,
+#endif
   Matrix<T,U,StructureArg,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
@@ -26,6 +29,9 @@ template<
   template<typename,typename,int> class Distribution
 >
 void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
+#ifdef TIMER
+                       pTimer& timer,
+#endif
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
@@ -85,7 +91,11 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
       Matrix<T,U,MatrixStructureSquare,Distribution> matrixUpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*pGridDimensionSize, (arg4-arg3)*pGridDimensionSize);
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixU, matrixUpartition,
         arg1, arg2, arg3, arg4);
-      MM3D<T,U,blasEngine>::Multiply(matrixA.getRawData()+(offset3*matAendY), matrixUpartition.getRawData(), matrixB.getRawData()+(offset1*matBendY),
+      MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+        timer,
+#endif
+        matrixA.getRawData()+(offset3*matAendY), matrixUpartition.getRawData(), matrixB.getRawData()+(offset1*matBendY),
         offset1-offset3, matAendY, arg2-arg1, arg4-arg3, matBendX-offset1, matBendY, commWorld, srcPackage);
 /*
       MM3D<T,U,blasEngine>::Multiply(matrixA, matrixU, matrixB, offset3, offset1, 0, matAendY,
@@ -103,7 +113,11 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
     Matrix<T,U,MatrixStructureSquare,Distribution> matrixUIpartition(std::vector<T>(), save1, save1, save1*pGridDimensionSize, save1*pGridDimensionSize);
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixUI, matrixUIpartition,
       offset1, offset2, offset1, offset2);
-    MM3D<T,U,blasEngine>::Multiply(matrixB.getRawData()+(offset1*matBendY), matrixUIpartition.getRawData(), matrixA.getRawData()+(offset1*matAendY),
+    MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixB.getRawData()+(offset1*matBendY), matrixUIpartition.getRawData(), matrixA.getRawData()+(offset1*matAendY),
       offset2-offset1, matBendY, save1, save1, save1, matAendY, commWorld, srcPackage);
 /*
     MM3D<T,U,blasEngine>::Multiply(matrixB, matrixUI, matrixA, offset1, offset2, 0, matBendY,
@@ -128,6 +142,9 @@ template<
   template<typename,typename,int> class Distribution
 >
 void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
+#ifdef TIMER
+  pTimer& timer,
+#endif
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
   Matrix<T,U,StructureArg,Distribution>& matrixA,
@@ -182,7 +199,11 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
       U arg3 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset3 : offset3);
       U arg4 = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset1 : offset1);
 
-      MM3D<T,U,blasEngine>::Multiply(matrixR, matrixA, matrixB, arg1, arg2, arg3, arg4, 0, matAendX, offset3, offset1,
+      MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+        timer,
+#endif
+        matrixR, matrixA, matrixB, arg1, arg2, arg3, arg4, 0, matAendX, offset3, offset1,
         0, matBendX, offset1, matBendY, commWorld, srcPackage, true, true, true, MM_id);
     }
 
@@ -192,7 +213,11 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
     srcPackage.beta = 0;
     // Future optimization: for 1 processor, we don't want to serialize, so change true to false
     // Future optimization: to reduce flops, can't we do a TRSM here instead of a MM? Or no?
-    MM3D<T,U,blasEngine>::Multiply(matrixRI, matrixB, matrixA, offset1, offset2, offset1, offset2,
+    MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixRI, matrixB, matrixA, offset1, offset2, offset1, offset2,
       0, matBendX, offset1, offset2, 0, matAendX,
       offset1, offset2, commWorld, srcPackage, true, true, true, MM_id);
 
@@ -213,6 +238,9 @@ template<
   template<typename,typename,int> class Distribution
 >
 void TRSM3D<T,U,blasEngine>::iSolveUpperRight(
+#ifdef TIMER
+  pTimer& timer,
+#endif
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
   Matrix<T,U,StructureArg,Distribution>& matrixA,

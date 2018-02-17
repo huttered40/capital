@@ -33,6 +33,9 @@ public:
 
   template<template<typename,typename,int> class Distribution>
   static void validateLocal(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
 			                  char dir,
@@ -41,6 +44,9 @@ public:
 
   template<template<typename,typename,int> class Distribution>
   static void validateParallel(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
                         char dir,

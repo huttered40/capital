@@ -290,7 +290,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   if (srcPackage.beta == 0)
   {
 #ifdef TIMER
-    size_t index3 = timer.setStartTime("blasEngine::_gemm");
+    size_t index3 = timer.setStartTime("blasEngine::gemm");
 #endif
     blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
       matrixCforEnginePtr, localDimensionM, localDimensionN, localDimensionK,
@@ -298,7 +298,7 @@ void MM3D<T,U,blasEngine>::Multiply(
       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
       localDimensionM, srcPackage);
 #ifdef TIMER
-    timer.setEndTime("blasEngine::_gemm", index3);
+    timer.setEndTime("blasEngine::gemm", index3);
     size_t index4 = timer.setStartTime("MM3D::_end1");
 #endif
     _end1(
@@ -315,7 +315,7 @@ void MM3D<T,U,blasEngine>::Multiply(
      // This cancels out any affect beta could have. Beta is just not compatable with MM3D and must be handled separately
      std::vector<T> holdProduct(matrixC.getNumElems(),0);
 #ifdef TIMER
-    size_t index3 = timer.setStartTime("blasEngine::_gemm");
+    size_t index3 = timer.setStartTime("blasEngine::gemm");
 #endif
      blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
        &holdProduct[0], localDimensionM, localDimensionN, localDimensionK,
@@ -323,7 +323,7 @@ void MM3D<T,U,blasEngine>::Multiply(
        (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
        localDimensionM, srcPackage); 
 #ifdef TIMER
-    timer.setEndTime("blasEngine::_gemm", index3);
+    timer.setEndTime("blasEngine::gemm", index3);
     size_t index4 = timer.setStartTime("MM3D::_end1");
 #endif
     _end1(

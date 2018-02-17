@@ -74,27 +74,46 @@ int main(int argc, char** argv)
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
 
     // Perform a "cold run" first before keeping tracking of times
-    CFR3D<double,int,cblasEngine>::Factor(matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+    CFR3D<double,int,cblasEngine>::Factor(
+#ifdef TIMER
+      myTimer,
+#endif
+      matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+    myTimer.clear();
 
     if (methodKey2 == 1) {numIterations = atoi(argv[8]);}
     for (int i=0; i<numIterations; i++)
     {
-      myTimer.setStartTime();
-      CFR3D<double,int,cblasEngine>::Factor(matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
-      myTimer.setEndTime();
-      myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Lower", i);
+      size_t index1 = myTimer.setStartTime("CFR3D::Factor");
+      CFR3D<double,int,cblasEngine>::Factor(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+      myTimer.setEndTime("CFR3D::Factor", index1);
+      myTimer.finalize(MPI_COMM_WORLD);
+      myTimer.clear();
+      //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Lower", i);
     }
     if (methodKey2 == 0)
     {
-      CFvalidate<double,int>::validateLocal(matA, matL, 'L', MPI_COMM_WORLD);
+      CFvalidate<double,int>::validateLocal(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matL, 'L', MPI_COMM_WORLD);
     }
     else if (methodKey2 == 2)
     {
-      CFvalidate<double,int>::validateParallel(matA, matL, 'L', MPI_COMM_WORLD);
+      CFvalidate<double,int>::validateParallel(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matL, 'L', MPI_COMM_WORLD);
     }
     else
     {
-      myTimer.printRunStats(MPI_COMM_WORLD, "CFR3D Lower");
+      //myTimer.printRunStats(MPI_COMM_WORLD, "CFR3D Lower");
     }
   }
   else
@@ -106,27 +125,46 @@ int main(int argc, char** argv)
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
 
     // Perform a "cold run" first before keeping tracking of times
-    CFR3D<double,int,cblasEngine>::Factor(matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+    CFR3D<double,int,cblasEngine>::Factor(
+#ifdef TIMER
+      myTimer,
+#endif
+      matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+    myTimer.clear();
 
     if (methodKey2 == 1) {numIterations = atoi(argv[8]);}
     for (int i=0; i<numIterations; i++)
     {
-      myTimer.setStartTime();
-      CFR3D<double,int,cblasEngine>::Factor(matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
-      myTimer.setEndTime();
-      myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Upper", i);
+      size_t index1 = myTimer.setStartTime("CFR3D::Factor");
+      CFR3D<double,int,cblasEngine>::Factor(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+      myTimer.setEndTime("CFR3D::Factor", index1);
+      myTimer.finalize(MPI_COMM_WORLD);
+      myTimer.clear();
+      //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Upper", i);
     }
     if (methodKey2 == 0)
     {
-      CFvalidate<double,int>::validateLocal(matA, matR, 'U', MPI_COMM_WORLD);
+      CFvalidate<double,int>::validateLocal(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matR, 'U', MPI_COMM_WORLD);
     }
     else if (methodKey2 == 2)
     {
-      CFvalidate<double,int>::validateParallel(matA, matR, 'U', MPI_COMM_WORLD);
+      CFvalidate<double,int>::validateParallel(
+#ifdef TIMER
+        myTimer,
+#endif
+        matA, matR, 'U', MPI_COMM_WORLD);
     }
     else
     {
-      myTimer.printRunStats(MPI_COMM_WORLD, "CFR3D Upper");
+      //myTimer.printRunStats(MPI_COMM_WORLD, "CFR3D Upper");
     }
   }  
 
