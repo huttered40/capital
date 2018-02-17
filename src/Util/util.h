@@ -69,6 +69,7 @@ public:
                         Matrix<T,U,StructureArg3,Distribution>& matrixC,
                         char dir,
                         MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         MPI_Comm columnAltComm = MPI_COMM_WORLD
                       );
 
@@ -80,6 +81,7 @@ public:
 #endif
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
                         MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         MPI_Comm columnAltComm = MPI_COMM_WORLD
                       );
   static U getNextPowerOf2(U localShift);

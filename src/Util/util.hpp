@@ -188,6 +188,7 @@ void util<T,U>::validateResidualParallel(
                         Matrix<T,U,StructureArg3,Distribution>& matrixC,
                         char dir,
                         MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         MPI_Comm columnAltComm
                       )
 {
@@ -200,6 +201,7 @@ void util<T,U>::validateResidualParallel(
       timer,
 #endif
     commWorld);
+
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
   U pGridCoordY = std::get<2>(commInfo);
@@ -220,7 +222,7 @@ void util<T,U>::validateResidualParallel(
 #ifdef TIMER
       timer,
 #endif
-      matrixA, matrixB, matrixC, commWorld, blasArgs);
+      matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
   else if (dir == 'U')
   {
@@ -234,7 +236,7 @@ void util<T,U>::validateResidualParallel(
 #ifdef TIMER
       timer,
 #endif
-      matrixA, matrixB, matrixC, commWorld, blasArgs);
+      matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
   else if (dir == 'F')
   {
@@ -248,7 +250,7 @@ void util<T,U>::validateResidualParallel(
 #ifdef TIMER
       timer,
 #endif
-      matrixA, matrixB, matrixC, commWorld, blasArgs);
+      matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
   else if (dir == 'I')
   {
@@ -262,7 +264,7 @@ void util<T,U>::validateResidualParallel(
 #ifdef TIMER
       timer,
 #endif
-      matrixA, matrixB, matrixC, commWorld, blasArgs);
+      matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
     if (columnAltComm != MPI_COMM_WORLD)
     {
       MPI_Allreduce(MPI_IN_PLACE, matrixC.getRawData(), matrixC.getNumElems(), MPI_DOUBLE,
@@ -325,6 +327,7 @@ void util<T,U>::validateOrthogonalityParallel(
 #endif
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
                         MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         MPI_Comm columnAltComm
                       )
 {
@@ -362,7 +365,7 @@ void util<T,U>::validateOrthogonalityParallel(
 #ifdef TIMER
     timer,
 #endif
-    matrixQtrans,matrixQ,matrixI,'I',commWorld, columnAltComm);
+    matrixQtrans,matrixQ,matrixI,'I',commWorld, commInfo3D, columnAltComm);
   MPI_Comm_free(&sliceComm);
 }
 

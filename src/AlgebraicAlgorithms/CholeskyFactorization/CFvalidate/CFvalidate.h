@@ -50,7 +50,8 @@ public:
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
                         char dir,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                       );
 
 private:

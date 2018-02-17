@@ -156,25 +156,10 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(
     pTimer& timer,
 #endif
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,MPI_Comm commWorld, int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier)
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D, 
+      int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier)
 {
   // We assume data is owned relative to a 3D processor grid
-
-  int pGridDimensionSize;
-#ifdef TIMER
-  size_t index1 = timer.setStartTime("getCommunicatorSlice");
-#endif
-  auto commInfo3D = util<T,U>::getCommunicatorSlice(
-#ifdef TIMER
-    timer,
-#endif
-    commWorld);
-#ifdef TIMER
-  timer.setEndTime("getCommunicatorSlice", index1);
-#endif
-
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  pGridDimensionSize = std::get<4>(commInfo3D);
 
   U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
@@ -194,7 +179,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(
 #ifdef TIMER
     timer,
 #endif
-    matrixA, matrixQ2, matrixR1, commWorld, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+    matrixA, matrixQ2, matrixR1, commWorld, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
 #ifdef TIMER
   timer.setEndTime("CholeskyQR2::Factor3D_cqr", index2);
   size_t index3 = timer.setStartTime("CholeskyQR2::Factor3D_cqr");
@@ -203,7 +188,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(
 #ifdef TIMER
     timer,
 #endif
-    matrixQ2, matrixQ, matrixR2, commWorld, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+    matrixQ2, matrixQ, matrixR2, commWorld, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
 #ifdef TIMER
   timer.setEndTime("CholeskyQR2::Factor3D_cqr", index3);
 #endif
@@ -225,12 +210,10 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(
 #ifdef TIMER
     timer,
 #endif
-    matrixR2, matrixR1, matrixR, commWorld, gemmPack1, MMid);
+    matrixR2, matrixR1, matrixR, commWorld, commInfo3D, gemmPack1, MMid);
 #ifdef TIMER
   timer.setEndTime("MM3D::Multiply", index4);
 #endif
-
-  MPI_Comm_free(&std::get<0>(commInfo3D));
 }
 
 template<typename T,typename U,template<typename,typename> class blasEngine>
@@ -240,23 +223,16 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
     pTimer& timer,
 #endif
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld, int MMid, int TSid, int INVid, int inverseCutOffMultiplier,
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable, int MMid, int TSid, int INVid, int inverseCutOffMultiplier,
       int baseCaseMultiplier)
 {
-  // We assume data is owned relative to a 3D processor grid
-#ifdef TIMER
-  size_t index1 = timer.setStartTime("getTunableCommunicators");
-#endif
-  auto tunableCommunicators = getTunableCommunicators(
+  MPI_Comm miniCubeComm = std::get<5>(commInfoTunable);
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
 #ifdef TIMER
     timer,
 #endif
-    commWorld, gridDimensionD, gridDimensionC);
-#ifdef TIMER
-  timer.setEndTime("getTunableCommunicators", index1);
-#endif
-  MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
-
+    miniCubeComm);
 
   U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
@@ -277,7 +253,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
 #ifdef TIMER
     timer,
 #endif
-    matrixA, matrixQ2, matrixR1, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+    matrixA, matrixQ2, matrixR1, gridDimensionD, gridDimensionC, commWorld, commInfoTunable, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
 #ifdef TIMER
   timer.setEndTime("FactorTunable_cqr", index2);
   size_t index3 = timer.setStartTime("FactorTunable_cqr");
@@ -286,7 +262,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
 #ifdef TIMER
     timer,
 #endif
-    matrixQ2, matrixQ, matrixR2, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+    matrixQ2, matrixQ, matrixR2, gridDimensionD, gridDimensionC, commWorld, commInfoTunable, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
 #ifdef TIMER
   timer.setEndTime("FactorTunable_cqr", index3);
 #endif
@@ -308,17 +284,10 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
 #ifdef TIMER
     timer,
 #endif
-    matrixR2, matrixR1, matrixR, miniCubeComm, gemmPack1, MMid);
+    matrixR2, matrixR1, matrixR, miniCubeComm, commInfo3D, gemmPack1, MMid);
 #ifdef TIMER
   timer.setEndTime("MM3D::Multiply", index4);
 #endif
-
-  MPI_Comm_free(&std::get<0>(tunableCommunicators));
-  MPI_Comm_free(&std::get<1>(tunableCommunicators));
-  MPI_Comm_free(&std::get<2>(tunableCommunicators));
-  MPI_Comm_free(&std::get<3>(tunableCommunicators));
-  MPI_Comm_free(&std::get<4>(tunableCommunicators));
-  MPI_Comm_free(&std::get<5>(tunableCommunicators));
 }
 
 
@@ -417,20 +386,9 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
     pTimer& timer,
 #endif
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld, int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier)
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
+      int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier)
 {
-  int pGridDimensionSize;
-#ifdef TIMER
-  size_t index1 = timer.setStartTime("setUpCommunicators");
-#endif
-  auto commInfo3D = setUpCommunicators(
-#ifdef TIMER
-    timer,
-#endif
-    commWorld);
-#ifdef TIMER
-  timer.setEndTime("setUpCommunicators", index1);
-#endif
 
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
@@ -439,7 +397,6 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
   int pGridCoordX = std::get<4>(commInfo3D);
   int pGridCoordY = std::get<5>(commInfo3D);
   int pGridCoordZ = std::get<6>(commInfo3D);
-  MPI_Comm_size(rowComm, &pGridDimensionSize);
 
   // Need to perform the multiple steps to get our partition of matrixA
   U localDimensionN = matrixA.getNumColumnsLocal();		// no error check here, but hopefully 
@@ -514,7 +471,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
 #ifdef TIMER
     timer,
 #endif
-    matrixB, matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, commWorld, MMid, TSid);
+    matrixB, matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, commWorld, commInfo3D, MMid, TSid);
 #ifdef TIMER
   timer.setEndTime("CFR3D::Factor", index6);
 #endif
@@ -534,7 +491,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
 #ifdef TIMER
       timer,
 #endif
-      matrixA, matrixRI, matrixQ, commWorld, gemmPack1, 0);
+      matrixA, matrixRI, matrixQ, commWorld, commInfo3D, gemmPack1, 0);
 #ifdef TIMER
     timer.setEndTime("MM3D::Multiply", index7);
 #endif
@@ -553,16 +510,11 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
       timer,
 #endif
       matrixQ, matrixR, matrixRI, matrixA,
-      baseCaseDimList, gemmPack1, commWorld, MMid, TSid);
+      baseCaseDimList, gemmPack1, commWorld, commInfo3D, MMid, TSid);
 #ifdef TIMER
     timer.setEndTime("TRSM::iSolveUpperLeft", index8);
 #endif
   }
-
-  MPI_Comm_free(&rowComm);
-  MPI_Comm_free(&columnComm);
-  MPI_Comm_free(&sliceComm);
-  MPI_Comm_free(&depthComm);
 }
 
 template<typename T,typename U,template<typename,typename> class blasEngine>
@@ -573,7 +525,8 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
 #endif
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
-      std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators, int MMid, int TSid, int INVid, int inverseCutOffMultiplier,
+      std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm>& tunableCommunicators,
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D, int MMid, int TSid, int INVid, int inverseCutOffMultiplier,
         int baseCaseMultiplier)
 {
   MPI_Comm rowComm = std::get<0>(tunableCommunicators);
@@ -673,7 +626,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
 #ifdef TIMER
     timer,
 #endif
-    matrixB, matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, miniCubeComm, MMid, TSid);
+    matrixB, matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, miniCubeComm, commInfo3D, MMid, TSid);
 #ifdef TIMER
   timer.setEndTime("CFR3D::Factor", index6);
 #endif
@@ -688,7 +641,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
 #ifdef TIMER
       timer,
 #endif
-      matrixA, matrixRI, matrixQ, miniCubeComm, gemmPack1, MMid);
+      matrixA, matrixRI, matrixQ, miniCubeComm, commInfo3D, gemmPack1, MMid);
 #ifdef TIMER
     timer.setEndTime("MM3D::Multiply", index7);
 #endif
@@ -707,7 +660,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
       timer,
 #endif
       matrixQ, matrixR, matrixRI, matrixA,
-      baseCaseDimList, gemmPack1, miniCubeComm, MMid, TSid);
+      baseCaseDimList, gemmPack1, miniCubeComm, commInfo3D, MMid, TSid);
 #ifdef TIMER
     timer.setEndTime("TRSM3D::iSolveUpperLeft", index7);
 #endif

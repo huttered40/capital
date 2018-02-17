@@ -14,42 +14,28 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
   char dir,
   int tune,
   MPI_Comm commWorld,
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
   int MMid,
   int TSid
   )
 {
   // Need to split up the commWorld communicator into a 3D grid similar to Summa3D
-  int rank,size;
+  int pGridDimensionSize;
 #ifdef TIMER
-  size_t index1 = timer.setStartTime("MPI_Comm_rank");
-#endif
-  MPI_Comm_rank(commWorld, &rank);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_rank", index1);
   size_t index2 = timer.setStartTime("MPI_Comm_size");
 #endif
-  MPI_Comm_size(commWorld, &size);
+  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 #ifdef TIMER
   timer.setEndTime("MPI_Comm_size", index2);
 #endif
 
-  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+
   int helper = pGridDimensionSize;
   helper *= helper;
-  int pGridCoordX = rank%pGridDimensionSize;
-  int pGridCoordY = (rank%helper)/pGridDimensionSize;
-  int pGridCoordZ = rank/helper;
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
-
-  // Attain the communicator with only processors on the same 2D slice
-  MPI_Comm slice2D;
-#ifdef TIMER
-  size_t index3 = timer.setStartTime("MPI_Comm_split");
-#endif
-  MPI_Comm_split(commWorld, pGridCoordZ, rank, &slice2D);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_split", index3);
-#endif
 
   U localDimension = matrixA.getNumRowsLocal();
   U globalDimension = matrixA.getNumRowsGlobal();
@@ -84,8 +70,7 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
       timer,
 #endif
       matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, slice2D, commWorld,
-        isInversePath, baseCaseDimList, inverseCutOffGlobalDimension);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutOffGlobalDimension);
 #ifdef TIMER
     timer.setEndTime("rFactorLower", index4);
 #endif
@@ -102,8 +87,7 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
       timer,
 #endif
       matrixA, matrixT, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, slice2D, commWorld,
-        isInversePath, baseCaseDimList, inverseCutOffGlobalDimension);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutOffGlobalDimension);
 #ifdef TIMER
     timer.setEndTime("rFactorUpper", index4);
 #endif
@@ -141,8 +125,8 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   U transposePartner,
   int MM_id,
   int TS_id,
-  MPI_Comm slice2D,
   MPI_Comm commWorld, 	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
   bool& isInversePath,
   std::vector<U>& baseCaseDimList,
   U inverseCutoffGlobalDimension)
@@ -167,25 +151,20 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
     // Fourth: Save the data that each processor owns according to the cyclic rule.
 
-    int rankSlice,sizeSlice,sizeComm;
+    int rankSlice,sizeSlice,pGridDimensionSize;
 #ifdef TIMER
     size_t index1 = timer.setStartTime("MPI_Comm_size");
 #endif
-    MPI_Comm_size(commWorld, &sizeComm);
+    MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 #ifdef TIMER
     timer.setEndTime("MPI_Comm_size", index1);
     size_t index2 = timer.setStartTime("MPI_Comm_rank");
 #endif
-    MPI_Comm_rank(slice2D, &rankSlice);
+    MPI_Comm_rank(std::get<2>(commInfo3D), &rankSlice);
 #ifdef TIMER
     timer.setEndTime("MPI_Comm_rank", index2);
-    size_t index3 = timer.setStartTime("MPI_Comm_size");
 #endif
-    MPI_Comm_size(slice2D, &sizeSlice);
-#ifdef TIMER
-    timer.setEndTime("MPI_Comm_size", index3);
-#endif
-    int pGridDimensionSize = std::nearbyint(std::pow(sizeComm,1./3.));
+    sizeSlice = pGridDimensionSize*pGridDimensionSize;
 
     // Should be fast pass-by-value via move semantics
 #ifdef TIMER
@@ -196,7 +175,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       timer,
 #endif
       matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
-      matAstartY, matAendY, pGridDimensionSize, slice2D);
+      matAstartY, matAendY, pGridDimensionSize, std::get<2>(commInfo3D));
 #ifdef TIMER
     timer.setEndTime("CFR3D::blockedToCyclicTransformation", index4);
 #endif
@@ -405,7 +384,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, MM_id, TS_id,
-    slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
+    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   isInversePath = saveSwitch;
   int saveIndexAfter = baseCaseDimList.size();
@@ -459,7 +438,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       timer,
 #endif
       matrixA, packedMatrix, matrixL, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
-      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, blasArgs, true, false, true, MM_id);
+      0, localShift, 0, localShift, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, commWorld, commInfo3D, blasArgs, true, false, true, MM_id);
 #ifdef TIMER
     timer.setEndTime("MM3D::MultiplyCut", index5);
 #endif
@@ -530,7 +509,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       timer,
 #endif
       matrixLcopy,packedMatrixL, packedMatrix, matrixAcopy,
-      subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
+      subBaseCaseDimList, trsmArgs, commWorld, commInfo3D, MM_id, TS_id);
 #ifdef TIMER
     timer.setEndTime("TRSM::iSolveUpperLeft", index10);
 #endif
@@ -551,9 +530,8 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   // As of January 2017, still having trouble with SYRK.
 
   // Later optimization: avoid this recalculation at each recursive level, since it will always be the same.
-  int sizeWorld;
-  MPI_Comm_size(commWorld, &sizeWorld);
-  U pGridDimensionSize = ceil(pow(sizeWorld,1./3.));
+  int pGridDimensionSize;
+  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
   U reverseDimLocal = localDimension-localShift;
   U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
 
@@ -603,7 +581,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       timer,
 #endif
     squareL, squareLSwap, holdLsyrk, 0, localShift, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal,
-    0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
+    0, reverseDimLocal, 0, reverseDimLocal, commWorld, commInfo3D, blasArgs, false, false, false, MM_id);
 #ifdef TIMER
   timer.setEndTime("MM3D::MultiplyCut", index9);
 #endif
@@ -625,7 +603,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     holdLsyrk, matrixL, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY,
     matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, MM_id, TS_id,
-    slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
+    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   isInversePath = saveSwitch;
 
@@ -652,7 +630,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 #endif
       matrixL, matrixLI,
       tempInverse, matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, matLIstartX, matLIstartX+localShift, matLIstartY,
-        matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, invPackage1, true, true, false, MM_id);
+        matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, commInfo3D, invPackage1, true, true, false, MM_id);
 #ifdef TIMER
     timer.setEndTime("MM3D::MultiplyCut", index10);
 #endif
@@ -668,7 +646,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 #endif
       matrixLI, tempInverse,
       matrixLI, matLstartX+localShift, matLendX, matLstartY+localShift, matLendY, 0, localShift, 0, reverseDimLocal,
-        matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, invPackage1, true, false, true, MM_id);
+        matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, commWorld, commInfo3D, invPackage1, true, false, true, MM_id);
 #ifdef TIMER
     timer.setEndTime("MM3D::MultiplyCut", index11);
 #endif
@@ -705,8 +683,8 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
                        U transposePartner,
                        int MM_id,
                        int TS_id,
-                       MPI_Comm slice2D,
                        MPI_Comm commWorld,
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                        bool& isInversePath,
                        std::vector<U>& baseCaseDimList,
                        U inverseCutoffGlobalDimension
@@ -730,25 +708,20 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
     // Fourth: Save the data that each processor owns according to the cyclic rule.
 
-    int rankSlice,sizeSlice,sizeComm;
+    int rankSlice,sizeSlice,pGridDimensionSize;
 #ifdef TIMER
     size_t index1 = timer.setStartTime("MPI_Comm_size");
 #endif
-    MPI_Comm_size(commWorld, &sizeComm);
+    MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 #ifdef TIMER
     timer.setEndTime("MPI_Comm_size", index1);
     size_t index2 = timer.setStartTime("MPI_Comm_rank");
 #endif
-    MPI_Comm_rank(slice2D, &rankSlice);
+    MPI_Comm_rank(std::get<2>(commInfo3D), &rankSlice);
 #ifdef TIMER
     timer.setEndTime("MPI_Comm_rank", index2);
-    size_t index3 = timer.setStartTime("MPI_Comm_size");
 #endif
-    MPI_Comm_size(slice2D, &sizeSlice);
-#ifdef TIMER
-    timer.setEndTime("MPI_Comm_size", index3);
-#endif
-    int pGridDimensionSize = std::nearbyint(std::pow(sizeComm,1./3.));
+    sizeSlice = pGridDimensionSize*pGridDimensionSize;
 
     // Should be fast pass-by-value via move semantics
 #ifdef TIMER
@@ -759,7 +732,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       timer,
 #endif
       matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
-      matAstartY, matAendY, pGridDimensionSize, slice2D);
+      matAstartY, matAendY, pGridDimensionSize, std::get<2>(commInfo3D));
 #ifdef TIMER
     timer.setEndTime("CFR3D::blockedToCyclicTransformation", index4);
 #endif
@@ -963,7 +936,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift,
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, MM_id, TS_id,
-    slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
+    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   isInversePath = saveSwitch;
   int saveIndexAfter = baseCaseDimList.size();
@@ -1020,7 +993,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       timer,
 #endif
       packedMatrix, matrixA, matrixR, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
-      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, blasArgs, false, true, true, MM_id);
+      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, commWorld, commInfo3D, blasArgs, false, true, true, MM_id);
 #ifdef TIMER
     timer.setEndTime("MM3D::MultiplyCut", index3);
 #endif
@@ -1089,7 +1062,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       timer,
 #endif
       packedMatrixR, packedMatrix, matrixRcopy, matrixAcopy,
-      subBaseCaseDimList, trsmArgs, commWorld, MM_id, TS_id);
+      subBaseCaseDimList, trsmArgs, commWorld, commInfo3D, MM_id, TS_id);
 #ifdef TIMER
     timer.setEndTime("TRSM3D::iSolveLowerRight", index7);
 #endif
@@ -1105,9 +1078,8 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 #endif
   }
 
-  int sizeWorld;
-  MPI_Comm_size(commWorld, &sizeWorld);
-  U pGridDimensionSize = ceil(pow(sizeWorld,1./3.));
+  int pGridDimensionSize;
+  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
   U reverseDimLocal = localDimension-localShift;
   U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
 
@@ -1157,7 +1129,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     timer,
 #endif
     squareRSwap, squareR, holdRsyrk, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal, 0, localShift,
-    0, reverseDimLocal, 0, reverseDimLocal, commWorld, blasArgs, false, false, false, MM_id);
+    0, reverseDimLocal, 0, reverseDimLocal, commWorld, commInfo3D, blasArgs, false, false, false, MM_id);
 #ifdef TIMER
   timer.setEndTime("MM3D::MultiplyCut", index6);
 #endif
@@ -1179,7 +1151,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     holdRsyrk, matrixR, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     0, reverseDimLocal, 0, reverseDimLocal, matRstartX+localShift, matRendX, matRstartY+localShift, matRendY,
     matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, MM_id, TS_id,
-    slice2D, commWorld, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
+    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   isInversePath = saveSwitch;
 
@@ -1204,7 +1176,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       timer,
 #endif
       matrixR, matrixRI,tempInverse, matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift,
-      matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, invPackage1, true, true, false, MM_id);
+      matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, commInfo3D, invPackage1, true, true, false, MM_id);
 #ifdef TIMER
     timer.setEndTime("MM3D::MultiplyCut", index7);
 #endif
@@ -1220,7 +1192,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 #endif
       matrixRI, tempInverse,
       matrixRI, matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift, 0, reverseDimLocal, 0, localShift,
-        matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, invPackage1, true, false, true, MM_id);
+        matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, commWorld, commInfo3D, invPackage1, true, false, true, MM_id);
 #ifdef TIMER
     timer.setEndTime("MM3D::MultiplyCut", index8);
 #endif

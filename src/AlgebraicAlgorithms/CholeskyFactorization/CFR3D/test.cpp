@@ -74,25 +74,43 @@ int main(int argc, char** argv)
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
 
     // Perform a "cold run" first before keeping tracking of times
+    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+#ifdef TIMER
+      myTimer,
+#endif
+      MPI_COMM_WORLD);
     CFR3D<double,int,cblasEngine>::Factor(
 #ifdef TIMER
       myTimer,
 #endif
-      matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+      matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
     myTimer.clear();
+    MPI_Comm_free(&std::get<0>(commInfo3D));
+    MPI_Comm_free(&std::get<1>(commInfo3D));
+    MPI_Comm_free(&std::get<2>(commInfo3D));
+    MPI_Comm_free(&std::get<3>(commInfo3D));
 
     if (methodKey2 == 1) {numIterations = atoi(argv[8]);}
     for (int i=0; i<numIterations; i++)
     {
       size_t index1 = myTimer.setStartTime("CFR3D::Factor");
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+#ifdef TIMER
+        myTimer,
+#endif
+        MPI_COMM_WORLD);
       CFR3D<double,int,cblasEngine>::Factor(
 #ifdef TIMER
         myTimer,
 #endif
-        matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+        matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
       myTimer.setEndTime("CFR3D::Factor", index1);
       myTimer.finalize(MPI_COMM_WORLD);
       myTimer.clear();
+      MPI_Comm_free(&std::get<0>(commInfo3D));
+      MPI_Comm_free(&std::get<1>(commInfo3D));
+      MPI_Comm_free(&std::get<2>(commInfo3D));
+      MPI_Comm_free(&std::get<3>(commInfo3D));
       //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Lower", i);
     }
     if (methodKey2 == 0)
@@ -105,11 +123,20 @@ int main(int argc, char** argv)
     }
     else if (methodKey2 == 2)
     {
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+#ifdef TIMER
+        myTimer,
+#endif
+        MPI_COMM_WORLD);
       CFvalidate<double,int>::validateParallel(
 #ifdef TIMER
         myTimer,
 #endif
-        matA, matL, 'L', MPI_COMM_WORLD);
+        matA, matL, 'L', MPI_COMM_WORLD, commInfo3D);
+      MPI_Comm_free(&std::get<0>(commInfo3D));
+      MPI_Comm_free(&std::get<1>(commInfo3D));
+      MPI_Comm_free(&std::get<2>(commInfo3D));
+      MPI_Comm_free(&std::get<3>(commInfo3D));
     }
     else
     {
@@ -125,25 +152,43 @@ int main(int argc, char** argv)
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
 
     // Perform a "cold run" first before keeping tracking of times
+    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+#ifdef TIMER
+      myTimer,
+#endif
+      MPI_COMM_WORLD);
     CFR3D<double,int,cblasEngine>::Factor(
 #ifdef TIMER
       myTimer,
 #endif
-      matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+      matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
     myTimer.clear();
+    MPI_Comm_free(&std::get<0>(commInfo3D));
+    MPI_Comm_free(&std::get<1>(commInfo3D));
+    MPI_Comm_free(&std::get<2>(commInfo3D));
+    MPI_Comm_free(&std::get<3>(commInfo3D));
 
     if (methodKey2 == 1) {numIterations = atoi(argv[8]);}
     for (int i=0; i<numIterations; i++)
     {
       size_t index1 = myTimer.setStartTime("CFR3D::Factor");
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+#ifdef TIMER
+        myTimer,
+#endif
+        MPI_COMM_WORLD);
       CFR3D<double,int,cblasEngine>::Factor(
 #ifdef TIMER
         myTimer,
 #endif
-        matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, methodKey4);
+        matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
       myTimer.setEndTime("CFR3D::Factor", index1);
       myTimer.finalize(MPI_COMM_WORLD);
       myTimer.clear();
+      MPI_Comm_free(&std::get<0>(commInfo3D));
+      MPI_Comm_free(&std::get<1>(commInfo3D));
+      MPI_Comm_free(&std::get<2>(commInfo3D));
+      MPI_Comm_free(&std::get<3>(commInfo3D));
       //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Upper", i);
     }
     if (methodKey2 == 0)
@@ -156,11 +201,20 @@ int main(int argc, char** argv)
     }
     else if (methodKey2 == 2)
     {
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+#ifdef TIMER
+        myTimer,
+#endif
+        MPI_COMM_WORLD);
       CFvalidate<double,int>::validateParallel(
 #ifdef TIMER
         myTimer,
 #endif
-        matA, matR, 'U', MPI_COMM_WORLD);
+        matA, matR, 'U', MPI_COMM_WORLD, commInfo3D);
+      MPI_Comm_free(&std::get<0>(commInfo3D));
+      MPI_Comm_free(&std::get<1>(commInfo3D));
+      MPI_Comm_free(&std::get<2>(commInfo3D));
+      MPI_Comm_free(&std::get<3>(commInfo3D));
     }
     else
     {

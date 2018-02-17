@@ -51,7 +51,8 @@ public:
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                       );
 
   template<template<typename,typename,int> class Distribution>
@@ -64,7 +65,8 @@ public:
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
                         int gridDimensionD,
                         int gridDimensionC,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable
 		      );
 private:
   // 1D helper routines

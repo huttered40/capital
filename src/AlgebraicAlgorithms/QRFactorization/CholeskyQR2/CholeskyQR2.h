@@ -44,8 +44,8 @@ public:
     pTimer& timer,
 #endif
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld, int MMid = 0, int TSid = 1, int INVid = 0, int inverseCutOffMultiplier = 0,
-      int baseCaseMultiplier = 0);
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
+      int MMid = 0, int TSid = 1, int INVid = 0, int inverseCutOffMultiplier = 0, int baseCaseMultiplier = 0);
 
   template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
   static void FactorTunable(
@@ -53,7 +53,8 @@ public:
     pTimer& timer,
 #endif
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld, int MMid = 0, int TSid = 1,
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld, 
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable, int MMid = 0, int TSid = 1,
       int INVid = 0, int inverseCutOffMultiplier = 0, int baseCaseMultiplier = 0);
 
 private:
@@ -71,7 +72,8 @@ private:
     pTimer& timer,
 #endif
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
-    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld, int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier);
+    Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
+      int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier);
 
   template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
   static void FactorTunable_cqr(
@@ -80,7 +82,8 @@ private:
 #endif
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
-      std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators, int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier);
+      std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm>& tunableCommunicators,
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D, int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier);
   
   static void BroadcastPanels(
 #ifdef TIMER

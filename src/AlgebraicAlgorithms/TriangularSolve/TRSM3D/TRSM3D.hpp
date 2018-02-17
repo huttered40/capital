@@ -16,6 +16,7 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerLeft(
   std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
   MPI_Comm commWorld,
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
   int MM_id,
   int TR_id)
 {
@@ -39,26 +40,19 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
                        std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld,
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                        int MM_id,
                        int TR_id         // allows for benchmarking to see which version is faster 
                      )
 {
-  int rank,size;
+  int pGridDimensionSize;
 #ifdef TIMER
-  size_t index1 = timer.setStartTime("MPI_Comm_rank");
-#endif
-  MPI_Comm_rank(commWorld, &rank);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_rank", index1);
   size_t index2 = timer.setStartTime("MPI_Comm_size");
 #endif
-  MPI_Comm_size(commWorld, &size);
+  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 #ifdef TIMER
   timer.setEndTime("MPI_Comm_size", index2);
 #endif
-  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  int helper = pGridDimensionSize;
-  helper *= helper;
 
   // to catch debugging issues, assert that this has at least one size
   assert(baseCaseDimList.size());
@@ -113,7 +107,7 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
         timer,
 #endif
         matrixA.getRawData()+(offset3*matAendY), matrixUpartition.getRawData(), matrixB.getRawData()+(offset1*matBendY),
-        offset1-offset3, matAendY, arg2-arg1, arg4-arg3, matBendX-offset1, matBendY, commWorld, srcPackage);
+        offset1-offset3, matAendY, arg2-arg1, arg4-arg3, matBendX-offset1, matBendY, commWorld, commInfo3D, srcPackage);
 #ifdef TIMER
       timer.setEndTime("MM3D::MultiplyCut", index4);
 #endif
@@ -145,7 +139,7 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
       timer,
 #endif
       matrixB.getRawData()+(offset1*matBendY), matrixUIpartition.getRawData(), matrixA.getRawData()+(offset1*matAendY),
-      offset2-offset1, matBendY, save1, save1, save1, matAendY, commWorld, srcPackage);
+      offset2-offset1, matBendY, save1, save1, save1, matAendY, commWorld, commInfo3D, srcPackage);
 #ifdef TIMER
     timer.setEndTime("MM3D::MultiplyCut", index6);
 #endif
@@ -182,25 +176,18 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
   std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
   MPI_Comm commWorld,
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
   int MM_id,
   int TR_id)         // allows for benchmarking to see which version is faster 
 {
-  int rank,size;
+  int pGridDimensionSize;
 #ifdef TIMER
-  size_t index1 = timer.setStartTime("MPI_Comm_rank");
-#endif
-  MPI_Comm_rank(commWorld, &rank);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_rank", index1);
   size_t index2 = timer.setStartTime("MPI_Comm_size");
 #endif
-  MPI_Comm_size(commWorld, &size);
+  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 #ifdef TIMER
   timer.setEndTime("MPI_Comm_size", index2);
 #endif
-  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  int helper = pGridDimensionSize;
-  helper *= helper;
 
   // to catch debugging issues, assert that this has at least one size
   assert(baseCaseDimList.size());
@@ -247,7 +234,7 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
         timer,
 #endif
         matrixR, matrixA, matrixB, arg1, arg2, arg3, arg4, 0, matAendX, offset3, offset1,
-        0, matBendX, offset1, matBendY, commWorld, srcPackage, true, true, true, MM_id);
+        0, matBendX, offset1, matBendY, commWorld, commInfo3D, srcPackage, true, true, true, MM_id);
 #ifdef TIMER
       timer.setEndTime("MM3D::MultiplyCut", index3);
 #endif
@@ -268,7 +255,7 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
 #endif
       matrixRI, matrixB, matrixA, offset1, offset2, offset1, offset2,
       0, matBendX, offset1, offset2, 0, matAendX,
-      offset1, offset2, commWorld, srcPackage, true, true, true, MM_id);
+      offset1, offset2, commWorld, commInfo3D, srcPackage, true, true, true, MM_id);
 #ifdef TIMER
     timer.setEndTime("MM3D::MultiplyCut", index4);
 #endif
@@ -300,6 +287,7 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperRight(
   std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
   MPI_Comm commWorld,
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
   int MM_id,
   int TR_id)         // allows for benchmarking to see which version is faster 
 {

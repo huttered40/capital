@@ -48,6 +48,7 @@ public:
                       char dir,
                       int tune,
                       MPI_Comm commWorld,
+                      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                       int MM_id = 0,
                       int TS_id = 1
                     );
@@ -82,8 +83,8 @@ private:
                        U tranposePartner,
                        int MM_id,
                        int TS_id,
-                       MPI_Comm slice2D,
                        MPI_Comm commWorld,
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                        bool& isInversePath,
                        std::vector<U>& baseCaseDimList,
                        U inverseCutoffGlobalDimension = 0
@@ -117,8 +118,8 @@ private:
                        U transposePartner,
                        int MM_id,
                        int TS_id,
-                       MPI_Comm slice2D,
                        MPI_Comm commWorld,
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                        bool& isInversePath,
                        std::vector<U>& baseCaseDimList,
                        U inverseCutoffGlobalDimension = 0

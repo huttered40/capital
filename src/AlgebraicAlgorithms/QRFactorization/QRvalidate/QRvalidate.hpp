@@ -71,7 +71,8 @@ void QRvalidate<T,U>::validateParallel3D(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                       )
 {
   // generate A_computed = myQ*myR and compare against original A
@@ -79,12 +80,12 @@ void QRvalidate<T,U>::validateParallel3D(
 #ifdef TIMER
     timer,
 #endif
-    myQ, myR, matrixA, 'F', commWorld);
+    myQ, myR, matrixA, 'F', commWorld, commInfo3D);
   util<T,U>::validateOrthogonalityParallel(
 #ifdef TIMER
     timer,
 #endif
-    myQ,commWorld);
+    myQ,commWorld, commInfo3D);
   return;
 }
 
@@ -101,31 +102,27 @@ void QRvalidate<T,U>::validateParallelTunable(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
                         int gridDimensionD,
                         int gridDimensionC,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable
                       )
 {
-  auto tunableCommunicators = getTunableCommunicators(
+  MPI_Comm miniCubeComm = std::get<5>(commInfoTunable);
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
 #ifdef TIMER
-    timer,
+      timer,
 #endif
-    commWorld, gridDimensionD, gridDimensionC);
-  MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
-  MPI_Comm columnAltComm = std::get<2>(tunableCommunicators);
+      miniCubeComm);
+  MPI_Comm columnAltComm = std::get<2>(commInfoTunable);
   util<T,U>::validateResidualParallel(
 #ifdef TIMER
     timer,
 #endif
-    myQ, myR, matrixA, 'F', miniCubeComm);
+    myQ, myR, matrixA, 'F', miniCubeComm, commInfo3D);
   util<T,U>::validateOrthogonalityParallel(
 #ifdef TIMER
     timer,
 #endif
-    myQ, miniCubeComm, columnAltComm);
-  MPI_Comm_free(&std::get<0>(tunableCommunicators));
-  MPI_Comm_free(&std::get<1>(tunableCommunicators));
-  MPI_Comm_free(&std::get<2>(tunableCommunicators));
-  MPI_Comm_free(&std::get<3>(tunableCommunicators));
-  MPI_Comm_free(&std::get<4>(tunableCommunicators));
+    myQ, miniCubeComm, commInfo3D, columnAltComm);
   return;
 }
 

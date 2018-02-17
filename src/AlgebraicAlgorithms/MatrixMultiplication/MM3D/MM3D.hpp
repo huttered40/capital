@@ -83,6 +83,7 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         U matrixCnumColumns,
                                         U matrixCnumRows,
                                         MPI_Comm commWorld,
+                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
 			                                  int depthManipulation
                                    )
@@ -100,17 +101,6 @@ void MM3D<T,U,blasEngine>::Multiply(
   U localDimensionK = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixAnumColumns : matrixAnumRows);
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-#ifdef TIMER
-  size_t index1 = timer.setStartTime("setUpCommunicators");
-#endif
-  auto commInfo3D = setUpCommunicators(
-#ifdef TIMER
-    timer,
-#endif
-    commWorld, depthManipulation);
-#ifdef TIMER
-  timer.setEndTime("setUpCommunicators", index1);
-#endif
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
   MPI_Comm sliceComm = std::get<2>(commInfo3D);
@@ -192,10 +182,6 @@ void MM3D<T,U,blasEngine>::Multiply(
   }
   if (!isRootRow) delete[] foreignA;
   if (!isRootColumn) delete[] foreignB;
-  MPI_Comm_free(&rowComm);
-  MPI_Comm_free(&columnComm);
-  MPI_Comm_free(&sliceComm);
-  MPI_Comm_free(&depthComm);
 }
 
 
@@ -218,6 +204,7 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         Matrix<T,U,StructureC,Distribution>& matrixC,
                                         MPI_Comm commWorld,
+                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
                   			                int methodKey, // I chose an integer instead of another template parameter
 			                                  int depthManipulation
@@ -226,17 +213,6 @@ void MM3D<T,U,blasEngine>::Multiply(
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
-#ifdef TIMER
-  size_t index1 = timer.setStartTime("setUpCommunicators");
-#endif
-  auto commInfo3D = setUpCommunicators(
-#ifdef TIMER
-    timer,
-#endif
-    commWorld, depthManipulation);
-#ifdef TIMER
-  timer.setEndTime("setUpCommunicators", index1);
-#endif
   T* matrixAEnginePtr;
   T* matrixBEnginePtr;
   std::vector<T> matrixAEngineVector;
@@ -354,6 +330,7 @@ void MM3D<T,U,blasEngine>::Multiply(
                                    	    Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         MPI_Comm commWorld,
+                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
 					                              int methodKey,						// I chose an integer instead of another template parameter
 			                                  int depthManipulation
@@ -368,11 +345,6 @@ void MM3D<T,U,blasEngine>::Multiply(
   // Need to do the end_1 fix, same as above. Fix if there is sufficient reason to use TRSM instead of GEMM after testing on Cletus
   assert(0);
 
-  auto commInfo3D = setUpCommunicators(
-#ifdef TIMER
-    timer,
-#endif
-    commWorld, depthManipulation);
   T* matrixAEnginePtr;
   T* matrixBEnginePtr;
   std::vector<T> matrixAEngineVector;
@@ -456,6 +428,7 @@ void MM3D<T,U,blasEngine>::Multiply(
                                    	    Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         MPI_Comm commWorld,
+                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                                    )
 {
@@ -465,8 +438,6 @@ void MM3D<T,U,blasEngine>::Multiply(
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
-
-  auto commInfo3D = setUpCommunicators(commWorld);
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
@@ -506,10 +477,6 @@ void MM3D<T,U,blasEngine>::Multiply(
   // in a syrk, we will end up with a symmetric matrix, so we should serialize into packed buffer first to avoid half the communication!
   MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
 
-  MPI_Comm_free(&rowComm);
-  MPI_Comm_free(&transComm);
-  MPI_Comm_free(&sliceComm);
-  MPI_Comm_free(&depthComm);
 */
 }
 
@@ -540,6 +507,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 				        U matrixCcutYstart,
 				        U matrixCcutYend,
 				        MPI_Comm commWorld,
+                std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
 				        const blasEngineArgumentPackage_gemm<T>& srcPackage,
 				        bool cutA,
 				        bool cutB,
@@ -562,16 +530,15 @@ void MM3D<T,U,blasEngine>::Multiply(
   U sizeC = matrixC.getNumElems(rangeC_y, rangeC_z);
 
   int size;
+  int pGridDimensionSize;
 
 #ifdef TIMER
   size_t index1 = timer.setStartTime("MPI_Comm_size");
 #endif
-  MPI_Comm_size(commWorld, &size);
+  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 #ifdef TIMER
   timer.setEndTime("MPI_Comm_size", index1);
 #endif
-
-  int pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
 #ifdef TIMER
@@ -611,7 +578,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 #ifdef TIMER
     timer,
 #endif
-    (cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, srcPackage, methodKey, depthManipulation);
+    (cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, commInfo3D, srcPackage, methodKey, depthManipulation);
 #ifdef TIMER
   timer.setEndTime("MM3D::Multiply", index5);
 #endif
@@ -652,6 +619,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 				      U matrixBcutXstart,
 				      U matrixBcutXend,
 				      MPI_Comm commWorld,
+              std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
 				      const blasEngineArgumentPackage_trmm<T>& srcPackage,
 				      bool cutA,
 				      bool cutB,
@@ -669,9 +637,8 @@ void MM3D<T,U,blasEngine>::Multiply(
   U rangeB_x = matrixBcutXend-matrixBcutXstart;
   U rangeB_z = matrixBcutZend-matrixBcutZstart;
 
-  int size;
-  MPI_Comm_size(commWorld, &size);
-  int pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
+  int pGridDimensionSize;
+  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
   U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
@@ -723,6 +690,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 				      U matrixBcutXstart,
 				      U matrixBcutXend,
 				      MPI_Comm commWorld,
+              std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
 				      const blasEngineArgumentPackage_syrk<T>& srcPackage,
 				      bool cutA,
 				      bool cutB
@@ -895,10 +863,6 @@ void MM3D<T,U,blasEngine>::_end1(
 #endif
   }
 
-  MPI_Comm_free(&rowComm);
-  MPI_Comm_free(&columnComm);
-  MPI_Comm_free(&sliceComm);
-  MPI_Comm_free(&depthComm);
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine

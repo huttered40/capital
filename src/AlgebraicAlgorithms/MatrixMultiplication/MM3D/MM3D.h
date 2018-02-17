@@ -58,6 +58,7 @@ public:
                  U matrixCnumColumns,
                  U matrixCnumRows,
                  MPI_Comm commWorld,
+                 std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                  const blasEngineArgumentPackage_gemm<T>& srcPackage,
                  int depthManipulation = 0
              );
@@ -76,6 +77,7 @@ public:
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         Matrix<T,U,StructureC,Distribution>& matrixC,
                         MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
 			                  int methodKey = 0,
 			                  int depthManipulation = 0
@@ -93,6 +95,7 @@ public:
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,
                         MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
 			                  int methodKey = 0,
 			                  int depthManipulation = 0
@@ -110,6 +113,7 @@ public:
                         Matrix<T,U,StructureA,Distribution>& matrixA,
                         Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
                         MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         const blasEngineArgumentPackage_syrk<T>& srcPackage
                       );
 
@@ -139,6 +143,7 @@ public:
                         U matrixCcutYstart,
                         U matrixCcutYend,
                         MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
                         bool cutA,
                         bool cutB,
@@ -167,6 +172,7 @@ public:
                         U matrixBcutXstart,
                         U matrixBcutXend,
                         MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
                         bool cutA,
                         bool cutB,
@@ -194,6 +200,7 @@ public:
                         U matrixBcutXstart,
                         U matrixBcutXend,
                         MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         const blasEngineArgumentPackage_syrk<T>& srcPackage,
                         bool cutA = true,
                         bool cutB = true

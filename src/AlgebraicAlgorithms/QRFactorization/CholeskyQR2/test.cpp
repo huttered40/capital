@@ -133,26 +133,44 @@ int main(int argc, char** argv)
     matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
 
     // Perform "cold run"
+    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+#ifdef TIMER
+      myTimer,
+#endif
+      MPI_COMM_WORLD);
     CholeskyQR2<double,int,cblasEngine>::Factor3D(
 #ifdef TIMER
       myTimer,
 #endif
-      matA, matQ, matR, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+      matA, matQ, matR, MPI_COMM_WORLD, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
     myTimer.clear();
+    MPI_Comm_free(&std::get<0>(commInfo3D));
+    MPI_Comm_free(&std::get<1>(commInfo3D));
+    MPI_Comm_free(&std::get<2>(commInfo3D));
+    MPI_Comm_free(&std::get<3>(commInfo3D));
 
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
       //matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
       size_t index1 = myTimer.setStartTime("CholeskyQR2::Factor3D");
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+#ifdef TIMER
+        myTimer,
+#endif
+        MPI_COMM_WORLD);
       CholeskyQR2<double,int,cblasEngine>::Factor3D(
 #ifdef TIMER
         myTimer,
 #endif
-        matA, matQ, matR, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+        matA, matQ, matR, MPI_COMM_WORLD, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
       myTimer.setEndTime("CholeskyQR2::Factor3D", index1);
       myTimer.finalize(MPI_COMM_WORLD);
       myTimer.clear();
+      MPI_Comm_free(&std::get<0>(commInfo3D));
+      MPI_Comm_free(&std::get<1>(commInfo3D));
+      MPI_Comm_free(&std::get<2>(commInfo3D));
+      MPI_Comm_free(&std::get<3>(commInfo3D));
       //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "3D-CQR2 iteration", i);
     }
     if (methodKey2 == 0)
@@ -163,11 +181,20 @@ int main(int argc, char** argv)
     {
       // matrix A was corrupted in CQR2, so reset it.
       //matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+#ifdef TIMER
+        myTimer,
+#endif
+        MPI_COMM_WORLD);
       QRvalidate<double,int>::validateParallel3D(
 #ifdef TIMER
         myTimer,
 #endif
-        matA, matQ, matR, MPI_COMM_WORLD);
+        matA, matQ, matR, MPI_COMM_WORLD, commInfo3D);
+      MPI_Comm_free(&std::get<0>(commInfo3D));
+      MPI_Comm_free(&std::get<1>(commInfo3D));
+      MPI_Comm_free(&std::get<2>(commInfo3D));
+      MPI_Comm_free(&std::get<3>(commInfo3D));
     }
     else
     {
@@ -267,12 +294,23 @@ int main(int argc, char** argv)
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
 
     // Perform "cold run"
+    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> commInfoTunable = getTunableCommunicators(
+#ifdef TIMER
+      myTimer,
+#endif
+      MPI_COMM_WORLD, dimensionD, dimensionC);
     CholeskyQR2<double,int,cblasEngine>::FactorTunable(
 #ifdef TIMER
       myTimer,
 #endif
-      matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+      matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
     myTimer.clear();
+    MPI_Comm_free(&std::get<0>(commInfoTunable));
+    MPI_Comm_free(&std::get<1>(commInfoTunable));
+    MPI_Comm_free(&std::get<2>(commInfoTunable));
+    MPI_Comm_free(&std::get<3>(commInfoTunable));
+    MPI_Comm_free(&std::get<4>(commInfoTunable));
+    MPI_Comm_free(&std::get<5>(commInfoTunable));
 
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
@@ -280,14 +318,25 @@ int main(int argc, char** argv)
       // reset the matrix before timer starts
       matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
       size_t index1 = myTimer.setStartTime("CholeskyQR2::FactorTunable");
+      commInfoTunable = getTunableCommunicators(
+#ifdef TIMER
+        myTimer,
+#endif
+        MPI_COMM_WORLD, dimensionD, dimensionC);
       CholeskyQR2<double,int,cblasEngine>::FactorTunable(
 #ifdef TIMER
         myTimer,
 #endif
-        matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+        matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
       myTimer.setEndTime("CholeskyQR2::FactorTunable", index1);
       myTimer.finalize(MPI_COMM_WORLD);
       myTimer.clear();
+      MPI_Comm_free(&std::get<0>(commInfoTunable));
+      MPI_Comm_free(&std::get<1>(commInfoTunable));
+      MPI_Comm_free(&std::get<2>(commInfoTunable));
+      MPI_Comm_free(&std::get<3>(commInfoTunable));
+      MPI_Comm_free(&std::get<4>(commInfoTunable));
+      MPI_Comm_free(&std::get<5>(commInfoTunable));
       //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "Tunable CQR2 iteration", i);
     }
     if (methodKey2 == 0)
@@ -298,11 +347,22 @@ int main(int argc, char** argv)
     {
       // reset the matrix that was corrupted by TRSM in CQR2
       matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+      commInfoTunable = getTunableCommunicators(
+#ifdef TIMER
+        myTimer,
+#endif
+        MPI_COMM_WORLD, dimensionD, dimensionC);
       QRvalidate<double,int>::validateParallelTunable(
 #ifdef TIMER
         myTimer,
 #endif
-        matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD);
+        matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
+      MPI_Comm_free(&std::get<0>(commInfoTunable));
+      MPI_Comm_free(&std::get<1>(commInfoTunable));
+      MPI_Comm_free(&std::get<2>(commInfoTunable));
+      MPI_Comm_free(&std::get<3>(commInfoTunable));
+      MPI_Comm_free(&std::get<4>(commInfoTunable));
+      MPI_Comm_free(&std::get<5>(commInfoTunable));
     }
     else
     {

@@ -84,7 +84,8 @@ void CFvalidate<T,U>::validateParallel(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTri,
                         char dir,
-                        MPI_Comm commWorld
+                        MPI_Comm commWorld,
+                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                       )
 {
   int rank,size;
@@ -115,7 +116,7 @@ void CFvalidate<T,U>::validateParallel(
 #ifdef TIMER
     timer,
 #endif
-    (dir == 'L' ? matrixTri : matrixTriTrans), (dir == 'L' ? matrixTriTrans : matrixTri), matrixA, dir, commWorld);
+    (dir == 'L' ? matrixTri : matrixTriTrans), (dir == 'L' ? matrixTriTrans : matrixTri), matrixA, dir, commWorld, commInfo3D);
 }
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
