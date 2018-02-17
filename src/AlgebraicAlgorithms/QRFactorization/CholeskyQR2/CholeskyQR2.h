@@ -83,6 +83,9 @@ private:
       std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators, int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier);
   
   static void BroadcastPanels(
+#ifdef TIMER
+        pTimer& timer,
+#endif
 				std::vector<T>& data,
 				U size,
 				bool isRoot,

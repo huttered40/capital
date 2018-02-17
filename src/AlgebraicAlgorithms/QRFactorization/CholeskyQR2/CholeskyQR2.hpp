@@ -8,24 +8,74 @@ static std::tuple<
 			MPI_Comm,
 			MPI_Comm
 		 >
-		getTunableCommunicators(MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC)
+		getTunableCommunicators(
+#ifdef TIMER
+      pTimer& timer,
+#endif
+      MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC)
 {
   int worldRank, worldSize, sliceRank, columnRank;
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("MPI_Comm_rank");
+#endif
   MPI_Comm_rank(commWorld, &worldRank);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_rank", index1);
+  size_t index2= timer.setStartTime("MPI_Comm_size");
+#endif
   MPI_Comm_size(commWorld, &worldSize);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_size", index2);
+#endif
 
   int sliceSize = pGridDimensionD*pGridDimensionC;
   MPI_Comm sliceComm, rowComm, columnComm, columnContigComm, columnAltComm, depthComm, miniCubeComm;
+#ifdef TIMER
+  size_t index3 = timer.setStartTime("MPI_Comm_split");
+#endif
   MPI_Comm_split(commWorld, worldRank/sliceSize, worldRank, &sliceComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_split", index3);
+#endif
   MPI_Comm_rank(sliceComm, &sliceRank);
+#ifdef TIMER
+  size_t index4 = timer.setStartTime("MPI_Comm_split");
+#endif
   MPI_Comm_split(sliceComm, sliceRank/pGridDimensionC, sliceRank, &rowComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_split", index4);
+#endif
   int cubeInt = worldRank%sliceSize;
+#ifdef TIMER
+  size_t index5 = timer.setStartTime("MPI_Comm_split");
+#endif
   MPI_Comm_split(commWorld, cubeInt/(pGridDimensionC*pGridDimensionC), worldRank, &miniCubeComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_split", index5);
+  size_t index6 = timer.setStartTime("MPI_Comm_split");
+#endif
   MPI_Comm_split(commWorld, cubeInt, worldRank, &depthComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_split", index6);
+  size_t index7 = timer.setStartTime("MPI_Comm_split");
+#endif
   MPI_Comm_split(sliceComm, sliceRank%pGridDimensionC, sliceRank, &columnComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_split", index7);
+#endif
   MPI_Comm_rank(columnComm, &columnRank);
+#ifdef TIMER
+  size_t index8 = timer.setStartTime("MPI_Comm_split");
+#endif
   MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_split", index8);
+  size_t index9 = timer.setStartTime("MPI_Comm_split");
+#endif
   MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
+#ifdef TIMER
+  timer.setEndTime("MPI_Comm_split", index9);
+#endif
   
   MPI_Comm_free(&columnComm);
   return std::make_tuple(rowComm, columnContigComm, columnAltComm, depthComm, sliceComm, miniCubeComm);
@@ -34,27 +84,53 @@ static std::tuple<
 
 template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::Factor1D(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+void CholeskyQR2<T,U,blasEngine>::Factor1D(
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld)
 {
   // We assume data is owned relative to a 1D processor grid, so every processor owns a chunk of data consisting of
   //   all columns and a block of rows.
 
-  int numPEs;
-  MPI_Comm_size(commWorld, &numPEs);
   U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
-  U localDimensionM = matrixA.getNumRowsLocal();//globalDimensionM/numPEs;		// no error check here, but hopefully 
+  U localDimensionM = matrixA.getNumRowsLocal();
 
+#ifdef TIMER
+  size_t index2 = timer.setStartTime("3 Matrix generation in CQR2");
+#endif
   Matrix<T,U,StructureA,Distribution> matrixQ2(std::vector<T>(localDimensionM*globalDimensionN), globalDimensionN, localDimensionM, globalDimensionN,
     globalDimensionM, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR1(std::vector<T>(globalDimensionN*globalDimensionN), globalDimensionN, globalDimensionN, globalDimensionN,
     globalDimensionN, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(globalDimensionN*globalDimensionN), globalDimensionN, globalDimensionN, globalDimensionN,
     globalDimensionN, true);
+#ifdef TIMER
+  timer.setEndTime("3 Matrix generation in CQR2", index2);
+#endif
 
-  Factor1D_cqr(matrixA, matrixQ2, matrixR1, commWorld);
-  Factor1D_cqr(matrixQ2, matrixQ, matrixR2, commWorld);
+#ifdef TIMER
+  size_t index3 = timer.setStartTime("CholeskyQR2::Factor1D_cqr");
+#endif
+  Factor1D_cqr(
+#ifdef TIMER
+    timer,
+#endif
+    matrixA, matrixQ2, matrixR1, commWorld);
+#ifdef TIMER
+  timer.setEndTime("CholeskyQR2::Factor1D_cqr", index3);
+  size_t index4 = timer.setStartTime("CholeskyQR2::Factor1D_cqr");
+#endif
+  Factor1D_cqr(
+#ifdef TIMER
+    timer,
+#endif
+    matrixQ2, matrixQ, matrixR2, commWorld);
+#ifdef TIMER
+  timer.setEndTime("CholeskyQR2::Factor1D_cqr", index4);
+#endif
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -63,21 +139,39 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D(Matrix<T,U,StructureA,Distribution>& 
   gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
   gemmPack1.alpha = 1.;
   gemmPack1.beta = 0.;
+#ifdef TIMER
+  size_t index5 = timer.setStartTime("gemm");
+#endif
   blasEngine<T,U>::_gemm(matrixR2.getRawData(), matrixR1.getRawData(), matrixR.getRawData(), globalDimensionN, globalDimensionN,
     globalDimensionN, globalDimensionN, globalDimensionN, globalDimensionN, gemmPack1);
+#ifdef TIMER
+  timer.setEndTime("gemm", index5);
+#endif
 }
 
 template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::Factor3D(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+void CholeskyQR2<T,U,blasEngine>::Factor3D(
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,MPI_Comm commWorld, int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier)
 {
   // We assume data is owned relative to a 3D processor grid
 
-  int numPEs, myRank, pGridDimensionSize;
-  MPI_Comm_size(commWorld, &numPEs);
-  MPI_Comm_size(commWorld, &myRank);
-  auto commInfo3D = util<T,U>::getCommunicatorSlice(commWorld);
+  int pGridDimensionSize;
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("getCommunicatorSlice");
+#endif
+  auto commInfo3D = util<T,U>::getCommunicatorSlice(
+#ifdef TIMER
+    timer,
+#endif
+    commWorld);
+#ifdef TIMER
+  timer.setEndTime("getCommunicatorSlice", index1);
+#endif
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   pGridDimensionSize = std::get<4>(commInfo3D);
@@ -93,8 +187,26 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(Matrix<T,U,StructureA,Distribution>& 
     globalDimensionN, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
     globalDimensionN, true);
-  Factor3D_cqr(matrixA, matrixQ2, matrixR1, commWorld, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
-  Factor3D_cqr(matrixQ2, matrixQ, matrixR2, commWorld, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+#ifdef TIMER
+  size_t index2 = timer.setStartTime("CholeskyQR2::Factor3D_cqr");
+#endif
+  Factor3D_cqr(
+#ifdef TIMER
+    timer,
+#endif
+    matrixA, matrixQ2, matrixR1, commWorld, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+#ifdef TIMER
+  timer.setEndTime("CholeskyQR2::Factor3D_cqr", index2);
+  size_t index3 = timer.setStartTime("CholeskyQR2::Factor3D_cqr");
+#endif
+  Factor3D_cqr(
+#ifdef TIMER
+    timer,
+#endif
+    matrixQ2, matrixQ, matrixR2, commWorld, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+#ifdef TIMER
+  timer.setEndTime("CholeskyQR2::Factor3D_cqr", index3);
+#endif
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -106,23 +218,43 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(Matrix<T,U,StructureA,Distribution>& 
 
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
-  MM3D<T,U,blasEngine>::Multiply(matrixR2, matrixR1, matrixR, commWorld, gemmPack1, MMid);
+#ifdef TIMER
+  size_t index4 = timer.setStartTime("MM3D::Multiply");
+#endif
+  MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+    timer,
+#endif
+    matrixR2, matrixR1, matrixR, commWorld, gemmPack1, MMid);
+#ifdef TIMER
+  timer.setEndTime("MM3D::Multiply", index4);
+#endif
 
   MPI_Comm_free(&std::get<0>(commInfo3D));
 }
 
 template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+void CholeskyQR2<T,U,blasEngine>::FactorTunable(
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld, int MMid, int TSid, int INVid, int inverseCutOffMultiplier,
       int baseCaseMultiplier)
 {
   // We assume data is owned relative to a 3D processor grid
-  int numPEs, myRank, pGridDimensionSize;
-  MPI_Comm_size(commWorld, &numPEs);
-  MPI_Comm_rank(commWorld, &myRank);
-
-  auto tunableCommunicators = getTunableCommunicators(commWorld, gridDimensionD, gridDimensionC);
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("getTunableCommunicators");
+#endif
+  auto tunableCommunicators = getTunableCommunicators(
+#ifdef TIMER
+    timer,
+#endif
+    commWorld, gridDimensionD, gridDimensionC);
+#ifdef TIMER
+  timer.setEndTime("getTunableCommunicators", index1);
+#endif
   MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
 
 
@@ -138,8 +270,26 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distributi
     globalDimensionN, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
     globalDimensionN, true);
-  FactorTunable_cqr(matrixA, matrixQ2, matrixR1, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
-  FactorTunable_cqr(matrixQ2, matrixQ, matrixR2, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+#ifdef TIMER
+  size_t index2 = timer.setStartTime("FactorTunable_cqr");
+#endif
+  FactorTunable_cqr(
+#ifdef TIMER
+    timer,
+#endif
+    matrixA, matrixQ2, matrixR1, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+#ifdef TIMER
+  timer.setEndTime("FactorTunable_cqr", index2);
+  size_t index3 = timer.setStartTime("FactorTunable_cqr");
+#endif
+  FactorTunable_cqr(
+#ifdef TIMER
+    timer,
+#endif
+    matrixQ2, matrixQ, matrixR2, gridDimensionD, gridDimensionC, commWorld, tunableCommunicators, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+#ifdef TIMER
+  timer.setEndTime("FactorTunable_cqr", index3);
+#endif
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -151,7 +301,17 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distributi
 
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
-  MM3D<T,U,blasEngine>::Multiply(matrixR2, matrixR1, matrixR, miniCubeComm, gemmPack1, MMid);
+#ifdef TIMER
+  size_t index4 = timer.setStartTime("MM3D::Multiply");
+#endif
+  MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+    timer,
+#endif
+    matrixR2, matrixR1, matrixR, miniCubeComm, gemmPack1, MMid);
+#ifdef TIMER
+  timer.setEndTime("MM3D::Multiply", index4);
+#endif
 
   MPI_Comm_free(&std::get<0>(tunableCommunicators));
   MPI_Comm_free(&std::get<1>(tunableCommunicators));
@@ -164,15 +324,16 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(Matrix<T,U,StructureA,Distributi
 
 template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld)
 {
-  int numPEs;
-  MPI_Comm_size(commWorld, &numPEs);
-
   // Changed from syrk to gemm
   U localDimensionM = matrixA.getNumRowsLocal();
-  U localDimensionN = matrixA.getNumColumnsGlobal();//globalDimensionM/numPEs;		// no error check here, but hopefully 
+  U localDimensionN = matrixA.getNumColumnsGlobal();
   std::vector<T> localMMvec(localDimensionN*localDimensionN);
   blasEngineArgumentPackage_syrk<T> syrkPack;
   syrkPack.order = blasEngineOrder::AblasColumnMajor;
@@ -181,13 +342,25 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,Distributio
   syrkPack.alpha = 1.;
   syrkPack.beta = 0.;
 
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("syrk");
+#endif
   blasEngine<T,U>::_syrk(matrixA.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionM,
     localDimensionM, localDimensionN, syrkPack);
+#ifdef TIMER
+  timer.setEndTime("syrk", index1);
+#endif
 
   // MPI_Allreduce first to replicate the dimensionY x dimensionY matrix on each processor
   // Optimization potential: only allReduce half of this matrix because its symmetric
   //   but only try this later to see if it actually helps, because to do this, I will have to serialize and re-serialize. Would only make sense if dimensionX is huge.
+#ifdef TIMER
+  size_t index2 = timer.setStartTime("MPI_Allreduce");
+#endif
   MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DOUBLE, MPI_SUM, commWorld);
+#ifdef TIMER
+  timer.setEndTime("MPI_Allreduce", index2);
+#endif
 
   // For correctness, because we are storing R and RI as square matrices AND using GEMM later on for Q=A*RI, lets manually set the lower-triangular portion of R to zeros
   //   Note that we could also do this before the AllReduce, but it wouldnt affect the cost
@@ -200,13 +373,25 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,Distributio
   }
 
   // Now, localMMvec is replicated on every processor in commWorld
+#ifdef TIMER
+  size_t index3 = timer.setStartTime("LAPACK_DPOTRF");
+#endif
   LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
+#ifdef TIMER
+  timer.setEndTime("LAPACK_DPOTRF", index3);
+#endif
 
   // Need a true copy to avoid corrupting R-inverse.
   std::vector<T> RI = matrixR.getVectorData();
 
   // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
+#ifdef TIMER
+  size_t index4 = timer.setStartTime("LAPACK_DTRTRI");
+#endif
   LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionN, &RI[0], localDimensionN);
+#ifdef TIMER
+  timer.setEndTime("LAPACK_DTRTRI", index4);
+#endif
 
   // Finish by performing local matrix multiplication Q = A*R^{-1}
   blasEngineArgumentPackage_gemm<T> gemmPack;
@@ -215,19 +400,37 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(Matrix<T,U,StructureA,Distributio
   gemmPack.transposeB = blasEngineTranspose::AblasNoTrans;
   gemmPack.alpha = 1.;
   gemmPack.beta = 0.;
+#ifdef TIMER
+  size_t index5 = timer.setStartTime("gemm");
+#endif
   blasEngine<T,U>::_gemm(matrixA.getRawData(), &RI[0], matrixQ.getRawData(), localDimensionM, localDimensionN,
     localDimensionN, localDimensionM, localDimensionN, localDimensionM, gemmPack);
+#ifdef TIMER
+  timer.setEndTime("gemm", index5);
+#endif
 }
 
 template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld, int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier)
 {
-  int numPEs, myRank, pGridDimensionSize;
-  MPI_Comm_size(commWorld, &numPEs);
-  MPI_Comm_rank(commWorld, &myRank);
-  auto commInfo3D = setUpCommunicators(commWorld);
+  int pGridDimensionSize;
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("setUpCommunicators");
+#endif
+  auto commInfo3D = setUpCommunicators(
+#ifdef TIMER
+    timer,
+#endif
+    commWorld);
+#ifdef TIMER
+  timer.setEndTime("setUpCommunicators", index1);
+#endif
 
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
@@ -249,7 +452,17 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
   // No optimization here I am pretty sure due to final result being symmetric, as it is cyclic and transpose isnt true as I have painfully found out before.
-  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
+#ifdef TIMER
+  size_t index2 = timer.setStartTime("BroadcastPanels");
+#endif
+  BroadcastPanels(
+#ifdef TIMER
+    timer,
+#endif
+    (isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
+#ifdef TIMER
+  timer.setEndTime("BroadcastPanels", index2);
+#endif
 
   std::vector<T> localB(localDimensionN*localDimensionN);
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -260,13 +473,31 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
   gemmPack1.beta = 0.;
 
   // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
+#ifdef TIMER
+  size_t index3 = timer.setStartTime("gemm");
+#endif
   blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], &localB[0], localDimensionN, localDimensionN,
     localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
+#ifdef TIMER
+  timer.setEndTime("gemm", index3);
+#endif
 
+#ifdef TIMER
+  size_t index4 = timer.setStartTime("MPI_Reduce");
+#endif
   MPI_Reduce((isRootColumn ? MPI_IN_PLACE : &localB[0]), &localB[0], localDimensionN*localDimensionN, MPI_DOUBLE,
     MPI_SUM, pGridCoordZ, columnComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Reduce", index4);
+#endif
 
+#ifdef TIMER
+  size_t index5 = timer.setStartTime("MPI_Bcast");
+#endif
   MPI_Bcast(&localB[0], localDimensionN*localDimensionN, MPI_DOUBLE, pGridCoordY, depthComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Bcast", index5);
+#endif
 
   // Stuff localB vector into its own matrix so that we can pass it into CFR3D
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixB(std::move(localB), localDimensionN, localDimensionN,
@@ -276,7 +507,17 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     matrixA.getNumColumnsGlobal(), matrixA.getNumColumnsGlobal(), true);
 
-  std::vector<U> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, commWorld, MMid, TSid);
+#ifdef TIMER
+  size_t index6 = timer.setStartTime("CFR3D::Factor");
+#endif
+  std::vector<U> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(
+#ifdef TIMER
+    timer,
+#endif
+    matrixB, matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, commWorld, MMid, TSid);
+#ifdef TIMER
+  timer.setEndTime("CFR3D::Factor", index6);
+#endif
 
 
 // For now, comment this out, because I am experimenting with using TriangularSolve TRSM instead of MM3D
@@ -286,7 +527,17 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
   if (!INVid)
   {
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
-    MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, commWorld, gemmPack1, 0);
+#ifdef TIMER
+    size_t index7 = timer.setStartTime("MM3D::Multiply");
+#endif
+    MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixA, matrixRI, matrixQ, commWorld, gemmPack1, 0);
+#ifdef TIMER
+    timer.setEndTime("MM3D::Multiply", index7);
+#endif
   }
   else
   {
@@ -294,8 +545,18 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixA,
+#ifdef TIMER
+    size_t index8 = timer.setStartTime("TRSM::iSolveUpperLeft");
+#endif
+    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
+#ifdef TIMER
+      timer,
+#endif
+      matrixQ, matrixR, matrixRI, matrixA,
       baseCaseDimList, gemmPack1, commWorld, MMid, TSid);
+#ifdef TIMER
+    timer.setEndTime("TRSM::iSolveUpperLeft", index8);
+#endif
   }
 
   MPI_Comm_free(&rowComm);
@@ -306,7 +567,11 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(Matrix<T,U,StructureA,Distributio
 
 template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
+void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
+#ifdef TIMER
+    pTimer& timer,
+#endif
+    Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,StructureA,Distribution>& matrixQ,
     Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
       std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm> tunableCommunicators, int MMid, int TSid, int INVid, int inverseCutOffMultiplier,
         int baseCaseMultiplier)
@@ -317,9 +582,8 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
   MPI_Comm depthComm = std::get<3>(tunableCommunicators);
   MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
 
-  int worldRank,worldSize;
+  int worldRank;
   MPI_Comm_rank(commWorld, &worldRank);
-  MPI_Comm_size(commWorld, &worldSize);
   int sliceSize = gridDimensionD*gridDimensionC;
   int pCoordX = worldRank%gridDimensionC;
   int pCoordY = (worldRank%sliceSize)/gridDimensionC;
@@ -341,7 +605,17 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
   bool isRootColumn = ((columnContigRank == pCoordZ) ? true : false);
 
   // No optimization here I am pretty sure due to final result being symmetric, as it is cyclic and transpose isnt true as I have painfully found out before.
-  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pCoordZ, rowComm);
+#ifdef TIMER
+  size_t index1 = timer.setStartTime("BroadcastPanels");
+#endif
+  BroadcastPanels(
+#ifdef TIMER
+    timer,
+#endif
+    (isRootRow ? dataA : foreignA), sizeA, isRootRow, pCoordZ, rowComm);
+#ifdef TIMER
+  timer.setEndTime("BroadcastPanels", index1);
+#endif
 
   std::vector<T> localB(localDimensionN*localDimensionN);
   blasEngineArgumentPackage_gemm<T> gemmPack1;
@@ -352,15 +626,37 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
   gemmPack1.beta = 0.;
 
   // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
+#ifdef TIMER
+  size_t index2 = timer.setStartTime("gemm");
+#endif
   blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], &localB[0], localDimensionN, localDimensionN,
     localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
+#ifdef TIMER
+  timer.setEndTime("gemm", index2);
+#endif
 
+#ifdef TIMER
+  size_t index3 = timer.setStartTime("MPI_Reduce");
+#endif
   MPI_Reduce((isRootColumn ? MPI_IN_PLACE : &localB[0]), &localB[0], localDimensionN*localDimensionN, MPI_DOUBLE,
     MPI_SUM, pCoordZ, columnContigComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Reduce", index3);
+  size_t index4 = timer.setStartTime("MPI_Allreduce");
+#endif
   MPI_Allreduce(MPI_IN_PLACE, &localB[0], localDimensionN*localDimensionN, MPI_DOUBLE,
     MPI_SUM, columnAltComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Allreduce", index4);
+#endif
 
+#ifdef TIMER
+  size_t index5 = timer.setStartTime("MPI_Bcast");
+#endif
   MPI_Bcast(&localB[0], localDimensionN*localDimensionN, MPI_DOUBLE, columnContigRank, depthComm);
+#ifdef TIMER
+  timer.setEndTime("MPI_Bcast", index5);
+#endif
 
   // Stuff localB vector into its own matrix so that we can pass it into CFR3D
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixB(std::move(localB), localDimensionN, localDimensionN,
@@ -370,12 +666,32 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     globalDimensionN, globalDimensionN, true);
 
-  std::vector<U> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(matrixB, matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, miniCubeComm, MMid, TSid);
+#ifdef TIMER
+  size_t index6 = timer.setStartTime("CFR3D::Factor");
+#endif
+  std::vector<U> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(
+#ifdef TIMER
+    timer,
+#endif
+    matrixB, matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, miniCubeComm, MMid, TSid);
+#ifdef TIMER
+  timer.setEndTime("CFR3D::Factor", index6);
+#endif
 
   if (!INVid)
   {
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
-    MM3D<T,U,blasEngine>::Multiply(matrixA, matrixRI, matrixQ, miniCubeComm, gemmPack1, MMid);
+#ifdef TIMER
+    size_t index7 = timer.setStartTime("MM3D::Multiply");
+#endif
+    MM3D<T,U,blasEngine>::Multiply(
+#ifdef TIMER
+      timer,
+#endif
+      matrixA, matrixRI, matrixQ, miniCubeComm, gemmPack1, MMid);
+#ifdef TIMER
+    timer.setEndTime("MM3D::Multiply", index7);
+#endif
   }
   else
   {
@@ -383,8 +699,18 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(matrixQ, matrixR, matrixRI, matrixA,
+#ifdef TIMER
+    size_t index7 = timer.setStartTime("TRSM3D::iSolveUpperLeft");
+#endif
+    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
+#ifdef TIMER
+      timer,
+#endif
+      matrixQ, matrixR, matrixRI, matrixA,
       baseCaseDimList, gemmPack1, miniCubeComm, MMid, TSid);
+#ifdef TIMER
+    timer.setEndTime("TRSM3D::iSolveUpperLeft", index7);
+#endif
   }
 
 
@@ -393,6 +719,9 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(Matrix<T,U,StructureA,Distri
 
 template<typename T,typename U, template<typename,typename> class blasEngine>
 void CholeskyQR2<T,U,blasEngine>::BroadcastPanels(
+#ifdef TIMER
+                      pTimer& timer,
+#endif
 											std::vector<T>& data,
 											U size,
 											bool isRoot,

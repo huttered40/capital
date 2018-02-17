@@ -45,6 +45,9 @@ public:
   // We require that for a 3D algorithm, Q is square and R is square
   template<template<typename,typename,int> class Distribution>
   static void validateParallel3D(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -53,6 +56,9 @@ public:
 
   template<template<typename,typename,int> class Distribution>
   static void validateParallelTunable(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -67,9 +73,11 @@ private:
   static T testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld);
   static T getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>& myR, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld);
 
+/*
   template<template<typename,typename,int> class Distribution>
   static T testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                                U globalDimensionM, U globalDimensionN, MPI_Comm commWorld);
+*/
 
   template<template<typename,typename,int> class Distribution>
   static std::vector<T> getReferenceMatrix1D(

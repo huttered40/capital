@@ -65,6 +65,9 @@ void QRvalidate<T,U>::validateLocal1D(
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void QRvalidate<T,U>::validateParallel3D(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -72,8 +75,16 @@ void QRvalidate<T,U>::validateParallel3D(
                       )
 {
   // generate A_computed = myQ*myR and compare against original A
-  util<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', commWorld);
-  util<T,U>::validateOrthogonalityParallel(myQ,commWorld);
+  util<T,U>::validateResidualParallel(
+#ifdef TIMER
+    timer,
+#endif
+    myQ, myR, matrixA, 'F', commWorld);
+  util<T,U>::validateOrthogonalityParallel(
+#ifdef TIMER
+    timer,
+#endif
+    myQ,commWorld);
   return;
 }
 
@@ -82,6 +93,9 @@ void QRvalidate<T,U>::validateParallel3D(
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void QRvalidate<T,U>::validateParallelTunable(
+#ifdef TIMER
+                        pTimer& timer,
+#endif
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -90,11 +104,23 @@ void QRvalidate<T,U>::validateParallelTunable(
                         MPI_Comm commWorld
                       )
 {
-  auto tunableCommunicators = getTunableCommunicators(commWorld, gridDimensionD, gridDimensionC);
+  auto tunableCommunicators = getTunableCommunicators(
+#ifdef TIMER
+    timer,
+#endif
+    commWorld, gridDimensionD, gridDimensionC);
   MPI_Comm miniCubeComm = std::get<5>(tunableCommunicators);
   MPI_Comm columnAltComm = std::get<2>(tunableCommunicators);
-  util<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', miniCubeComm);
-  util<T,U>::validateOrthogonalityParallel(myQ, miniCubeComm, columnAltComm);
+  util<T,U>::validateResidualParallel(
+#ifdef TIMER
+    timer,
+#endif
+    myQ, myR, matrixA, 'F', miniCubeComm);
+  util<T,U>::validateOrthogonalityParallel(
+#ifdef TIMER
+    timer,
+#endif
+    myQ, miniCubeComm, columnAltComm);
   MPI_Comm_free(&std::get<0>(tunableCommunicators));
   MPI_Comm_free(&std::get<1>(tunableCommunicators));
   MPI_Comm_free(&std::get<2>(tunableCommunicators));
@@ -249,6 +275,7 @@ T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& 
   return error;
 }
 
+/*
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
@@ -330,7 +357,7 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distr
   MPI_Comm_free(&sliceComm);
   return error;		// return 2-norm
 }
-
+*/
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
