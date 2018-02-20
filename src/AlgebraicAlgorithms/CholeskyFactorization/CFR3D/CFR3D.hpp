@@ -50,11 +50,12 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
   bcDimension = std::min(bcDimension, globalDimension/pGridDimensionSize);
 
   int save = inverseCutOffGlobalDimension;
-  inverseCutOffGlobalDimension = bcDimension;
+  inverseCutOffGlobalDimension = globalDimension;
   for (int i=0; i<save; i++)
   {
-    inverseCutOffGlobalDimension *= 2;
+    inverseCutOffGlobalDimension >>= 1;
   }
+  inverseCutOffGlobalDimension = std::max(bcDimension,inverseCutOffGlobalDimension);
 
   std::vector<U> baseCaseDimList;
 
