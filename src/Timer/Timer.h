@@ -120,11 +120,11 @@ public:
   {
     if (table.find(funcName) != table.end())
     {
-      this->table[funcName].first.push_back(std::chrono::system_clock::now());
+      this->table[funcName].first.push_back(MPI_Wtime());
     }
     else
     {// Difference between this and above is the necessary initialization of double timer
-      this->table[funcName].first.push_back(std::chrono::system_clock::now());
+      this->table[funcName].first.push_back(MPI_Wtime());
       this->table[funcName].second = 0;
     }
     return table[funcName].first.size()-1;
@@ -132,9 +132,8 @@ public:
 
   void setEndTime(const std::string& funcName, size_t index)
   {
-    std::chrono::time_point<std::chrono::system_clock> temp = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = temp - table[funcName].first[index];
-    double numSec = elapsed_seconds.count();
+    double temp = MPI_Wtime();
+    double numSec = temp - table[funcName].first[index];
     this->table[funcName].second += numSec;
   }
 
@@ -142,7 +141,7 @@ public:
   std::vector<std::string> functionNames;
 
 private:
-  std::map<std::string,std::pair<std::vector<std::chrono::time_point<std::chrono::system_clock> >,double> > table;
+  std::map<std::string,std::pair<std::vector<double>,double> > table;
 //  double totalMin, totalAvg, totalMax;                        // These are for keeping track of data from many runs
 //  int count;
 };
