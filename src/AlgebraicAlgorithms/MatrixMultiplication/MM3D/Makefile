@@ -10,7 +10,7 @@ MPI: $(OBJS2)MPI
 AMPI: $(OBJS2)AMPI
 
 $(OBJS2)MPI: $(OBJS2)MPI.o
-	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI $(OBJS2)MPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
+	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI $(OBJS2)MPI.o -L/home/hutter2/hutter2/ExternalLibraries/CRITTER/critter/lib /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lcritter -lpthread
 
 $(OBJS2)MPI.o: MM3D.h
 	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI.o -c test.cpp
