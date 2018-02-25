@@ -28,29 +28,29 @@ public:
   void clear()
   {
     this->table.clear();
-    this->functionNames.clear();
-    this->functionTimes.clear();
   }
 
   void finalize(MPI_Comm commWorld)
   {
+    std::vector<double> functionTimes;
+    std::vector<std::string> functionNames;
     // Obtain max time spent in each function
     // Number of such calls should be the same accross all processes
     for (auto mapIter = this->table.begin(); mapIter != this->table.end(); mapIter++)
     {
-      this->functionTimes.push_back(mapIter->second.second);
-      this->functionNames.push_back(mapIter->first);    // Yes, I know I could have used std::move or emplace_back.
+      functionTimes.push_back(mapIter->second.second);
+      functionNames.push_back(mapIter->first);    // Yes, I know I could have used std::move or emplace_back.
     }
 
     int rank;
     MPI_Comm_rank(commWorld, &rank);
-    MPI_Allreduce(MPI_IN_PLACE, &this->functionTimes[0], this->functionTimes.size(), MPI_DOUBLE, MPI_MAX, commWorld);
+    MPI_Allreduce(MPI_IN_PLACE, &functionTimes[0], functionTimes.size(), MPI_DOUBLE, MPI_MAX, commWorld);
 
     // Now put into a single buffer that can be sorted
-    std::vector<std::pair<std::string,double> > functionInfo(this->functionNames.size());
+    std::vector<std::pair<std::string,double> > functionInfo(functionNames.size());
     for (int i=0; i<functionInfo.size(); i++)
     {
-      functionInfo[i] = std::make_pair(this->functionNames[i], this->functionTimes[i]);
+      functionInfo[i] = std::make_pair(functionNames[i], functionTimes[i]);
     }
 
     std::sort(functionInfo.begin(), functionInfo.end(), compareFunctionInfo);
@@ -137,13 +137,8 @@ public:
     this->table[funcName].second += numSec;
   }
 
-  std::vector<double> functionTimes;
-  std::vector<std::string> functionNames;
-
 private:
   std::map<std::string,std::pair<std::vector<double>,double> > table;
-//  double totalMin, totalAvg, totalMax;                        // These are for keeping track of data from many runs
-//  int count;
 };
 
 #endif /* TIMER_H_ */
