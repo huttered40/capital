@@ -81,6 +81,9 @@ int main(int argc, char** argv)
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
+#ifdef CRITTER
+      Critter_Clear();
+#endif
       size_t index1 = myTimer.setStartTime("CholeskyQR2::Factor1D");
       CholeskyQR2<double,int,cblasEngine>::Factor1D(
 #ifdef TIMER
@@ -90,6 +93,9 @@ int main(int argc, char** argv)
       myTimer.setEndTime("CholeskyQR2::Factor1D", index1);
       myTimer.finalize(MPI_COMM_WORLD);
       myTimer.clear();
+#ifdef CRITTER
+      Critter_Print();
+#endif
       //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "1D-CQR2 iteration", i);
     }
     if (methodKey2 == 0)
@@ -153,6 +159,9 @@ int main(int argc, char** argv)
     for (int i=0; i<numIterations; i++)
     {
       //matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
+#ifdef CRITTER
+      Critter_Clear();
+#endif
       size_t index1 = myTimer.setStartTime("CholeskyQR2::Factor3D");
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
 #ifdef TIMER
@@ -167,6 +176,9 @@ int main(int argc, char** argv)
       myTimer.setEndTime("CholeskyQR2::Factor3D", index1);
       myTimer.finalize(MPI_COMM_WORLD);
       myTimer.clear();
+#ifdef CRITTER
+      Critter_Print();
+#endif
       MPI_Comm_free(&std::get<0>(commInfo3D));
       MPI_Comm_free(&std::get<1>(commInfo3D));
       MPI_Comm_free(&std::get<2>(commInfo3D));
@@ -211,7 +223,6 @@ int main(int argc, char** argv)
     int methodKey4 = atoi(argv[5]);
 
     // size -- total number of processors in the tunable grid
-    int numIterations = 1;
     int exponentM = atoi(argv[6]);
     int exponentN = atoi(argv[7]);
     int globalMatrixDimensionM = (methodKey3 ? (1<<exponentM) : exponentM);
@@ -272,12 +283,12 @@ int main(int argc, char** argv)
         dimensionD <<= (exponentNumPEs - exponentD - 2*exponentC);
       }
     }
-
+/*
     if (rank==0)
     {
       cout << "dimensionD - " << dimensionD << " and dimensionC - " << dimensionC << std::endl;
     }
-
+*/
     int sliceSize = dimensionD*dimensionC;
    int pCoordX = rank%dimensionC;
     int pCoordY = (rank%sliceSize)/dimensionC;
@@ -317,6 +328,9 @@ int main(int argc, char** argv)
     {
       // reset the matrix before timer starts
       matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+#ifdef CRITTER
+      Critter_Clear();
+#endif
       size_t index1 = myTimer.setStartTime("CholeskyQR2::FactorTunable");
       commInfoTunable = getTunableCommunicators(
 #ifdef TIMER
@@ -331,6 +345,9 @@ int main(int argc, char** argv)
       myTimer.setEndTime("CholeskyQR2::FactorTunable", index1);
       myTimer.finalize(MPI_COMM_WORLD);
       myTimer.clear();
+#ifdef CRITTER
+      Critter_Print();
+#endif
       MPI_Comm_free(&std::get<0>(commInfoTunable));
       MPI_Comm_free(&std::get<1>(commInfoTunable));
       MPI_Comm_free(&std::get<2>(commInfoTunable));

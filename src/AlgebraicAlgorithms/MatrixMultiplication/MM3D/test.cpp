@@ -109,6 +109,9 @@ int main(int argc, char** argv)
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
+#ifdef CRITTER
+      Critter_Clear();
+#endif
       size_t index1 = myTimer.setStartTime("MM3D::Multiply");
       commInfo3D = setUpCommunicators(
 #ifdef TIMER
@@ -123,6 +126,9 @@ int main(int argc, char** argv)
       myTimer.setEndTime("MM3D::Multiply", index1);
       myTimer.finalize(MPI_COMM_WORLD);
       myTimer.clear();
+#ifdef CRITTER
+      Critter_Print();
+#endif
       MPI_Comm_free(&std::get<0>(commInfo3D));
       MPI_Comm_free(&std::get<1>(commInfo3D));
       MPI_Comm_free(&std::get<2>(commInfo3D));
@@ -206,6 +212,9 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
+#ifdef CRITTER
+        Critter_Clear();
+#endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
         commInfo3D = setUpCommunicators(
 #ifdef TIMER
@@ -220,6 +229,9 @@ int main(int argc, char** argv)
         myTimer.setEndTime("MM3D::Multiply", index1);
         myTimer.finalize(MPI_COMM_WORLD);
         myTimer.clear();
+#ifdef CRITTER
+        Critter_Print();
+#endif
         MPI_Comm_free(&std::get<0>(commInfo3D));
         MPI_Comm_free(&std::get<1>(commInfo3D));
         MPI_Comm_free(&std::get<2>(commInfo3D));
@@ -278,6 +290,9 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
+#ifdef CRITTER
+        Critter_Clear();
+#endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
         commInfo3D = setUpCommunicators(
 #ifdef TIMER
@@ -292,6 +307,9 @@ int main(int argc, char** argv)
         myTimer.setEndTime("MM3D::Multiply", index1);
         myTimer.finalize(MPI_COMM_WORLD);
         myTimer.clear();
+#ifdef CRITTER
+        Critter_Print();
+#endif
         MPI_Comm_free(&std::get<0>(commInfo3D));
         MPI_Comm_free(&std::get<1>(commInfo3D));
         MPI_Comm_free(&std::get<2>(commInfo3D));
@@ -350,6 +368,9 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
+#ifdef CRITTER
+        Critter_Clear();
+#endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
         commInfo3D = setUpCommunicators(
 #ifdef TIMER
@@ -364,6 +385,9 @@ int main(int argc, char** argv)
         myTimer.setEndTime("MM3D::Multiply", index1);
         myTimer.finalize(MPI_COMM_WORLD);
         myTimer.clear();
+#ifdef CRITTER
+        Critter_Print();
+#endif
         MPI_Comm_free(&std::get<0>(commInfo3D));
         MPI_Comm_free(&std::get<1>(commInfo3D));
         MPI_Comm_free(&std::get<2>(commInfo3D));
@@ -422,6 +446,9 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
+#ifdef CRITTER
+        Critter_Clear();
+#endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
         commInfo3D = setUpCommunicators(
 #ifdef TIMER
@@ -436,6 +463,9 @@ int main(int argc, char** argv)
         myTimer.setEndTime("MM3D::Multiply", index1);
         myTimer.finalize(MPI_COMM_WORLD);
         myTimer.clear();
+#ifdef CRITTER
+        Critter_Print();
+#endif
         MPI_Comm_free(&std::get<0>(commInfo3D));
         MPI_Comm_free(&std::get<1>(commInfo3D));
         MPI_Comm_free(&std::get<2>(commInfo3D));

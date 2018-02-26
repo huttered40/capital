@@ -93,6 +93,9 @@ int main(int argc, char** argv)
     if (methodKey2 == 1) {numIterations = atoi(argv[8]);}
     for (int i=0; i<numIterations; i++)
     {
+#ifdef CRITTER
+      Critter_Clear();
+#endif
       size_t index1 = myTimer.setStartTime("CFR3D::Factor");
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
 #ifdef TIMER
@@ -107,6 +110,9 @@ int main(int argc, char** argv)
       myTimer.setEndTime("CFR3D::Factor", index1);
       myTimer.finalize(MPI_COMM_WORLD);
       myTimer.clear();
+#ifdef CRITTER
+      Critter_Print();
+#endif
       MPI_Comm_free(&std::get<0>(commInfo3D));
       MPI_Comm_free(&std::get<1>(commInfo3D));
       MPI_Comm_free(&std::get<2>(commInfo3D));
@@ -171,6 +177,9 @@ int main(int argc, char** argv)
     if (methodKey2 == 1) {numIterations = atoi(argv[8]);}
     for (int i=0; i<numIterations; i++)
     {
+#ifdef CRITTER
+      Critter_Clear();
+#endif
       size_t index1 = myTimer.setStartTime("CFR3D::Factor");
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
 #ifdef TIMER
@@ -185,6 +194,9 @@ int main(int argc, char** argv)
       myTimer.setEndTime("CFR3D::Factor", index1);
       myTimer.finalize(MPI_COMM_WORLD);
       myTimer.clear();
+#ifdef CRITTER
+      Critter_Print();
+#endif
       MPI_Comm_free(&std::get<0>(commInfo3D));
       MPI_Comm_free(&std::get<1>(commInfo3D));
       MPI_Comm_free(&std::get<2>(commInfo3D));
