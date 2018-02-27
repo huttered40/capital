@@ -15,6 +15,10 @@
 #include <map>
 #include <vector>
 
+// Local includes
+#include "../Util/shared.h"
+#include "CTFtimer.cxx"
+
 static bool compareFunctionInfo(const std::pair<std::string,double>& info1, const std::pair<std::string,double>& info2)
 {
   return info1.second < info2.second;
@@ -32,6 +36,7 @@ public:
 
   void finalize(MPI_Comm commWorld)
   {
+#ifndef CTFTIMER
     std::vector<double> functionTimes;
     std::vector<std::string> functionNames;
     // Obtain max time spent in each function
@@ -67,6 +72,7 @@ public:
       std::cout << "\n\n\n\n";
     }
     this->clear();
+#endif /*CTFTIMER*/
   }
 
 
@@ -118,6 +124,10 @@ public:
 
   size_t setStartTime(const std::string& funcName)
   {
+#ifdef CTFTIMER
+    TAU_FSTART(funcName);
+    return 0;
+#else
     if (table.find(funcName) != table.end())
     {
       this->table[funcName].first.push_back(MPI_Wtime());
@@ -128,13 +138,18 @@ public:
       this->table[funcName].second = 0;
     }
     return table[funcName].first.size()-1;
+#endif /*CTFTIMER*/
   }
 
   void setEndTime(const std::string& funcName, size_t index)
   {
+#ifdef CTFTIMER
+    TAU_FSTOP(funcName);
+#else
     double temp = MPI_Wtime();
     double numSec = temp - table[funcName].first[index];
     this->table[funcName].second += numSec;
+#endif /*CTFTIMER*/
   }
 
 private:

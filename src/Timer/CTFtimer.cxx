@@ -6,7 +6,7 @@
 //#include <algorithm>
 //#include <time.h>
 //#include "string.h"
-//#include <assert.h>
+#include <assert.h>
 //#include <iostream>
 //#include <vector>
 
@@ -14,9 +14,9 @@
 //#include "util.h"
 #include "CTFtimer.h"
 //#include "model.h"
-//#include "../interface/timer.h"
 
-using namespace CTF_int;
+// Comment out this guy, will help me see where the actual shit that uses this is
+//using namespace CTF_int;
 
 namespace CTF{
   #define MAX_TOT_SYMBOLS_LEN 1000000
@@ -29,13 +29,11 @@ namespace CTF{
   int set_contxt = 0;
   int output_file_counter = 0;
   
-  Function_timer::Function_timer(char const * name_, 
-                                 double const start_time_,
-                                 double const start_excl_time_){
-    ASSERT(strlen(name_)+1 < MAX_NAME_LENGTH);
-    //name = (char*)CTF_int::alloc(strlen(name_)+1);
-    //snprintf(name, MAX_NAME_LENGTH, "%s", name_);
-    strcpy(name, name_);
+  Function_timer::Function_timer(const std::string& name_, 
+                                 double start_time_,
+                                 double start_excl_time_)
+  {
+    name = name_;
     start_time = start_time_;
     start_excl_time = start_excl_time_;
     acc_time = 0.0;
@@ -74,19 +72,22 @@ namespace CTF{
     return total_time > w.total_time;
   }
 
-  void Function_timer::print(FILE *         output, 
-                             MPI_Comm const comm, 
-                             int const      rank,
-                             int const      np){
+  void Function_timer::print(FILE* output, 
+                             MPI_Comm comm, 
+                             int rank,
+                             int np)
+  {
     int i;
-    if (rank == 0){
-      fprintf(output, "%s", name);
-      char * space = (char*)CTF_int::alloc(MAX_NAME_LENGTH-strlen(name)+1);
-      for (i=0; i<MAX_NAME_LENGTH-(int)strlen(name); i++){
+    if (rank == 0)
+    {
+      fprintf(output, "%s", name.c_str());
+      std::string space(MAX_NAME_LENGTH-strlen(name.c_str())+1, ' ');
+      for (i=0; i<(MAX_NAME_LENGTH-(int)strlen(name.c_str())); i++)
+      {
         space[i] = ' ';
       }
       space[i] = '\0';
-      fprintf(output, "%s", space);
+      fprintf(output, "%s", space.c_str());
       fprintf(output,"%5d   %3d.%03d   %3d.%02d  %3d.%03d   %3d.%02d\n",
               total_calls/np,
               (int)(total_time/np),
@@ -97,18 +98,18 @@ namespace CTF{
               ((int)(1000.*(total_excl_time)/np))%1000,
               (int)(100.*(total_excl_time)/complete_time),
               ((int)(10000.*(total_excl_time)/complete_time))%100);
-      CTF_int::cdealloc(space);
     } 
   }
 
-  bool comp_name(Function_timer const & w1, Function_timer const & w2) {
-    return strcmp(w1.name, w2.name)>0;
+  bool comp_name(const Function_timer& w1, const Function_timer& w2) {
+    return strcmp(w1.name.c_str(), w2.name.c_str())>0;
   }
 
-  static std::vector<Function_timer> * function_timers = NULL;
+  static std::vector<Function_timer>* function_timers = NULL;
 
-  Timer::Timer(const char * name){
-  #ifdef PROFILE
+  Timer::Timer(const std::string& name){
+  #ifdef TIMER
+    std::cout << "Name - " << name << std::endl;
     int i;
     if (function_timers == NULL) {
       if (name[0] == 'M' && name[1] == 'P' && 
@@ -124,9 +125,7 @@ namespace CTF{
       function_timers->push_back(Function_timer(name, MPI_Wtime(), 0.0)); 
     } else {
       for (i=0; i<(int)function_timers->size(); i++){
-        if (strcmp((*function_timers)[i].name, name) == 0){
-          /*(*function_timers)[i].start_time = MPI_Wtime();
-          (*function_timers)[i].start_excl_time = excl_time;*/
+        if ((*function_timers)[i].name == name){
           break;
         }
       }
@@ -142,7 +141,7 @@ namespace CTF{
   }
     
   void Timer::start(){
-  #ifdef PROFILE
+  #ifdef TIMER
     if (exited != 2){
       exited = 0;
       (*function_timers)[index].start_time = MPI_Wtime();
@@ -152,7 +151,7 @@ namespace CTF{
   }
 
   void Timer::stop(){
-  #ifdef PROFILE
+  #ifdef TIMER
     if (exited == 0){
       int is_fin;
       MPI_Finalized(&is_fin);
@@ -172,7 +171,7 @@ namespace CTF{
 
   Timer::~Timer(){ }
 
-  void print_timers(char const * name){
+  void print_timers(const string& name){
     int rank, np, i, j, len_symbols, nrecv_symbols;
 
     int is_fin = 0;
@@ -182,22 +181,23 @@ namespace CTF{
     MPI_Comm_size(comm, &np);
 
 
-    char * all_symbols = (char*)CTF_int::alloc(MAX_TOT_SYMBOLS_LEN);
-    char * recv_symbols = (char*)CTF_int::alloc(MAX_TOT_SYMBOLS_LEN);
-    FILE * output = NULL;
+    std::string all_symbols(MAX_TOT_SYMBOLS_LEN, ' ');
+    std::string recv_symbols(MAX_TOT_SYMBOLS_LEN, ' ');
+    FILE* output = NULL;
 
-    CTF_int::update_all_models(comm);
+//  Lets comment out all of the 'model' stuff, I don't think I need it
+//    CTF_int::update_all_models(comm);
     if (rank == 0){
-      CTF_int::print_all_models();
+//      CTF_int::print_all_models();
 
       char filename[300];
       char part[300];
-      
-      sprintf(filename, "profile.%s.",name);
+
+      sprintf(filename, "profile.%s.", name.c_str());
       srand(time(NULL));
       sprintf(filename+strlen(filename), "%d.", output_file_counter);
       output_file_counter++;
-      
+
       int off;
       if (main_argc > 0){
         for (i=0; i<main_argc; i++){
@@ -236,42 +236,42 @@ namespace CTF{
     }
     len_symbols = 0;
     for (i=0; i<(int)function_timers->size(); i++){
-      sprintf(all_symbols+len_symbols, "%s", (*function_timers)[i].name);
-      len_symbols += strlen((*function_timers)[i].name)+1;
+      sprintf(&all_symbols[0]+len_symbols, "%s", (*function_timers)[i].name.c_str());
+      len_symbols += strlen((*function_timers)[i].name.c_str())+1;
     }
     if (np > 1){
       for (int lp=1; lp<log2(np)+1; lp++){
         int gap = 1<<lp;
         if (rank%gap == gap/2){
           PMPI_Send(&len_symbols, 1, MPI_INT, rank-gap/2, 1, comm);
-          PMPI_Send(all_symbols, len_symbols, MPI_CHAR, rank-gap/2, 2, comm);
+          PMPI_Send(all_symbols.c_str(), len_symbols, MPI_CHAR, rank-gap/2, 2, comm);
         }
         if (rank%gap==0 && rank+gap/2<np){
           MPI_Status stat;
           PMPI_Recv(&nrecv_symbols, 1, MPI_INT, rank+gap/2, 1, comm, &stat);
-          PMPI_Recv(recv_symbols, nrecv_symbols, MPI_CHAR, rank+gap/2, 2, comm, &stat);
-          for (i=0; i<nrecv_symbols; i+=strlen(recv_symbols+i)+1){
+          PMPI_Recv(&recv_symbols[0], nrecv_symbols, MPI_CHAR, rank+gap/2, 2, comm, &stat);
+          for (i=0; i<nrecv_symbols; i+=strlen(recv_symbols.c_str()+i)+1){
             j=0;
-            while (j<len_symbols && strcmp(all_symbols+j, recv_symbols+i) != 0){
-              j+=strlen(all_symbols+j)+1;
+            while (j<len_symbols && strcmp(all_symbols.c_str()+j, recv_symbols.c_str()+i) != 0){
+              j+=strlen(all_symbols.c_str()+j)+1;
             }
             
             if (j>=len_symbols){
-              sprintf(all_symbols+len_symbols, "%s", recv_symbols+i);
-              len_symbols += strlen(recv_symbols+i)+1;
+              sprintf(&all_symbols[0]+len_symbols, "%s", recv_symbols.c_str()+i);
+              len_symbols += strlen(recv_symbols.c_str()+i)+1;
             }
           }
         }
       }
       PMPI_Bcast(&len_symbols, 1, MPI_INT, 0, comm);
-      PMPI_Bcast(all_symbols, len_symbols, MPI_CHAR, 0, comm);
+      PMPI_Bcast(&all_symbols[0], len_symbols, MPI_CHAR, 0, comm);
       j=0;
       while (j<len_symbols){
-        Timer t(all_symbols+j);
-        j+=strlen(all_symbols+j)+1;
+        Timer t(all_symbols.c_str()+j);
+        j+=strlen(all_symbols.c_str()+j)+1;
       }
     }
-    ASSERT(len_symbols <= MAX_TOT_SYMBOLS_LEN);
+    assert(len_symbols <= MAX_TOT_SYMBOLS_LEN);
 
     std::sort(function_timers->begin(), function_timers->end(),comp_name);
     for (i=0; i<(int)function_timers->size(); i++){
@@ -284,21 +284,12 @@ namespace CTF{
         (*function_timers)[i].print(output,comm,rank,np);
       }
     }
-
-    cdealloc(recv_symbols);
-    cdealloc(all_symbols);
-    
-    /*  if (rank == 0){
-      fclose(output);
-    } */
-
   }
 
   void Timer::exit(){
-  #ifdef PROFILE
+  #ifdef TIMER
     if (set_contxt && original && !exited) {
       if (comm != MPI_COMM_WORLD){
-        //function_timers->clear();
         return;
       }
       print_timers("all");  
@@ -320,14 +311,14 @@ namespace CTF{
     set_contxt = 1;
   }
 
-  Timer_epoch::Timer_epoch(char const * name_){
-  #ifdef PROFILE
+  Timer_epoch::Timer_epoch(const string& name_){
+  #ifdef TIMER
     name = name_;
   #endif
   }
 
   void Timer_epoch::begin(){
-  #ifdef PROFILE
+  #ifdef TIMER
     tmr_outer = new Timer(name);
     tmr_outer->start();
     saved_function_timers = *function_timers;
@@ -340,7 +331,7 @@ namespace CTF{
   }
 
   void Timer_epoch::end(){
-  #ifdef PROFILE
+  #ifdef TIMER
     tmr_inner->stop();
     if (function_timers != NULL){
       function_timers->clear();
