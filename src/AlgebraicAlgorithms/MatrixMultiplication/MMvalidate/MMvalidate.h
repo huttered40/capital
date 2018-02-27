@@ -44,9 +44,6 @@ public:
     template<typename,typename,int> class Distribution
           >
   static void validateLocal(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
                         Matrix<T,U,StructureArgA,Distribution>& matrixA,
                         Matrix<T,U,StructureArgB,Distribution>& matrixB,
                         Matrix<T,U,StructureArgC,Distribution>& matrixC,
@@ -60,9 +57,6 @@ public:
     template<typename,typename,int> class Distribution
           >
   static void validateLocal(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
                         Matrix<T,U,StructureArgA,Distribution>& matrixA,
                         Matrix<T,U,StructureArgB,Distribution>& matrixBin,
                         Matrix<T,U,StructureArgB,Distribution>& matrixBout,

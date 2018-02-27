@@ -113,7 +113,7 @@ namespace CTF{
   // Timer is local to each MPI process, so there is no overlap or anything. If threading is added, might need to be careful, but we probably won't do
   //  task-thread-parallelism anyways so it should never really matter.
   Timer::Timer(const std::string& name){
-  #ifdef TIMER
+  #ifdef PROFILE
     int i;
     // This test should only pass once, on the very first instance of Timer
     if (function_timers == NULL)
@@ -149,7 +149,7 @@ namespace CTF{
   }
     
   void Timer::start(){
-  #ifdef TIMER
+  #ifdef PROFILE
     // Make sure that we don't time an MPI routine (for some weird reason, I may just change this, doesnt make much sense to me)
     // Index is set from the constructor of the Timer instance
     if (exited != 2){
@@ -161,7 +161,7 @@ namespace CTF{
   }
 
   void Timer::stop(){
-  #ifdef TIMER
+  #ifdef PROFILE
     // Note that when we started the timer, as long as exited wasn't equal to 2, we set exited<-0, so this should really pass most of the time
     if (exited == 0){
       int is_fin;
@@ -299,7 +299,7 @@ namespace CTF{
   }
 
   void Timer::exit(){
-  #ifdef TIMER
+  #ifdef PROFILE
     if (set_contxt && original && !exited) {
       if (comm != MPI_COMM_WORLD){
         return;
@@ -324,13 +324,13 @@ namespace CTF{
   }
 
   Timer_epoch::Timer_epoch(const string& name_){
-  #ifdef TIMER
+  #ifdef PROFILE
     name = name_;
   #endif
   }
 
   void Timer_epoch::begin(){
-  #ifdef TIMER
+  #ifdef PROFILE
     tmr_outer = new Timer(name);
     tmr_outer->start();
     saved_function_timers = *function_timers;
@@ -343,7 +343,7 @@ namespace CTF{
   }
 
   void Timer_epoch::end(){
-  #ifdef TIMER
+  #ifdef PROFILE
     tmr_inner->stop();
     if (function_timers != NULL){
       function_timers->clear();

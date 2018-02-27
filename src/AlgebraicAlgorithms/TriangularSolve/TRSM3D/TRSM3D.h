@@ -39,9 +39,6 @@ public:
     template<typename,typename,int> class Distribution
   >
   static void iSolveLowerLeft(
-#ifdef TIMER
-                       pTimer& timer,
-#endif
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
@@ -59,9 +56,6 @@ public:
     template<typename,typename,int> class Distribution
   >
   static void iSolveUpperLeft(
-#ifdef TIMER
-                       pTimer& timer,
-#endif
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
@@ -79,9 +73,6 @@ public:
     template<typename,typename,int> class Distribution
   >
   static void iSolveLowerRight(
-#ifdef TIMER
-                       pTimer& timer,
-#endif
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
@@ -99,9 +90,6 @@ public:
     template<typename,typename,int> class Distribution
   >
   static void iSolveUpperRight(
-#ifdef TIMER
-                       pTimer& timer,
-#endif
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
                        Matrix<T,U,StructureArg,Distribution>& matrixA,

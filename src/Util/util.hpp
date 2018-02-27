@@ -2,11 +2,9 @@
 
 template<typename T, typename U>
 std::vector<T> util<T,U>::blockedToCyclic(
-#ifdef TIMER
-  pTimer& timer,
-#endif
   std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize)
 {
+  TAU_FSTART(Util::blockedToCyclic);
   U aggregNumRows = localDimensionRows*pGridDimensionSize;
   U aggregNumColumns = localDimensionColumns*pGridDimensionSize;
   U aggregSize = aggregNumRows*aggregNumColumns;
@@ -36,6 +34,7 @@ std::vector<T> util<T,U>::blockedToCyclic(
 
   // Should be quick pass-by-value via move semantics, since we are effectively returning a localvariable that is going to lose its scope anyways,
   //   so the compiler should be smart enough to use the move constructor for the vector in the caller function.
+  TAU_FSTOP(Util::blockedToCyclic);
   return cyclicData;
 
 }
@@ -44,9 +43,6 @@ template<typename T, typename U>
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 std::vector<T> util<T,U>::getReferenceMatrix(
-#ifdef TIMER
-              pTimer& timer,
-#endif
               Matrix<T,U,StructureArg,Distribution>& myMatrix,
 							U key,
 							std::tuple<MPI_Comm, int, int, int, int> commInfo
@@ -88,9 +84,6 @@ std::vector<T> util<T,U>::getReferenceMatrix(
   MPI_Allgather(matrixPtr, localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, sliceComm);
 
   std::vector<T> cyclicMatrix = util<T,U>::blockedToCyclic(
-#ifdef TIMER
-    timer,
-#endif
     blockedMatrix, localNumRows, localNumColumns, pGridDimensionSize);
 
   // In case there are hidden zeros, we will recopy
@@ -113,15 +106,13 @@ std::vector<T> util<T,U>::getReferenceMatrix(
 template<typename T, typename U>
 template< template<typename,typename,template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution>
 void util<T,U>::transposeSwap(
-#ifdef TIMER
-                      pTimer& timer,
-#endif
 											Matrix<T,U,StructureArg,Distribution>& mat,
 											int myRank,
 											int transposeRank,
 											MPI_Comm commWorld
 										     )
 {
+  TAU_FSTART(Util::transposeSwap);
   if (myRank != transposeRank)
   {
     // Transfer with transpose rank
@@ -132,28 +123,17 @@ void util<T,U>::transposeSwap(
     //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
 
   }
+  TAU_FSTOP(Util::transposeSwap);
 }
 
 template<typename T, typename U>
 std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(
-#ifdef TIMER
-  pTimer& timer,
-#endif
   MPI_Comm commWorld)
 {
+  TAU_FSTART(Util::getCommunicatorSlice);
   int rank,size;
-#ifdef TIMER
-  size_t index1 = timer.setStartTime("MPI_Comm_rank");
-#endif
   MPI_Comm_rank(commWorld, &rank);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_rank", index1);
-  size_t index2 = timer.setStartTime("MPI_Comm_size");
-#endif
   MPI_Comm_size(commWorld, &size);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_size", index2);
-#endif
 
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   
@@ -164,13 +144,8 @@ std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(
   int pCoordZ = rank/helper;
 
   MPI_Comm sliceComm;
-#ifdef TIMER
-  size_t index3 = timer.setStartTime("MPI_Comm_split");
-#endif
   MPI_Comm_split(commWorld, pCoordZ, rank, &sliceComm);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_split", index3);
-#endif
+  TAU_FSTOP(Util::getCommunicatorSlice);
   return std::make_tuple(sliceComm, pCoordX, pCoordY, pCoordZ, pGridDimensionSize); 
 }
 
@@ -180,9 +155,6 @@ template< template<typename,typename,template<typename,typename,int> class> clas
   template<typename,typename,template<typename,typename,int> class> class StructureArg3,
   template<typename,typename,int> class Distribution>
 void util<T,U>::validateResidualParallel(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
                         Matrix<T,U,StructureArg1,Distribution>& matrixA,
                         Matrix<T,U,StructureArg2,Distribution>& matrixB,
                         Matrix<T,U,StructureArg3,Distribution>& matrixC,
@@ -197,9 +169,6 @@ void util<T,U>::validateResidualParallel(
   MPI_Comm_size(commWorld, &size);
 
   auto commInfo = getCommunicatorSlice(
-#ifdef TIMER
-      timer,
-#endif
     commWorld);
 
   MPI_Comm sliceComm = std::get<0>(commInfo);
@@ -219,9 +188,6 @@ void util<T,U>::validateResidualParallel(
     blasArgs.alpha = 1.;
     blasArgs.beta = -1.;
     MM3D<T,U,cblasEngine>::Multiply(
-#ifdef TIMER
-      timer,
-#endif
       matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
   else if (dir == 'U')
@@ -233,9 +199,6 @@ void util<T,U>::validateResidualParallel(
     blasArgs.alpha = 1.;
     blasArgs.beta = -1.;
     MM3D<T,U,cblasEngine>::Multiply(
-#ifdef TIMER
-      timer,
-#endif
       matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
   else if (dir == 'F')
@@ -247,9 +210,6 @@ void util<T,U>::validateResidualParallel(
     blasArgs.alpha = 1.;
     blasArgs.beta = -1.;
     MM3D<T,U,cblasEngine>::Multiply(
-#ifdef TIMER
-      timer,
-#endif
       matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
   else if (dir == 'I')
@@ -261,9 +221,6 @@ void util<T,U>::validateResidualParallel(
     blasArgs.alpha = 1.;
     blasArgs.beta = 0;
     MM3D<T,U,cblasEngine>::Multiply(
-#ifdef TIMER
-      timer,
-#endif
       matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
     if (columnAltComm != MPI_COMM_WORLD)
     {
@@ -322,9 +279,6 @@ template<typename T, typename U>
 template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>
 void util<T,U>::validateOrthogonalityParallel(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
@@ -336,9 +290,6 @@ void util<T,U>::validateOrthogonalityParallel(
   MPI_Comm_size(commWorld, &size);
 
   auto commInfo = getCommunicatorSlice(
-#ifdef TIMER
-    timer,
-#endif
     commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
@@ -351,9 +302,6 @@ void util<T,U>::validateOrthogonalityParallel(
 
   Matrix<T,U,StructureArg,Distribution> matrixQtrans = matrixQ;
   util<T,U>::transposeSwap(
-#ifdef TIMER
-    timer,
-#endif
     matrixQtrans, rank, transposePartner, commWorld);
   U localNumRows = matrixQtrans.getNumColumnsLocal();
   U localNumColumns = matrixQ.getNumColumnsLocal();
@@ -362,9 +310,6 @@ void util<T,U>::validateOrthogonalityParallel(
   U numElems = localNumRows*localNumColumns;
   Matrix<T,U,StructureArg,Distribution> matrixI(std::vector<T>(numElems,0), localNumColumns, localNumRows, globalNumColumns, globalNumRows, true);
   util<T,U>::validateResidualParallel(
-#ifdef TIMER
-    timer,
-#endif
     matrixQtrans,matrixQ,matrixI,'I',commWorld, commInfo3D, columnAltComm);
   MPI_Comm_free(&sliceComm);
 }
@@ -372,6 +317,7 @@ void util<T,U>::validateOrthogonalityParallel(
 template<typename T, typename U>
 U util<T,U>::getNextPowerOf2(U localShift)
 {
+  TAU_FSTART(Util::getNextPowerOf2);
   if ((localShift & (localShift-1)) != 0)
   {
     // move localShift up to the next power of 2
@@ -385,5 +331,6 @@ U util<T,U>::getNextPowerOf2(U localShift)
     localShift |= (localShift >> 32);
     localShift++;
   }
+  TAU_FSTOP(Util::getNextPowerOf2);
   return localShift;
 }

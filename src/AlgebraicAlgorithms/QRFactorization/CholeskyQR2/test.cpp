@@ -22,11 +22,9 @@ int main(int argc, char** argv)
   using MatrixTypeLT = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
   using MatrixTypeUT = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
 
-#ifdef TIMER
-#ifdef CTFTIMER
+#ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
-#endif /*CTFTIMER*/
-#endif /*TIMER*/
+#endif /*PROFILE*/
 
   // argv[1] - Matrix size x where x represents 2^x.
   // So in future, we might want t way to test non power of 2 dimension matrices
@@ -78,9 +76,6 @@ int main(int argc, char** argv)
     //cout << "Rank " << rank << " has local dimensionN - " << localMatrixDimensionN << ", localDimensionM - " << localMatrixDimensionM << endl;
     // Perform "cold run"
     CholeskyQR2<double,int,cblasEngine>::Factor1D(
-#ifdef TIMER
-      myTimer,
-#endif
       matA, matQ, matR, MPI_COMM_WORLD);
     myTimer.clear();
 
@@ -89,9 +84,6 @@ int main(int argc, char** argv)
     {
       size_t index1 = myTimer.setStartTime("CholeskyQR2::Factor1D");
       CholeskyQR2<double,int,cblasEngine>::Factor1D(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matQ, matR, MPI_COMM_WORLD);
       myTimer.setEndTime("CholeskyQR2::Factor1D", index1);
       myTimer.finalize(MPI_COMM_WORLD);
@@ -140,14 +132,8 @@ int main(int argc, char** argv)
 
     // Perform "cold run"
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-      myTimer,
-#endif
       MPI_COMM_WORLD);
     CholeskyQR2<double,int,cblasEngine>::Factor3D(
-#ifdef TIMER
-      myTimer,
-#endif
       matA, matQ, matR, MPI_COMM_WORLD, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfo3D));
@@ -161,14 +147,8 @@ int main(int argc, char** argv)
       //matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
       size_t index1 = myTimer.setStartTime("CholeskyQR2::Factor3D");
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       CholeskyQR2<double,int,cblasEngine>::Factor3D(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matQ, matR, MPI_COMM_WORLD, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
       myTimer.setEndTime("CholeskyQR2::Factor3D", index1);
       myTimer.finalize(MPI_COMM_WORLD);
@@ -188,14 +168,8 @@ int main(int argc, char** argv)
       // matrix A was corrupted in CQR2, so reset it.
       //matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       QRvalidate<double,int>::validateParallel3D(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matQ, matR, MPI_COMM_WORLD, commInfo3D);
       MPI_Comm_free(&std::get<0>(commInfo3D));
       MPI_Comm_free(&std::get<1>(commInfo3D));
@@ -301,14 +275,8 @@ int main(int argc, char** argv)
 
     // Perform "cold run"
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> commInfoTunable = getTunableCommunicators(
-#ifdef TIMER
-      myTimer,
-#endif
       MPI_COMM_WORLD, dimensionD, dimensionC);
     CholeskyQR2<double,int,cblasEngine>::FactorTunable(
-#ifdef TIMER
-      myTimer,
-#endif
       matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfoTunable));
@@ -325,14 +293,8 @@ int main(int argc, char** argv)
       matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
       size_t index1 = myTimer.setStartTime("CholeskyQR2::FactorTunable");
       commInfoTunable = getTunableCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD, dimensionD, dimensionC);
       CholeskyQR2<double,int,cblasEngine>::FactorTunable(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
       myTimer.setEndTime("CholeskyQR2::FactorTunable", index1);
       myTimer.finalize(MPI_COMM_WORLD);
@@ -354,14 +316,8 @@ int main(int argc, char** argv)
       // reset the matrix that was corrupted by TRSM in CQR2
       matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
       commInfoTunable = getTunableCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD, dimensionD, dimensionC);
       QRvalidate<double,int>::validateParallelTunable(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matQ, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
       MPI_Comm_free(&std::get<0>(commInfoTunable));
       MPI_Comm_free(&std::get<1>(commInfoTunable));

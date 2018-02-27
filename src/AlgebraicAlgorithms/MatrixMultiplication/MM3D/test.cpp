@@ -22,10 +22,8 @@ int main(int argc, char** argv)
   using MatrixTypeLT = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
   using MatrixTypeUT = Matrix<double,int,MatrixStructureUpperTriangular,MatrixDistributerCyclic>;
 
-#ifdef TIMER
-#ifdef CTFTIMER
+#ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
-#endif /*CTFTIMER*/
 #endif /*TIMER*/
 
   int rank,size,provided;
@@ -96,14 +94,8 @@ int main(int argc, char** argv)
     // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
     
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-      myTimer,
-#endif
       MPI_COMM_WORLD);
     MM3D<double,int,cblasEngine>::Multiply(
-#ifdef TIMER
-      myTimer,
-#endif
       matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfo3D));
@@ -117,14 +109,8 @@ int main(int argc, char** argv)
     {
       size_t index1 = myTimer.setStartTime("MM3D::Multiply");
       commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       MM3D<double,int,cblasEngine>::Multiply(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
       myTimer.setEndTime("MM3D::Multiply", index1);
       myTimer.finalize(MPI_COMM_WORLD);
@@ -143,9 +129,6 @@ int main(int argc, char** argv)
       matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
       matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
       MMvalidate<double,int,cblasEngine>::validateLocal(
-#ifdef TIMER
-       myTimer,
-#endif
         matA, matB, matC, MPI_COMM_WORLD, blasArgs);
     }
     else
@@ -193,14 +176,8 @@ int main(int argc, char** argv)
  
       // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       MM3D<double,int,cblasEngine>::Multiply(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
       myTimer.clear();
       MPI_Comm_free(&std::get<0>(commInfo3D));
@@ -214,14 +191,8 @@ int main(int argc, char** argv)
       {
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
         commInfo3D = setUpCommunicators(
-#ifdef TIMER
-          myTimer,
-#endif
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
-#ifdef TIMER
-          myTimer,
-#endif
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
         myTimer.setEndTime("MM3D::Multiply", index1);
         myTimer.finalize(MPI_COMM_WORLD);
@@ -237,9 +208,6 @@ int main(int argc, char** argv)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
         MMvalidate<double,int,cblasEngine>::validateLocal(
-#ifdef TIMER
-          myTimer,
-#endif
           matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
       }
       else
@@ -265,14 +233,8 @@ int main(int argc, char** argv)
   
       // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       MM3D<double,int,cblasEngine>::Multiply(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
       myTimer.clear();
       MPI_Comm_free(&std::get<0>(commInfo3D));
@@ -286,14 +248,8 @@ int main(int argc, char** argv)
       {
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
         commInfo3D = setUpCommunicators(
-#ifdef TIMER
-          myTimer,
-#endif
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
-#ifdef TIMER
-          myTimer,
-#endif
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
         myTimer.setEndTime("MM3D::Multiply", index1);
         myTimer.finalize(MPI_COMM_WORLD);
@@ -309,9 +265,6 @@ int main(int argc, char** argv)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
         MMvalidate<double,int,cblasEngine>::validateLocal(
-#ifdef TIMER
-          myTimer,
-#endif
           matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
       }
       else
@@ -337,14 +290,8 @@ int main(int argc, char** argv)
 
       // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       MM3D<double,int,cblasEngine>::Multiply(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
       myTimer.clear();
       MPI_Comm_free(&std::get<0>(commInfo3D));
@@ -358,14 +305,8 @@ int main(int argc, char** argv)
       {
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
         commInfo3D = setUpCommunicators(
-#ifdef TIMER
-          myTimer,
-#endif
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
-#ifdef TIMER
-          myTimer,
-#endif
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
         myTimer.setEndTime("MM3D::Multiply", index1);
         myTimer.finalize(MPI_COMM_WORLD);
@@ -381,9 +322,6 @@ int main(int argc, char** argv)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
         MMvalidate<double,int,cblasEngine>::validateLocal(
-#ifdef TIMER
-          myTimer,
-#endif
           matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
       }
       else
@@ -409,14 +347,8 @@ int main(int argc, char** argv)
 
       // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       MM3D<double,int,cblasEngine>::Multiply(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
       myTimer.clear();
       MPI_Comm_free(&std::get<0>(commInfo3D));
@@ -430,14 +362,8 @@ int main(int argc, char** argv)
       {
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
         commInfo3D = setUpCommunicators(
-#ifdef TIMER
-          myTimer,
-#endif
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
-#ifdef TIMER
-          myTimer,
-#endif
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
         myTimer.setEndTime("MM3D::Multiply", index1);
         myTimer.finalize(MPI_COMM_WORLD);
@@ -453,9 +379,6 @@ int main(int argc, char** argv)
       {
         // Sequential validation after 1 iteration, since numIterations == 1
         MMvalidate<double,int,cblasEngine>::validateLocal(
-#ifdef TIMER
-          myTimer,
-#endif
           matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
       }
       else

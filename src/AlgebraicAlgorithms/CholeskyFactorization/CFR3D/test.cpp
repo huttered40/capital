@@ -21,11 +21,9 @@ int main(int argc, char** argv)
   using MatrixTypeL = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
   using MatrixTypeR = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
 
-#ifdef TIMER
-#ifdef CTFTIMER
+#ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
-#endif /*CTFTIMER*/
-#endif /*TIMER*/
+#endif /*PROFILE*/
 
   // argv[1] - Matrix size x where x represents 2^x.
   // So in future, we might want t way to test non power of 2 dimension matrices
@@ -81,14 +79,8 @@ int main(int argc, char** argv)
 
     // Perform a "cold run" first before keeping tracking of times
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-      myTimer,
-#endif
       MPI_COMM_WORLD);
     CFR3D<double,int,cblasEngine>::Factor(
-#ifdef TIMER
-      myTimer,
-#endif
       matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfo3D));
@@ -101,14 +93,8 @@ int main(int argc, char** argv)
     {
       size_t index1 = myTimer.setStartTime("CFR3D::Factor");
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       CFR3D<double,int,cblasEngine>::Factor(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
       myTimer.setEndTime("CFR3D::Factor", index1);
       myTimer.finalize(MPI_COMM_WORLD);
@@ -122,22 +108,13 @@ int main(int argc, char** argv)
     if (methodKey2 == 0)
     {
       CFvalidate<double,int>::validateLocal(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matL, 'L', MPI_COMM_WORLD);
     }
     else if (methodKey2 == 2)
     {
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       CFvalidate<double,int>::validateParallel(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matL, 'L', MPI_COMM_WORLD, commInfo3D);
       MPI_Comm_free(&std::get<0>(commInfo3D));
       MPI_Comm_free(&std::get<1>(commInfo3D));
@@ -159,14 +136,8 @@ int main(int argc, char** argv)
 
     // Perform a "cold run" first before keeping tracking of times
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-      myTimer,
-#endif
       MPI_COMM_WORLD);
     CFR3D<double,int,cblasEngine>::Factor(
-#ifdef TIMER
-      myTimer,
-#endif
       matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfo3D));
@@ -179,14 +150,8 @@ int main(int argc, char** argv)
     {
       size_t index1 = myTimer.setStartTime("CFR3D::Factor");
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       CFR3D<double,int,cblasEngine>::Factor(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
       myTimer.setEndTime("CFR3D::Factor", index1);
       myTimer.finalize(MPI_COMM_WORLD);
@@ -200,22 +165,13 @@ int main(int argc, char** argv)
     if (methodKey2 == 0)
     {
       CFvalidate<double,int>::validateLocal(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matR, 'U', MPI_COMM_WORLD);
     }
     else if (methodKey2 == 2)
     {
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-        myTimer,
-#endif
         MPI_COMM_WORLD);
       CFvalidate<double,int>::validateParallel(
-#ifdef TIMER
-        myTimer,
-#endif
         matA, matR, 'U', MPI_COMM_WORLD, commInfo3D);
       MPI_Comm_free(&std::get<0>(commInfo3D));
       MPI_Comm_free(&std::get<1>(commInfo3D));

@@ -38,9 +38,6 @@ public:
 
   template<template<typename,typename,int> class Distribution>
   static std::vector<U> Factor(
-#ifdef TIMER
-                      pTimer& timer,
-#endif
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
@@ -57,9 +54,6 @@ public:
 private:
   template<template<typename,typename,int> class Distribution>
   static void rFactorLower(
-#ifdef TIMER
-                      pTimer& timer,
-#endif
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
@@ -92,9 +86,6 @@ private:
 
   template<template<typename,typename,int> class Distribution>
   static void rFactorUpper(
-#ifdef TIMER
-                      pTimer& timer,
-#endif
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
@@ -128,9 +119,6 @@ private:
   template<template<typename,typename,template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>
   static void transposeSwap(
-#ifdef TIMER
-        pTimer& timer,
-#endif
 				Matrix<T,U,StructureArg,Distribution>& mat,
 				int myRank,
 				int transposeRank,
@@ -139,9 +127,6 @@ private:
 
   template<template<typename,typename,int> class Distribution>
   static std::vector<T> blockedToCyclicTransformation(
-#ifdef TIMER
-              pTimer& timer,
-#endif
 							Matrix<T,U,MatrixStructureSquare,Distribution>& matA,
 							U localDimension,
 							U globalDimension,
@@ -155,9 +140,6 @@ private:
 						     );
 
   static void cyclicToLocalTransformation(
-#ifdef TIMER
-            pTimer& timer,
-#endif
 						std::vector<T>& storeT,
 						std::vector<T>& storeTI,
 						U localDimension,

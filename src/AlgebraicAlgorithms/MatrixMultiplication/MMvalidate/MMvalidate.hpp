@@ -10,9 +10,6 @@ template<
   template<typename,typename,int> class Distribution
         >
 void MMvalidate<T,U,blasEngine>::validateLocal(
-#ifdef TIMER
-            pTimer& timer,
-#endif
 		        Matrix<T,U,StructureArgA,Distribution>& matrixA,
 		        Matrix<T,U,StructureArgB,Distribution>& matrixB,
 		        Matrix<T,U,StructureArgC,Distribution>& matrixC,
@@ -28,9 +25,6 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   MPI_Comm_rank(commWorld, &myRank);
 
   std::tuple<MPI_Comm, int, int, int, int> commInfo = util<T,U>::getCommunicatorSlice(
-#ifdef TIMER
-    timer,
-#endif
     commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   MPI_Comm_rank(sliceComm, &sliceRank);
@@ -48,14 +42,8 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   U globalDimensionN = matrixB.getNumColumnsGlobal();
   U globalDimensionK = matrixA.getNumColumnsGlobal();
   std::vector<T> matrixAforEngine = util<T,U>::getReferenceMatrix(
-#ifdef TIMER
-    timer,
-#endif
     matrixA, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
   std::vector<T> matrixBforEngine = util<T,U>::getReferenceMatrix(
-#ifdef TIMER
-    timer,
-#endif
     matrixB, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
   // Note: If I am comparing with srcPackage.beta = 1, then this test should fail, since matrixC is started at 0.
   std::vector<T> matrixCforEngine(globalDimensionM*globalDimensionN, 0);	// No matrix needed for this. Only used in BLAS call
@@ -83,9 +71,6 @@ template<
   template<typename,typename,int> class Distribution
         >
 void MMvalidate<T,U,blasEngine>::validateLocal(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
                         Matrix<T,U,StructureArgA,Distribution>& matrixA,
                         Matrix<T,U,StructureArgB,Distribution>& matrixBin,
                         Matrix<T,U,StructureArgB,Distribution>& matrixBout,
@@ -101,9 +86,6 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   MPI_Comm_rank(commWorld, &myRank);
 
   std::tuple<MPI_Comm, int, int, int, int> commInfo = util<T,U>::getCommunicatorSlice(
-#ifdef TIMER
-    timer,
-#endif
     commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   MPI_Comm_rank(sliceComm, &sliceRank);
@@ -121,14 +103,8 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   int localTriDim = (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN);
   int globalTriDim = (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionM : globalDimensionN);
   std::vector<T> matrixAforEngine = util<T,U>::getReferenceMatrix(
-#ifdef TIMER
-    timer,
-#endif
     matrixA, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
   std::vector<T> matrixBforEngine = util<T,U>::getReferenceMatrix(
-#ifdef TIMER
-    timer,
-#endif
     matrixBin, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
 
   blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], globalDimensionM, globalDimensionN,

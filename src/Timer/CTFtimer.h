@@ -7,6 +7,9 @@
 #include <string>
 #include <cstring>
 
+// Local includes
+#include "../Util/shared.h"
+
 namespace CTF {
 
   using namespace std;
@@ -128,16 +131,12 @@ namespace CTF {
  */
 
 }
-#ifdef TIMER
-#define TAU
-#endif
 
-#ifdef TAU
 #define TAU_FSTART(ARG)                                           \
-  do { CTF::Timer t(ARG); t.start(); } while (0);
+  do { CTF::Timer t(#ARG); t.start(); } while (0);
 
 #define TAU_FSTOP(ARG)                                            \
-  do { CTF::Timer t(ARG); t.stop(); } while (0);
+  do { CTF::Timer t(#ARG); t.stop(); } while (0);
 
 #define TAU_PROFILE_TIMER(ARG1, ARG2, ARG3, ARG4)                 
 
@@ -155,7 +154,6 @@ namespace CTF {
 #define TAU_PROFILE_SET_CONTEXT(ARG)                              \
   if (ARG==0) CTF::set_context(MPI_COMM_WORLD);                    \
   else CTF::set_context((MPI_Comm)ARG);
-#endif /*TAU*/
 
 
 #endif /*CTF_TIMER_H_*/

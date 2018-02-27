@@ -60,6 +60,7 @@ void cblasEngine<float,U>::_gemm(
             const blasEngineArgumentPackage_gemm<float>& srcPackage
          )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_TRANSPOSE arg2;
@@ -68,6 +69,7 @@ void cblasEngine<float,U>::_gemm(
 
   cblas_sgemm(arg1, arg2, arg3, m, n, k, srcPackage.alpha,
     matrixA, lda, matrixB, ldb, srcPackage.beta, matrixC, ldc);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -81,6 +83,7 @@ void cblasEngine<float,U>::_trmm(
             const blasEngineArgumentPackage_trmm<float>& srcPackage
          )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_SIDE arg2;
@@ -91,6 +94,7 @@ void cblasEngine<float,U>::_trmm(
 
   cblas_strmm(arg1, arg2, arg3, arg4, arg5, m, n, srcPackage.alpha, matrixA,
     lda, matrixB, ldb);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -104,6 +108,7 @@ void cblasEngine<float,U>::_syrk(
             const blasEngineArgumentPackage_syrk<float>& srcPackage
           )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_UPLO arg2;
@@ -112,6 +117,7 @@ void cblasEngine<float,U>::_syrk(
 
   cblas_ssyrk(arg1, arg2, arg3, n, k, srcPackage.alpha, matrixA,
     lda, srcPackage.beta, matrixC, ldc);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -128,6 +134,7 @@ void cblasEngine<double,U>::_gemm(
             const blasEngineArgumentPackage_gemm<double>& srcPackage
          )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_TRANSPOSE arg2;
@@ -136,6 +143,7 @@ void cblasEngine<double,U>::_gemm(
 
   cblas_dgemm(arg1, arg2, arg3, m, n, k, srcPackage.alpha,
     matrixA, lda, matrixB, ldb, srcPackage.beta, matrixC, ldc);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -149,6 +157,7 @@ void cblasEngine<double,U>::_trmm(
             const blasEngineArgumentPackage_trmm<double>& srcPackage
          )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_SIDE arg2;
@@ -159,6 +168,7 @@ void cblasEngine<double,U>::_trmm(
 
   cblas_dtrmm(arg1, arg2, arg3, arg4, arg5, m, n, srcPackage.alpha, matrixA,
     lda, matrixB, ldb);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -172,6 +182,7 @@ void cblasEngine<double,U>::_syrk(
             const blasEngineArgumentPackage_syrk<double>& srcPackage
           )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_UPLO arg2;
@@ -180,6 +191,7 @@ void cblasEngine<double,U>::_syrk(
 
   cblas_dsyrk(arg1, arg2, arg3, n, k, srcPackage.alpha, matrixA,
     lda, srcPackage.beta, matrixC, ldc);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -196,6 +208,7 @@ void cblasEngine<std::complex<float>,U>::_gemm(
             const blasEngineArgumentPackage_gemm<std::complex<float>>& srcPackage
          )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_TRANSPOSE arg2;
@@ -204,6 +217,7 @@ void cblasEngine<std::complex<float>,U>::_gemm(
 
   cblas_cgemm(arg1, arg2, arg3, m, n, k, srcPackage.alpha,
     matrixA, lda, matrixB, ldb, srcPackage.beta, matrixC, ldc);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -217,6 +231,7 @@ void cblasEngine<std::complex<float>,U>::_trmm(
             const blasEngineArgumentPackage_trmm<std::complex<float>>& srcPackage
          )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_SIDE arg2;
@@ -227,6 +242,7 @@ void cblasEngine<std::complex<float>,U>::_trmm(
 
   cblas_ctrmm(arg1, arg2, arg3, arg4, arg5, m, n, srcPackage.alpha, matrixA,
     lda, matrixB, ldb);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -240,6 +256,7 @@ void cblasEngine<std::complex<float>,U>::_syrk(
             const blasEngineArgumentPackage_syrk<std::complex<float>>& srcPackage
           )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_UPLO arg2;
@@ -248,6 +265,7 @@ void cblasEngine<std::complex<float>,U>::_syrk(
 
   cblas_csyrk(arg1, arg2, arg3, n, k, srcPackage.alpha, matrixA,
     lda, srcPackage.beta, matrixC, ldc);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -264,6 +282,7 @@ void cblasEngine<std::complex<double>,U>::_gemm(
             const blasEngineArgumentPackage_gemm<std::complex<double>>& srcPackage
          )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_TRANSPOSE arg2;
@@ -272,6 +291,7 @@ void cblasEngine<std::complex<double>,U>::_gemm(
 
   cblas_zgemm(arg1, arg2, arg3, m, n, k, srcPackage.alpha,
     matrixA, lda, matrixB, ldb, srcPackage.beta, matrixC, ldc);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -285,6 +305,7 @@ void cblasEngine<std::complex<double>,U>::_trmm(
             const blasEngineArgumentPackage_trmm<std::complex<double>>& srcPackage
          )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_SIDE arg2;
@@ -295,6 +316,7 @@ void cblasEngine<std::complex<double>,U>::_trmm(
 
   cblas_ztrmm(arg1, arg2, arg3, arg4, arg5, m, n, srcPackage.alpha, matrixA,
     lda, matrixB, ldb);
+  TAU_FSTOP(gemm);
 }
 
 template<typename U>
@@ -308,6 +330,7 @@ void cblasEngine<std::complex<double>,U>::_syrk(
             const blasEngineArgumentPackage_syrk<std::complex<double>>& srcPackage
           )
 {
+  TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_UPLO arg2;
@@ -316,4 +339,5 @@ void cblasEngine<std::complex<double>,U>::_syrk(
 
   cblas_zsyrk(arg1, arg2, arg3, n, k, srcPackage.alpha, matrixA,
     lda, srcPackage.beta, matrixC, ldc);
+  TAU_FSTOP(gemm);
 }

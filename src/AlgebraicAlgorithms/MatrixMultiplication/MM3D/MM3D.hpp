@@ -9,26 +9,14 @@ static std::tuple<MPI_Comm,
                   int,
                   int>
                   setUpCommunicators(
-#ifdef TIMER
-                    pTimer& timer,
-#endif
                     MPI_Comm commWorld,
                     int depthManipulation = 0
                   )
 {
+  TAU_FSTART(setUpCommunicators);
   int rank,size;
-#ifdef TIMER
-  size_t index5 = timer.setStartTime("MPI_Comm_rank");
-#endif
   MPI_Comm_rank(commWorld, &rank);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_rank", index5);
-  size_t index6 = timer.setStartTime("MPI_Comm_size");
-#endif
   MPI_Comm_size(commWorld, &size);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_size", index6);
-#endif
 
   int pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
   int helper = pGridDimensionSize;
@@ -42,37 +30,17 @@ static std::tuple<MPI_Comm,
 
   // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
   // Then, subdivide further into row groups and column groups
-#ifdef TIMER
-  size_t index1 = timer.setStartTime("MPI_Comm_split");
-#endif
   MPI_Comm_split(commWorld, pGridCoordY+pGridDimensionSize*pGridCoordX, rank, &depthComm);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_split", index1);
-  size_t index2 = timer.setStartTime("MPI_Comm_split");
-#endif
   MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_split", index2);
-  size_t index3 = timer.setStartTime("MPI_Comm_split");
-#endif
   MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_split", index3);
-  size_t index4 = timer.setStartTime("MPI_Comm_split");
-#endif
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_split", index4);
-#endif
 
+  TAU_FSTOP(setUpCommunicators);
   return std::make_tuple(rowComm, columnComm, sliceComm, depthComm, pGridCoordX, pGridCoordY, pGridCoordZ);
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 void MM3D<T,U,blasEngine>::Multiply(
-#ifdef TIMER
-                                        pTimer& timer,
-#endif
                                    	    T* matrixA,
                                         T* matrixB,
                                         T* matrixC,
@@ -88,6 +56,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 			                                  int depthManipulation
                                    )
 {
+  TAU_FSTART(MM3D::Multiply);
   // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
   //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
   //       Also, I only allow method1, not Allgather-based method2
@@ -115,22 +84,10 @@ void MM3D<T,U,blasEngine>::Multiply(
   bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
-#ifdef TIMER
-  size_t index2 = timer.setStartTime("MM3D::BroadcastPanels");
-#endif
   BroadcastPanels(
-#ifdef TIMER
-    timer,
-#endif
     (isRootRow ? matrixA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
   BroadcastPanels(
-#ifdef TIMER
-    timer,
-#endif
     (isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
-#ifdef TIMER
-  timer.setEndTime("MM3D::BroadcastPanels", index2);
-#endif
 
   matrixAEnginePtr = (isRootRow ? matrixA : foreignA);
   matrixBEnginePtr = (isRootColumn ? matrixB : foreignB);
@@ -140,41 +97,21 @@ void MM3D<T,U,blasEngine>::Multiply(
   T* matrixCforEnginePtr = matrixC;
   if (srcPackage.beta == 0)
   {
-#ifdef TIMER
-    size_t index3 = timer.setStartTime("gemm");
-#endif
     blasEngine<T,U>::_gemm(matrixAEnginePtr, matrixBEnginePtr, matrixCforEnginePtr, localDimensionM, localDimensionN, localDimensionK,
       (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
       localDimensionM, srcPackage);
-#ifdef TIMER
-    timer.setEndTime("gemm", index3);
-    size_t index4 = timer.setStartTime("MPI_Allreduce");
-#endif
     MPI_Allreduce(MPI_IN_PLACE,matrixCforEnginePtr, sizeC, MPI_DOUBLE, MPI_SUM, depthComm);
-#ifdef TIMER
-    timer.setEndTime("MPI_Allreduce", index4);
-#endif
   }
   else
   {
     // This cancels out any affect beta could have. Beta is just not compatable with MM3D and must be handled separately
      std::vector<T> holdProduct(sizeC,0);
-#ifdef TIMER
-    size_t index3 = timer.setStartTime("gemm");
-#endif
      blasEngine<T,U>::_gemm(matrixAEnginePtr, matrixBEnginePtr, &holdProduct[0], localDimensionM, localDimensionN, localDimensionK,
        (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
        (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
        localDimensionM, srcPackage); 
-#ifdef TIMER
-    timer.setEndTime("blasEngine::gemm", index3);
-    size_t index4 = timer.setStartTime("MPI_Allreduce");
-#endif
     MPI_Allreduce(MPI_IN_PLACE, &holdProduct[0], sizeC, MPI_DOUBLE, MPI_SUM, depthComm);
-#ifdef TIMER
-    timer.setEndTime("MPI_Allreduce", index4);
-#endif
     for (U i=0; i<sizeC; i++)
     {
       matrixC[i] = srcPackage.beta*matrixC[i] + holdProduct[i];
@@ -182,6 +119,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   }
   if (!isRootRow) delete[] foreignA;
   if (!isRootColumn) delete[] foreignB;
+  TAU_FSTOP(MM3D::Multiply);
 }
 
 
@@ -197,9 +135,6 @@ template<
   	  template<typename,typename,int> class Distribution
 	>
 void MM3D<T,U,blasEngine>::Multiply(
-#ifdef TIMER
-                                        pTimer& timer,
-#endif
                                    	    Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         Matrix<T,U,StructureC,Distribution>& matrixC,
@@ -210,6 +145,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 			                                  int depthManipulation
                                    )
 {
+  TAU_FSTART(MM3D::Multiply);
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
@@ -227,35 +163,17 @@ void MM3D<T,U,blasEngine>::Multiply(
 
   if (methodKey == 0)
   {
-#ifdef TIMER
-    size_t index2 = timer.setStartTime("MM3D::_start1");
-#endif
     _start1(
-#ifdef TIMER
-      timer,
-#endif
       matrixA,matrixB,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,
       matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
-#ifdef TIMER
-    timer.setEndTime("MM3D::_start1", index2);
-#endif
   }
   else if (methodKey == 1)
   {
     serializeKeyA = true;
     serializeKeyB = true;
-#ifdef TIMER
-    size_t index2 = timer.setStartTime("MM3D::_start2");
-#endif
     _start2(
-#ifdef TIMER
-      timer,
-#endif
       matrixA,matrixB,commInfo3D,
       matrixAEngineVector,matrixBEngineVector,serializeKeyA,serializeKeyB);
-#ifdef TIMER
-    timer.setEndTime("MM3D::_start2", index2);
-#endif
   }
 
   // Assume, for now, that matrixC has Rectangular Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
@@ -265,56 +183,31 @@ void MM3D<T,U,blasEngine>::Multiply(
   T* matrixCforEnginePtr = matrixC.getRawData();
   if (srcPackage.beta == 0)
   {
-#ifdef TIMER
-    size_t index3 = timer.setStartTime("gemm");
-#endif
     blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
       matrixCforEnginePtr, localDimensionM, localDimensionN, localDimensionK,
       (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
       localDimensionM, srcPackage);
-#ifdef TIMER
-    timer.setEndTime("gemm", index3);
-    size_t index4 = timer.setStartTime("MM3D::_end1");
-#endif
     _end1(
-#ifdef TIMER
-      timer,
-#endif
       matrixCforEnginePtr,matrixC,commInfo3D);
-#ifdef TIMER
-    timer.setEndTime("MM3D::_end1", index4);
-#endif
    }
    else
    {
      // This cancels out any affect beta could have. Beta is just not compatable with MM3D and must be handled separately
      std::vector<T> holdProduct(matrixC.getNumElems(),0);
-#ifdef TIMER
-    size_t index3 = timer.setStartTime("gemm");
-#endif
      blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
        &holdProduct[0], localDimensionM, localDimensionN, localDimensionK,
        (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
        (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
        localDimensionM, srcPackage); 
-#ifdef TIMER
-    timer.setEndTime("gemm", index3);
-    size_t index4 = timer.setStartTime("MM3D::_end1");
-#endif
     _end1(
-#ifdef TIMER
-      timer,
-#endif
       &holdProduct[0],matrixC,commInfo3D,1);
-#ifdef TIMER
-    timer.setEndTime("MM3D::_end1", index4);
-#endif
     for (U i=0; i<holdProduct.size(); i++)
     {
       matrixC.getRawData()[i] = srcPackage.beta*matrixC.getRawData()[i] + holdProduct[i];
     }
   }
+  TAU_FSTOP(MM3D::Multiply);
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
@@ -324,9 +217,6 @@ template<
   		template<typename,typename,int> class Distribution
 	>
 void MM3D<T,U,blasEngine>::Multiply(
-#ifdef TIMER
-                                        pTimer& timer,
-#endif
                                    	    Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         MPI_Comm commWorld,
@@ -336,8 +226,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 			                                  int depthManipulation
                                    )
 {
-  // Need to add timers here. Abort
-  abort();
+  TAU_FSTART(MM3D::Multiply);
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -362,9 +251,6 @@ void MM3D<T,U,blasEngine>::Multiply(
     if (methodKey == 0)
     {
       _start1(
-#ifdef TIMER
-        timer,
-#endif
         matrixA, matrixB, commInfo3D, matrixAEnginePtr, matrixBEnginePtr, matrixAEngineVector, matrixBEngineVector, foreignA, foreignB,
         serializeKeyA, serializeKeyB);
     }
@@ -373,9 +259,6 @@ void MM3D<T,U,blasEngine>::Multiply(
       serializeKeyA = true;
       serializeKeyB = true;
       _start2(
-#ifdef TIMER
-        timer,
-#endif
         matrixA, matrixB, commInfo3D, matrixAEngineVector, matrixBEngineVector,
         serializeKeyA, serializeKeyB);
     }
@@ -388,9 +271,6 @@ void MM3D<T,U,blasEngine>::Multiply(
     if (methodKey == 0)
     {
       _start1(
-#ifdef TIMER
-        timer,
-#endif
         matrixB, matrixA, commInfo3D, matrixBEnginePtr, matrixAEnginePtr, matrixBEngineVector, matrixAEngineVector, foreignB, foreignA, serializeKeyB, serializeKeyA);
     }
     else if (methodKey == 1)
@@ -398,9 +278,6 @@ void MM3D<T,U,blasEngine>::Multiply(
       serializeKeyA = true;
       serializeKeyB = true;
       _start2(
-#ifdef TIMER
-        timer,
-#endif
         matrixB, matrixA, commInfo3D, matrixBEngineVector, matrixAEngineVector, serializeKeyB, serializeKeyA);
     }
     blasEngine<T,U>::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
@@ -409,10 +286,8 @@ void MM3D<T,U,blasEngine>::Multiply(
   }
   // We will follow the standard here: matrixA is always the triangular matrix. matrixB is always the rectangular matrix
   _end1(
-#ifdef TIMER
-    timer,
-#endif
     (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),matrixB,commInfo3D);
+  TAU_FSTOP(MM3D::Multiply);
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
@@ -422,9 +297,6 @@ template<
   		template<typename,typename,int> class Distribution
 	>
 void MM3D<T,U,blasEngine>::Multiply(
-#ifdef TIMER
-                                        pTimer& timer,
-#endif
                                    	    Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         MPI_Comm commWorld,
@@ -488,9 +360,6 @@ template<
   		template<typename,typename,int> class Distribution
 	>
 void MM3D<T,U,blasEngine>::Multiply(
-#ifdef TIMER
-                pTimer& timer,
-#endif
                 Matrix<T,U,StructureA,Distribution>& matrixA,
                 Matrix<T,U,StructureB,Distribution>& matrixB,
 				        Matrix<T,U,StructureC,Distribution>& matrixC,
@@ -516,6 +385,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 			          int depthManipulation
                                    )
 {
+  TAU_FSTART(MM3D::MultiplyCut);
   // We will set up 3 matrices and call the method above.
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
@@ -532,69 +402,26 @@ void MM3D<T,U,blasEngine>::Multiply(
   int size;
   int pGridDimensionSize;
 
-#ifdef TIMER
-  size_t index1 = timer.setStartTime("MPI_Comm_size");
-#endif
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
-#ifdef TIMER
-  timer.setEndTime("MPI_Comm_size", index1);
-#endif
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-#ifdef TIMER
-  size_t index2 = timer.setStartTime("MM3D::getSubMatrix");
-#endif
   Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(
-#ifdef TIMER
-    timer,
-#endif
     matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
-#ifdef TIMER
-  timer.setEndTime("MM3D::getSubMatrix",index2);
-  size_t index3 = timer.setStartTime("MM3D::getSubMatrix");
-#endif
   Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(
-#ifdef TIMER
-    timer,
-#endif
     matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
-#ifdef TIMER
-  timer.setEndTime("MM3D::getSubMatrix",index3);
-  size_t index4 = timer.setStartTime("MM3D::getSubMatrix");
-#endif
   Matrix<T,U,StructureC,Distribution> matC = getSubMatrix(
-#ifdef TIMER
-    timer,
-#endif
     matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, pGridDimensionSize, cutC);
-#ifdef TIMER
-  timer.setEndTime("MM3D::getSubMatrix",index4);
-#endif
 
-#ifdef TIMER
-  size_t index5 = timer.setStartTime("MM3D::Multiply");
-#endif
   Multiply(
-#ifdef TIMER
-    timer,
-#endif
     (cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, commInfo3D, srcPackage, methodKey, depthManipulation);
-#ifdef TIMER
-  timer.setEndTime("MM3D::Multiply", index5);
-#endif
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC)
   {
-#ifdef TIMER
-    size_t index5 = timer.setStartTime("Serializer");
-#endif
     Serializer<T,U,StructureC,StructureC>::Serialize(matrixC, matC,
       matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
-#ifdef TIMER
-    timer.setEndTime("Serializer", index5);
-#endif
   }
+  TAU_FSTOP(MM3D::MultiplyCut);
 }
 
 
@@ -605,9 +432,6 @@ template<
   		template<typename,typename,int> class Distribution
 	 >
 void MM3D<T,U,blasEngine>::Multiply(
-#ifdef TIMER
-              pTimer& timer,
-#endif
 				      Matrix<T,U,StructureA,Distribution>& matrixA,
 				      Matrix<T,U,StructureB,Distribution>& matrixB,
 				      U matrixAcutXstart,
@@ -627,9 +451,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 			        int depthManipulation
                                     )
 {
-  // Need to add timers here. Abort.
-  abort();
-
+  TAU_FSTART(MM3D::MultiplyCut);
   // We will set up 3 matrices and call the method above.
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
@@ -645,19 +467,10 @@ void MM3D<T,U,blasEngine>::Multiply(
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
   Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(
-#ifdef TIMER
-    timer,
-#endif
     matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
   Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(
-#ifdef TIMER
-    timer,
-#endif
     matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
   Multiply(
-#ifdef TIMER
-    timer,
-#endif
     matA, matB, commWorld, srcPackage, methodKey, depthManipulation);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
@@ -666,6 +479,7 @@ void MM3D<T,U,blasEngine>::Multiply(
     Serializer<T,U,StructureB,StructureB>::Serialize(matrixB, matB,
       matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
   }
+  TAU_FSTOP(MM3D::MultiplyCut);
 }
 
 
@@ -676,9 +490,6 @@ template<
   		template<typename,typename,int> class Distribution
 	 >
 void MM3D<T,U,blasEngine>::Multiply(
-#ifdef TIMER
-              pTimer& timer,
-#endif
 				      Matrix<T,U,StructureA,Distribution>& matrixA,
 				      Matrix<T,U,StructureB,Distribution>& matrixB,
 				      U matrixAcutXstart,
@@ -735,9 +546,6 @@ template<template<typename,typename,int> class Distribution,
   template<typename,typename, template<typename,typename,int> class> class StructureArg2,
   typename tupleStructure>
 void MM3D<T,U,blasEngine>::_start1(
-#ifdef TIMER
-          pTimer& timer,
-#endif
 					Matrix<T,U,StructureArg1,Distribution>& matrixA,
 					Matrix<T,U,StructureArg2,Distribution>& matrixB,
 					tupleStructure& commInfo3D,
@@ -751,6 +559,7 @@ void MM3D<T,U,blasEngine>::_start1(
 					bool& serializeKeyB
 				  )
 {
+  TAU_FSTART(MM3D::_start1);
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
@@ -770,26 +579,10 @@ void MM3D<T,U,blasEngine>::_start1(
   bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
-#ifdef TIMER
-  size_t index1 = timer.setStartTime("BroadcastPanels");
-#endif
   BroadcastPanels(
-#ifdef TIMER
-    timer,
-#endif
     (isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
-#ifdef TIMER
-  timer.setEndTime("BroadcastPanels", index1);
-  size_t index2 = timer.setStartTime("BroadcastPanels");
-#endif
   BroadcastPanels(
-#ifdef TIMER
-    timer,
-#endif
     (isRootColumn ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
-#ifdef TIMER
-  timer.setEndTime("BroadcastPanels", index2);
-#endif
 
   matrixAEnginePtr = (isRootRow ? &dataA[0] : &foreignA[0]);
   matrixBEnginePtr = (isRootColumn ? &dataB[0] : &foreignB[0]);
@@ -799,9 +592,6 @@ void MM3D<T,U,blasEngine>::_start1(
     serializeKeyA = true;
     Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
     getEnginePtr(
-#ifdef TIMER
-      timer,
-#endif
       matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
     matrixAEngineVector = std::move(helperA.getVectorData());
   }
@@ -811,12 +601,10 @@ void MM3D<T,U,blasEngine>::_start1(
     serializeKeyB = true;
     Matrix<T,U,MatrixStructureRectangle,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
     getEnginePtr(
-#ifdef TIMER
-      timer,
-#endif
       matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
+  TAU_FSTOP(MM3D::_start1);
 }
 
 
@@ -824,15 +612,13 @@ template<typename T, typename U, template<typename,typename> class blasEngine>		
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution,
   typename tupleStructure>
 void MM3D<T,U,blasEngine>::_end1(
-#ifdef TIMER
-          pTimer& timer,
-#endif
 					T* matrixEnginePtr,
 					Matrix<T,U,StructureArg,Distribution>& matrix,
 					tupleStructure& commInfo3D,
           int dir
 				)
 {
+  TAU_FSTART(MM3D::_end1);
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
@@ -844,25 +630,13 @@ void MM3D<T,U,blasEngine>::_end1(
   // Prevents buffer aliasing, which MPI does not like.
   if ((dir) || (matrixEnginePtr == matrix.getRawData()))
   {
-#ifdef TIMER
-    size_t index1 = timer.setStartTime("MPI_Allreduce");
-#endif
     MPI_Allreduce(MPI_IN_PLACE,matrixEnginePtr, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
-#ifdef TIMER
-    timer.setEndTime("MPI_Allreduce", index1);
-#endif
   }
   else
   {
-#ifdef TIMER
-    size_t index1 = timer.setStartTime("MPI_Allreduce");
-#endif
     MPI_Allreduce(matrixEnginePtr, matrix.getRawData(), numElems, MPI_DOUBLE, MPI_SUM, depthComm);
-#ifdef TIMER
-    timer.setEndTime("MPI_Allreduce", index1);
-#endif
   }
-
+  TAU_FSTOP(MM3D::_end1);
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
@@ -871,9 +645,6 @@ template<template<typename,typename,int> class Distribution,
   template<typename,typename, template<typename,typename,int> class> class StructureArg2,
   typename tupleStructure>
 void MM3D<T,U,blasEngine>::_start2(
-#ifdef TIMER
-          pTimer& timer,
-#endif
 					Matrix<T,U,StructureArg1,Distribution>& matrixA,
 					Matrix<T,U,StructureArg2,Distribution>& matrixB,
 					tupleStructure& commInfo3D,
@@ -883,9 +654,7 @@ void MM3D<T,U,blasEngine>::_start2(
 					bool& serializeKeyB
 				  )
 {
-  // Need to add timers here. Abort.
-  abort();
-
+  TAU_FSTART(MM3D::_start2);
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
@@ -1061,15 +830,13 @@ void MM3D<T,U,blasEngine>::_start2(
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
 */
+  TAU_FSTOP(MM3D::_start2);
 }
 
 
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 void MM3D<T,U,blasEngine>::BroadcastPanels(
-#ifdef TIMER
-            pTimer& timer,
-#endif
 						std::vector<T>& data,
 						U size,
 						bool isRoot,
@@ -1077,34 +844,21 @@ void MM3D<T,U,blasEngine>::BroadcastPanels(
 						MPI_Comm panelComm
 					   )
 {
+  TAU_FSTART(MM3D::BroadcastPanels);
   if (isRoot)
   {
-#ifdef TIMER
-    size_t index1 = timer.setStartTime("MPI_Bcast");
-#endif
     MPI_Bcast(&data[0], size, MPI_DOUBLE, pGridCoordZ, panelComm);
-#ifdef TIMER
-    timer.setEndTime("MPI_Bcast", index1);
-#endif
   }
   else
   {
     data.resize(size);
-#ifdef TIMER
-    size_t index1 = timer.setStartTime("MPI_Bcast");
-#endif
     MPI_Bcast(&data[0], size, MPI_DOUBLE, pGridCoordZ, panelComm);
-#ifdef TIMER
-    timer.setEndTime("MPI_Bcast", index1);
-#endif
   }
+  TAU_FSTOP(MM3D::BroadcastPanels);
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 void MM3D<T,U,blasEngine>::BroadcastPanels(
-#ifdef TIMER
-            pTimer& timer,
-#endif
 						T*& data,
 						U size,
 						bool isRoot,
@@ -1112,27 +866,17 @@ void MM3D<T,U,blasEngine>::BroadcastPanels(
 						MPI_Comm panelComm
 					   )
 {
+  TAU_FSTART(MM3D::BroadcastPanels);
   if (isRoot)
   {
-#ifdef TIMER
-    size_t index1 = timer.setStartTime("MPI_Bcast");
-#endif
     MPI_Bcast(data, size, MPI_DOUBLE, pGridCoordZ, panelComm);
-#ifdef TIMER
-    timer.setEndTime("MPI_Bcast", index1);
-#endif
   }
   else
   {
     data = new double[size];
-#ifdef TIMER
-    size_t index1 = timer.setStartTime("MPI_Bcast");
-#endif
     MPI_Bcast(data, size, MPI_DOUBLE, pGridCoordZ, panelComm);
-#ifdef TIMER
-    timer.setEndTime("MPI_Bcast", index1);
-#endif
   }
+  TAU_FSTOP(MM3D::BroadcastPanels);
 }
 
 
@@ -1140,40 +884,27 @@ template<typename T, typename U, template<typename,typename> class blasEngine>		
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 void MM3D<T,U,blasEngine>::getEnginePtr(
-#ifdef TIMER
-          pTimer& timer,
-#endif
 					Matrix<T,U,StructureArg, Distribution>& matrixArg,
 					Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
 					std::vector<T>& data,
 					bool isRoot
 				     )
 {
+  TAU_FSTART(MM3D::getEnginePtr);
   // Need to separate the below out into its own function that will not get instantied into object code
   //   unless it passes the test above. This avoids template-enduced template compiler errors
   if (!isRoot)
   {
     Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::move(data), matrixArg.getNumColumnsLocal(),
       matrixArg.getNumRowsLocal(), matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal(), true);
-#ifdef TIMER
-    size_t index1 = timer.setStartTime("Serializer");
-#endif
     Serializer<T,U,StructureArg,MatrixStructureRectangle>::Serialize(matrixToSerialize, matrixDest);
-#ifdef TIMER
-    timer.setEndTime("Serializer", index1);
-#endif
   }
   else
   {
     // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangle
-#ifdef TIMER
-    size_t index1 = timer.setStartTime("Serializer");
-#endif
     Serializer<T,U,StructureArg,MatrixStructureRectangle>::Serialize(matrixArg, matrixDest);
-#ifdef TIMER
-    timer.setEndTime("Serializer", index1);
-#endif
   }
+  TAU_FSTOP(MM3D::getEnginePtr);
 }
 
 
@@ -1181,9 +912,6 @@ template<typename T, typename U, template<typename,typename> class blasEngine>		
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
 Matrix<T,U,StructureArg,Distribution> MM3D<T,U,blasEngine>::getSubMatrix(
-#ifdef TIMER
-                pTimer& timer,
-#endif
 								Matrix<T,U,StructureArg, Distribution>& srcMatrix,
 								U matrixArgColumnStart,
 								U matrixArgColumnEnd,
@@ -1193,24 +921,21 @@ Matrix<T,U,StructureArg,Distribution> MM3D<T,U,blasEngine>::getSubMatrix(
     						bool getSub
 						       )
 {
+  TAU_FSTART(MM3D::getSubMatrix);
   if (getSub)
   {
     U numColumns = matrixArgColumnEnd - matrixArgColumnStart;
     U numRows = matrixArgRowEnd - matrixArgRowStart;
     Matrix<T,U,StructureArg,Distribution> fillMatrix(std::vector<T>(), numColumns, numRows, numColumns*pGridDimensionSize, numRows*pGridDimensionSize);
-#ifdef TIMER
-    size_t index1 = timer.setStartTime("Serializer");
-#endif
     Serializer<T,U,StructureArg,StructureArg>::Serialize(srcMatrix, fillMatrix,
       matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
-#ifdef TIMER
-    timer.setEndTime("Serializer", index1);
-#endif
+    TAU_FSTOP(MM3D::getSubMatrix);
     return fillMatrix;			// I am returning an rvalue
   }
   else
   {
     // return cheap garbage.
+    TAU_FSTOP(MM3D::getSubMatrix);
     return Matrix<T,U,StructureArg,Distribution>(0,0,1,1);
   }
 }

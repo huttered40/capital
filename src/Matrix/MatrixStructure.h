@@ -64,8 +64,6 @@ public:
   MatrixStructureRectangle& operator=(MatrixStructureRectangle&& rhs) = delete;
   ~MatrixStructureRectangle() = delete;
 
-  static pTimer timer;
-
   static void Allocate();
   static void Construct();
   static void Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
@@ -92,8 +90,6 @@ public:
   MatrixStructureUpperTriangular& operator=(MatrixStructureUpperTriangular&& rhs) = delete;
   ~MatrixStructureUpperTriangular() = delete;
 
-  static pTimer timer;
-
   static void Allocate();
   static void Construct();
   static void Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
@@ -119,8 +115,6 @@ public:
   MatrixStructureLowerTriangular& operator=(const MatrixStructureLowerTriangular& rhs) = delete;
   MatrixStructureLowerTriangular& operator=(MatrixStructureLowerTriangular&& rhs) = delete;
   ~MatrixStructureLowerTriangular() = delete;
-
-  static pTimer timer;
 
   static void Allocate();
   static void Construct();

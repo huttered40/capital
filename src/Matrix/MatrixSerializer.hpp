@@ -27,6 +27,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
   Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
 {
+  TAU_FSTART(Serialize);
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U srcNumElems = srcNumRows*srcNumColumns;
@@ -60,6 +61,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
     dest.setNumElems(srcNumElems);
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -68,6 +70,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& big,
   Matrix<T,U,MatrixStructureSquare,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  TAU_FSTART(Serialize);
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 /*  Commenting this assert out for now, since CFR3D requires non-square partitioning
@@ -128,6 +131,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
     small.setNumElems(numElems);
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
+  TAU_FSTOP(Serialize);
 }
 
 template<typename T, typename U>
@@ -154,6 +158,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
   Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest)
 {
+  TAU_FSTART(Serialize);
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -198,6 +203,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
     dest.setNumElems(numElems);
     MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -245,6 +251,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& big,
   Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  TAU_FSTART(Serialize);
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -300,6 +307,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
     // I am only providing UT here, not square, because if square, it would have aborted
     MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
+  TAU_FSTOP(Serialize);
 }
 
 /*
@@ -348,6 +356,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
   Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest)
 {
+  TAU_FSTART(Serialize);
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -391,6 +400,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
     dest.setNumElems(numElems);
     MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -438,6 +448,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& big,
   Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  TAU_FSTART(Serialize);
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -493,6 +504,7 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
     // I am only providing UT here, not square, because if square, it would have aborted
     MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
+  TAU_FSTOP(Serialize);
 }
 
 /*
@@ -559,6 +571,7 @@ template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
 {
+  TAU_FSTART(Serialize);
   // For now, just call Square counterpart, it should be the same --- Actually I can't unless I try to do a weird cast.
   // Annoying code bloat here
   U srcNumRows = src.getNumRowsLocal();
@@ -594,6 +607,7 @@ void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serializ
     dest.setNumElems(srcNumElems);
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -602,6 +616,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& big,Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
   U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  TAU_FSTART(Serialize);
   // For now, just call Square counterpart, it should be the same --- Actually I can't unless I try to do a weird cast.
   // Annoying code bloat here
   U rangeX = cutDimensionXend-cutDimensionXstart;
@@ -664,6 +679,7 @@ void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serializ
     small.setNumElems(numElems);
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -711,6 +727,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
   Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
 {
+  TAU_FSTART(Serialize);
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -756,6 +773,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
     dest.setNumElems(numElems);
     MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -764,6 +782,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& big,
   Matrix<T,U,MatrixStructureSquare,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  TAU_FSTART(Serialize);
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -817,6 +836,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
     // I am only providing Square here, not UT, because if UT, it would have aborted
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
+  TAU_FSTOP(Serialize);
 }
 
 /* No reason for this method. Just use UT to little square
@@ -869,6 +889,7 @@ template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
 {
+  TAU_FSTART(Serialize);
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
@@ -917,6 +938,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
     dest.setNumElems(numElems);
     MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -926,6 +948,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& big, Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  TAU_FSTART(Serialize);
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
@@ -982,6 +1005,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
     // I am only providing Square here, not UT, because if UT, it would have aborted
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
+  TAU_FSTOP(Serialize);
 }
 
 
@@ -990,6 +1014,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
   Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest)
 {
+  TAU_FSTART(Serialize);
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U srcNumElems = srcNumRows*srcNumColumns;
@@ -1023,6 +1048,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
     dest.setNumElems(srcNumElems);
     MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -1033,6 +1059,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& big,
   Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  TAU_FSTART(Serialize);
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -1089,6 +1116,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
     small.setNumElems(numElems);
     MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -1098,6 +1126,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
   Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
 {
+  TAU_FSTART(Serialize);
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -1143,6 +1172,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
     dest.setNumElems(numElems);
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -1153,6 +1183,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& big,
   Matrix<T,U,MatrixStructureSquare,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  TAU_FSTART(Serialize);
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -1209,6 +1240,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
     small.setNumElems(numElems);
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -1260,6 +1292,7 @@ template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
 {
+  TAU_FSTART(Serialize);
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
@@ -1308,6 +1341,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::S
     dest.setNumElems(numElems);
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -1317,6 +1351,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& big, Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
     U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  TAU_FSTART(Serialize);
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
@@ -1376,6 +1411,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::S
     small.setNumElems(numElems);
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -1385,6 +1421,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
   Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest)
 {
+  TAU_FSTART(Serialize);
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U srcNumElems = srcNumRows*srcNumColumns;
@@ -1418,6 +1455,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
     dest.setNumElems(srcNumElems);
     MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
 
@@ -1426,6 +1464,7 @@ template<template<typename, typename,int> class Distributer>
 void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& big,
   Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
 {
+  TAU_FSTART(Serialize);
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -1484,5 +1523,6 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
     small.setNumElems(numElems);
     MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
+  TAU_FSTOP(Serialize);
   return;
 }
