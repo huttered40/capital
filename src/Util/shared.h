@@ -5,5 +5,6 @@
 
 // Choose whether or not to define TIMER
 #define PROFILE
+#define CRITTER
 
 #endif /*SHARED*/

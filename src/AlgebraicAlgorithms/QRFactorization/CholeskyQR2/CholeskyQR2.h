@@ -17,6 +17,10 @@
 #include "./../../TriangularSolve/TRSM3D/TRSM3D.h"
 #include "./../../../Util/util.h"
 
+#ifdef CRITTER
+#include "../../../../../ExternalLibraries/CRITTER/critter/critter.h"
+#endif /*CRITTER*/
+
 // Need template parameters for all 3 matrices (A,Q,R), as well as some other things, right?
 template<typename T,typename U,template<typename,typename> class blasEngine>
 class CholeskyQR2

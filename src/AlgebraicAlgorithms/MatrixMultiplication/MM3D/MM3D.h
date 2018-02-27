@@ -18,6 +18,10 @@
 #include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 
+#ifdef CRITTER
+#include "./../../../../../ExternalLibraries/CRITTER/critter/critter.h"
+#endif /*CRITTER*/
+
 /*
   We can implement square MM for now, but soon, we will need triangular MM
     and triangular matrices, as well as Square-Triangular Multiplication and Triangular-Square Multiplication

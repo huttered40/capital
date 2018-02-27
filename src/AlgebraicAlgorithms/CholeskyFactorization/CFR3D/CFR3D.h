@@ -19,6 +19,10 @@
 #include "./../../TriangularSolve/TRSM3D/TRSM3D.h"
 #include "./../../../Util/util.h"
 
+#ifdef CRITTER
+#include "../../../../../ExternalLibraries/CRITTER/critter/critter.h"
+#endif /*CRITTER*/
+
 // Lets use partial template specialization
 // So only declare the fully templated class
 // Why not just use square? Because later on, I may want to experiment with LowerTriangular Structure.
