@@ -105,13 +105,20 @@ namespace CTF{
     return strcmp(w1.name.c_str(), w2.name.c_str())>0;
   }
 
+  // function_timers is static, defined within the CTF namespace, means that any instance of any class can access it and modify it. For us, that means that any Timer instance
+  //   can access and modify it. Only one instance exists, created and initialized
+  //   before program starts in the global/static part of memory.
   static std::vector<Function_timer>* function_timers = NULL;
 
+  // Timer is local to each MPI process, so there is no overlap or anything. If threading is added, might need to be careful, but we probably won't do
+  //  task-thread-parallelism anyways so it should never really matter.
   Timer::Timer(const std::string& name){
   #ifdef TIMER
-    std::cout << "Name - " << name << std::endl;
     int i;
-    if (function_timers == NULL) {
+    // This test should only pass once, on the very first instance of Timer
+    if (function_timers == NULL)
+    {
+      // NOTE: I don't know why this check is necessary, I may just get rid of it.
       if (name[0] == 'M' && name[1] == 'P' && 
           name[2] == 'I' && name[3] == '_'){
         exited = 2;
@@ -132,6 +139,7 @@ namespace CTF{
       index = i;
       original = (index==0);
     }
+    // Below: if it did not find a match in the higher-level vector, then create a new timer element for the function
     if (index == (int)function_timers->size()) {
       function_timers->push_back(Function_timer(name, MPI_Wtime(), excl_time)); 
     }
@@ -142,6 +150,8 @@ namespace CTF{
     
   void Timer::start(){
   #ifdef TIMER
+    // Make sure that we don't time an MPI routine (for some weird reason, I may just change this, doesnt make much sense to me)
+    // Index is set from the constructor of the Timer instance
     if (exited != 2){
       exited = 0;
       (*function_timers)[index].start_time = MPI_Wtime();
@@ -152,6 +162,7 @@ namespace CTF{
 
   void Timer::stop(){
   #ifdef TIMER
+    // Note that when we started the timer, as long as exited wasn't equal to 2, we set exited<-0, so this should really pass most of the time
     if (exited == 0){
       int is_fin;
       MPI_Finalized(&is_fin);
@@ -161,6 +172,7 @@ namespace CTF{
         (*function_timers)[index].acc_excl_time += delta_time - 
               (excl_time- (*function_timers)[index].start_excl_time); 
         excl_time = (*function_timers)[index].start_excl_time + delta_time;
+        // Only increment calls when we have a start ^ stop match
         (*function_timers)[index].calls++;
       }
       exit();

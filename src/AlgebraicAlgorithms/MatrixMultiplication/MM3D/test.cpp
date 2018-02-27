@@ -22,6 +22,12 @@ int main(int argc, char** argv)
   using MatrixTypeLT = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
   using MatrixTypeUT = Matrix<double,int,MatrixStructureUpperTriangular,MatrixDistributerCyclic>;
 
+#ifdef TIMER
+#ifdef CTFTIMER
+  TAU_PROFILE_SET_CONTEXT(0)
+#endif /*CTFTIMER*/
+#endif /*TIMER*/
+
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);

@@ -134,7 +134,7 @@ namespace CTF {
 
 #ifdef TAU
 #define TAU_FSTART(ARG)                                           \
-  do { CTF::Timer t(ARG); t.start(); std::cout << ARG << std::endl;} while (0);
+  do { CTF::Timer t(ARG); t.start(); } while (0);
 
 #define TAU_FSTOP(ARG)                                            \
   do { CTF::Timer t(ARG); t.stop(); } while (0);

@@ -22,6 +22,12 @@ int main(int argc, char** argv)
   using MatrixTypeLT = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
   using MatrixTypeUT = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
 
+#ifdef TIMER
+#ifdef CTFTIMER
+  TAU_PROFILE_SET_CONTEXT(0)
+#endif /*CTFTIMER*/
+#endif /*TIMER*/
+
   // argv[1] - Matrix size x where x represents 2^x.
   // So in future, we might want t way to test non power of 2 dimension matrices
 
