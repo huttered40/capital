@@ -135,27 +135,28 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
   // Need to get the right global dimensions here, use a tunable package struct or something
   Matrix<T,U,StructureA,Distribution> matrixQ2(std::vector<T>(localDimensionN*localDimensionM,0), localDimensionN, localDimensionM, globalDimensionN,
     globalDimensionM, true);
-  Matrix<T,U,MatrixStructureSquare,Distribution> matrixR1(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
-    globalDimensionN, true);
+//  Matrix<T,U,MatrixStructureSquare,Distribution> matrixR1(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
+//    globalDimensionN, true);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
     globalDimensionN, true);
   FactorTunable_cqr(
-    matrixA, matrixQ2, matrixR1, gridDimensionD, gridDimensionC, commWorld, commInfoTunable, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+    matrixA, matrixQ2, /*matrixR1*/matrixR, gridDimensionD, gridDimensionC, commWorld, commInfoTunable, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
   FactorTunable_cqr(
     matrixQ2, matrixQ, matrixR2, gridDimensionD, gridDimensionC, commWorld, commInfoTunable, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
 
   // Try gemm first, then try trmm later.
-  blasEngineArgumentPackage_gemm<T> gemmPack1;
-  gemmPack1.order = blasEngineOrder::AblasColumnMajor;
-  gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
-  gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
-  gemmPack1.alpha = 1.;
-  gemmPack1.beta = 0.;
+  blasEngineArgumentPackage_trmm<T> trmmPack1;
+  trmmPack1.order = blasEngineOrder::AblasColumnMajor;
+  trmmPack1.side = blasEngineSide::AblasRight;
+  trmmPack1.uplo = blasEngineUpLo::AblasUpper;
+  trmmPack1.diag = blasEngineDiag::AblasNonUnit;
+  trmmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
+  trmmPack1.alpha = 1.;
 
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
   MM3D<T,U,blasEngine>::Multiply(
-    matrixR2, matrixR1, matrixR, miniCubeComm, commInfo3D, gemmPack1, MMid);
+    matrixR2, /*matrixR1, */matrixR, miniCubeComm, commInfo3D, trmmPack1, MMid);
   TAU_FSTOP(FactorTunable);
 }
 

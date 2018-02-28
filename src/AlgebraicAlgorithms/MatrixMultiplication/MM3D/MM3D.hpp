@@ -231,9 +231,6 @@ void MM3D<T,U,blasEngine>::Multiply(
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
 
-  // Need to do the end_1 fix, same as above. Fix if there is sufficient reason to use TRSM instead of GEMM after testing on Cletus
-  assert(0);
-
   T* matrixAEnginePtr;
   T* matrixBEnginePtr;
   std::vector<T> matrixAEngineVector;
