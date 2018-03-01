@@ -293,8 +293,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 /*
     blasEngineArgumentPackage_gemm<T> trsmArgs;
     trsmArgs.order = blasEngineOrder::AblasColumnMajor;
-    trsmArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-    trsmArgs.transposeB = blasEngineTranspose::AblasTrans;
+    trsmArgs.transposeA = blasEngineTranspose::AblasTrans;
 
     // create a new subvector
     U len = saveIndexAfter - saveIndexPrev;
@@ -314,19 +313,16 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, packedMatrixL,
       matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift);
-    Matrix<T,U,MatrixStructureSquare,Distribution> matrixLcopy(std::vector<T>(), localShift, matLendY-(matLstartY+localShift), globalShift, globalShift);
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, matrixLcopy,
-      matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY);
     // Swap, same as we did with inverse
     util<T,U>::transposeSwap(
       packedMatrixL, rank, transposePartner, commWorld);
     TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
-      matrixLcopy,packedMatrixL, packedMatrix, matrixAcopy,
+      packedMatrixL, packedMatrix, matrixAcopy,
       subBaseCaseDimList, trsmArgs, commWorld, commInfo3D, MM_id, TS_id);
 
-    // inject matrixLcopy back into matrixL
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, matrixLcopy,
-      matLstartX, matLstartX+localShift, matLstartY+localShift, matLendY, true);
+    // inject matrixAcopy back into matrixA
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixLcopy,
+      matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, true);
 */
   }
 
