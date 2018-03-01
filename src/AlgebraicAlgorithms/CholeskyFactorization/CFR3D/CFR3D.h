@@ -140,7 +140,8 @@ private:
 							U matAstartY,
 							U matAendY,
 							int pGridDimensionSize,
-							MPI_Comm slice2Dcomm
+							MPI_Comm slice2Dcomm,
+							char dir
 						     );
 
   static void cyclicToLocalTransformation(

@@ -1,5 +1,99 @@
 /* Author: Edward Hutter */
 
+// Note: this method differs from the one below it because blockedData is in packed storage
+template<typename T, typename U>
+std::vector<T> util<T,U>::blockedToCyclicSpecial(
+  std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize, char dir)
+{
+  TAU_FSTART(Util::blockedToCyclic);
+  U aggregNumRows = localDimensionRows*pGridDimensionSize;
+  U aggregNumColumns = localDimensionColumns*pGridDimensionSize;
+  U aggregSize = aggregNumRows*aggregNumColumns;
+  std::vector<T> cyclicData(aggregSize,0);
+  U numCyclicBlocksPerRow = localDimensionRows;
+  U numCyclicBlocksPerCol = localDimensionColumns;
+
+  if (dir == 'L')
+  {
+    U writeIndex = 0;
+    U recvDataOffset = blockedData.size()/(pGridDimensionSize*pGridDimensionSize);
+    U off1 = (-1)*numCyclicBlocksPerRow-1;
+    U off3 = pGridDimensionSize*recvDataOffset;
+    // MACRO loop over all cyclic "blocks" (dimensionX direction)
+    for (U i=0; i<numCyclicBlocksPerCol; i++)
+    {
+      off1 += (numCyclicBlocksPerRow-i+1);
+      // Inner loop over all columns in a cyclic "block"
+      for (U j=0; j<pGridDimensionSize; j++)
+      {
+        U off2 = j*recvDataOffset + off1;
+        writeIndex += (i*pGridDimensionSize) + j;
+        // Treat first block separately
+        for (U z=j; z<pGridDimensionSize; z++)
+        {
+          U readIndex = off2 + z*off3;
+          cyclicData[writeIndex++] = blockedData[readIndex];
+        }
+        // Inner loop over all cyclic "blocks"
+        for (U k=(i+1); k<numCyclicBlocksPerRow; k++)
+        {
+          U off4 = off2;
+          // Inner loop over all elements along columns
+          for (U z=0; z<pGridDimensionSize; z++)
+          {
+            U readIndex = off4 + z*off3 + (k-i);
+            cyclicData[writeIndex++] = blockedData[readIndex];
+          }
+        }
+      }
+    }
+  }
+  else /* dir == 'U'*/
+  {
+    U writeIndex = 0;
+    U recvDataOffset = blockedData.size()/(pGridDimensionSize*pGridDimensionSize);
+    U off1 = 0;
+    U off3 = pGridDimensionSize*recvDataOffset;
+    // MACRO loop over all cyclic "blocks" (dimensionX direction)
+    for (U i=0; i<numCyclicBlocksPerCol; i++)
+    {
+      off1 += i;
+      // Inner loop over all columns in a cyclic "block"
+      for (U j=0; j<pGridDimensionSize; j++)
+      {
+        U off2 = j*recvDataOffset + off1;
+        writeIndex = ((i*pGridDimensionSize)+j)*aggregNumRows;    //  reset each time
+        // Inner loop over all cyclic "blocks"
+        for (U k=0; k<i; k++)
+        {
+          U off4 = off2;
+          // Inner loop over all elements along columns
+          for (U z=0; z<pGridDimensionSize; z++)
+          {
+            U readIndex = off4 + z*off3 + k;
+            cyclicData[writeIndex++] = blockedData[readIndex];
+          }
+        }
+        
+        // Special final block
+        U off4 = off2;
+        // Inner loop over all elements along columns
+        for (U z=0; z<=j; z++)
+        {
+          U readIndex = off4 + z*off3 + i;
+          cyclicData[writeIndex++] = blockedData[readIndex];
+        }
+      }
+    }
+  }
+
+  // Should be quick pass-by-value via move semantics, since we are effectively returning a localvariable that is going to lose its scope anyways,
+  //   so the compiler should be smart enough to use the move constructor for the vector in the caller function.
+  TAU_FSTOP(Util::blockedToCyclic);
+  return cyclicData;
+
+}
+
 template<typename T, typename U>
 std::vector<T> util<T,U>::blockedToCyclic(
   std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize)

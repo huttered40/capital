@@ -133,7 +133,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     // Should be fast pass-by-value via move semantics
     std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
       matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
-      matAstartY, matAendY, pGridDimensionSize, std::get<2>(commInfo3D));
+      matAstartY, matAendY, pGridDimensionSize, std::get<2>(commInfo3D), 'L');
 
     // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
     //   I want to be able to mix and match.
@@ -481,7 +481,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     // Should be fast pass-by-value via move semantics
     std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
       matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
-      matAstartY, matAendY, pGridDimensionSize, std::get<2>(commInfo3D));
+      matAstartY, matAendY, pGridDimensionSize, std::get<2>(commInfo3D), 'U');
 
     // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
     //   I want to be able to mix and match.
@@ -779,23 +779,47 @@ std::vector<T> CFR3D<T,U,blasEngine>::blockedToCyclicTransformation(
 									U matAstartY,
 									U matAendY,
 									int pGridDimensionSize,
-									MPI_Comm slice2Dcomm
+									MPI_Comm slice2Dcomm,
+                  char dir
 								     )
 {
   TAU_FSTART(CFR3D::blockedToCyclicTransformation);
-  Matrix<T,U,MatrixStructureSquare,Distribution> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension,
-    globalDimension, globalDimension);
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matA, baseCaseMatrixA, matAstartX,
-    matAendX, matAstartY, matAendY);
+  if (dir == 'U')
+  {
+    Matrix<T,U,MatrixStructureUpperTriangular,Distribution> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension,
+      globalDimension, globalDimension);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>::Serialize(matA, baseCaseMatrixA, matAstartX,
+      matAendX, matAstartY, matAendY);
+  //  U aggregDim = localDimension*pGridDimensionSize;
+  //  std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
+    U aggregSize = baseCaseMatrixA.getNumElems()*pGridDimensionSize*pGridDimensionSize;
+    std::vector<T> blockedBaseCaseData(aggregSize);
+    // Note: recv buffer will be larger tha send buffer * pGridDimensionSize**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
+    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DOUBLE,
+      &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DOUBLE, slice2Dcomm);
 
-  U aggregDim = localDimension*pGridDimensionSize;
-  std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
-  MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DOUBLE,
-    &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DOUBLE, slice2Dcomm);
+    TAU_FSTOP(CFR3D::blockedToCyclicTransformation);
+    return util<T,U>::blockedToCyclicSpecial(
+      blockedBaseCaseData, localDimension, localDimension, pGridDimensionSize, dir);
+  }
+  else
+  { // dir == 'L'
+    Matrix<T,U,MatrixStructureLowerTriangular,Distribution> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension,
+      globalDimension, globalDimension);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matA, baseCaseMatrixA, matAstartX,
+      matAendX, matAstartY, matAendY);
+  //  U aggregDim = localDimension*pGridDimensionSize;
+  //  std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
+    U aggregSize = baseCaseMatrixA.getNumElems()*pGridDimensionSize*pGridDimensionSize;
+    std::vector<T> blockedBaseCaseData(aggregSize);
+    // Note: recv buffer will be larger tha send buffer * pGridDimensionSize**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
+    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DOUBLE,
+      &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DOUBLE, slice2Dcomm);
 
-  TAU_FSTOP(CFR3D::blockedToCyclicTransformation);
-  return util<T,U>::blockedToCyclic(
-    blockedBaseCaseData, localDimension, localDimension, pGridDimensionSize);
+    TAU_FSTOP(CFR3D::blockedToCyclicTransformation);
+    return util<T,U>::blockedToCyclicSpecial(
+      blockedBaseCaseData, localDimension, localDimension, pGridDimensionSize, dir);
+  }
 }
 
 
@@ -843,6 +867,7 @@ void CFR3D<T,U,blasEngine>::cyclicToLocalTransformation(
       else
       {
 //        break;
+//        if (storeT[writeIndex] != 0) std::cout << "val - " << storeT[writeIndex] << std::endl;
         storeT[writeIndex] = 0.;
         storeTI[writeIndex] = 0.;
       }

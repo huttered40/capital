@@ -25,6 +25,9 @@ public:
   static std::vector<T> blockedToCyclic(
     std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize);
 
+  static std::vector<T> blockedToCyclicSpecial(
+  std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize, char dir);
+
   template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
   static std::vector<T> getReferenceMatrix(
