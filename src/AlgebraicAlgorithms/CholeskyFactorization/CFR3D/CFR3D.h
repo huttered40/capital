@@ -43,7 +43,6 @@ public:
   template<template<typename,typename,int> class Distribution>
   static std::vector<U> Factor(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
                       U inverseCutOffGlobalDimension,
                       char dir,
@@ -59,7 +58,6 @@ private:
   template<template<typename,typename,int> class Distribution>
   static void rFactorLower(
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
                        U localDimension,
                        U trueLocalDimenion,
@@ -70,10 +68,6 @@ private:
                        U matAendX,
                        U matAstartY,
                        U matAendY,
-                       U matLstartX,
-                       U matLendX,
-                       U matLstartY,
-                       U matLendY,
                        U matLIstartX,
                        U matLIendX,
                        U matLIstartY,
@@ -91,7 +85,6 @@ private:
   template<template<typename,typename,int> class Distribution>
   static void rFactorUpper(
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,
                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
                        U localDimension,
                        U trueLocalDimension,
@@ -102,10 +95,6 @@ private:
                        U matAendX,
                        U matAstartY,
                        U matAendY,
-                       U matRstartX,
-                       U matRendX,
-                       U matRstartY,
-                       U matRendY,
                        U matRIstartX,
                        U matRIendX,
                        U matRIstartY,

@@ -72,16 +72,17 @@ int main(int argc, char** argv)
   if (methodKey1 == 0)
   {
     MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
-    MatrixTypeR matL(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
     MatrixTypeR matLI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
+    // Save matrixA for correctness checking
+    MatrixTypeA saveA = matA;
 
     // Perform a "cold run" first before keeping tracking of times
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
       MPI_COMM_WORLD);
     CFR3D<double,int,cblasEngine>::Factor(
-      matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
+      matA, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfo3D));
     MPI_Comm_free(&std::get<1>(commInfo3D));
@@ -91,17 +92,15 @@ int main(int argc, char** argv)
     if (methodKey2 == 1) {numIterations = atoi(argv[8]);}
     for (int i=0; i<numIterations; i++)
     {
+      // Reset matrixA
+      matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
 #ifdef CRITTER
       Critter_Clear();
 #endif
-      size_t index1 = myTimer.setStartTime("CFR3D::Factor");
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
         MPI_COMM_WORLD);
       CFR3D<double,int,cblasEngine>::Factor(
-        matA, matL, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
-      myTimer.setEndTime("CFR3D::Factor", index1);
-      myTimer.finalize(MPI_COMM_WORLD);
-      myTimer.clear();
+        matA, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
 #ifdef CRITTER
       Critter_Print();
 #endif
@@ -109,19 +108,18 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<1>(commInfo3D));
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
-      //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Lower", i);
     }
     if (methodKey2 == 0)
     {
       CFvalidate<double,int>::validateLocal(
-        matA, matL, 'L', MPI_COMM_WORLD);
+        saveA, matA, 'L', MPI_COMM_WORLD);
     }
     else if (methodKey2 == 2)
     {
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
         MPI_COMM_WORLD);
       CFvalidate<double,int>::validateParallel(
-        matA, matL, 'L', MPI_COMM_WORLD, commInfo3D);
+        saveA, matA, 'L', MPI_COMM_WORLD, commInfo3D);
       MPI_Comm_free(&std::get<0>(commInfo3D));
       MPI_Comm_free(&std::get<1>(commInfo3D));
       MPI_Comm_free(&std::get<2>(commInfo3D));
@@ -129,22 +127,22 @@ int main(int argc, char** argv)
     }
     else
     {
-      //myTimer.printRunStats(MPI_COMM_WORLD, "CFR3D Lower");
     }
   }
   else
   {
     MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
-    MatrixTypeR matR(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
     MatrixTypeR matRI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
+    // Save matrixA for correctness checking
+    MatrixTypeA saveA = matA;
 
     // Perform a "cold run" first before keeping tracking of times
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
       MPI_COMM_WORLD);
     CFR3D<double,int,cblasEngine>::Factor(
-      matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
+      matA, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfo3D));
     MPI_Comm_free(&std::get<1>(commInfo3D));
@@ -154,17 +152,15 @@ int main(int argc, char** argv)
     if (methodKey2 == 1) {numIterations = atoi(argv[8]);}
     for (int i=0; i<numIterations; i++)
     {
+      // Reset matrixA
+      matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
 #ifdef CRITTER
       Critter_Clear();
 #endif
-      size_t index1 = myTimer.setStartTime("CFR3D::Factor");
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
         MPI_COMM_WORLD);
       CFR3D<double,int,cblasEngine>::Factor(
-        matA, matR, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
-      myTimer.setEndTime("CFR3D::Factor", index1);
-      myTimer.finalize(MPI_COMM_WORLD);
-      myTimer.clear();
+        matA, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D, methodKey4);
 #ifdef CRITTER
       Critter_Print();
 #endif
@@ -172,19 +168,18 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<1>(commInfo3D));
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
-      //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "CFR3D Upper", i);
     }
     if (methodKey2 == 0)
     {
       CFvalidate<double,int>::validateLocal(
-        matA, matR, 'U', MPI_COMM_WORLD);
+        saveA, matA, 'U', MPI_COMM_WORLD);
     }
     else if (methodKey2 == 2)
     {
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
         MPI_COMM_WORLD);
       CFvalidate<double,int>::validateParallel(
-        matA, matR, 'U', MPI_COMM_WORLD, commInfo3D);
+        saveA, matA, 'U', MPI_COMM_WORLD, commInfo3D);
       MPI_Comm_free(&std::get<0>(commInfo3D));
       MPI_Comm_free(&std::get<1>(commInfo3D));
       MPI_Comm_free(&std::get<2>(commInfo3D));
@@ -192,7 +187,6 @@ int main(int argc, char** argv)
     }
     else
     {
-      //myTimer.printRunStats(MPI_COMM_WORLD, "CFR3D Upper");
     }
   }  
 

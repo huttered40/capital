@@ -70,6 +70,10 @@ public:
                         MPI_Comm columnAltComm = MPI_COMM_WORLD
                       );
   static U getNextPowerOf2(U localShift);
+
+  template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
+    template<typename,typename,int> class Distribution>
+  static void removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, int pGridCoordX, int pGridCoordY, int pGridDimensionSize, char dir);
 };
 
 #include "util.hpp"

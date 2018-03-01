@@ -428,3 +428,31 @@ U util<T,U>::getNextPowerOf2(U localShift)
   TAU_FSTOP(Util::getNextPowerOf2);
   return localShift;
 }
+
+template<typename T, typename U>
+template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
+  template<typename,typename,int> class Distribution>
+void util<T,U>::removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, int pGridCoordX, int pGridCoordY, int pGridDimensionSize, char dir)
+{
+  U globalDimVert = pGridCoordY;
+  U globalDimHoriz = pGridCoordX;
+  U localVert = matrix.getNumRowsLocal();
+  U localHoriz = matrix.getNumColumnsLocal();
+  for (U i=0; i<localHoriz; i++)
+  {
+    globalDimVert = pGridCoordY;    //   reset
+    for (U j=0; j<localVert; j++)
+    {
+      if ((globalDimVert < globalDimHoriz) && (dir == 'L'))
+      {
+        matrix.getRawData()[i*localVert + j] = 0;
+      }
+      if ((globalDimVert > globalDimHoriz) && (dir == 'U'))
+      {
+        matrix.getRawData()[i*localVert + j] = 0;
+      }
+      globalDimVert += pGridDimensionSize;
+    }
+    globalDimHoriz += pGridDimensionSize;
+  }
+}

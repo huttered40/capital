@@ -65,9 +65,6 @@ void QRvalidate<T,U>::validateLocal1D(
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void QRvalidate<T,U>::validateParallel3D(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -76,15 +73,12 @@ void QRvalidate<T,U>::validateParallel3D(
                       )
 {
   // generate A_computed = myQ*myR and compare against original A
+  int size; MPI_Comm_size(commWorld, &size);
+  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  util<T,U>::removeTriangle(myR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
   util<T,U>::validateResidualParallel(
-#ifdef TIMER
-    timer,
-#endif
     myQ, myR, matrixA, 'F', commWorld, commInfo3D);
   util<T,U>::validateOrthogonalityParallel(
-#ifdef TIMER
-    timer,
-#endif
     myQ,commWorld, commInfo3D);
   return;
 }
@@ -94,9 +88,6 @@ void QRvalidate<T,U>::validateParallel3D(
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void QRvalidate<T,U>::validateParallelTunable(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -108,20 +99,14 @@ void QRvalidate<T,U>::validateParallelTunable(
 {
   MPI_Comm miniCubeComm = std::get<5>(commInfoTunable);
   std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-#ifdef TIMER
-      timer,
-#endif
       miniCubeComm);
   MPI_Comm columnAltComm = std::get<2>(commInfoTunable);
+  int size; MPI_Comm_size(miniCubeComm, &size);
+  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  util<T,U>::removeTriangle(myR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
   util<T,U>::validateResidualParallel(
-#ifdef TIMER
-    timer,
-#endif
     myQ, myR, matrixA, 'F', miniCubeComm, commInfo3D);
   util<T,U>::validateOrthogonalityParallel(
-#ifdef TIMER
-    timer,
-#endif
     myQ, miniCubeComm, commInfo3D, columnAltComm);
   return;
 }

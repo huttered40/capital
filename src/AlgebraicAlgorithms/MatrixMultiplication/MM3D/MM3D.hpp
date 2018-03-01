@@ -468,7 +468,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(
     matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
   Multiply(
-    matA, matB, commWorld, srcPackage, methodKey, depthManipulation);
+    (cutA ? matA : matrixA), (cutB ? matB : matrixB), commWorld, commInfo3D, srcPackage, methodKey, depthManipulation);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
   if (cutB)

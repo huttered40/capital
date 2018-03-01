@@ -3,9 +3,6 @@
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void CFvalidate<T,U>::validateLocal(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
                         char dir,
@@ -20,9 +17,6 @@ void CFvalidate<T,U>::validateLocal(
   MPI_Comm_rank(commWorld, &myRank);
 
   auto commInfo = util<T,U>::getCommunicatorSlice(
-#ifdef TIMER
-    timer,
-#endif
     commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
@@ -33,9 +27,6 @@ void CFvalidate<T,U>::validateLocal(
   U localDimension = matrixSol_CF.getNumRowsLocal();
   U globalDimension = matrixSol_CF.getNumRowsGlobal();
   std::vector<T> globalMatrixA = util<T,U>::getReferenceMatrix(
-#ifdef TIMER
-    timer,
-#endif
     matrixA, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
 
   // for ease in finding Frobenius Norm
@@ -78,9 +69,6 @@ void CFvalidate<T,U>::validateLocal(
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 void CFvalidate<T,U>::validateParallel(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTri,
                         char dir,
@@ -93,9 +81,6 @@ void CFvalidate<T,U>::validateParallel(
   MPI_Comm_size(commWorld, &size);
 
   auto commInfo = util<T,U>::getCommunicatorSlice(
-#ifdef TIMER
-    timer,
-#endif
     commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
@@ -106,16 +91,11 @@ void CFvalidate<T,U>::validateParallel(
   helper *= helper;
 
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
+  util<T,U>::removeTriangle(matrixTri, pGridCoordX, pGridCoordY, pGridDimensionSize, dir);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixTriTrans = matrixTri;
   util<T,U>::transposeSwap(
-#ifdef TIMER
-    timer,
-#endif
     matrixTriTrans, rank, transposePartner, MPI_COMM_WORLD);
   util<T,U>::validateResidualParallel(
-#ifdef TIMER
-    timer,
-#endif
     (dir == 'L' ? matrixTri : matrixTriTrans), (dir == 'L' ? matrixTriTrans : matrixTri), matrixA, dir, commWorld, commInfo3D);
 }
 
@@ -152,6 +132,7 @@ T CFvalidate<T,U>::getResidualTriangleLower(
     U saveCountMy = myIndex;
     for (U j=0; j<trueDimensionM; j++)
     {
+      if (i>j) {solIndex+=pGridDimensionSize; myIndex++; continue;}
       T errorSquare = std::abs(myValues[myIndex] - lapackValues[solIndex]);
       //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
       errorSquare *= errorSquare;
@@ -201,6 +182,7 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
     U saveCountMy = myIndex;
     for (U j=0; j<trueDimensionM; j++)
     {
+      if (i<j) {solIndex+=pGridDimensionSize; myIndex++; continue;}
       T errorSquare = std::abs(myValues[myIndex] - lapackValues[solIndex]);
       //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
