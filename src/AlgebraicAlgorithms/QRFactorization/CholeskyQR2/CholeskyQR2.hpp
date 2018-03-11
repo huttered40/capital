@@ -59,7 +59,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D(
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_trmm<T> trmmPack1;
   trmmPack1.order = blasEngineOrder::AblasColumnMajor;
-  trmmPack1.side = blasEngineSide::AblasRight;
+  trmmPack1.side = blasEngineSide::AblasLeft;
   trmmPack1.uplo = blasEngineUpLo::AblasUpper;
   trmmPack1.diag = blasEngineDiag::AblasNonUnit;
   trmmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
@@ -93,7 +93,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_trmm<T> trmmPack1;
   trmmPack1.order = blasEngineOrder::AblasColumnMajor;
-  trmmPack1.side = blasEngineSide::AblasRight;
+  trmmPack1.side = blasEngineSide::AblasLeft;
   trmmPack1.uplo = blasEngineUpLo::AblasUpper;
   trmmPack1.diag = blasEngineDiag::AblasNonUnit;
   trmmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
@@ -134,7 +134,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_trmm<T> trmmPack1;
   trmmPack1.order = blasEngineOrder::AblasColumnMajor;
-  trmmPack1.side = blasEngineSide::AblasRight;
+  trmmPack1.side = blasEngineSide::AblasLeft;
   trmmPack1.uplo = blasEngineUpLo::AblasUpper;
   trmmPack1.diag = blasEngineDiag::AblasNonUnit;
   trmmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
@@ -144,6 +144,13 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
   //   send half of the data!
   MM3D<T,U,blasEngine>::Multiply(
     matrixR2, matrixR, miniCubeComm, commInfo3D, trmmPack1, MMid);
+
+  // how in the world is the result te same if i pass ino matrixR or matrixR2????
+  int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (rank == 0)
+  {
+    matrixR2.print();
+  }
   TAU_FSTOP(FactorTunable);
 }
 

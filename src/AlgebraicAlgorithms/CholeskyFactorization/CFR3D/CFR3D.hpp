@@ -99,7 +99,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   U inverseCutoffGlobalDimension)
 {
   TAU_FSTART(CFR3D::rFactorLower);
-  if (globalDimension <= bcDimension)
+  if (localDimension <= bcDimension)
   {
     if (!isInversePath)
     {
@@ -436,7 +436,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
                      )
 {
   TAU_FSTART(CFR3D::rFactorUpper);
-  if (globalDimension <= bcDimension)
+  if (localDimension <= bcDimension)
   {
     if (!isInversePath)
     {
