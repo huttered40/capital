@@ -145,12 +145,6 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
   MM3D<T,U,blasEngine>::Multiply(
     matrixR2, matrixR, miniCubeComm, commInfo3D, trmmPack1, MMid);
 
-  // how in the world is the result te same if i pass ino matrixR or matrixR2????
-  int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  if (rank == 0)
-  {
-    matrixR2.print();
-  }
   TAU_FSTOP(FactorTunable);
 }
 
