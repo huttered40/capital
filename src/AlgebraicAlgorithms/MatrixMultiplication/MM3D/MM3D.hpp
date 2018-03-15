@@ -40,9 +40,13 @@ static std::tuple<MPI_Comm,
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<
+  	  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  	  template<typename,typename,int> class Distribution
+	>
 void MM3D<T,U,blasEngine>::Multiply(
                                    	    T* matrixA,
-                                        T* matrixB,
+                                        Matrix<T,U,StructureB,Distribution>& matrixB,
                                         T* matrixC,
                                         U matrixAnumColumns,
                                         U matrixAnumRows,
@@ -64,7 +68,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   T* matrixAEnginePtr;
   T* matrixBEnginePtr;
   T* foreignA;
-  T* foreignB;
+  std::vector<T> foreignB;
   U localDimensionM = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixAnumRows : matrixAnumColumns);
   U localDimensionN = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? matrixBnumColumns : matrixBnumRows);
   U localDimensionK = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixAnumColumns : matrixAnumRows);
@@ -79,18 +83,28 @@ void MM3D<T,U,blasEngine>::Multiply(
   int pGridCoordZ = std::get<6>(commInfo3D);
 
   U sizeA = matrixAnumRows*matrixAnumColumns;
-  U sizeB = matrixBnumRows*matrixBnumColumns;
+  U sizeB = matrixB.getNumElems();
   U sizeC = matrixCnumRows*matrixCnumColumns;
   bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
   bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
 
   BroadcastPanels(
     (isRootRow ? matrixA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
-  BroadcastPanels(
-    (isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
-
   matrixAEnginePtr = (isRootRow ? matrixA : foreignA);
-  matrixBEnginePtr = (isRootColumn ? matrixB : foreignB);
+  BroadcastPanels(
+    (isRootColumn ? matrixB.getVectorData() : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+  if ((!std::is_same<StructureB<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+    && (!std::is_same<StructureB<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+  {
+    Matrix<T,U,MatrixStructureRectangle,Distribution> helperB(std::vector<T>(), matrixBnumColumns, matrixBnumRows, matrixBnumColumns, matrixBnumRows);
+    getEnginePtr(
+      matrixB, helperB, (isRootColumn ? matrixB.getVectorData() : foreignB), isRootColumn);
+    matrixBEnginePtr = helperB.getRawData();
+  }
+  else
+  {
+    matrixBEnginePtr = (isRootColumn ? matrixB.getRawData() : &foreignB[0]);
+  }
 
   // Massive bug fix. Need to use a separate array if beta != 0
 
@@ -118,7 +132,6 @@ void MM3D<T,U,blasEngine>::Multiply(
     }
   }
   if (!isRootRow) delete[] foreignA;
-  if (!isRootColumn) delete[] foreignB;
   TAU_FSTOP(MM3D::Multiply);
 }
 
@@ -286,6 +299,106 @@ void MM3D<T,U,blasEngine>::Multiply(
     (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),matrixB,commInfo3D);
   TAU_FSTOP(MM3D::Multiply);
 }
+
+template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<
+  	  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  	  template<typename,typename,int> class Distribution
+	>
+void MM3D<T,U,blasEngine>::Multiply(
+                                        Matrix<T,U,StructureA,Distribution>& matrixA,
+                                   	    T* matrixB,
+                                        U matrixAnumColumns,
+                                        U matrixAnumRows,
+                                        U matrixBnumColumns,
+                                        U matrixBnumRows,
+                                        MPI_Comm commWorld,
+                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
+                                        const blasEngineArgumentPackage_trmm<T>& srcPackage,
+			                                  int depthManipulation
+                                   )
+{
+  TAU_FSTART(MM3D::Multiply);
+  // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
+  //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
+  //       Also, I only allow method1, not Allgather-based method2
+
+  T* matrixAEnginePtr;
+  T* matrixBEnginePtr;
+  std::vector<T> foreignA;
+  T* foreignB;
+  bool serializeKeyA = false;
+  bool serializeKeyB = false;
+  U localDimensionM = matrixBnumRows;
+  U localDimensionN = matrixBnumColumns;
+
+  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+  MPI_Comm rowComm = std::get<0>(commInfo3D);
+  MPI_Comm columnComm = std::get<1>(commInfo3D);
+  MPI_Comm sliceComm = std::get<2>(commInfo3D);
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int pGridCoordX = std::get<4>(commInfo3D);
+  int pGridCoordY = std::get<5>(commInfo3D);
+  int pGridCoordZ = std::get<6>(commInfo3D);
+
+  U sizeA = matrixA.getNumElems();
+  U sizeB = matrixBnumRows*matrixBnumColumns;
+  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
+  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
+
+  // soon, we will need a methodKey for the different MM algs
+  if (srcPackage.side == blasEngineSide::AblasLeft)
+  {
+    BroadcastPanels(
+      (isRootRow ? matrixA.getVectorData() : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
+    if ((!std::is_same<StructureA<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+      && (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+    {
+      Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
+      getEnginePtr(
+        matrixA, helperA, (isRootRow ? matrixA.getVectorData() : foreignA), isRootRow);
+      matrixAEnginePtr = helperA.getRawData();
+    }
+    else
+    {
+      matrixAEnginePtr = (isRootRow ? matrixA.getRawData() : &foreignA[0]);
+    }
+    BroadcastPanels(
+      (isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+    matrixBEnginePtr = (isRootColumn ? matrixB : foreignB);
+    blasEngine<T,U>::_trmm(matrixAEnginePtr, matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionM,
+      (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
+  }
+  else
+  {
+    BroadcastPanels(
+      (isRootColumn ? matrixA.getVectorData() : foreignA), sizeA, isRootColumn, pGridCoordZ, columnComm);
+    if ((!std::is_same<StructureA<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+      && (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+    {
+      Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
+      getEnginePtr(
+        matrixA, helperA, (isRootColumn ? matrixA.getVectorData() : foreignA), isRootColumn);
+      matrixAEnginePtr = helperA.getRawData();
+    }
+    else
+    {
+      matrixAEnginePtr = (isRootColumn ? matrixA.getRawData() : &foreignA[0]);
+    }
+    BroadcastPanels(
+      (isRootRow ? matrixB : foreignB), sizeB, isRootRow, pGridCoordZ, rowComm);
+    matrixBEnginePtr = (isRootRow ? matrixB : foreignB);
+    blasEngine<T,U>::_trmm(matrixAEnginePtr, matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionN,
+      (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
+  }
+
+  MPI_Allreduce(MPI_IN_PLACE,matrixBEnginePtr, sizeB, MPI_DOUBLE, MPI_SUM, depthComm);
+  std::memcpy(matrixB, matrixBEnginePtr, sizeB*sizeof(T));
+  if ((srcPackage.side == blasEngineSide::AblasLeft) && (!isRootColumn)) delete[] foreignB;
+  if ((srcPackage.side == blasEngineSide::AblasRight) && (!isRootRow)) delete[] foreignB;
+  TAU_FSTOP(MM3D::Multiply);
+}
+
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<
@@ -870,6 +983,8 @@ void MM3D<T,U,blasEngine>::BroadcastPanels(
   }
   else
   {
+    // TODO: Is this causing a memory leak? Usually I would be overwriting vector allocated memory. Not sure if this will cause issues or if
+    //         the vector will still delete itself.
     data = new double[size];
     MPI_Bcast(data, size, MPI_DOUBLE, pGridCoordZ, panelComm);
   }

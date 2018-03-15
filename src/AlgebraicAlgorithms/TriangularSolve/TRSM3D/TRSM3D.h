@@ -36,12 +36,13 @@ public:
 
   template<
     template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename, template<typename,typename,int> class> class StructureTriangularArg,
     template<typename,typename,int> class Distribution
   >
   static void iSolveLowerLeft(
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
+                       Matrix<T,U,StructureTriangularArg,Distribution>& matrixL,
+                       Matrix<T,U,StructureTriangularArg,Distribution>& matrixLI,
                        Matrix<T,U,StructureArg,Distribution>& matrixB,
                        std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
@@ -53,13 +54,13 @@ public:
 
   template<
     template<typename,typename, template<typename,typename,int> class> class StructureArg,
+    template<typename,typename, template<typename,typename,int> class> class StructureTriangularArg,
     template<typename,typename,int> class Distribution
   >
   static void iSolveUpperLeft(
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
-                       Matrix<T,U,StructureArg,Distribution>& matrixB,
+                       Matrix<T,U,StructureTriangularArg,Distribution>& matrixU,
+                       Matrix<T,U,StructureTriangularArg,Distribution>& matrixUI,
                        std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld,

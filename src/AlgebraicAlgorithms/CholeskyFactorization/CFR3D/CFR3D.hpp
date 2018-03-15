@@ -46,7 +46,7 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
   {
     inverseCutOffGlobalDimension >>= 1;
   }
-  inverseCutOffGlobalDimension = std::max(bcDimension,inverseCutOffGlobalDimension);
+  inverseCutOffGlobalDimension = std::max(bcDimension*2,inverseCutOffGlobalDimension);
 
   std::vector<U> baseCaseDimList;
 
@@ -290,40 +290,51 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   }
   else
   {
-/*
-    blasEngineArgumentPackage_gemm<T> trsmArgs;
-    trsmArgs.order = blasEngineOrder::AblasColumnMajor;
-    trsmArgs.transposeA = blasEngineTranspose::AblasTrans;
-
-    // create a new subvector
-    U len = saveIndexAfter - saveIndexPrev;
-    std::vector<U> subBaseCaseDimList(len);
-    for (U i=saveIndexPrev; i<saveIndexAfter; i++)
+    // try this for now
+    if (inverseCutoffGlobalDimension*2 == trueGlobalDimension)
     {
-      subBaseCaseDimList[i-saveIndexPrev] = baseCaseDimList[i];
+      MM3D<T,U,blasEngine>::Multiply(
+        packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, commWorld, commInfo3D, trmmArgs, false, true, MM_id);
     }
-    // make extra copy to avoid corrupting matrixA
-    // Future optimization: Copy a part of A into matrixAcopy, to avoid excessing copying
-    // Note: some of these globalShifts are wrong, but I don't know any easy way to fix them. Everything might still work though.
-    Matrix<T,U,MatrixStructureSquare,Distribution> matrixAcopy(std::vector<T>(), localShift, matAendY-(matAstartY+localShift), globalShift, globalShift);
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixAcopy,
-      matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
-    // Also need to serialize top-left quadrant of matrixL so that its size matches packedMatrix
-    Matrix<T,U,MatrixStructureSquare,Distribution> packedMatrixL(std::vector<T>(), localShift, localShift, globalShift, globalShift);
-    // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixL, packedMatrixL,
-      matLstartX, matLstartX+localShift, matLstartY, matLstartY+localShift);
-    // Swap, same as we did with inverse
-    util<T,U>::transposeSwap(
-      packedMatrixL, rank, transposePartner, commWorld);
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
-      packedMatrixL, packedMatrix, matrixAcopy,
-      subBaseCaseDimList, trsmArgs, commWorld, commInfo3D, MM_id, TS_id);
+    else
+    {
+      // Note: keep this a gemm package, because we still need to use gemm in TRSM3D in the update, which is just rectangular and non-triangular matrices.
+      blasEngineArgumentPackage_gemm<T> trsmArgs;
+      trsmArgs.order = blasEngineOrder::AblasColumnMajor;
+      trsmArgs.transposeA = blasEngineTranspose::AblasNoTrans;
+      trsmArgs.transposeB = blasEngineTranspose::AblasTrans;
 
-    // inject matrixAcopy back into matrixA
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixLcopy,
-      matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, true);
-*/
+      // create a new subvector
+      U len = saveIndexAfter - saveIndexPrev;
+      std::vector<U> subBaseCaseDimList(len);
+      for (U i=saveIndexPrev; i<saveIndexAfter; i++)
+      {
+        subBaseCaseDimList[i-saveIndexPrev] = baseCaseDimList[i];
+      }
+
+      // TODO: Note: some of those steps are unnecessary if we are doing TRSM3D to one level deep.
+      // make extra copy to avoid corrupting matrixA
+      // Note: some of these globalShifts are wrong, but I don't know any easy way to fix them. Everything might still work though.
+      Matrix<T,U,MatrixStructureSquare,Distribution> matrixLcopy(std::vector<T>(), localShift, matAendY-(matAstartY+localShift), globalShift, globalShift);
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixLcopy,
+        matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
+      // Also need to serialize top-left quadrant of matrixL so that its size matches packedMatrix
+      Matrix<T,U,MatrixStructureLowerTriangular,Distribution> packedMatrixL(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+      // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>::Serialize(matrixA, packedMatrixL,
+        matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
+      // Swap, same as we did with inverse
+      util<T,U>::transposeSwap(
+        packedMatrixL, rank, transposePartner, commWorld);
+      TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
+        matrixLcopy, packedMatrixL, packedMatrix,
+        subBaseCaseDimList, trsmArgs, commWorld, commInfo3D, MM_id, TS_id);
+
+      // inject matrixLcopy back into matrixA.
+      // Future optimization: avoid copying matrixL here, and utilize leading dimension and the column vectors.
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixLcopy,
+        matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, true);
+    }
   }
 
   // Now we need to perform L_{21}L_{21}^T via syrk

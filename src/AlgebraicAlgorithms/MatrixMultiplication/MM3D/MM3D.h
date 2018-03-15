@@ -48,9 +48,13 @@ public:
   // New design: user will specify via an argument to the overloaded Multiply() method what underlying BLAS routine he wants called.
   //             I think this is a reasonable assumption to make and will allow me to optimize each routine.
 
+  template<
+  	  template<typename,typename, template<typename,typename,int> class> class StructureB,
+  	  template<typename,typename,int> class Distribution
+	>
   static void Multiply(
                  T* matrixA,
-                 T* matrixB,
+                 Matrix<T,U,StructureB,Distribution>& matrixB,
                  T* matrixC,
                  U matrixAnumColumns,
                  U matrixAnumRows,
@@ -95,6 +99,23 @@ public:
 			                  int methodKey = 0,
 			                  int depthManipulation = 0
                       );
+
+  template<
+  	  template<typename,typename, template<typename,typename,int> class> class StructureA,
+  	  template<typename,typename,int> class Distribution
+	>
+  static void Multiply(
+                                Matrix<T,U,StructureA,Distribution>& matrixA,
+                                T* matrixB,
+                                U matrixAnumColumns,
+                                U matrixAnumRows,
+                                U matrixBnumColumns,
+                                U matrixBnumRows,
+                                MPI_Comm commWorld,
+                                std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
+                                const blasEngineArgumentPackage_trmm<T>& srcPackage,
+                                int depthManipulation = 0
+                           );
 
   template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
