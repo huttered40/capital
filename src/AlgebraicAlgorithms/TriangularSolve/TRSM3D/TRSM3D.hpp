@@ -43,11 +43,6 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
   TAU_FSTART(TRSM3D::iSolveUpperLeft);
   int pGridDimensionSize;
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
-/*
-  // debugging
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-*/
   blasEngineArgumentPackage_trmm<T> trmmPackage;
   trmmPackage.order = blasEngineOrder::AblasColumnMajor;
   trmmPackage.side = blasEngineSide::AblasRight;
@@ -93,12 +88,9 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
       U arg4 = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset1 : matUendX);
 
       // NOTE: the serialized matrix below is not actually square
-      Matrix<T,U,MatrixStructureSquare,Distribution> matrixUpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*pGridDimensionSize, (arg4-arg3)*pGridDimensionSize);
-      Serializer<T,U,StructureTriangularArg,MatrixStructureSquare>::Serialize(matrixU, matrixUpartition,
+      Matrix<T,U,MatrixStructureRectangle,Distribution> matrixUpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*pGridDimensionSize, (arg4-arg3)*pGridDimensionSize);
+      Serializer<T,U,StructureTriangularArg,MatrixStructureRectangle>::Serialize(matrixU, matrixUpartition,
         arg1, arg2, arg3, arg4);
-
-      if (rank == 0) matrixUpartition.print();
-
       MM3D<T,U,blasEngine>::Multiply(
         matrixA.getRawData()+(offset3*matAendY), matrixUpartition, matrixA.getRawData()+(offset1*matAendY),
         offset1-offset3, matAendY, arg2-arg1, arg4-arg3, matAendX-offset1, matAendY, commWorld, commInfo3D, srcPackage);
@@ -107,6 +99,7 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
     // Solve via TRMM
     U save1 = offset2-offset1;
     // New optimization: prevent this copy if we are doing TRSM only at the top level
+    // Note: this change might be rendered useless now that I modified CFR3D.hpp with a similar optimization for that top level of TRSM
     if (baseCaseDimList.size() <= 1)
     {
       MM3D<T,U,blasEngine>::Multiply(

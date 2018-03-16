@@ -323,7 +323,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
   //       Also, I only allow method1, not Allgather-based method2
 
-  T* matrixAEnginePtr;
+  std::vector<T> matrixAEnginePtr;
   T* matrixBEnginePtr;
   std::vector<T> foreignA;
   T* foreignB;
@@ -357,16 +357,16 @@ void MM3D<T,U,blasEngine>::Multiply(
       Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
       getEnginePtr(
         matrixA, helperA, (isRootRow ? matrixA.getVectorData() : foreignA), isRootRow);
-      matrixAEnginePtr = helperA.getRawData();
+      matrixAEnginePtr = std::move(helperA.getVectorData());
     }
     else
     {
-      matrixAEnginePtr = (isRootRow ? matrixA.getRawData() : &foreignA[0]);
+      matrixAEnginePtr = std::move((isRootRow ? matrixA.getVectorData() : foreignA));
     }
     BroadcastPanels(
       (isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
     matrixBEnginePtr = (isRootColumn ? matrixB : foreignB);
-    blasEngine<T,U>::_trmm(matrixAEnginePtr, matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionM,
+    blasEngine<T,U>::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionM,
       (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
   else
@@ -379,19 +379,18 @@ void MM3D<T,U,blasEngine>::Multiply(
       Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
       getEnginePtr(
         matrixA, helperA, (isRootColumn ? matrixA.getVectorData() : foreignA), isRootColumn);
-      matrixAEnginePtr = helperA.getRawData();
+      matrixAEnginePtr = std::move(helperA.getVectorData());
     }
     else
     {
-      matrixAEnginePtr = (isRootColumn ? matrixA.getRawData() : &foreignA[0]);
+      matrixAEnginePtr = std::move((isRootColumn ? matrixA.getVectorData() : foreignA));
     }
     BroadcastPanels(
       (isRootRow ? matrixB : foreignB), sizeB, isRootRow, pGridCoordZ, rowComm);
     matrixBEnginePtr = (isRootRow ? matrixB : foreignB);
-    blasEngine<T,U>::_trmm(matrixAEnginePtr, matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionN,
+    blasEngine<T,U>::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionN,
       (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
-
   MPI_Allreduce(MPI_IN_PLACE,matrixBEnginePtr, sizeB, MPI_DOUBLE, MPI_SUM, depthComm);
   std::memcpy(matrixB, matrixBEnginePtr, sizeB*sizeof(T));
   if ((srcPackage.side == blasEngineSide::AblasLeft) && (!isRootColumn)) delete[] foreignB;

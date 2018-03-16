@@ -1186,6 +1186,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   TAU_FSTART(Serialize);
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
+  std::cout << "rangeX,rangeY - " << rangeX << " " << rangeY << std::endl;
   assert(rangeX == rangeY);
 
   U bigNumRows = big.getNumRowsLocal();
@@ -1306,7 +1307,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::S
   std::vector<T>& destVectorData = dest.getVectorData();
   std::vector<T*>& destMatrixData = dest.getMatrixData();
 
-  U numElems = srcNumColumns*srcNumColumns;
+  U numElems = srcNumColumns*srcNumRows;
   bool assembleFinder = false;
   if (static_cast<U>(destVectorData.size()) < numElems)
   {
@@ -1357,7 +1358,6 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::S
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
-  assert(rangeX == rangeY);
 
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
@@ -1369,7 +1369,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::S
   std::vector<T>& smallVectorData = small.getVectorData();
   std::vector<T*>& smallMatrixData = small.getMatrixData();
 
-  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeX);
+  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeY*rangeX);
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
   if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
