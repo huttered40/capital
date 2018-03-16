@@ -39,7 +39,6 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
     bcDimension *= 2;
   }
   bcDimension = std::min(bcDimension, globalDimension/pGridDimensionSize);
-  std::cout << "bcDimension - " << bcDimension << std::endl;
 
   int save = inverseCutOffGlobalDimension;
   inverseCutOffGlobalDimension = globalDimension;
@@ -252,12 +251,6 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   bool saveSwitch = isInversePath;
   int saveIndexPrev = baseCaseDimList.size();
 
-  // debugging
-  if (rank == 0)
-  {
-    std::cout << "localDim - " << localDimension << " and localShift - " << localShift << std::endl;
-  }
-
   if (inverseCutoffGlobalDimension >= globalDimension)
   {
     if (isInversePath == false)
@@ -376,12 +369,6 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     squareL, squareLSwap, matrixA, 0, localShift, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, blasArgs, false, false, true, MM_id);
 
-  // Only need to change the argument for matrixA
-//  if ((saveSwitch == false) && (isInversePath == true))
-//  {
-//    baseCaseDimList.push_back(localDimension);
-//  }
-
   rFactorLower(
     matrixA, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
@@ -390,7 +377,6 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 
   if (isInversePath)
   {
-
     // Next step : temp <- L_{21}*LI_{11}
     // We can re-use squareL as our temporary output matrix.
 
@@ -603,7 +589,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   {
     if (isInversePath == false)
     {
-      baseCaseDimList.push_back(localShift);
+      baseCaseDimList.push_back(localDimension);
     }
     isInversePath = true;
   }
@@ -613,7 +599,6 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, MM_id, TS_id,
     commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
-  isInversePath = saveSwitch;
   int saveIndexAfter = baseCaseDimList.size();
 
   // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a square buffer
@@ -640,7 +625,15 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   }
   else
   {
-/*
+    // Extra optimization for the case when we only perform TRSM at the top level.
+    if (globalDimension == inverseCutoffGlobalDimension*2)
+    {
+      MM3D<T,U,blasEngine>::Multiply(
+        packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
+        commWorld, commInfo3D, trmmArgs, false, true, MM_id);
+    }
+    else
+    {
     blasEngineArgumentPackage_gemm<T> trsmArgs;
     trsmArgs.order = blasEngineOrder::AblasColumnMajor;
     trsmArgs.transposeA = blasEngineTranspose::AblasTrans;
@@ -656,28 +649,25 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     // make extra copy to avoid corrupting matrixA
     // Future optimization: Copy a part of A into matrixAcopy, to avoid excessing copying
     // Note: some of these globalShifts are wrong, but I don't know any easy way to fix them. Everything might still work though.
-    Matrix<T,U,MatrixStructureSquare,Distribution> matrixAcopy(std::vector<T>(), matAendX-(matAstartX+localShift), localShift, globalShift, globalShift);
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixAcopy,
+    Matrix<T,U,MatrixStructureSquare,Distribution> matrixRcopy(std::vector<T>(), matAendX-(matAstartX+localShift), localShift, globalShift, globalShift);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixRcopy,
       matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift);
     // Also need to serialize top-left quadrant of matrixL so that its size matches packedMatrix
-    Matrix<T,U,MatrixStructureSquare,Distribution> packedMatrixR(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+    Matrix<T,U,MatrixStructureUpperTriangular,Distribution> packedMatrixR(std::vector<T>(), localShift, localShift, globalShift, globalShift);
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, packedMatrixR,
-      matRstartX, matRstartX+localShift, matRstartY, matRstartY+localShift);
-    Matrix<T,U,MatrixStructureSquare,Distribution> matrixRcopy(std::vector<T>(), matRendX-(matRstartX+localShift), localShift, globalShift, globalShift);
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, matrixRcopy,
-      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>::Serialize(matrixA, packedMatrixR,
+      matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
     // Swap, same as we did with inverse
     util<T,U>::transposeSwap(
       packedMatrixR, rank, transposePartner, commWorld);
     TRSM3D<T,U,blasEngine>::iSolveLowerRight(
-      packedMatrixR, packedMatrix, matrixRcopy, matrixAcopy,
+      packedMatrixR, packedMatrix, matrixRcopy,
       subBaseCaseDimList, trsmArgs, commWorld, commInfo3D, MM_id, TS_id);
 
     // Inject back into matrixR
-    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixR, matrixRcopy,
-      matRstartX+localShift, matRendX, matRstartY, matRstartY+localShift, true);
-*/
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixRcopy,
+      matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift, true);
+    }
   }
 
   int pGridDimensionSize;
@@ -704,23 +694,11 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     squareRSwap, squareR, matrixA, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal, 0, localShift,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, blasArgs, false, false, true, MM_id);
 
-  // Only need to change the argument for matrixA
-  saveSwitch = isInversePath;
-  if (inverseCutoffGlobalDimension >= globalDimension)
-  {
-    if (isInversePath == false)
-    {
-      baseCaseDimList.push_back(localShift);
-    }
-    isInversePath = true;
-  }
   rFactorUpper(
     matrixA, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
     matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, MM_id, TS_id,
     commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
-
-  isInversePath = saveSwitch;
 
   // Next step : temp <- R_{12}*RI_{22}
   // We can re-use holdRsyrk as our temporary output matrix.
@@ -748,6 +726,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixRI, tempInverse,
       matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, true);
   }
+  isInversePath = saveSwitch;
   TAU_FSTOP(CFR3D::rFactorUpper);
 }
 

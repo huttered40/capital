@@ -954,7 +954,6 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
-  assert(rangeX == rangeY);
 
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
@@ -966,7 +965,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
   std::vector<T>& smallVectorData = small.getVectorData();
   std::vector<T*>& smallMatrixData = small.getMatrixData();
 
-  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeX);
+  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeY);
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
   if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
@@ -974,7 +973,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallVectorData.size())) < numColumns)
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
   {
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
@@ -999,8 +998,8 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
   {
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(numColumns);
-    small.setNumColumnsLocal(rangeY);
+    small.setNumRowsLocal(rangeY);
+    small.setNumColumnsLocal(numColumns);
     small.setNumElems(numElems);
     // I am only providing Square here, not UT, because if UT, it would have aborted
     MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
