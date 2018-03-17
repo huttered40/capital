@@ -3,16 +3,14 @@
 
 template<typename T, typename U, template<typename, typename> class blasEngine>
 template<template<typename,typename,int> class Distribution>
-std::vector<U> CFR3D<T,U,blasEngine>::Factor(
+std::pair<bool,std::vector<U>> CFR3D<T,U,blasEngine>::Factor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
   U inverseCutOffGlobalDimension,
   char dir,
   int tune,
   MPI_Comm commWorld,
-  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-  int MMid,
-  int TSid
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
   )
 {
   TAU_FSTART(CFR3D::Factor);
@@ -48,25 +46,24 @@ std::vector<U> CFR3D<T,U,blasEngine>::Factor(
   }
   inverseCutOffGlobalDimension = std::max(localDimension*2,inverseCutOffGlobalDimension);
 
-  std::vector<U> baseCaseDimList;
+  std::pair<bool,std::vector<U>> baseCaseDimList;
 
   if (dir == 'L')
   {
-    bool isInversePath = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
-    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
+    baseCaseDimList.first = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
+//    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
     rFactorLower(
       matrixA, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutOffGlobalDimension);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, commWorld, commInfo3D, baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
   }
   else if (dir == 'U')
   {
-    bool isInversePath = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
-    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
+    baseCaseDimList.first = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
+//    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
     rFactorUpper(
       matrixA, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, MMid, TSid, commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutOffGlobalDimension);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, commWorld, commInfo3D, baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
   }
-
   TAU_FSTOP(CFR3D::Factor);
   return baseCaseDimList;
 }
@@ -90,8 +87,6 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   U matLIstartY,
   U matLIendY,
   U transposePartner,
-  int MM_id,
-  int TS_id,
   MPI_Comm commWorld, 	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
   std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
   bool& isInversePath,
@@ -262,7 +257,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   rFactorLower(
     matrixA, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
-    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner, MM_id, TS_id,
+    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner,
     commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   int saveIndexAfter = baseCaseDimList.size();
@@ -287,7 +282,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   {
     //std::cout << "tell me localDim and localshIFT - " << localDimension << " " << localShift << std::endl;
     MM3D<T,U,blasEngine>::Multiply(
-      packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, commWorld, commInfo3D, trmmArgs, false, true, MM_id);
+      packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, commWorld, commInfo3D, trmmArgs, false, true);
   }
   else
   {
@@ -295,7 +290,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     if (globalDimension == inverseCutoffGlobalDimension*2)
     {
       MM3D<T,U,blasEngine>::Multiply(
-        packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, commWorld, commInfo3D, trmmArgs, false, true, MM_id);
+        packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, commWorld, commInfo3D, trmmArgs, false, true);
     }
     else
     {
@@ -329,7 +324,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
         packedMatrixL, rank, transposePartner, commWorld);
       TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
         matrixLcopy, packedMatrixL, packedMatrix,
-        subBaseCaseDimList, trsmArgs, commWorld, commInfo3D, MM_id, TS_id);
+        subBaseCaseDimList, trsmArgs, commWorld, commInfo3D);
 
       // inject matrixLcopy back into matrixA.
       // Future optimization: avoid copying matrixL here, and utilize leading dimension and the column vectors.
@@ -367,12 +362,12 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   blasArgs.beta = 1;
   MM3D<T,U,blasEngine>::Multiply(
     squareL, squareLSwap, matrixA, 0, localShift, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal,
-    matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, blasArgs, false, false, true, MM_id);
+    matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, blasArgs, false, false, true);
 
   rFactorLower(
     matrixA, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
-    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner, MM_id, TS_id,
+    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner,
     commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   if (isInversePath)
@@ -391,13 +386,13 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     invPackage1.alpha = 1.;
     MM3D<T,U,blasEngine>::Multiply(
       matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY,
-        matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, commInfo3D, invPackage1, true, false, MM_id);
+        matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, commInfo3D, invPackage1, true, false);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
     invPackage1.side = blasEngineSide::AblasLeft;
     MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, 0, localShift, 0, reverseDimLocal,
-        commWorld, commInfo3D, invPackage1, true, false, MM_id);
+        commWorld, commInfo3D, invPackage1, true, false);
     // One final serialize of tempInverse into matrixLI
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempInverse,
       matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, true);
@@ -426,8 +421,6 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
                        U matRIstartY,
                        U matRIendY,
                        U transposePartner,
-                       int MM_id,
-                       int TS_id,
                        MPI_Comm commWorld,
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                        bool& isInversePath,
@@ -596,7 +589,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   rFactorUpper(
     matrixA, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
-    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner, MM_id, TS_id,
+    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner,
     commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   int saveIndexAfter = baseCaseDimList.size();
@@ -621,7 +614,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   {
     MM3D<T,U,blasEngine>::Multiply(
       packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
-      commWorld, commInfo3D, trmmArgs, false, true, MM_id);
+      commWorld, commInfo3D, trmmArgs, false, true);
   }
   else
   {
@@ -630,7 +623,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     {
       MM3D<T,U,blasEngine>::Multiply(
         packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
-        commWorld, commInfo3D, trmmArgs, false, true, MM_id);
+        commWorld, commInfo3D, trmmArgs, false, true);
     }
     else
     {
@@ -662,7 +655,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       packedMatrixR, rank, transposePartner, commWorld);
     TRSM3D<T,U,blasEngine>::iSolveLowerRight(
       packedMatrixR, packedMatrix, matrixRcopy,
-      subBaseCaseDimList, trsmArgs, commWorld, commInfo3D, MM_id, TS_id);
+      subBaseCaseDimList, trsmArgs, commWorld, commInfo3D);
 
     // Inject back into matrixR
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, matrixRcopy,
@@ -692,12 +685,12 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   blasArgs.beta = 1;
   MM3D<T,U,blasEngine>::Multiply(
     squareRSwap, squareR, matrixA, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal, 0, localShift,
-    matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, blasArgs, false, false, true, MM_id);
+    matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, blasArgs, false, false, true);
 
   rFactorUpper(
     matrixA, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
-    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner, MM_id, TS_id,
+    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner,
     commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
 
   // Next step : temp <- R_{12}*RI_{22}
@@ -715,14 +708,14 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     invPackage1.transposeA = blasEngineTranspose::AblasNoTrans;
     invPackage1.alpha = 1.;
     MM3D<T,U,blasEngine>::Multiply(
-      matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, commInfo3D, invPackage1, true, false, MM_id);
+      matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, commInfo3D, invPackage1, true, false);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
     invPackage1.side = blasEngineSide::AblasLeft;
     MM3D<T,U,blasEngine>::Multiply(
       matrixRI, tempInverse, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, 0, reverseDimLocal, 0, localShift,
-      commWorld, commInfo3D, invPackage1, true, false, MM_id);
+      commWorld, commInfo3D, invPackage1, true, false);
     Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixRI, tempInverse,
       matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, true);
   }

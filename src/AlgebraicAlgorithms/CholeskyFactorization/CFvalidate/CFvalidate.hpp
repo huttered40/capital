@@ -184,7 +184,7 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
     {
       if (i<j) {solIndex+=pGridDimensionSize; myIndex++; continue;}
       T errorSquare = std::abs(myValues[myIndex] - lapackValues[solIndex]);
-      if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " i - " << i << ", j - " << j << std::endl;
+      //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " i - " << i << ", j - " << j << std::endl;
       errorSquare *= errorSquare;
       error += errorSquare;
       solIndex += pGridDimensionSize;

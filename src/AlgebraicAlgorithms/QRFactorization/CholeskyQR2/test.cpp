@@ -48,21 +48,12 @@ int main(int argc, char** argv)
                   2) Parallel validation
   */
   int methodKey2 = atoi(argv[2]);
-  /*
-    methodKey3 -> 0) Non powers of 2
-                  1) Powers of 2
-  */
-  int methodKey3 = atoi(argv[3]);
-  if (methodKey2 == 1)
-  {
-    numIterations = atoi(argv[4]);
-  }
 
   if (methodKey1 == 0)
   {
     // 1D
-    int globalMatrixDimensionM = (methodKey3 ? (1<<(atoi(argv[5]))) : atoi(argv[5]));
-    int globalMatrixDimensionN = (methodKey3 ? (1<<(atoi(argv[6]))) : atoi(argv[6]));
+    int globalMatrixDimensionM = atoi(argv[3]);
+    int globalMatrixDimensionN = atoi(argv[4]);
 /*
     int localMatrixDimensionM = globalMatrixDimensionM/size;
     int localMatrixDimensionN = globalMatrixDimensionN;
@@ -78,6 +69,10 @@ int main(int argc, char** argv)
     CholeskyQR2<double,int,cblasEngine>::Factor1D(
       matA, matR, MPI_COMM_WORLD);
 
+    if (methodKey2 == 1)
+    {
+      numIterations = atoi(argv[5]);
+    }
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
@@ -116,14 +111,11 @@ int main(int argc, char** argv)
     int pCoordY = (rank%helper)/pGridDimensionSize;
     int pCoordZ = rank/helper;
 
-    int globalMatrixDimensionM = (methodKey3 ? (1<<(atoi(argv[5]))) : atoi(argv[5]));
-    int globalMatrixDimensionN = (methodKey3 ? (1<<(atoi(argv[6]))) : atoi(argv[6]));
+    int globalMatrixDimensionM = atoi(argv[3]);
+    int globalMatrixDimensionN = atoi(argv[4]);
 
-    int MMid = atoi(argv[7]);
-    int TSid = atoi(argv[8]);
-    int INVid = atoi(argv[9]);
-    int inverseCutOffMultiplier = atoi(argv[10]);
-    int baseCaseMultiplier = atoi(argv[11]);
+    int inverseCutOffMultiplier = atoi(argv[5]);
+    int baseCaseMultiplier = atoi(argv[6]);
 
     // New protocol: CholeskyQR_3D only works properly with square matrix A. Rectangular matrices must use CholeskyQR_Tunable
     MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM,pGridDimensionSize,pGridDimensionSize);
@@ -137,13 +129,17 @@ int main(int argc, char** argv)
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
       MPI_COMM_WORLD);
     CholeskyQR2<double,int,cblasEngine>::Factor3D(
-      matA, matR, MPI_COMM_WORLD, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+      matA, matR, MPI_COMM_WORLD, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfo3D));
     MPI_Comm_free(&std::get<1>(commInfo3D));
     MPI_Comm_free(&std::get<2>(commInfo3D));
     MPI_Comm_free(&std::get<3>(commInfo3D));
 
+    if (methodKey2 == 1)
+    {
+      numIterations = atoi(argv[7]);
+    }
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
@@ -155,7 +151,7 @@ int main(int argc, char** argv)
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
         MPI_COMM_WORLD);
       CholeskyQR2<double,int,cblasEngine>::Factor3D(
-        matA, matR, MPI_COMM_WORLD, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+        matA, matR, MPI_COMM_WORLD, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier);
 #ifdef CRITTER
       Critter_Print();
 #endif
@@ -186,48 +182,17 @@ int main(int argc, char** argv)
   else if (methodKey1 == 2)
   {
     // Tunable
-    /*
-      methodKey4 -> 0) User-defined grid
-                    1) Optimal grid
-    */
-    int methodKey4 = atoi(argv[5]);
-
     // size -- total number of processors in the tunable grid
-    int exponentM = atoi(argv[6]);
-    int exponentN = atoi(argv[7]);
-    int globalMatrixDimensionM = (methodKey3 ? (1<<exponentM) : exponentM);
-    int globalMatrixDimensionN = (methodKey3 ? (1<<exponentN) : exponentN);
+    int globalMatrixDimensionM = atoi(argv[3]);
+    int globalMatrixDimensionN = atoi(argv[4]);
 
-    int MMid = atoi(argv[8]);
-    int TSid = atoi(argv[9]);
-    int INVid = atoi(argv[10]);
-    int inverseCutOffMultiplier = atoi(argv[11]);
-    int baseCaseMultiplier = atoi(argv[12]);
+    int inverseCutOffMultiplier = atoi(argv[5]);
+    int baseCaseMultiplier = atoi(argv[6]);
  
-    int dimensionC,dimensionD;
-    if (methodKey4 == 0)
-    {
-      // Use the grid that the user specifies in the command line
-      int exponentD = atoi(argv[13]);
-      int exponentC = atoi(argv[14]);
-
-/*
-    // Do an exponent check, but first we need the log-2 of numPEs(size)
-    int exponentNumPEs = std::nearbyint(std::log2(size));
-
-    int sumExponentsD = (exponentNumPEs+exponentM+exponentM - exponentN - exponentN);
-    int sumExponentsC = (exponentNumPEs+exponentN - exponentM);
-
-    if ((sumExponentsD%3 != 0) || (sumExponentsC%3==0))
-    {
-      MPI_Abort(MPI_COMM_WORLD); 
-    }
-*/
-      dimensionD = /*(1<<exponentD);*/exponentD;
-      dimensionC = /*(1<<exponentC);*/exponentC;
-    }
-    else
-    {
+    // Use the grid that the user specifies in the command line
+    int dimensionD = atoi(argv[8]);
+    int dimensionC = atoi(argv[9]);
+/* Optimal grid choice not in code path anymore. Its always better to manually specify the tunable grid dimensions.
       // Do an exponent check, but first we need the log-2 of numPEs(size)
       int exponentNumPEs = std::nearbyint(std::log2(size));
 
@@ -252,7 +217,7 @@ int main(int argc, char** argv)
       {
         dimensionD <<= (exponentNumPEs - exponentD - 2*exponentC);
       }
-    }
+*/
     int sliceSize = dimensionD*dimensionC;
     int pCoordX = rank%dimensionC;
     int pCoordY = (rank%sliceSize)/dimensionC;
@@ -273,7 +238,7 @@ int main(int argc, char** argv)
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> commInfoTunable = getTunableCommunicators(
       MPI_COMM_WORLD, dimensionD, dimensionC);
     CholeskyQR2<double,int,cblasEngine>::FactorTunable(
-      matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+      matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfoTunable));
     MPI_Comm_free(&std::get<1>(commInfoTunable));
@@ -282,6 +247,10 @@ int main(int argc, char** argv)
     MPI_Comm_free(&std::get<4>(commInfoTunable));
     MPI_Comm_free(&std::get<5>(commInfoTunable));
 
+    if (methodKey2 == 1)
+    {
+      numIterations = atoi(argv[10]);
+    }
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
@@ -293,7 +262,7 @@ int main(int argc, char** argv)
       commInfoTunable = getTunableCommunicators(
         MPI_COMM_WORLD, dimensionD, dimensionC);
       CholeskyQR2<double,int,cblasEngine>::FactorTunable(
-        matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+        matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier);
 #ifdef CRITTER
       Critter_Print();
 #endif

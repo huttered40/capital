@@ -73,7 +73,7 @@ template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,blasEngine>::Factor3D(
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D, 
-      int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier)
+      int inverseCutOffMultiplier, int baseCaseMultiplier)
 {
   TAU_FSTART(Factor3D);
   // We assume data is owned relative to a 3D processor grid
@@ -86,9 +86,9 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
     globalDimensionN, true);
   Factor3D_cqr(
-    matrixA, matrixR, commWorld, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+    matrixA, matrixR, commWorld, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier);
   Factor3D_cqr(
-    matrixA, matrixR2, commWorld, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+    matrixA, matrixR2, commWorld, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier);
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_trmm<T> trmmPack1;
@@ -102,7 +102,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
   MM3D<T,U,blasEngine>::Multiply(
-    matrixR2, matrixR, commWorld, commInfo3D, trmmPack1, MMid);
+    matrixR2, matrixR, commWorld, commInfo3D, trmmPack1);
   TAU_FSTOP(Factor3D);
 }
 
@@ -110,7 +110,7 @@ template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,blasEngine>::FactorTunable(
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable, int MMid, int TSid, int INVid, int inverseCutOffMultiplier,
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable, int inverseCutOffMultiplier,
       int baseCaseMultiplier)
 {
   TAU_FSTART(FactorTunable);
@@ -127,9 +127,9 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN,
     globalDimensionN, true);
   FactorTunable_cqr(
-    matrixA, matrixR, gridDimensionD, gridDimensionC, commWorld, commInfoTunable, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+    matrixA, matrixR, gridDimensionD, gridDimensionC, commWorld, commInfoTunable, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier);
   FactorTunable_cqr(
-    matrixA, matrixR2, gridDimensionD, gridDimensionC, commWorld, commInfoTunable, commInfo3D, MMid, TSid, INVid, inverseCutOffMultiplier, baseCaseMultiplier);
+    matrixA, matrixR2, gridDimensionD, gridDimensionC, commWorld, commInfoTunable, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier);
 
   // Try gemm first, then try trmm later.
   blasEngineArgumentPackage_trmm<T> trmmPack1;
@@ -143,7 +143,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
   MM3D<T,U,blasEngine>::Multiply(
-    matrixR2, matrixR, miniCubeComm, commInfo3D, trmmPack1, MMid);
+    matrixR2, matrixR, miniCubeComm, commInfo3D, trmmPack1);
 
   TAU_FSTOP(FactorTunable);
 }
@@ -211,7 +211,7 @@ template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-      int MMid, int TSid, int INVid, int inverseCutOffMultiplier, int baseCaseMultiplier)
+      int inverseCutOffMultiplier, int baseCaseMultiplier)
 {
   TAU_FSTART(Factor3D_cqr);
 
@@ -257,15 +257,15 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     matrixA.getNumColumnsGlobal(), matrixA.getNumColumnsGlobal(), true);
 
-  std::vector<U> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(
-    matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, commWorld, commInfo3D, MMid, TSid);
+  std::pair<bool,std::vector<U>> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(
+    matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, commWorld, commInfo3D);
 
 
 // For now, comment this out, because I am experimenting with using TriangularSolve TRSM instead of MM3D
 //   But later on once it works, use an integer or something to have both available, important when benchmarking
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
 
-  if (!INVid)
+  if (baseCaseDimList.first)
   {
     blasEngineArgumentPackage_trmm<T> trmmPack1;
     trmmPack1.order = blasEngineOrder::AblasColumnMajor;
@@ -275,20 +275,17 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
     trmmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     trmmPack1.alpha = 1.;
     MM3D<T,U,blasEngine>::Multiply(
-      matrixRI, matrixA, commWorld, commInfo3D, trmmPack1, 0);
+      matrixRI, matrixA, commWorld, commInfo3D, trmmPack1);
   }
   else
   {
-    // Uncomment out the below when I have figured out how to handle TRSM3D with no Q (so writing in-place to A)
-/*
     // For debugging purposes, I am using a copy of A instead of A itself
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
     TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
-      matrixQ, matrixR, matrixRI, matrixA,
-      baseCaseDimList, gemmPack1, commWorld, commInfo3D, MMid, TSid);
-*/
+      matrixA, matrixR, matrixRI,
+      baseCaseDimList.second, gemmPack1, commWorld, commInfo3D);
   }
   TAU_FSTOP(Factor3D_cqr);
 }
@@ -298,7 +295,7 @@ template<template<typename,typename,template<typename,typename,int> class> class
 void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
       std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm>& tunableCommunicators,
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D, int MMid, int TSid, int INVid, int inverseCutOffMultiplier,
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D, int inverseCutOffMultiplier,
         int baseCaseMultiplier)
 {
   TAU_FSTART(FactorTunable_cqr);
@@ -356,10 +353,10 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     globalDimensionN, globalDimensionN, true);
 
-  std::vector<U> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(
-    matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, miniCubeComm, commInfo3D, MMid, TSid);
+  std::pair<bool,std::vector<U>> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(
+    matrixR, matrixRI, inverseCutOffMultiplier, 'U', baseCaseMultiplier, miniCubeComm, commInfo3D);
 
-  if (!INVid)
+  if (baseCaseDimList.first)
   {
     blasEngineArgumentPackage_trmm<T> trmmPack1;
     trmmPack1.order = blasEngineOrder::AblasColumnMajor;
@@ -369,20 +366,16 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
     trmmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     trmmPack1.alpha = 1.;
     MM3D<T,U,blasEngine>::Multiply(
-      matrixRI, matrixA, miniCubeComm, commInfo3D, trmmPack1, MMid);
+      matrixRI, matrixA, miniCubeComm, commInfo3D, trmmPack1);
   }
   else
   {
-    // Uncomment out the below when I have figured out how to handle TRSM3D with no Q (so writing in-place to A)
-/*
-    // For debugging purposes, I am using a copy of A instead of A itself
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
     TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
-      matrixQ, matrixR, matrixRI, matrixA,
-      baseCaseDimList, gemmPack1, miniCubeComm, commInfo3D, MMid, TSid);
-*/
+      matrixA, matrixR, matrixRI,
+      baseCaseDimList.second, gemmPack1, miniCubeComm, commInfo3D);
   }
   TAU_FSTOP(FactorTunable_cqr);
 }

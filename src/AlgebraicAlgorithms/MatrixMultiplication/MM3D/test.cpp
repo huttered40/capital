@@ -56,21 +56,16 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
-  /*
-    Choices for dimensionKey: 0) Non-power of 2
-                  			      1) Power of 2
-  */
-  int dimensionKey = atoi(argv[4]);
-  uint64_t globalMatrixSizeM = (dimensionKey == 0 ? atoi(argv[5]) : (1<<(atoi(argv[5]))));
+  uint64_t globalMatrixSizeM = atoi(argv[4]);
   uint64_t localMatrixSizeM = globalMatrixSizeM/pGridDimensionSize;
-  uint64_t globalMatrixSizeN = (dimensionKey == 0 ? atoi(argv[6]) : (1<<(atoi(argv[6]))));
+  uint64_t globalMatrixSizeN = atoi(argv[5]);
   uint64_t localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
 
   pTimer myTimer;
   if (methodKey1 == 0)
   {
     // GEMM
-    uint64_t globalMatrixSizeK = (dimensionKey == 0 ? atoi(argv[7]) : (1<<(atoi(argv[7]))));
+    uint64_t globalMatrixSizeK = atoi(argv[6]);
     uint64_t localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
 
     //cout << "localMatrixSizeM - " << localMatrixSizeM << "localMatrixSizeN - " << localMatrixSizeN << "localMatrixSizeK - " << localMatrixSizeK << endl;
@@ -103,7 +98,7 @@ int main(int argc, char** argv)
     MPI_Comm_free(&std::get<2>(commInfo3D));
     MPI_Comm_free(&std::get<3>(commInfo3D));
 
-    int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
+    int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[7]));
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
@@ -152,12 +147,12 @@ int main(int argc, char** argv)
       Choices for matrixUpLo: 0) Lower-triangular
 			      1) Upper-triangular
     */
-    int matrixUpLo = atoi(argv[7]);
+    int matrixUpLo = atoi(argv[6]);
     /*
       Choices for triangleSide: 0) Triangle * Rectangle (matrixA * matrixB)
 			        1) Rectangle * Triangle (matrixB * matrixA)
     */
-    int triangleSide = atoi(argv[8]);
+    int triangleSide = atoi(argv[7]);
 
     blasEngineArgumentPackage_trmm<double> blasArgs;
     blasArgs.order = blasEngineOrder::AblasColumnMajor;
@@ -191,7 +186,7 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
 
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
+      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
@@ -254,7 +249,7 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
 
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
+      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
@@ -317,7 +312,7 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
 
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
+      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
@@ -380,7 +375,7 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
   
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[9]));
+      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {

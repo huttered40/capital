@@ -41,16 +41,14 @@ public:
   CFR3D& operator=(CFR3D&& rhs) = delete;
 
   template<template<typename,typename,int> class Distribution>
-  static std::vector<U> Factor(
+  static std::pair<bool,std::vector<U>> Factor(
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
                       U inverseCutOffGlobalDimension,
                       char dir,
                       int tune,
                       MPI_Comm commWorld,
-                      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                      int MM_id = 0,
-                      int TS_id = 1
+                      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                     );
 
 
@@ -73,8 +71,6 @@ private:
                        U matLIstartY,
                        U matLIendY,
                        U tranposePartner,
-                       int MM_id,
-                       int TS_id,
                        MPI_Comm commWorld,
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                        bool& isInversePath,
@@ -100,8 +96,6 @@ private:
                        U matRIstartY,
                        U matRIendY,
                        U transposePartner,
-                       int MM_id,
-                       int TS_id,
                        MPI_Comm commWorld,
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                        bool& isInversePath,

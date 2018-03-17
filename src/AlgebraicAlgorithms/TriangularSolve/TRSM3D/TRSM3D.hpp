@@ -13,9 +13,7 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerLeft(
   std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
   MPI_Comm commWorld,
-  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-  int MM_id,
-  int TR_id)
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D)
 {
 }
 
@@ -34,9 +32,7 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
                        std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld,
-                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                       int MM_id,
-                       int TR_id         // allows for benchmarking to see which version is faster 
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                      )
 {
   TAU_FSTART(TRSM3D::iSolveUpperLeft);
@@ -140,9 +136,8 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
   std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
   MPI_Comm commWorld,
-  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-  int MM_id,
-  int TR_id)         // allows for benchmarking to see which version is faster 
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
+  )
 {
   TAU_FSTART(TRSM3D::iSolveLowerRight);
   int pGridDimensionSize;
@@ -196,13 +191,13 @@ void TRSM3D<T,U,blasEngine>::iSolveLowerRight(
         arg1, arg2, arg3, arg4);
       MM3D<T,U,blasEngine>::Multiply(
         matrixRpartition, matrixA, matrixA, 0, arg2-arg1, 0, arg4-arg3, 0, matAendX, offset3, offset1,
-        0, matAendX, offset1, matAendY, commWorld, commInfo3D, srcPackage, false, true, true, MM_id);
+        0, matAendX, offset1, matAendY, commWorld, commInfo3D, srcPackage, false, true, true);
     }
 
     // Solve via MM
     MM3D<T,U,blasEngine>::Multiply(
       matrixRI, matrixA, offset1, offset2, offset1, offset2,
-      0, matAendX, offset1, offset2, commWorld, commInfo3D, trmmPackage, true, true, MM_id);
+      0, matAendX, offset1, offset2, commWorld, commInfo3D, trmmPackage, true, true);
 
     if ((i+1) < baseCaseDimList.size())
     {
@@ -229,8 +224,7 @@ void TRSM3D<T,U,blasEngine>::iSolveUpperRight(
   std::vector<U>& baseCaseDimList,
   blasEngineArgumentPackage_gemm<T>& srcPackage,
   MPI_Comm commWorld,
-  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-  int MM_id,
-  int TR_id)         // allows for benchmarking to see which version is faster 
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
+  )
 {
 }

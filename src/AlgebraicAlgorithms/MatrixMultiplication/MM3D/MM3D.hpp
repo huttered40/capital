@@ -9,8 +9,7 @@ static std::tuple<MPI_Comm,
                   int,
                   int>
                   setUpCommunicators(
-                    MPI_Comm commWorld,
-                    int depthManipulation = 0
+                    MPI_Comm commWorld
                   )
 {
   TAU_FSTART(setUpCommunicators);
@@ -24,7 +23,6 @@ static std::tuple<MPI_Comm,
   int pGridCoordX = rank%pGridDimensionSize;
   int pGridCoordY = (rank%helper)/pGridDimensionSize;
   int pGridCoordZ = rank/helper;
-  pGridCoordZ += depthManipulation;
 
   MPI_Comm rowComm, columnComm, sliceComm, depthComm;
 
@@ -56,8 +54,7 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         U matrixCnumRows,
                                         MPI_Comm commWorld,
                                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                                        const blasEngineArgumentPackage_gemm<T>& srcPackage,
-			                                  int depthManipulation
+                                        const blasEngineArgumentPackage_gemm<T>& srcPackage
                                    )
 {
   TAU_FSTART(MM3D::Multiply);
@@ -154,8 +151,7 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         MPI_Comm commWorld,
                                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
-                  			                int methodKey, // I chose an integer instead of another template parameter
-			                                  int depthManipulation
+                  			                int methodKey // I chose an integer instead of another template parameter
                                    )
 {
   TAU_FSTART(MM3D::Multiply);
@@ -235,8 +231,7 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         MPI_Comm commWorld,
                                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
-					                              int methodKey,						// I chose an integer instead of another template parameter
-			                                  int depthManipulation
+					                              int methodKey						// I chose an integer instead of another template parameter
                                    )
 {
   TAU_FSTART(MM3D::Multiply);
@@ -314,8 +309,7 @@ void MM3D<T,U,blasEngine>::Multiply(
                                         U matrixBnumRows,
                                         MPI_Comm commWorld,
                                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                                        const blasEngineArgumentPackage_trmm<T>& srcPackage,
-			                                  int depthManipulation
+                                        const blasEngineArgumentPackage_trmm<T>& srcPackage
                                    )
 {
   TAU_FSTART(MM3D::Multiply);
@@ -490,8 +484,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 				        bool cutA,
 				        bool cutB,
 				        bool cutC,
-                int methodKey, // I chose an integer instead of another template parameter
-			          int depthManipulation
+                int methodKey // I chose an integer instead of another template parameter
                                    )
 {
   TAU_FSTART(MM3D::MultiplyCut);
@@ -522,7 +515,7 @@ void MM3D<T,U,blasEngine>::Multiply(
     matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, pGridDimensionSize, cutC);
 
   Multiply(
-    (cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, commInfo3D, srcPackage, methodKey, depthManipulation);
+    (cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, commInfo3D, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC)
@@ -556,8 +549,7 @@ void MM3D<T,U,blasEngine>::Multiply(
 				      const blasEngineArgumentPackage_trmm<T>& srcPackage,
 				      bool cutA,
 				      bool cutB,
-              int methodKey, // I chose an integer instead of another template parameter
-			        int depthManipulation
+              int methodKey // I chose an integer instead of another template parameter
                                     )
 {
   TAU_FSTART(MM3D::MultiplyCut);
@@ -580,7 +572,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(
     matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
   Multiply(
-    (cutA ? matA : matrixA), (cutB ? matB : matrixB), commWorld, commInfo3D, srcPackage, methodKey, depthManipulation);
+    (cutA ? matA : matrixA), (cutB ? matB : matrixB), commWorld, commInfo3D, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
   if (cutB)

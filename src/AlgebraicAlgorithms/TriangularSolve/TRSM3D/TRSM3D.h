@@ -46,9 +46,7 @@ public:
                        std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld,
-                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                       int MM_id = 0,
-                       int TR_id = 1
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                      );
 
   template<
@@ -63,9 +61,7 @@ public:
                        std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld,
-                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                       int MM_id = 0,
-                       int TR_id = 1
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                      );
   
   template<
@@ -80,9 +76,7 @@ public:
                        std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld,
-                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                       int MM_id = 0,
-                       int TR_id = 1         // allows for benchmarking to see which version is faster 
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                      );
 
   template<
@@ -97,9 +91,7 @@ public:
                        std::vector<U>& baseCaseDimList,
                        blasEngineArgumentPackage_gemm<T>& srcPackage,
                        MPI_Comm commWorld,
-                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                       int MM_id = 0,
-                       int TR_id = 1
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                      );
 };
 

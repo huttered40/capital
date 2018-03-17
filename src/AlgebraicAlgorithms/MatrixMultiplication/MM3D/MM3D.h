@@ -64,8 +64,7 @@ public:
                  U matrixCnumRows,
                  MPI_Comm commWorld,
                  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                 const blasEngineArgumentPackage_gemm<T>& srcPackage,
-                 int depthManipulation = 0
+                 const blasEngineArgumentPackage_gemm<T>& srcPackage
              );
 
   template<
@@ -81,8 +80,7 @@ public:
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         const blasEngineArgumentPackage_gemm<T>& srcPackage,
-			                  int methodKey = 0,
-			                  int depthManipulation = 0
+			                  int methodKey = 0
                       );
 
   template<
@@ -96,8 +94,7 @@ public:
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
-			                  int methodKey = 0,
-			                  int depthManipulation = 0
+			                  int methodKey = 0
                       );
 
   template<
@@ -113,8 +110,7 @@ public:
                                 U matrixBnumRows,
                                 MPI_Comm commWorld,
                                 std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                                const blasEngineArgumentPackage_trmm<T>& srcPackage,
-                                int depthManipulation = 0
+                                const blasEngineArgumentPackage_trmm<T>& srcPackage
                            );
 
   template<
@@ -158,8 +154,7 @@ public:
                         bool cutA,
                         bool cutB,
                         bool cutC,
-                  			int methodKey = 0,
-			                  int depthManipulation = 0
+                  			int methodKey = 0
                       );
 
   template<
@@ -183,8 +178,7 @@ public:
                         const blasEngineArgumentPackage_trmm<T>& srcPackage,
                         bool cutA,
                         bool cutB,
-                  			int methodKey = 0,
-			                  int depthManipulation = 0
+                  			int methodKey = 0
                       );
 
   template<
