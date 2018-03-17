@@ -226,6 +226,8 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
   // Need to perform the multiple steps to get our partition of matrixA
   U localDimensionN = matrixA.getNumColumnsLocal();		// no error check here, but hopefully 
   U localDimensionM = matrixA.getNumRowsLocal();		// no error check here, but hopefully 
+  U globalDimensionN = matrixA.getNumColumnsGlobal();		// no error check here, but hopefully 
+  U globalDimensionM = matrixA.getNumRowsGlobal();		// no error check here, but hopefully 
   std::vector<T>& dataA = matrixA.getVectorData();
   U sizeA = matrixA.getNumElems();
   std::vector<T> foreignA;	// dont fill with data first, because if root its a waste,
@@ -279,13 +281,26 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
   }
   else
   {
-    // For debugging purposes, I am using a copy of A instead of A itself
+    // Note: there are issues with serializing a square matrix into a rectangular. To bypass that,
+    //        and also to communicate only the nonzeros, I will serialize into packed triangular buffers before calling TRSM
+    Matrix<T,U,MatrixStructureUpperTriangular,Distribution> rectR(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
+    Matrix<T,U,MatrixStructureUpperTriangular,Distribution> rectRI(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
+    // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>::Serialize(matrixR, rectR);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>::Serialize(matrixRI, rectRI);
+    // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
-    // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
+    blasEngineArgumentPackage_trmm<T> trmmPackage;
+    trmmPackage.order = blasEngineOrder::AblasColumnMajor;
+    trmmPackage.side = blasEngineSide::AblasRight;
+    trmmPackage.uplo = blasEngineUpLo::AblasUpper;
+    trmmPackage.diag = blasEngineDiag::AblasNonUnit;
+    trmmPackage.transposeA = blasEngineTranspose::AblasNoTrans;
+    trmmPackage.alpha = 1.;
     TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
-      matrixA, matrixR, matrixRI,
-      baseCaseDimList.second, gemmPack1, commWorld, commInfo3D);
+      matrixA, rectR, rectRI,
+      baseCaseDimList.second, gemmPack1, trmmPackage, commWorld, commInfo3D);
   }
   TAU_FSTOP(Factor3D_cqr);
 }
@@ -370,12 +385,26 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
   }
   else
   {
+    // Note: there are issues with serializing a square matrix into a rectangular. To bypass that,
+    //        and also to communicate only the nonzeros, I will serialize into packed triangular buffers before calling TRSM
+    Matrix<T,U,MatrixStructureUpperTriangular,Distribution> rectR(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
+    Matrix<T,U,MatrixStructureUpperTriangular,Distribution> rectRI(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
+    // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>::Serialize(matrixR, rectR);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>::Serialize(matrixRI, rectRI);
+    // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
-    // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
+    blasEngineArgumentPackage_trmm<T> trmmPackage;
+    trmmPackage.order = blasEngineOrder::AblasColumnMajor;
+    trmmPackage.side = blasEngineSide::AblasRight;
+    trmmPackage.uplo = blasEngineUpLo::AblasUpper;
+    trmmPackage.diag = blasEngineDiag::AblasNonUnit;
+    trmmPackage.transposeA = blasEngineTranspose::AblasNoTrans;
+    trmmPackage.alpha = 1.;
     TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
-      matrixA, matrixR, matrixRI,
-      baseCaseDimList.second, gemmPack1, miniCubeComm, commInfo3D);
+      matrixA, rectR, rectRI,
+      baseCaseDimList.second, gemmPack1, trmmPackage, miniCubeComm, commInfo3D);
   }
   TAU_FSTOP(FactorTunable_cqr);
 }

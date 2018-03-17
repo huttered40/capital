@@ -44,7 +44,8 @@ public:
                        Matrix<T,U,StructureTriangularArg,Distribution>& matrixL,
                        Matrix<T,U,StructureTriangularArg,Distribution>& matrixLI,
                        std::vector<U>& baseCaseDimList,
-                       blasEngineArgumentPackage_gemm<T>& srcPackage,
+                       blasEngineArgumentPackage_gemm<T>& gemmPackage,
+                       blasEngineArgumentPackage_trmm<T>& trmmPackage,
                        MPI_Comm commWorld,
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                      );
@@ -59,7 +60,8 @@ public:
                        Matrix<T,U,StructureTriangularArg,Distribution>& matrixU,
                        Matrix<T,U,StructureTriangularArg,Distribution>& matrixUI,
                        std::vector<U>& baseCaseDimList,
-                       blasEngineArgumentPackage_gemm<T>& srcPackage,
+                       blasEngineArgumentPackage_gemm<T>& gemmPackage,
+                       blasEngineArgumentPackage_trmm<T>& trmmPackage,
                        MPI_Comm commWorld,
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                      );
@@ -74,7 +76,8 @@ public:
                        Matrix<T,U,StructureTriangularArg,Distribution>& matrixLI,
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
                        std::vector<U>& baseCaseDimList,
-                       blasEngineArgumentPackage_gemm<T>& srcPackage,
+                       blasEngineArgumentPackage_gemm<T>& gemmPackage,
+                       blasEngineArgumentPackage_trmm<T>& trmmPackage,
                        MPI_Comm commWorld,
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                      );
@@ -89,7 +92,8 @@ public:
                        Matrix<T,U,StructureTriangularArg,Distribution>& matrixUI,
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
                        std::vector<U>& baseCaseDimList,
-                       blasEngineArgumentPackage_gemm<T>& srcPackage,
+                       blasEngineArgumentPackage_gemm<T>& gemmPackage,
+                       blasEngineArgumentPackage_trmm<T>& trmmPackage,
                        MPI_Comm commWorld,
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                      );

@@ -114,8 +114,8 @@ int main(int argc, char** argv)
     int globalMatrixDimensionM = atoi(argv[3]);
     int globalMatrixDimensionN = atoi(argv[4]);
 
-    int inverseCutOffMultiplier = atoi(argv[5]);
-    int baseCaseMultiplier = atoi(argv[6]);
+    int baseCaseMultiplier = atoi(argv[5]);
+    int inverseCutOffMultiplier = atoi(argv[6]);
 
     // New protocol: CholeskyQR_3D only works properly with square matrix A. Rectangular matrices must use CholeskyQR_Tunable
     MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM,pGridDimensionSize,pGridDimensionSize);
@@ -186,12 +186,12 @@ int main(int argc, char** argv)
     int globalMatrixDimensionM = atoi(argv[3]);
     int globalMatrixDimensionN = atoi(argv[4]);
 
-    int inverseCutOffMultiplier = atoi(argv[5]);
-    int baseCaseMultiplier = atoi(argv[6]);
+    int baseCaseMultiplier = atoi(argv[5]);
+    int inverseCutOffMultiplier = atoi(argv[6]);
  
     // Use the grid that the user specifies in the command line
-    int dimensionD = atoi(argv[8]);
-    int dimensionC = atoi(argv[9]);
+    int dimensionD = atoi(argv[7]);
+    int dimensionC = atoi(argv[8]);
 /* Optimal grid choice not in code path anymore. Its always better to manually specify the tunable grid dimensions.
       // Do an exponent check, but first we need the log-2 of numPEs(size)
       int exponentNumPEs = std::nearbyint(std::log2(size));
@@ -249,7 +249,7 @@ int main(int argc, char** argv)
 
     if (methodKey2 == 1)
     {
-      numIterations = atoi(argv[10]);
+      numIterations = atoi(argv[9]);
     }
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
