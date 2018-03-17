@@ -7,8 +7,9 @@ std::pair<bool,std::vector<U>> CFR3D<T,U,blasEngine>::Factor(
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
   U inverseCutOffGlobalDimension,
+  U blockSizeMultiplier,
+  U panelDimensionMultiplier,
   char dir,
-  int tune,
   MPI_Comm commWorld,
   std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
   )
@@ -29,10 +30,9 @@ std::pair<bool,std::vector<U>> CFR3D<T,U,blasEngine>::Factor(
   U localDimension = matrixA.getNumRowsLocal();
   U globalDimension = matrixA.getNumRowsGlobal();
   // the division below may have a remainder, but I think integer division will be ok, as long as we change the base case condition to be <= and not just ==
-  U bcDimension = globalDimension/helper;		// Can be tuned later.
+  U bcDimension = globalDimension/helper;
 
-  // Basic tuner was added
-  for (int i=0; i<tune; i++)
+  for (int i=0; i<blockSizeMultiplier; i++)
   {
     bcDimension *= 2;
   }
@@ -46,6 +46,14 @@ std::pair<bool,std::vector<U>> CFR3D<T,U,blasEngine>::Factor(
   }
   inverseCutOffGlobalDimension = std::max(localDimension*2,inverseCutOffGlobalDimension);
 
+  save = panelDimensionMultiplier;
+  panelDimensionMultiplier = bcDimension;
+  for (int i=0; i<save; i++)
+  {
+    panelDimensionMultiplier <<= 1;
+  }
+  panelDimensionMultiplier = std::min(localDimension, panelDimensionMultiplier);
+
   std::pair<bool,std::vector<U>> baseCaseDimList;
 
   if (dir == 'L')
@@ -54,7 +62,8 @@ std::pair<bool,std::vector<U>> CFR3D<T,U,blasEngine>::Factor(
 //    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
     rFactorLower(
       matrixA, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, commWorld, commInfo3D, baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, commWorld, commInfo3D,
+      baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension, panelDimensionMultiplier);
   }
   else if (dir == 'U')
   {
@@ -62,7 +71,8 @@ std::pair<bool,std::vector<U>> CFR3D<T,U,blasEngine>::Factor(
 //    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
     rFactorUpper(
       matrixA, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, commWorld, commInfo3D, baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, commWorld, commInfo3D,
+      baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension, panelDimensionMultiplier);
   }
   TAU_FSTOP(CFR3D::Factor);
   return baseCaseDimList;
@@ -91,7 +101,9 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
   bool& isInversePath,
   std::vector<U>& baseCaseDimList,
-  U inverseCutoffGlobalDimension)
+  U inverseCutoffGlobalDimension,
+  U panelDimension
+  )
 {
   TAU_FSTART(CFR3D::rFactorLower);
   if (localDimension <= bcDimension)
@@ -122,7 +134,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     // Should be fast pass-by-value via move semantics
     std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
       matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
-      matAstartY, matAendY, pGridDimensionSize, std::get<2>(commInfo3D), 'L');
+      matAstartX, matAendX, pGridDimensionSize, std::get<2>(commInfo3D), 'L');
 
     // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
     //   I want to be able to mix and match.
@@ -188,7 +200,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
 
       // Serialize into the existing Matrix data structures owned by the user
 //      if (tempRank == 0) { std::cout << "check these 4 numbers - " << matLstartX << "," << matLendX << "," << matLstartY << "," << matLendY << std::endl;}
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempL, matAstartX, matAendX, matAstartY, matAendY, true);
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempL, matAstartX, matAendX, matAstartX, matAendX, true);
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempLI, matLIstartX, matLIendX, matLIstartY, matLIendY, true);
     }
     else
@@ -230,7 +242,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       Matrix<T,U,MatrixStructureSquare,Distribution> tempLI(std::move(storeLI), localDimension, localDimension, globalDimension, globalDimension, true);
 
       // Serialize into the existing Matrix data structures owned by the user
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempL, matAstartX, matAendX, matAstartY, matAendY, true);
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempL, matAstartX, matAendX, matAstartX, matAendX, true);
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempLI, matLIstartX, matLIendX, matLIstartY, matLIendY, true);
     }
     return;
@@ -258,7 +270,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     matrixA, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner,
-    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
+    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
 
   int saveIndexAfter = baseCaseDimList.size();
 
@@ -376,7 +388,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     matrixA, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
     matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner,
-    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
+    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
 
   if (isInversePath)
   {
@@ -433,7 +445,8 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                        bool& isInversePath,
                        std::vector<U>& baseCaseDimList,
-                       U inverseCutoffGlobalDimension
+                       U inverseCutoffGlobalDimension,
+                       U panelDimension
                      )
 {
   TAU_FSTART(CFR3D::rFactorUpper);
@@ -462,7 +475,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 
     // Should be fast pass-by-value via move semantics
     std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
-      matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
+      matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartY, matAendY,
       matAstartY, matAendY, pGridDimensionSize, std::get<2>(commInfo3D), 'U');
 
     // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
@@ -528,7 +541,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 
       // Serialize into the existing Matrix data structures owned by the user
 //      if (tempRank == 0) { std::cout << "check these 4 numbers - " << matRstartX << "," << matRendX << "," << matRstartY << "," << matRendY << std::endl;}
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempR, matAstartX, matAendX, matAstartY, matAendY, true);
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempR, matAstartY, matAendY, matAstartY, matAendY, true);
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixRI, tempRI, matRIstartX, matRIendX, matRIstartY, matRIendY, true);
     }
     else
@@ -570,7 +583,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       Matrix<T,U,MatrixStructureSquare,Distribution> tempRI(std::move(storeRI), localDimension, localDimension, globalDimension, globalDimension, true);
 
       // Serialize into the existing Matrix data structures owned by the user
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempR, matAstartX, matAendX, matAstartY, matAendY, true);
+      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempR, matAstartY, matAendY, matAstartY, matAendY, true);
       Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixRI, tempRI, matRIstartX, matRIendX, matRIstartY, matRIendY, true);
     }
     return;
@@ -598,7 +611,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     matrixA, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner,
-    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
+    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
 
   int saveIndexAfter = baseCaseDimList.size();
 
@@ -707,7 +720,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     matrixA, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
     matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner,
-    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
+    commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
 
   // Next step : temp <- R_{12}*RI_{22}
   // We can re-use holdRsyrk as our temporary output matrix.

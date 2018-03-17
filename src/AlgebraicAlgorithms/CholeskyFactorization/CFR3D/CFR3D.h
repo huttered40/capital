@@ -45,8 +45,9 @@ public:
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
                       U inverseCutOffGlobalDimension,
+                      U blockSizeMultiplier,
+                      U panelDimensionMultiplier,
                       char dir,
-                      int tune,
                       MPI_Comm commWorld,
                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
                     );
@@ -75,7 +76,8 @@ private:
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                        bool& isInversePath,
                        std::vector<U>& baseCaseDimList,
-                       U inverseCutoffGlobalDimension = 0
+                       U inverseCutoffGlobalDimension,
+                       U panelDimension
                      );
 
   template<template<typename,typename,int> class Distribution>
@@ -100,7 +102,8 @@ private:
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                        bool& isInversePath,
                        std::vector<U>& baseCaseDimList,
-                       U inverseCutoffGlobalDimension = 0
+                       U inverseCutoffGlobalDimension,
+                       U panelDimension
                      );
 
   template<template<typename,typename,template<typename,typename,int> class> class StructureArg,

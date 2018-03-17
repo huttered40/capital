@@ -54,7 +54,7 @@ int main(int argc, char** argv)
   uint64_t globalMatrixSize = atoi(argv[3]);
   int blockSizeMultiplier = atoi(argv[4]);
   int inverseCutOffMultiplier = atoi(argv[5]); // multiplies baseCase dimension by sucessive 2
-
+  int panelDimensionMultiplier = atoi(argv[6]);
   pTimer myTimer;
   int numIterations = 1;
 
@@ -71,14 +71,14 @@ int main(int argc, char** argv)
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
       MPI_COMM_WORLD);
     CFR3D<double,int,cblasEngine>::Factor(
-      matA, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D);
+      matA, matLI, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, 'L', MPI_COMM_WORLD, commInfo3D);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfo3D));
     MPI_Comm_free(&std::get<1>(commInfo3D));
     MPI_Comm_free(&std::get<2>(commInfo3D));
     MPI_Comm_free(&std::get<3>(commInfo3D));
 
-    if (methodKey2 == 1) {numIterations = atoi(argv[6]);}
+    if (methodKey2 == 1) {numIterations = atoi(argv[7]);}
     for (int i=0; i<numIterations; i++)
     {
       // Reset matrixA
@@ -89,7 +89,7 @@ int main(int argc, char** argv)
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
         MPI_COMM_WORLD);
       CFR3D<double,int,cblasEngine>::Factor(
-        matA, matLI, inverseCutOffMultiplier, 'L', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D);
+        matA, matLI, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, 'L', MPI_COMM_WORLD, commInfo3D);
 #ifdef CRITTER
       Critter_Print();
 #endif
@@ -131,14 +131,14 @@ int main(int argc, char** argv)
     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
       MPI_COMM_WORLD);
     CFR3D<double,int,cblasEngine>::Factor(
-      matA, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D);
+      matA, matRI, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, 'U', MPI_COMM_WORLD, commInfo3D);
     myTimer.clear();
     MPI_Comm_free(&std::get<0>(commInfo3D));
     MPI_Comm_free(&std::get<1>(commInfo3D));
     MPI_Comm_free(&std::get<2>(commInfo3D));
     MPI_Comm_free(&std::get<3>(commInfo3D));
 
-    if (methodKey2 == 1) {numIterations = atoi(argv[6]);}
+    if (methodKey2 == 1) {numIterations = atoi(argv[7]);}
     for (int i=0; i<numIterations; i++)
     {
       // Reset matrixA
@@ -149,7 +149,7 @@ int main(int argc, char** argv)
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
         MPI_COMM_WORLD);
       CFR3D<double,int,cblasEngine>::Factor(
-        matA, matRI, inverseCutOffMultiplier, 'U', blockSizeMultiplier, MPI_COMM_WORLD, commInfo3D);
+        matA, matRI, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, 'U', MPI_COMM_WORLD, commInfo3D);
 #ifdef CRITTER
       Critter_Print();
 #endif
