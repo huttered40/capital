@@ -168,6 +168,13 @@ private:
 						char dir
 					 );
 
+  static inline void updateInversePath(
+                                       U inverseCutoffGlobalDimension,
+                                       U globalDimension,
+                                       bool& isInversePath,
+                                       std::vector<U>& baseCaseDimList,
+                                       U localDimension);
+
 };
 
 #include "CFR3D.hpp"
