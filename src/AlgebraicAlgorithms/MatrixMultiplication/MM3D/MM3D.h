@@ -13,6 +13,7 @@
 
 // Local includes
 #include "./../../../Util/shared.h"
+#include "./../../../Util/util.h"
 #include "./../../../Timer/Timer.h"
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
@@ -115,15 +116,16 @@ public:
 
   template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename, template<typename,typename,int> class> class StructureC,
   		template<typename,typename,int> class Distribution
 	  >
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
+                        Matrix<T,U,StructureC,Distribution>& matrixC,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        const blasEngineArgumentPackage_syrk<T>& srcPackage
+                        const blasEngineArgumentPackage_syrk<T>& srcPackage,
+			                  int methodKey = 0
                       );
 
   template<
@@ -183,25 +185,26 @@ public:
 
   template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename, template<typename,typename,int> class> class StructureC,
   		template<typename,typename,int> class Distribution
 	  >
   static void Multiply(
                         Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureB,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
+                        Matrix<T,U,StructureC,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
                         U matrixAcutXstart,
                         U matrixAcutXend,
                         U matrixAcutYstart,
                         U matrixAcutYend,
-                        U matrixBcutZstart,
-                        U matrixBcutZend,
-                        U matrixBcutXstart,
-                        U matrixBcutXend,
+                        U matrixCcutZstart,
+                        U matrixCcutZend,
+                        U matrixCcutXstart,
+                        U matrixCcutXend,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         const blasEngineArgumentPackage_syrk<T>& srcPackage,
                         bool cutA = true,
-                        bool cutB = true
+                        bool cutC = true,
+                        int methodKey = 0 // I chose an integer instead of another template parameter
                       );
 
 private:

@@ -37,161 +37,23 @@ int main(int argc, char** argv)
   pTimer myTimer;
 
   /*
-    methodKey1 -> 0) 1D
-                  1) 3D
-                  2) Tunable
-  */
-  int methodKey1 = atoi(argv[1]);
-  /*
     methodKey2 -> 0) Sequential validaton
                   1) Performance
                   2) Parallel validation
   */
-  int methodKey2 = atoi(argv[2]);
+  int methodKey2 = atoi(argv[1]);
 
-  if (methodKey1 == 0)
-  {
-    // 1D
-    int globalMatrixDimensionM = atoi(argv[3]);
-    int globalMatrixDimensionN = atoi(argv[4]);
-/*
-    int localMatrixDimensionM = globalMatrixDimensionM/size;
-    int localMatrixDimensionN = globalMatrixDimensionN;
-*/
-    MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, 1, size);
-    MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, 1, 1);
+  // size -- total number of processors in the tunable grid
+  int globalMatrixDimensionM = atoi(argv[2]);
+  int globalMatrixDimensionN = atoi(argv[3]);
 
-    matA.DistributeRandom(0, rank, 1, size, rank);
-    // save A for correctness checking, since I am overwriting A now.
-    MatrixTypeR saveA = matA;
-
-    // Perform "cold run"
-    CholeskyQR2<double,int,cblasEngine>::Factor1D(
-      matA, matR, MPI_COMM_WORLD);
-
-    if (methodKey2 == 1)
-    {
-      numIterations = atoi(argv[5]);
-    }
-    // Loop for getting a good range of results.
-    for (int i=0; i<numIterations; i++)
-    {
-      // reset matrix A
-      matA.DistributeRandom(0, rank, 1, size, rank);
-#ifdef CRITTER
-      Critter_Clear();
-#endif
-      CholeskyQR2<double,int,cblasEngine>::Factor1D(
-        matA, matR, MPI_COMM_WORLD);
-#ifdef CRITTER
-      Critter_Print();
-#endif
-    }
-    if (methodKey2 == 0)
-    {
-      QRvalidate<double,int>::validateLocal1D(saveA, matA, matR, MPI_COMM_WORLD);
-    }
-    else if (methodKey2 == 2)
-    {
-      // No parallel validation yet for 1D. Might not want it or need it
-    }
-    else
-    {
-      //myTimer.printRunStats(MPI_COMM_WORLD, "1D-CQR2");
-    }
-  }
-  else if (methodKey1 == 1)
-  {
-    // 3D
-    int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-    // size -- total number of processors in the 3D grid
-    int helper = pGridDimensionSize;
-    helper *= helper;
-    int pCoordX = rank%pGridDimensionSize;
-    int pCoordY = (rank%helper)/pGridDimensionSize;
-    int pCoordZ = rank/helper;
-
-    int globalMatrixDimensionM = atoi(argv[3]);
-    int globalMatrixDimensionN = atoi(argv[4]);
-
-    int baseCaseMultiplier = atoi(argv[5]);
-    int inverseCutOffMultiplier = atoi(argv[6]);
-
-    // New protocol: CholeskyQR_3D only works properly with square matrix A. Rectangular matrices must use CholeskyQR_Tunable
-    MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM,pGridDimensionSize,pGridDimensionSize);
-    MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN,pGridDimensionSize,pGridDimensionSize);
-
-    matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
-    // save A for correctness checking, since I am overwriting A now.
-    MatrixTypeR saveA = matA;
-
-    // Perform "cold run"
-    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-      MPI_COMM_WORLD);
-    CholeskyQR2<double,int,cblasEngine>::Factor3D(
-      matA, matR, MPI_COMM_WORLD, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier);
-    myTimer.clear();
-    MPI_Comm_free(&std::get<0>(commInfo3D));
-    MPI_Comm_free(&std::get<1>(commInfo3D));
-    MPI_Comm_free(&std::get<2>(commInfo3D));
-    MPI_Comm_free(&std::get<3>(commInfo3D));
-
-    if (methodKey2 == 1)
-    {
-      numIterations = atoi(argv[7]);
-    }
-    // Loop for getting a good range of results.
-    for (int i=0; i<numIterations; i++)
-    {
-      // reset the matrix before timer starts
-      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY);
-#ifdef CRITTER
-      Critter_Clear();
-#endif
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-        MPI_COMM_WORLD);
-      CholeskyQR2<double,int,cblasEngine>::Factor3D(
-        matA, matR, MPI_COMM_WORLD, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier);
-#ifdef CRITTER
-      Critter_Print();
-#endif
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
-    }
-    if (methodKey2 == 0)
-    {
-      // No sequential validation right now. Not really necessary anymore.
-    }
-    if (methodKey2 == 2)
-    {
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-        MPI_COMM_WORLD);
-      QRvalidate<double,int>::validateParallel3D(
-        saveA, matA, matR, MPI_COMM_WORLD, commInfo3D);
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
-    }
-    else
-    {
-    }
-  }
-  else if (methodKey1 == 2)
-  {
-    // Tunable
-    // size -- total number of processors in the tunable grid
-    int globalMatrixDimensionM = atoi(argv[3]);
-    int globalMatrixDimensionN = atoi(argv[4]);
-
-    int baseCaseMultiplier = atoi(argv[5]);
-    int inverseCutOffMultiplier = atoi(argv[6]);
+  int baseCaseMultiplier = atoi(argv[4]);
+  int inverseCutOffMultiplier = atoi(argv[5]);
+  int panelDimensionMultiplier = atoi(argv[6]);
  
-    // Use the grid that the user specifies in the command line
-    int dimensionD = atoi(argv[7]);
-    int dimensionC = atoi(argv[8]);
+  // Use the grid that the user specifies in the command line
+  int dimensionD = atoi(argv[7]);
+  int dimensionC = atoi(argv[8]);
 /* Optimal grid choice not in code path anymore. Its always better to manually specify the tunable grid dimensions.
       // Do an exponent check, but first we need the log-2 of numPEs(size)
       int exponentNumPEs = std::nearbyint(std::log2(size));
@@ -218,86 +80,77 @@ int main(int argc, char** argv)
         dimensionD <<= (exponentNumPEs - exponentD - 2*exponentC);
       }
 */
-    int sliceSize = dimensionD*dimensionC;
-    int pCoordX = rank%dimensionC;
-    int pCoordY = (rank%sliceSize)/dimensionC;
-    int pCoordZ = rank/sliceSize;
+  int sliceSize = dimensionD*dimensionC;
+  int pCoordX = rank%dimensionC;
+  int pCoordY = (rank%sliceSize)/dimensionC;
+  int pCoordZ = rank/sliceSize;
 
-    int localMatrixDimensionM = globalMatrixDimensionM/dimensionD;
-    int localMatrixDimensionN = globalMatrixDimensionN/dimensionC;
+  int localMatrixDimensionM = globalMatrixDimensionM/dimensionD;
+  int localMatrixDimensionN = globalMatrixDimensionN/dimensionC;
 
-    // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
-    MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
-    MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, dimensionC, dimensionC);
+  // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
+  MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
+  MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, dimensionC, dimensionC);
 
+  matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+  // save A for correctness checking, since I am overwriting A now.
+  MatrixTypeR saveA = matA;
+
+  // Perform "cold run"
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> commInfoTunable = getTunableCommunicators(
+    MPI_COMM_WORLD, dimensionD, dimensionC);
+  CholeskyQR2<double,int,cblasEngine>::FactorTunable(
+    matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+  myTimer.clear();
+  MPI_Comm_free(&std::get<0>(commInfoTunable));
+  MPI_Comm_free(&std::get<1>(commInfoTunable));
+  MPI_Comm_free(&std::get<2>(commInfoTunable));
+  MPI_Comm_free(&std::get<3>(commInfoTunable));
+  MPI_Comm_free(&std::get<4>(commInfoTunable));
+  MPI_Comm_free(&std::get<5>(commInfoTunable));
+
+  if (methodKey2 == 1)
+  {
+    numIterations = atoi(argv[9]);
+  }
+  // Loop for getting a good range of results.
+  for (int i=0; i<numIterations; i++)
+  {
+    // reset the matrix before timer starts
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
-    // save A for correctness checking, since I am overwriting A now.
-    MatrixTypeR saveA = matA;
-
-    // Perform "cold run"
-    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> commInfoTunable = getTunableCommunicators(
+#ifdef CRITTER
+    Critter_Clear();
+#endif
+    commInfoTunable = getTunableCommunicators(
       MPI_COMM_WORLD, dimensionD, dimensionC);
     CholeskyQR2<double,int,cblasEngine>::FactorTunable(
-      matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier);
-    myTimer.clear();
+      matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+#ifdef CRITTER
+    Critter_Print();
+#endif
     MPI_Comm_free(&std::get<0>(commInfoTunable));
     MPI_Comm_free(&std::get<1>(commInfoTunable));
     MPI_Comm_free(&std::get<2>(commInfoTunable));
     MPI_Comm_free(&std::get<3>(commInfoTunable));
     MPI_Comm_free(&std::get<4>(commInfoTunable));
     MPI_Comm_free(&std::get<5>(commInfoTunable));
-
-    if (methodKey2 == 1)
-    {
-      numIterations = atoi(argv[9]);
-    }
-    // Loop for getting a good range of results.
-    for (int i=0; i<numIterations; i++)
-    {
-      // reset the matrix before timer starts
-      matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
-#ifdef CRITTER
-      Critter_Clear();
-#endif
-      commInfoTunable = getTunableCommunicators(
-        MPI_COMM_WORLD, dimensionD, dimensionC);
-      CholeskyQR2<double,int,cblasEngine>::FactorTunable(
-        matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier);
-#ifdef CRITTER
-      Critter_Print();
-#endif
-      MPI_Comm_free(&std::get<0>(commInfoTunable));
-      MPI_Comm_free(&std::get<1>(commInfoTunable));
-      MPI_Comm_free(&std::get<2>(commInfoTunable));
-      MPI_Comm_free(&std::get<3>(commInfoTunable));
-      MPI_Comm_free(&std::get<4>(commInfoTunable));
-      MPI_Comm_free(&std::get<5>(commInfoTunable));
-    }
-    if (methodKey2 == 0)
-    {
-      // Currently no sequential validation. Not really necessary anymore.
-    }
-    else if (methodKey2 == 2)
-    {
-      commInfoTunable = getTunableCommunicators(
-        MPI_COMM_WORLD, dimensionD, dimensionC);
-      QRvalidate<double,int>::validateParallelTunable(
-        saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
-      MPI_Comm_free(&std::get<0>(commInfoTunable));
-      MPI_Comm_free(&std::get<1>(commInfoTunable));
-      MPI_Comm_free(&std::get<2>(commInfoTunable));
-      MPI_Comm_free(&std::get<3>(commInfoTunable));
-      MPI_Comm_free(&std::get<4>(commInfoTunable));
-      MPI_Comm_free(&std::get<5>(commInfoTunable));
-    }
-    else
-    {
-    }
   }
-  else
+  if (methodKey2 == 0)
   {
-    MPI_Abort(MPI_COMM_WORLD,-1);
-    return 0;
+    // Currently no sequential validation. Not really necessary anymore.
+  }
+  else if (methodKey2 == 2)
+  {
+    commInfoTunable = getTunableCommunicators(
+      MPI_COMM_WORLD, dimensionD, dimensionC);
+    QRvalidate<double,int>::validateParallelTunable(
+      saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
+    MPI_Comm_free(&std::get<0>(commInfoTunable));
+    MPI_Comm_free(&std::get<1>(commInfoTunable));
+    MPI_Comm_free(&std::get<2>(commInfoTunable));
+    MPI_Comm_free(&std::get<3>(commInfoTunable));
+    MPI_Comm_free(&std::get<4>(commInfoTunable));
+    MPI_Comm_free(&std::get<5>(commInfoTunable));
   }
 
   MPI_Finalize();

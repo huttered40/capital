@@ -396,63 +396,112 @@ void MM3D<T,U,blasEngine>::Multiply(
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename, template<typename,typename,int> class> class StructureC,
   		template<typename,typename,int> class Distribution
 	>
 void MM3D<T,U,blasEngine>::Multiply(
                                    	    Matrix<T,U,StructureA,Distribution>& matrixA,
-                                        Matrix<T,U,StructureB,Distribution>& matrixB,
+                                        Matrix<T,U,StructureC,Distribution>& matrixC,
                                         MPI_Comm commWorld,
                                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                                        const blasEngineArgumentPackage_syrk<T>& srcPackage
+                                        const blasEngineArgumentPackage_syrk<T>& srcPackage,
+			                                  int methodKey
                                    )
 {
-/*
-  // Not correct right now. Will fix later
-  MPI_Abort(commWorld, -1);
+  // Note: Internally, this routine uses gemm, not syrk, as its not possible for each processor to perform local MM with symmetric matrices
+  //         given the data layout over the processor grid.
 
+  TAU_FSTART(MM3D::Multiply);
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
-
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm transComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
+  int rank, pGridDimensionSize;
+  MPI_Comm_rank(commWorld, &rank);
+  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
+  int helper = pGridDimensionSize;
+  helper *= helper;
   int pGridCoordX = std::get<4>(commInfo3D);
   int pGridCoordY = std::get<5>(commInfo3D);
   int pGridCoordZ = std::get<6>(commInfo3D);
+  int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
 
-  std::vector<T>& dataA = matrixA.getVectorData(); 
-  std::vector<T> dataAtrans = dataA;			// need to make a copy here I think
-  U sizeA = matrixA.getNumElems();
+  // Note: The routine will be C <- BA or AB, depending on the order in the srcPackage. B will always be the transposed matrix
+  T* matrixAEnginePtr;
+  T* matrixBEnginePtr;
+  std::vector<T> matrixAEngineVector;
+  std::vector<T> matrixBEngineVector;
   std::vector<T> foreignA;
-  std::vector<T> foreignAtrans;
-  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
-  bool isRootTrans = ((pGridCoordY == pGridCoordZ) ? true : false);
+  std::vector<T> foreignB;
+  bool serializeKeyA = false;
+  bool serializeKeyB = false;
+  U localDimensionN = matrixC.getNumColumnsLocal();  // rows or columns, doesn't matter. They should be the same. matrixC is meant to be square
+  U localDimensionK = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixA.getNumColumnsLocal() : matrixA.getNumRowsLocal());
 
-  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
-  BroadcastPanels((isRootTrans ? dataAtrans : foreignAtrans), sizeA, isRootTrans, pGridCoordZ, transComm);
+  Matrix<T,U,StructureA,Distribution> matrixB = matrixA;
+  util<T,U>::transposeSwap(
+    matrixB, rank, transposePartner, commWorld);
 
-  // Right now, foreignA and/or foreignAtrans might be empty if this processor is the rowRoot or the transRoot
-  Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), localDimensionN, localDimensionN, localDimensionN, localDimensionN);
-  T* matrixAforEnginePtr = getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
+  if (methodKey == 0)
+  {
+    if (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans)
+    {
+      _start1(matrixA,matrixB,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,
+        matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
+    }
+    else
+    {
+      _start1(matrixB,matrixA,commInfo3D,matrixBEnginePtr,matrixAEnginePtr,
+        matrixBEngineVector,matrixAEngineVector,foreignB,foreignA,serializeKeyB,serializeKeyA);
+    }
+  }
+  // No option for methodKey == 1
 
-  // We assume that matrixB is Square for now. No reason to believe otherwise
+  T* matrixCforEnginePtr = matrixC.getRawData();
+  if (srcPackage.beta == 0)
+  {
+    if (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans)
+    {
+      blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, -1., 1.);
+      blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+        matrixCforEnginePtr, localDimensionN, localDimensionN, localDimensionK,
+        localDimensionN, localDimensionN, localDimensionN, gemmArgs);
+    }
+    else
+    {
+      blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, -1., 1.);
+      blasEngine<T,U>::_gemm((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr), (serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr),
+        matrixCforEnginePtr, localDimensionN, localDimensionN, localDimensionK,
+        localDimensionK, localDimensionK, localDimensionN, gemmArgs);
+    }
+    _end1(
+      matrixCforEnginePtr,matrixC,commInfo3D);
+  }
+  else
+  {
+    // This cancels out any affect beta could have. Beta is just not compatable with MM3D and must be handled separately
+    std::vector<T> holdProduct(matrixC.getNumElems(),0);
+    if (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans)
+    {
+      blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, -1., 1.);
+      blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+        &holdProduct[0], localDimensionN, localDimensionN, localDimensionK,
+        localDimensionN, localDimensionN, localDimensionN, gemmArgs);
+    }
+    else
+    {
+      blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, -1., 1.);
+      blasEngine<T,U>::_gemm((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr), (serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr),
+        &holdProduct[0], localDimensionN, localDimensionN, localDimensionK,
+        localDimensionK, localDimensionK, localDimensionN, gemmArgs);
+    }
+    _end1(&holdProduct[0],matrixC,commInfo3D,1);
 
-  std::vector<T>& matrixBforEngine = matrixB.getVectorData();
-  U numElems = matrixB.getNumElems();				// We assume that the user initialized matrixC correctly, even for TRMM
-
-  blasEngine<T,U>::_syrk(matrixAforEnginePtr, &matrixBforEngine[0], (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionN : localDimensionK),
-    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionN : localDimensionK),
-    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
-    (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
-    srcPackage);
-
-  // in a syrk, we will end up with a symmetric matrix, so we should serialize into packed buffer first to avoid half the communication!
-  MPI_Allreduce(MPI_IN_PLACE, &matrixBforEngine[0], numElems, MPI_DOUBLE, MPI_SUM, depthComm);
-
-*/
+    // Future optimization: Reduce loop length by half since the update will be a symmetric matrix and only half will be used going forward.
+    for (U i=0; i<holdProduct.size(); i++)
+    {
+      matrixC.getRawData()[i] = srcPackage.beta*matrixC.getRawData()[i] + holdProduct[i];
+    }
+  }
+  TAU_FSTOP(MM3D::Multiply);
 }
 
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
@@ -553,7 +602,7 @@ void MM3D<T,U,blasEngine>::Multiply(
                                     )
 {
   TAU_FSTART(MM3D::MultiplyCut);
-  // We will set up 3 matrices and call the method above.
+  // We will set up 2 matrices and call the method above.
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
   U rangeA_y = matrixAcutYend-matrixAcutYstart;
@@ -587,57 +636,59 @@ void MM3D<T,U,blasEngine>::Multiply(
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename, template<typename,typename,int> class> class StructureC,
   		template<typename,typename,int> class Distribution
 	 >
 void MM3D<T,U,blasEngine>::Multiply(
 				      Matrix<T,U,StructureA,Distribution>& matrixA,
-				      Matrix<T,U,StructureB,Distribution>& matrixB,
+				      Matrix<T,U,StructureC,Distribution>& matrixC,
 				      U matrixAcutXstart,
 				      U matrixAcutXend,
 				      U matrixAcutYstart,
 				      U matrixAcutYend,
-				      U matrixBcutZstart,
-				      U matrixBcutZend,
-				      U matrixBcutXstart,
-				      U matrixBcutXend,
+				      U matrixCcutZstart,
+				      U matrixCcutZend,
+				      U matrixCcutXstart,
+				      U matrixCcutXend,
 				      MPI_Comm commWorld,
               std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
 				      const blasEngineArgumentPackage_syrk<T>& srcPackage,
 				      bool cutA,
-				      bool cutB
+				      bool cutC,
+              int methodKey // I chose an integer instead of another template parameter
 				    )
 {
-/*
-  // Not correct right now. Will fix later
-  MPI_Abort(commWorld, -1);
-  // We will set up 3 matrices and call the method above.
+  TAU_FSTART(MM3D::MultiplyCut);
+  // We will set up 2 matrices and call the method above.
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
   U rangeA_y = matrixAcutYend-matrixAcutYstart;
-  U rangeB_z = matrixBcutZend-matrixBcutZstart;
-  U rangeB_x = matrixBcutXend-matrixBcutXstart;
-  U globalDiffA = matrixA.getNumRowsGlobal() / matrixA.getNumRowsLocal();		// picked rows arbitrarily
-  U globalDiffB = matrixB.getNumRowsGlobal() / matrixB.getNumRowsLocal();		// picked rows arbitrarily
+  U rangeC_z = matrixCcutZend - matrixCcutZstart;
+  U rangeC_x = matrixCcutXend - matrixCcutXstart; 
 
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
-  U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
+  U sizeC = matrixC.getNumElems(rangeC_x, rangeC_z);
+
+  int size;
+  int pGridDimensionSize;
+  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  Matrix<T,U,StructureA,Distribution> subMatrixA(std::vector<T>(), rangeA_x, rangeA_y, rangeA_x*globalDiffA, rangeA_y*globalDiffA);
-  Matrix<T,U,StructureB,Distribution> subMatrixB(std::vector<T>(), rangeB_z, rangeB_x, rangeB_z*globalDiffB, rangeB_x*globalDiffB);
-  Matrix<T,U,StructureA,Distribution>& matA = getSubMatrix(matrixA, subMatrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, globalDiffA, cutA);
-  Matrix<T,U,StructureB,Distribution>& matB = getSubMatrix(matrixB, subMatrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, globalDiffB, cutB);
+  Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(
+    matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
+  Matrix<T,U,StructureC,Distribution> matC = getSubMatrix(
+    matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, pGridDimensionSize, cutC);
 
-  Multiply(matA, matB, rangeA_x, rangeA_y, rangeB_z, commWorld, srcPackage);
+  Multiply(
+    (cutA ? matA : matrixA), (cutC ? matC : matrixC), commWorld, commInfo3D, srcPackage, methodKey);
 
-  // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
-  if (cutB)
+  // reverse serialize, to put the solved piece of matrixC into where it should go.
+  if (cutC)
   {
-    Serializer<T,U,StructureB,StructureB>::Serialize(matrixB, matB,
-      matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
+    Serializer<T,U,StructureC,StructureC>::Serialize(matrixC, matC,
+      matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, true);
   }
-*/
+  TAU_FSTOP(MM3D::MultiplyCut);
 }
 
 

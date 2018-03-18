@@ -108,143 +108,10 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   TAU_FSTART(CFR3D::rFactorLower);
   if (localDimension <= bcDimension)
   {
-    if (!isInversePath)
-    {
-      // Only save if we never got onto the inverse path
-      baseCaseDimList.push_back(localDimension);
-    }
-
-    if (localDimension == 0) return;
-
-    // No matter what path we are on, if we get into the base case, we will do regular Cholesky + Triangular inverse
-
-    // First: AllGather matrix A so that every processor has the same replicated diagonal square partition of matrix A of dimension bcDimension
-    //          Note that processors only want to communicate with those on their same 2D slice, since the matrices are replicated on every slice
-    //          Note that before the AllGather, we need to serialize the matrix A into the small square matrix
-    // Second: Data will be received in a blocked order due to AllGather semantics, which is not what we want. We need to get back to cyclic again
-    //           This is an ugly process, as it was in the last code.
-    // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
-    // Fourth: Save the data that each processor owns according to the cyclic rule.
-
-    int rankSlice,sizeSlice,pGridDimensionSize;
-    MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
-    MPI_Comm_rank(std::get<2>(commInfo3D), &rankSlice);
-    sizeSlice = pGridDimensionSize*pGridDimensionSize;
-
-    // Should be fast pass-by-value via move semantics
-    std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
-      matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartX, matAendX,
-      matAstartX, matAendX, pGridDimensionSize, std::get<2>(commInfo3D), 'L');
-
-    // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
-    //   I want to be able to mix and match.
-
-    // TODO: Note: with my new optimizations, this case might never pass, because A is serialized into. Watch out!
-    if ((matAendX == trueLocalDimension) && (matAendY == trueLocalDimension))
-    {
-      //U finalDim = trueLocalDimension*pGridDimensionSize - trueGlobalDimension;
-      U checkDim = localDimension*pGridDimensionSize;
-      U finalDim = (checkDim - (trueLocalDimension*pGridDimensionSize - trueGlobalDimension));
-      std::vector<T> deepBaseCase(finalDim*finalDim,0);
-      // manual serialize
-      for (U i=0; i<finalDim; i++)
-      {
-        for (U j=0; j<finalDim; j++)
-        {
-          deepBaseCase[i*finalDim+j] = cyclicBaseCaseData[i*checkDim+j];
-        }
-      }
-      // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-      LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'L', finalDim/*bcDimension*/, &deepBaseCase[0], finalDim/*bcDimension*/);
-      // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
-      //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
-      //   Only then, can we call Serializer into the real matrixL. WRONG! We need to find the data we own according to the cyclic rule first!
-      //    So it doesn't make any sense to "move" these into Matrices yet.
-      // Finally, we need that data for calling the triangular inverse.
-
-      // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
-      std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-      LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'L', 'N', finalDim/*bcDimension*/, &deepBaseCaseInv[0], finalDim/*bcDimension*/);
-      // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
-
-      // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
-      // Only then can we serialize.
-
-      // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
-      //   Use the "overwrite" trick that I have used in CASI code, as well as other places
-
-      // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
-      //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
-
-      // re-serialize with zeros
-      std::vector<T> deepBaseCaseFill(checkDim*checkDim,0);
-      std::vector<T> deepBaseCaseInvFill(checkDim*checkDim,0);
-      // manual serialize
-      for (U i=0; i<finalDim; i++)
-      {
-        for (U j=0; j<finalDim; j++)
-        {
-          deepBaseCaseFill[i*checkDim+j] = deepBaseCase[i*finalDim+j];
-          deepBaseCaseInvFill[i*checkDim+j] = deepBaseCaseInv[i*finalDim+j];
-        }
-      }
-
-      cyclicToLocalTransformation(
-        deepBaseCaseFill, deepBaseCaseInvFill, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'L');
-      // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
-      //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
-      //    variables, this should be ok.
-
-      Matrix<T,U,MatrixStructureSquare,Distribution> tempL(std::move(deepBaseCaseFill), localDimension, localDimension, globalDimension, globalDimension, true);
-      Matrix<T,U,MatrixStructureSquare,Distribution> tempLI(std::move(deepBaseCaseInvFill), localDimension, localDimension, globalDimension, globalDimension, true);
-
-      // Serialize into the existing Matrix data structures owned by the user
-//      if (tempRank == 0) { std::cout << "check these 4 numbers - " << matLstartX << "," << matLendX << "," << matLstartY << "," << matLendY << std::endl;}
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempL, matAstartX, matAendX, matAstartX, matAendX, true);
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempLI, matLIstartX, matLIendX, matLIstartY, matLIendY, true);
-    }
-    else
-    {
-      std::vector<T>& storeL = cyclicBaseCaseData;
-
-      // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-      LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'L', localDimension*pGridDimensionSize/*bcDimension*/, &storeL[0], localDimension*pGridDimensionSize/*bcDimension*/);
-
-      // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
-      //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
-      //   Only then, can we call Serializer into the real matrixL. WRONG! We need to find the data we own according to the cyclic rule first!
-      //    So it doesn't make any sense to "move" these into Matrices yet.
-      // Finally, we need that data for calling the triangular inverse.
-
-      // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
-      std::vector<T> storeLI = storeL;		// true copy because we have to, unless we want to iterate (see below) two different times
-      LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'L', 'N', localDimension*pGridDimensionSize/*bcDimension*/, &storeLI[0], localDimension*pGridDimensionSize/*bcDimension*/);
-
-      // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
-
-      // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
-      // Only then can we serialize.
-
-      // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
-      //   Use the "overwrite" trick that I have used in CASI code, as well as other places
-
-      // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
-      //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
-
-      cyclicToLocalTransformation(
-        storeL, storeLI, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'L');
-
-      // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
-      //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
-      //    variables, this should be ok.
-
-      Matrix<T,U,MatrixStructureSquare,Distribution> tempL(std::move(storeL), localDimension, localDimension, globalDimension, globalDimension, true);
-      Matrix<T,U,MatrixStructureSquare,Distribution> tempLI(std::move(storeLI), localDimension, localDimension, globalDimension, globalDimension, true);
-
-      // Serialize into the existing Matrix data structures owned by the user
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempL, matAstartX, matAendX, matAstartX, matAendX, true);
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixLI, tempLI, matLIstartX, matLIendX, matLIstartY, matLIendY, true);
-    }
+    baseCase(
+      matrixA, matrixLI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
+      matAstartX, matAendX, matAstartY, matAendY, matLIstartX, matLIendX, matLIstartY, matLIendY, transposePartner,
+      commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension, 'L');
     return;
   }
 
@@ -252,8 +119,9 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   MPI_Comm_rank(commWorld, &rank);
   // globalDimension will always be a power of 2, but localDimension won't
   U localShift = (localDimension>>1);
-  // move localShift up to the next power of 2
+  // move localShift up to the next power of 2, only useful if matrix dimensions are not powers of 2
   localShift = util<T,U>::getNextPowerOf2(localShift);
+  // Note: I think this globalShift calculation is wrong, but it hasn't been an issue because its not really used for anything.
   U globalShift = (globalDimension>>1);
   bool saveSwitch = isInversePath;
   int saveIndexPrev = baseCaseDimList.size();
@@ -282,13 +150,8 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   util<T,U>::transposeSwap(
     packedMatrix, rank, transposePartner, commWorld);
 
-  blasEngineArgumentPackage_trmm<T> trmmArgs;
-  trmmArgs.order = blasEngineOrder::AblasColumnMajor;
-  trmmArgs.side = blasEngineSide::AblasRight;
-  trmmArgs.uplo = blasEngineUpLo::AblasLower;
-  trmmArgs.diag = blasEngineDiag::AblasNonUnit;
-  trmmArgs.transposeA = blasEngineTranspose::AblasTrans;
-  trmmArgs.alpha = 1.;
+  blasEngineArgumentPackage_trmm<T> trmmArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
+    blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
 
   if (isInversePath)
   {
@@ -307,10 +170,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
     else
     {
       // Note: keep this a gemm package, because we still need to use gemm in TRSM3D in the update, which is just rectangular and non-triangular matrices.
-      blasEngineArgumentPackage_gemm<T> trsmArgs;
-      trsmArgs.order = blasEngineOrder::AblasColumnMajor;
-      trsmArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-      trsmArgs.transposeB = blasEngineTranspose::AblasTrans;
+      blasEngineArgumentPackage_gemm<T> trsmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, 1., 0.);
 
       // create a new subvector
       U len = saveIndexAfter - saveIndexPrev;
@@ -335,13 +195,8 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
       util<T,U>::transposeSwap(
         packedMatrixL, rank, transposePartner, commWorld);
 
-      blasEngineArgumentPackage_trmm<T> trmmPackage;
-      trmmPackage.order = blasEngineOrder::AblasColumnMajor;
-      trmmPackage.side = blasEngineSide::AblasRight;
-      trmmPackage.uplo = blasEngineUpLo::AblasLower;
-      trmmPackage.diag = blasEngineDiag::AblasNonUnit;
-      trmmPackage.transposeA = blasEngineTranspose::AblasTrans;
-      trmmPackage.alpha = 1.;
+      blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
+        blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
       TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
         matrixLcopy, packedMatrixL, packedMatrix,
         subBaseCaseDimList, trsmArgs, trmmPackage, commWorld, commInfo3D);
@@ -364,25 +219,10 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   U reverseDimLocal = localDimension-localShift;
   U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
 
-  // TODO: Might be able to re-use a buffer from above instead of creating squareL, packedMatrix, but not that packedMatrix was of size localShift, and we need reverseDimLocal, which is not always the same (if we have a bad data-to-grid fit)
-  Matrix<T,U,MatrixStructureSquare,Distribution> squareL(std::vector<T>(), localShift, reverseDimLocal, globalShift, reverseDimGlobal);
-  // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, squareL,
-    matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
-  Matrix<T,U,MatrixStructureSquare,Distribution> squareLSwap = squareL;
-
-  util<T,U>::transposeSwap(
-    squareLSwap, rank, transposePartner, commWorld);
-
-  blasEngineArgumentPackage_gemm<T> blasArgs;
-  blasArgs.order = blasEngineOrder::AblasColumnMajor;
-  blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-  blasArgs.transposeB = blasEngineTranspose::AblasTrans;
-  blasArgs.alpha = -1;
-  blasArgs.beta = 1;
+  blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasLower, blasEngineTranspose::AblasNoTrans, -1., 1.);
   MM3D<T,U,blasEngine>::Multiply(
-    squareL, squareLSwap, matrixA, 0, localShift, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal,
-    matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, blasArgs, false, false, true);
+    matrixA, matrixA, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+    matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, syrkArgs, true, true);
 
   rFactorLower(
     matrixA, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
@@ -393,17 +233,14 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   if (isInversePath)
   {
     // Next step : temp <- L_{21}*LI_{11}
-    // We can re-use squareL as our temporary output matrix.
+    // Tradeoff: By encapsulating the transpose/serialization of L21 in the syrk MM3D routine above, I can't reuse that buffer and must re-serialize L21
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempInverse(std::vector<T>(), localShift, reverseDimLocal, globalShift, reverseDimGlobal);
+    // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempInverse,
+      matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
 
-    Matrix<T,U,MatrixStructureSquare,Distribution>& tempInverse = squareL/*holdLsyrk*/;
-
-    blasEngineArgumentPackage_trmm<T> invPackage1;
-    invPackage1.order = blasEngineOrder::AblasColumnMajor;
-    invPackage1.side = blasEngineSide::AblasRight;
-    invPackage1.uplo = blasEngineUpLo::AblasLower;
-    invPackage1.diag = blasEngineDiag::AblasNonUnit;
-    invPackage1.transposeA = blasEngineTranspose::AblasNoTrans;
-    invPackage1.alpha = 1.;
+    blasEngineArgumentPackage_trmm<T> invPackage1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
+      blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
     MM3D<T,U,blasEngine>::Multiply(
       matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY,
         matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, commInfo3D, invPackage1, true, false);
@@ -452,140 +289,10 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   TAU_FSTART(CFR3D::rFactorUpper);
   if (localDimension <= bcDimension)
   {
-    if (!isInversePath)
-    {
-      // Only save if we never got onto the inverse path
-      baseCaseDimList.push_back(localDimension);
-    }
-
-
-    if (localDimension == 0) return;
-    // First: AllGather matrix A so that every processor has the same replicated diagonal square partition of matrix A of dimension bcDimension
-    //          Note that processors only want to communicate with those on their same 2D slice, since the matrices are replicated on every slice
-    //          Note that before the AllGather, we need to serialize the matrix A into the small square matrix
-    // Second: Data will be received in a blocked order due to AllGather semantics, which is not what we want. We need to get back to cyclic again
-    //           This is an ugly process, as it was in the last code.
-    // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
-    // Fourth: Save the data that each processor owns according to the cyclic rule.
-
-    int rankSlice,sizeSlice,pGridDimensionSize;
-    MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
-    MPI_Comm_rank(std::get<2>(commInfo3D), &rankSlice);
-    sizeSlice = pGridDimensionSize*pGridDimensionSize;
-
-    // Should be fast pass-by-value via move semantics
-    std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
-      matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, matAstartY, matAendY,
-      matAstartY, matAendY, pGridDimensionSize, std::get<2>(commInfo3D), 'U');
-
-    // Now, I want to use something similar to a template class for libraries conforming to the standards of LAPACK, such as FLAME.
-    //   I want to be able to mix and match.
-
-    if ((matAendX == trueLocalDimension) && (matAendY == trueLocalDimension))
-    {
-      //U finalDim = trueLocalDimension*pGridDimensionSize - trueGlobalDimension;
-      U checkDim = localDimension*pGridDimensionSize;
-      U finalDim = (checkDim - (trueLocalDimension*pGridDimensionSize - trueGlobalDimension));
-      std::vector<T> deepBaseCase(finalDim*finalDim,0);
-      // manual serialize
-      for (U i=0; i<finalDim; i++)
-      {
-        for (U j=0; j<finalDim; j++)
-        {
-          deepBaseCase[i*finalDim+j] = cyclicBaseCaseData[i*checkDim+j];
-        }
-      }
-      // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-      LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', finalDim/*bcDimension*/, &deepBaseCase[0], finalDim/*bcDimension*/);
-      // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
-      //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
-      //   Only then, can we call Serializer into the real matrixL. WRONG! We need to find the data we own according to the cyclic rule first!
-      //    So it doesn't make any sense to "move" these into Matrices yet.
-      // Finally, we need that data for calling the triangular inverse.
-
-      // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
-      std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-      LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', finalDim/*bcDimension*/, &deepBaseCaseInv[0], finalDim/*bcDimension*/);
-      // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
-
-      // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
-      // Only then can we serialize.
-
-      // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
-      //   Use the "overwrite" trick that I have used in CASI code, as well as other places
-
-      // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
-      //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
-
-      // re-serialize with zeros
-      std::vector<T> deepBaseCaseFill(checkDim*checkDim,0);
-      std::vector<T> deepBaseCaseInvFill(checkDim*checkDim,0);
-      // manual serialize
-      for (U i=0; i<finalDim; i++)
-      {
-        for (U j=0; j<finalDim; j++)
-        {
-          deepBaseCaseFill[i*checkDim+j] = deepBaseCase[i*finalDim+j];
-          deepBaseCaseInvFill[i*checkDim+j] = deepBaseCaseInv[i*finalDim+j];
-        }
-      }
-
-      cyclicToLocalTransformation(
-        deepBaseCaseFill, deepBaseCaseInvFill, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'U');
-      // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
-      //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
-      //    variables, this should be ok.
-
-      Matrix<T,U,MatrixStructureSquare,Distribution> tempR(std::move(deepBaseCaseFill), localDimension, localDimension, globalDimension, globalDimension, true);
-      Matrix<T,U,MatrixStructureSquare,Distribution> tempRI(std::move(deepBaseCaseInvFill), localDimension, localDimension, globalDimension, globalDimension, true);
-
-      // Serialize into the existing Matrix data structures owned by the user
-//      if (tempRank == 0) { std::cout << "check these 4 numbers - " << matRstartX << "," << matRendX << "," << matRstartY << "," << matRendY << std::endl;}
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempR, matAstartY, matAendY, matAstartY, matAendY, true);
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixRI, tempRI, matRIstartX, matRIendX, matRIstartY, matRIendY, true);
-    }
-    else
-    {
-      std::vector<T>& storeR = cyclicBaseCaseData;
-
-      // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-      LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', localDimension*pGridDimensionSize/*bcDimension*/, &storeR[0], localDimension*pGridDimensionSize/*bcDimension*/);
-
-      // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
-      //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
-      //   Only then, can we call Serializer into the real matrixL. WRONG! We need to find the data we own according to the cyclic rule first!
-      //    So it doesn't make any sense to "move" these into Matrices yet.
-      // Finally, we need that data for calling the triangular inverse.
-
-      // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
-      std::vector<T> storeRI = storeR;		// true copy because we have to, unless we want to iterate (see below) two different times
-      LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', localDimension*pGridDimensionSize/*bcDimension*/, &storeRI[0], localDimension*pGridDimensionSize/*bcDimension*/);
-
-      // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
-
-      // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
-      // Only then can we serialize.
-
-      // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
-      //   Use the "overwrite" trick that I have used in CASI code, as well as other places
-
-      // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
-      //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
-
-      cyclicToLocalTransformation(
-        storeR, storeRI, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, 'U');
-
-      // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
-      //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
-      //    variables, this should be ok.
-
-      Matrix<T,U,MatrixStructureSquare,Distribution> tempR(std::move(storeR), localDimension, localDimension, globalDimension, globalDimension, true);
-      Matrix<T,U,MatrixStructureSquare,Distribution> tempRI(std::move(storeRI), localDimension, localDimension, globalDimension, globalDimension, true);
-
-      // Serialize into the existing Matrix data structures owned by the user
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempR, matAstartY, matAendY, matAstartY, matAendY, true);
-      Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixRI, tempRI, matRIstartX, matRIendX, matRIstartY, matRIendY, true);
-    }
+    baseCase(
+      matrixA, matrixRI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
+      matAstartX, matAendX, matAstartY, matAendY, matRIstartX, matRIendX, matRIstartY, matRIendY, transposePartner,
+      commWorld, commInfo3D, isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension, 'U');
     return;
   }
 
@@ -622,14 +329,8 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
   util<T,U>::transposeSwap(
     packedMatrix, rank, transposePartner, commWorld);
-
-  blasEngineArgumentPackage_trmm<T> trmmArgs;
-  trmmArgs.order = blasEngineOrder::AblasColumnMajor;
-  trmmArgs.side = blasEngineSide::AblasLeft;
-  trmmArgs.uplo = blasEngineUpLo::AblasUpper;
-  trmmArgs.diag = blasEngineDiag::AblasNonUnit;
-  trmmArgs.transposeA = blasEngineTranspose::AblasTrans;
-  trmmArgs.alpha = 1.;
+  blasEngineArgumentPackage_trmm<T> trmmArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
+    blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
 
   if (isInversePath)
   {
@@ -648,10 +349,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
     }
     else
     {
-      blasEngineArgumentPackage_gemm<T> trsmArgs;
-      trsmArgs.order = blasEngineOrder::AblasColumnMajor;
-      trsmArgs.transposeA = blasEngineTranspose::AblasTrans;
-      trsmArgs.transposeB = blasEngineTranspose::AblasNoTrans;
+      blasEngineArgumentPackage_gemm<T> trsmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
 
       // create a new subvector
       U len = saveIndexAfter - saveIndexPrev;
@@ -675,13 +373,8 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
       util<T,U>::transposeSwap(
         packedMatrixR, rank, transposePartner, commWorld);
 
-      blasEngineArgumentPackage_trmm<T> trmmPackage;
-      trmmPackage.order = blasEngineOrder::AblasColumnMajor;
-      trmmPackage.side = blasEngineSide::AblasLeft;
-      trmmPackage.uplo = blasEngineUpLo::AblasUpper;
-      trmmPackage.diag = blasEngineDiag::AblasNonUnit;
-      trmmPackage.transposeA = blasEngineTranspose::AblasTrans;
-      trmmPackage.alpha = 1.;
+      blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
+        blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
       TRSM3D<T,U,blasEngine>::iSolveLowerRight(
         packedMatrixR, packedMatrix, matrixRcopy,
         subBaseCaseDimList, trsmArgs, trmmPackage, commWorld, commInfo3D);
@@ -697,24 +390,10 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   U reverseDimLocal = localDimension-localShift;
   U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
 
-  Matrix<T,U,MatrixStructureSquare,Distribution> squareR(std::vector<T>(), reverseDimLocal, localShift, reverseDimGlobal, globalShift);
-  // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, squareR,
-    matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift);
-  Matrix<T,U,MatrixStructureSquare,Distribution> squareRSwap = squareR;
-
-  util<T,U>::transposeSwap(
-    squareRSwap, rank, transposePartner, commWorld);
-
-  blasEngineArgumentPackage_gemm<T> blasArgs;
-  blasArgs.order = blasEngineOrder::AblasColumnMajor;
-  blasArgs.transposeA = blasEngineTranspose::AblasTrans;
-  blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-  blasArgs.alpha = -1;
-  blasArgs.beta = 1;
+  blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineTranspose::AblasTrans, -1., 1.);
   MM3D<T,U,blasEngine>::Multiply(
-    squareRSwap, squareR, matrixA, 0, reverseDimLocal, 0, localShift, 0, reverseDimLocal, 0, localShift,
-    matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, blasArgs, false, false, true);
+    matrixA, matrixA, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
+    matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, syrkArgs, true, true);
 
   rFactorUpper(
     matrixA, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
@@ -727,15 +406,14 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
 
   if (isInversePath)
   {
-    Matrix<T,U,MatrixStructureSquare,Distribution>& tempInverse = squareR;
+    // Tradeoff: By encapsulating the transpose/serialization of L21 in the syrk MM3D routine above, I can't reuse that buffer and must re-serialize L21
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempInverse(std::vector<T>(), reverseDimLocal, localShift, reverseDimGlobal, globalShift);
+    // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempInverse,
+      matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift);
 
-    blasEngineArgumentPackage_trmm<T> invPackage1;
-    invPackage1.order = blasEngineOrder::AblasColumnMajor;
-    invPackage1.side = blasEngineSide::AblasRight;
-    invPackage1.uplo = blasEngineUpLo::AblasUpper;
-    invPackage1.diag = blasEngineDiag::AblasNonUnit;
-    invPackage1.transposeA = blasEngineTranspose::AblasNoTrans;
-    invPackage1.alpha = 1.;
+    blasEngineArgumentPackage_trmm<T> invPackage1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
+      blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
     MM3D<T,U,blasEngine>::Multiply(
       matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, commInfo3D, invPackage1, true, false);
 
@@ -750,6 +428,175 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
   }
   isInversePath = saveSwitch;
   TAU_FSTOP(CFR3D::rFactorUpper);
+}
+
+
+template<typename T, typename U, template<typename, typename> class blasEngine>
+template<template<typename,typename,int> class Distribution>
+void CFR3D<T,U,blasEngine>::baseCase(
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+  Matrix<T,U,MatrixStructureSquare,Distribution>& matrixI,
+  U localDimension,
+  U trueLocalDimension,
+  U bcDimension,
+  U globalDimension,
+  U trueGlobalDimension,
+  U matAstartX,
+  U matAendX,
+  U matAstartY,
+  U matAendY,
+  U matIstartX,
+  U matIendX,
+  U matIstartY,
+  U matIendY,
+  U transposePartner,
+  MPI_Comm commWorld, 	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
+  bool& isInversePath,
+  std::vector<U>& baseCaseDimList,
+  U inverseCutoffGlobalDimension,
+  U panelDimension,
+  char dir
+  )
+{
+  TAU_FSTART(CFR3D::baseCase);
+  if (!isInversePath)
+  {
+    // Only save if we never got onto the inverse path
+    baseCaseDimList.push_back(localDimension);
+  }
+  if (localDimension == 0) return;
+
+  // No matter what path we are on, if we get into the base case, we will do regular Cholesky + Triangular inverse
+
+  // First: AllGather matrix A so that every processor has the same replicated diagonal square partition of matrix A of dimension bcDimension
+  //          Note that processors only want to communicate with those on their same 2D slice, since the matrices are replicated on every slice
+  //          Note that before the AllGather, we need to serialize the matrix A into the small square matrix
+  // Second: Data will be received in a blocked order due to AllGather semantics, which is not what we want. We need to get back to cyclic again
+  //           This is an ugly process, as it was in the last code.
+  // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
+  // Fourth: Save the data that each processor owns according to the cyclic rule.
+
+  int rankSlice,sizeSlice,pGridDimensionSize;
+  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
+  MPI_Comm_rank(std::get<2>(commInfo3D), &rankSlice);
+  sizeSlice = pGridDimensionSize*pGridDimensionSize;
+
+  // Should be fast pass-by-value via move semantics
+  std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
+    matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
+    (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), pGridDimensionSize, std::get<2>(commInfo3D), dir);
+
+  // TODO: Note: with my new optimizations, this case might never pass, because A is serialized into. Watch out!
+  if ((matAendX == trueLocalDimension) && (matAendY == trueLocalDimension))
+  {
+    //U finalDim = trueLocalDimension*pGridDimensionSize - trueGlobalDimension;
+    U checkDim = localDimension*pGridDimensionSize;
+    U finalDim = (checkDim - (trueLocalDimension*pGridDimensionSize - trueGlobalDimension));
+
+    std::vector<T> deepBaseCase(finalDim*finalDim,0);
+    // manual serialize
+    for (U i=0; i<finalDim; i++)
+    {
+      for (U j=0; j<finalDim; j++)
+      {
+        deepBaseCase[i*finalDim+j] = cyclicBaseCaseData[i*checkDim+j];
+      }
+    }
+    // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
+    LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, finalDim/*bcDimension*/, &deepBaseCase[0], finalDim/*bcDimension*/);
+    // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
+    //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
+    //   Only then, can we call Serializer into the real matrixL. WRONG! We need to find the data we own according to the cyclic rule first!
+    //    So it doesn't make any sense to "move" these into Matrices yet.
+    // Finally, we need that data for calling the triangular inverse.
+
+    // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
+    std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
+    LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', finalDim/*bcDimension*/, &deepBaseCaseInv[0], finalDim/*bcDimension*/);
+    // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
+
+    // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
+    // Only then can we serialize.
+
+    // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
+    //   Use the "overwrite" trick that I have used in CASI code, as well as other places
+
+    // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
+    //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
+
+    // re-serialize with zeros
+    std::vector<T> deepBaseCaseFill(checkDim*checkDim,0);
+    std::vector<T> deepBaseCaseInvFill(checkDim*checkDim,0);
+    // manual serialize
+    for (U i=0; i<finalDim; i++)
+    {
+      for (U j=0; j<finalDim; j++)
+      {
+        deepBaseCaseFill[i*checkDim+j] = deepBaseCase[i*finalDim+j];
+        deepBaseCaseInvFill[i*checkDim+j] = deepBaseCaseInv[i*finalDim+j];
+      }
+    }
+
+    cyclicToLocalTransformation(
+      deepBaseCaseFill, deepBaseCaseInvFill, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, dir);
+    // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
+    //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
+    //    variables, this should be ok.
+
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempMat(std::move(deepBaseCaseFill), localDimension, localDimension, globalDimension, globalDimension, true);
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempMatInv(std::move(deepBaseCaseInvFill), localDimension, localDimension, globalDimension, globalDimension, true);
+
+    // Serialize into the existing Matrix data structures owned by the user
+//      if (tempRank == 0) { std::cout << "check these 4 numbers - " << matLstartX << "," << matLendX << "," << matLstartY << "," << matLendY << std::endl;}
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempMat, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
+      (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), true);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixI, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
+  }
+  else
+  {
+    std::vector<T>& storeMat = cyclicBaseCaseData;
+    // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
+    LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, localDimension*pGridDimensionSize, &storeMat[0], localDimension*pGridDimensionSize);
+
+    // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
+    //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
+    //   Only then, can we call Serializer into the real matrixL. WRONG! We need to find the data we own according to the cyclic rule first!
+    //    So it doesn't make any sense to "move" these into Matrices yet.
+    // Finally, we need that data for calling the triangular inverse.
+
+    // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
+    std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
+    LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', localDimension*pGridDimensionSize, &storeMatInv[0], localDimension*pGridDimensionSize);
+
+    // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
+
+    // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
+    // Only then can we serialize.
+
+    // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
+    //   Use the "overwrite" trick that I have used in CASI code, as well as other places
+
+    // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
+    //   and then "move" them cheaply into new Matrix structures before I call Serialize on them individually.
+
+    cyclicToLocalTransformation(
+      storeMat, storeMatInv, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, dir);
+
+    // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
+    //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
+    //    variables, this should be ok.
+
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempMat(std::move(storeMat), localDimension, localDimension, globalDimension, globalDimension, true);
+    Matrix<T,U,MatrixStructureSquare,Distribution> tempMatInv(std::move(storeMatInv), localDimension, localDimension, globalDimension, globalDimension, true);
+
+    // Serialize into the existing Matrix data structures owned by the user
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixA, tempMat, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
+      (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), true);
+    Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>::Serialize(matrixI, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
+  }
+  TAU_FSTOP(CFR3D::baseCase);
+  return;
 }
 
 

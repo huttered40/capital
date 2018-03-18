@@ -106,6 +106,33 @@ private:
                        U panelDimension
                      );
 
+  template<template<typename,typename,int> class Distribution>
+  static void baseCase(
+      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
+      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
+      U localDimension,
+      U trueLocalDimension,
+      U bcDimension,
+      U globalDimension,
+      U trueGlobalDimension,
+      U matAstartX,
+      U matAendX,
+      U matAstartY,
+      U matAendY,
+      U matLIstartX,
+      U matLIendX,
+      U matLIstartY,
+      U matLIendY,
+      U transposePartner,
+      MPI_Comm commWorld, 	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
+      bool& isInversePath,
+      std::vector<U>& baseCaseDimList,
+      U inverseCutoffGlobalDimension,
+      U panelDimension,
+      char dir
+      );
+
   template<template<typename,typename,template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>
   static void transposeSwap(

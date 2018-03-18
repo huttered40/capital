@@ -78,7 +78,16 @@ template<typename T>
 class blasEngineArgumentPackage_gemm : public blasEngineArgumentPackage<T>
 {
 public:
-  blasEngineArgumentPackage_gemm() { this->method = blasEngineMethod::AblasGemm; }
+  blasEngineArgumentPackage_gemm(blasEngineOrder orderArg, blasEngineTranspose transposeAArg, blasEngineTranspose transposeBArg,
+    T alphaArg, T betaArg)
+  {
+    this->method = blasEngineMethod::AblasGemm;
+    this->order = orderArg;
+    this->transposeA = transposeAArg;
+    this->transposeB = transposeBArg;
+    this->alpha = alphaArg;
+    this->beta = betaArg;
+  }
 
   blasEngineOrder order;
   blasEngineTranspose transposeA;
@@ -91,7 +100,17 @@ template<typename T>
 class blasEngineArgumentPackage_trmm : public blasEngineArgumentPackage<T>
 {
 public:
-  blasEngineArgumentPackage_trmm() { this->method = blasEngineMethod::AblasTrmm; }
+  blasEngineArgumentPackage_trmm(blasEngineOrder orderArg, blasEngineSide sideArg, blasEngineUpLo uploArg, blasEngineTranspose transposeAArg,
+    blasEngineDiag diagArg, T alphaArg)
+  {
+    this->method = blasEngineMethod::AblasTrmm;
+    this->order = orderArg;
+    this->side = sideArg;
+    this->uplo = uploArg;
+    this->transposeA = transposeAArg;
+    this->diag = diagArg;
+    this->alpha = alphaArg;
+  }
 
   blasEngineOrder order;
   blasEngineSide side;
@@ -105,7 +124,15 @@ template<typename T>
 class blasEngineArgumentPackage_syrk : public blasEngineArgumentPackage<T>
 {
 public:
-  blasEngineArgumentPackage_syrk() { this->method = blasEngineMethod::AblasSyrk; }
+  blasEngineArgumentPackage_syrk(blasEngineOrder orderArg, blasEngineUpLo uploArg, blasEngineTranspose transposeAArg, T alphaArg, T betaArg)
+  {
+    this->method = blasEngineMethod::AblasSyrk;
+    this->order = orderArg;
+    this->uplo = uploArg;
+    this->transposeA = transposeAArg;
+    this->alpha = alphaArg;
+    this->beta = betaArg;
+  }
 
   blasEngineOrder order;
   blasEngineUpLo uplo;

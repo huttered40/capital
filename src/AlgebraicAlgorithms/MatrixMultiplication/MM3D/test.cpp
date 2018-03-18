@@ -79,12 +79,7 @@ int main(int argc, char** argv)
     matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
     matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
 
-    blasEngineArgumentPackage_gemm<double> blasArgs;
-    blasArgs.order = blasEngineOrder::AblasColumnMajor;
-    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-    blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
-    blasArgs.alpha = 1;
-    blasArgs.beta = 0;
+    blasEngineArgumentPackage_gemm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
   
     // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
     
@@ -153,12 +148,8 @@ int main(int argc, char** argv)
 			        1) Rectangle * Triangle (matrixB * matrixA)
     */
     int triangleSide = atoi(argv[7]);
-
-    blasEngineArgumentPackage_trmm<double> blasArgs;
-    blasArgs.order = blasEngineOrder::AblasColumnMajor;
-    blasArgs.transposeA = blasEngineTranspose::AblasNoTrans;
-    blasArgs.diag =blasEngineDiag::AblasNonUnit;
-    blasArgs.alpha = 1.;
+    blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasLower,
+      blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
     // I guess I will go through all cases. Ugh!
     if ((matrixUpLo == 0) && (triangleSide == 0))

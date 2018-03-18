@@ -114,9 +114,6 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
     }
-    else
-    {
-    }
   }
   else
   {
@@ -173,9 +170,6 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<1>(commInfo3D));
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
-    }
-    else
-    {
     }
   }  
 
