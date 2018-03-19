@@ -47,7 +47,7 @@ then
   echo "#COBALT -A QMCat" >> \$scriptName
   echo "export n_nodes=\$COBALT_JOBSIZE" >> \$scriptName
   echo "export n_mpi_ranks_per_node=${ppn}" >> \$scriptName
-  echo "export n_mpi_ranks=\$((\$n_nodes * \$n_mpi_ranks_per_node))" >> \$scriptName
+  echo "export n_mpi_ranks=\$((${numNodes} * ${ppn}))" >> \$scriptName
   echo "export n_openmp_threads_per_rank=4" >> \$scriptName
   echo "export n_hyperthreads_per_core=2" >> \$scriptName
   echo "export n_hyperthreads_skipped_between_ranks=4" >> \$scriptName
@@ -110,7 +110,7 @@ launchJobs () {
     echo "aprun -n \$numProcesses \$@" > \$scriptName
   elif [ "$machineName" == "theta" ]
   then
-    echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core $@" >> \$scriptName
+    echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core \${@:2:\$#}" >> \$scriptName
   elif [ "$machineName" == "stampede2" ]
   then
     echo "dog" >> \$scriptName
@@ -157,7 +157,7 @@ launch$tag2 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString=results_${tag2}_SS_\${startNumNodes}nodes_\$8_\$9_\${10}dim_0bcMult_\${11}inverseCutOffMult_0panelDimMult_\${3}numIter.txt
+        local fileString=results_${tag2}_SS_\${startNumNodes}nodes_\${8}side_\${9}testtype_\${10}dim_0bcMult_\${11}inverseCutOffMult_0panelDimMult_\${3}numIter.txt
         launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${11} 0 \$3 \$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
@@ -168,7 +168,7 @@ launch$tag2 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString=results_${tag2}_SS_\${startNumNodes}nodes_\$8_\$9_\${startMatrixDim}dim_0bcMult_\${13}inverseCutOffMult_0panelDimMult_\${3}numIter.txt
+        local fileString=results_${tag2}_WS_\${startNumNodes}nodes_\${8}side_\${9}testtype_\${startMatrixDim}dim_0bcMult_\${13}inverseCutOffMult_0panelDimMult_\${3}numIter.txt
         launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${13} 0 \$3 \$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startMatrixDim=\$(updateCounter \$startMatrixDim \$12 \$11)
@@ -177,32 +177,34 @@ launch$tag2 () {
 }
 
 launch$tag3 () {
-  # launch CholeskyQR2_1D
-    echo "aprun -n \$3 \$1 \$4 \$5 \$2"
-  echo \$1
-}
-
-launch$tag4 () {
-  # launch CholeskyQR2_3D
-  # Nothing needed besides launch
-  echo "aprun -n \$3 \$1 \$4 \$5 \$2"
-}
-
-launch$tag5 () {
-  # launch CholeskyQR2_Tunable
-  local startPgridDimensionD=\$6
-  local endPgridDimensionD=\$7
-  while [ \$startPgridDimensionD -le \$endPgridDimensionD ]
-  do
-    local startPgridDimensionC=\${10}
-    local endPgridDimensionC=\${11}
-    while [ \$startPgridDimensionC -le \$endPgridDimensionC ];
+  # launch CQR2
+  if [ \$1 == 'SS' ]
+  then
+    local startNumNodes=\$4
+    local endNumNodes=\$5
+    local startPdimD=\${11}
+    while [ \$startNumNodes -le \$endNumNodes ];
     do
-      echo "aprun -n \$3 \$1 \$4 \$5 \$startPgridDimensionD \$startPgridDimensionC \$2"
-      startPgridDimensionC=\$(updateCounter \$startPgridDimensionC \${13} \${12})
+        local fileString=results_${tag3}_SS_\${startNumNodes}nodes_\${8}perf_\${9}dimM_\${10}dimN_0bcMult_\${13}inverseCutOffMult_0panelDimMult_\${startPdimD}pDimD_\${12}pDimC_\${3}numIter.txt
+        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${13} 0 0 \${startPdimD} \${12} \$3 \$fileString
+        startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
+        startPdimD=\$(updateCounter \$startPdimD \$7 \$6)
     done
-    startPgridDimensionD=\$(updateCounter \$startPgridDimensionD \$9 \$8)
-  done
+  elif [ \$1 == 'WS' ]
+  then
+    local startNumNodes=\$4
+    local endNumNodes=\$5
+    local startMatrixDimM=\${9}
+    local startPdimD=\${13}
+    while [ \$startNumNodes -le \$endNumNodes ];
+    do
+        local fileString=results_${tag3}_WS_\${startNumNodes}nodes_\${8}perf_\${9}dimM_\${12}dimN_0bcMult_\${15}inverseCutOffMult_0panelDimMult_\${startPdimD}pDimD_\${14}pDimC_\${3}numIter.txt
+        launchJobs \$startNumNodes \$2 \$8 \$9 \${12} \${15} 0 0 \${startPdimD} \${14} \$3 \$fileString
+        startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
+        startMatrixDimM=\$(updateCounter \$startMatrixDimM \$11 \$10)
+        startPdimD=\$(updateCounter \$startPdimD \$7 \$6)
+    done
+  fi
 }
 
 launch$tag6 () {
@@ -300,11 +302,29 @@ do
       read -p "In this weak scaling test for CFR3D, enter starting matrix dimension: " startMatrixDim
       read -p "In this weak scaling test for CFR3D, enter factor by which to increase matrix dimension: " jumpMatrixDim
       read -p "In this weak scaling test for CFR3D, enter arithmetic operator by which to increase the matrix dimension by the amount specified above (add[1], subtract[2], multiply[3], divide[4]): " jumpMatrixDimoperator
-      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$PerfOrDSV \$matrixDim \$jumpMatrixDim \$jumpMatrixDimoperator \$inverseCutOffMult
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$PerfOrDSV \$startMatrixDim \$jumpMatrixDim \$jumpMatrixDimoperator \$inverseCutOffMult
     fi
   elif [ \$binaryTag == 'CQR2' ]
   then
-    echo "dog"
+    read -p "Do you want to test performance[0] or distributed validation[1]: " PerfOrDSV
+    read -p "Enter the inverseCutOff multiplier (0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.): " inverseCutOffMult
+    if [ \$scale == 'SS' ]
+    then
+      read -p "In this strong scaling test for CQR2, enter matrix dimension m: " matrixDimM
+      read -p "In this strong scaling test for CQR2, enter matrix dimension n: " matrixDimN
+      read -p "In this strong scaling test for CQR2, enter starting tunable processor grid dimension d: " pDimD
+      read -p "In this strong scaling test for CQR2, enter static tunable processor grid dimension c: " pDimC
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$PerfOrDSV \$matrixDimM \$matrixDimN \$pDimD \$pDimC \$inverseCutOffMult
+    elif [ \$scale == 'WS' ]
+    then
+      read -p "In this weak scaling test for CQR2, enter matrix dimension m: " startMatrixDimM
+      read -p "In this weak scaling test for CQR2, enter factor by which to increase matrix dimension m: " jumpMatrixDimM
+      read -p "In this weak scaling test for CQR2, enter arithmetic operator by which to increase matrix dimension m by the amount specified above (add[1], subtract[2], multiply[3], divide[4]): " jumpMatrixDimMoperator
+      read -p "In this weak scaling test for CQR2, enter matrix dimension n: " matrixDimN
+      read -p "In this weak scaling test for CQR2, enter starting tunable processor grid dimension d: " pDimD
+      read -p "In this weak scaling test for CQR2, enter static tunable processor grid dimension c: " pDimC
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$PerfOrDSV \$startMatrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$pDimD \$pDimC \$inverseCutOffMult
+    fi
   elif [ \$binaryTag == 'SCALA_QR' ]
   then
     echo "dog"
