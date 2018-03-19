@@ -78,7 +78,7 @@ int main(int argc, char** argv)
     MPI_Comm_free(&std::get<2>(commInfo3D));
     MPI_Comm_free(&std::get<3>(commInfo3D));
 
-    if (methodKey2 == 1) {numIterations = atoi(argv[7]);}
+    numIterations = atoi(argv[7]);
     for (int i=0; i<numIterations; i++)
     {
       // Reset matrixA
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
     MPI_Comm_free(&std::get<2>(commInfo3D));
     MPI_Comm_free(&std::get<3>(commInfo3D));
 
-    if (methodKey2 == 1) {numIterations = atoi(argv[7]);}
+    numIterations = atoi(argv[7]);
     for (int i=0; i<numIterations; i++)
     {
       // Reset matrixA

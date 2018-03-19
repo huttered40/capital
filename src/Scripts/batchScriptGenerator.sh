@@ -1,11 +1,16 @@
 #!/bin/bash
 
-machineName=$1
-batchSciptName=$2
-numNodes=$3
-ppn=$4
+read -p "Enter machine name [cetus,mira,theta,bw,stampede2]: " machineName
+read -p "Enter the Date (DD_MM_YYYY): " dateStr
+read -p "Enter ID of auto-generated file this program will create: " fileID
+read -p "Enter maximum number of nodes requested: " numNodes
+read -p "Enter ppn: " ppn
+read -p "Enter number of tests (equal to number of binaries that will be run): " numBinaries
+read -p "Enter number of hours of job (only valid on BW): " numHours
+read -p "Enter number of minutes of job (only valid on BW): " numMinutes
+read -p "Enter number of seconds of job (only valid on BW): " numSeconds
 numPEs=$((ppn*numNodes))
-numBinaries=$5
+fileName=scriptCreator_${dateStr}_${fileID}_${machineName}
 
 tag1='MM3D'
 tag2='CFR3D'
@@ -13,42 +18,42 @@ tag3='CQR2'
 tag4='SCALA_QR'
 tag5='SCALA_CF'
 
-cat <<-EOF > $2.sh
+cat <<-EOF > ${fileName}.sh
+read -p "Enter name of the file to write the official script to (please include the .sh): " scriptName
 if [ "${machineName}" == "cetus" ] || [ "${machineName}" == "mira" ]
 then
-  echo "#!/bin/sh"
+  echo "#!/bin/sh" > \$scriptName
 elif [ "${machineName}" == "bw" ]
 then
-  echo "#!/bin/bash"
-  echo "#PBS -l nodes=$numNodes:ppn=$3:xe"
-  echo "#PBS -l walltime=$6:$7:$8"
-  echo "#PBS -N $2"
-  echo "#PBS -e \$PBS_JOBID.err"
-  echo "#PBS -o \$PBS_JOBID.out"
-  echo "##PBS -m Ed"
-  echo "##PBS -M hutter2@illinois.edu"
-  echo "##PBS -A xyz"
-  echo "#PBS -W umask=0027"
-  echo "cd \$PBS_O_WORKDIR"
-  echo "#module load craype-hugepages2M  perftools"
-  echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable"
+  echo "#!/bin/bash" > \$scriptName
+  echo "#PBS -l nodes=$numNodes:ppn=${ppn}:xe" >> \$scriptName
+  echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \$scriptName
+  echo "#PBS -N ${numNodes}" >> \$scriptName
+  echo "#PBS -e \$PBS_JOBID.err" >> \$scriptName
+  echo "#PBS -o \$PBS_JOBID.out" >> \$scriptName
+  echo "##PBS -m Ed" >> \$scriptName
+  echo "##PBS -M hutter2@illinois.edu" >> \$scriptName
+  echo "##PBS -A xyz" >> \$scriptName
+  echo "#PBS -W umask=0027" >> \$scriptName
+  echo "cd \$PBS_O_WORKDIR" >> \$scriptName
+  echo "#module load craype-hugepages2M  perftools" >> \$scriptName
+  echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \$scriptName
 elif [ "${machineName}" == "theta" ]
 then
-  echo "#!/bin/sh"
-  echo "#COBALT -t $6"
-  echo "#COBALT -n ${numNodes}"
-  echo "#COBALT --attrs mcdram=cache:numa=quad"
-  echo "#COBALT -A QMCat"
-  echo "export n_nodes=\$COBALT_JOBSIZE"
-  echo "export n_mpi_ranks_per_node=${ppn}"
-  echo "export n_mpi_ranks=\$((\$n_nodes * \$n_mpi_ranks_per_node))"
-  echo "export n_openmp_threads_per_rank=4"
-  echo "export n_hyperthreads_per_core=2"
-  echo "export n_hyperthreads_skipped_between_ranks=4"
-  echo "Starting Cobalt job script"
+  echo "#!/bin/sh" > \$scriptName
+  echo "#COBALT -t ${numMinutes}" >> \$scriptName
+  echo "#COBALT -n ${numNodes}" >> \$scriptName
+  echo "#COBALT --attrs mcdram=cache:numa=quad" >> \$scriptName
+  echo "#COBALT -A QMCat" >> \$scriptName
+  echo "export n_nodes=\$COBALT_JOBSIZE" >> \$scriptName
+  echo "export n_mpi_ranks_per_node=${ppn}" >> \$scriptName
+  echo "export n_mpi_ranks=\$((\$n_nodes * \$n_mpi_ranks_per_node))" >> \$scriptName
+  echo "export n_openmp_threads_per_rank=4" >> \$scriptName
+  echo "export n_hyperthreads_per_core=2" >> \$scriptName
+  echo "export n_hyperthreads_skipped_between_ranks=4" >> \$scriptName
 elif [ "${machineName}" == "stampede2" ]
 then
-  echo "dog"
+  echo "dog" >> \$scriptName
 fi
 
 # Now I need to use a variable for the command-line prompt, since it will change based on the binary executable,
@@ -99,16 +104,16 @@ launchJobs () {
   local numProcesses=\$((\$1 * $ppn))
   if [ "$machineName" == "mira" ] || [ "$machineName" == "cetus" ]
   then
-    echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:2:9}"
+    echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:2:\$#}" >> \$scriptName
   elif [ "$machineName" == "bw" ]
   then
-    echo "aprun -n \$numProcesses \$@"
+    echo "aprun -n \$numProcesses \$@" > \$scriptName
   elif [ "$machineName" == "theta" ]
   then
-    echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core "$@""
+    echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core $@" >> \$scriptName
   elif [ "$machineName" == "stampede2" ]
   then
-    echo "dog"
+    echo "dog" >> \$scriptName
   fi
 }
 
@@ -121,25 +126,54 @@ launch$tag1 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        launchJobs \$startNumNodes \$2 0 1 \${11} \$8 \$9 \${10} \$3 
+        local fileString=results_${tag1}_SS_\${startNumNodes}nodes_0_1_\${11}bcastRoutine_\${8}m_\${9}n_\${10}k_\${3}numIter.txt
+        launchJobs \$startNumNodes \$2 0 1 \${11} \$8 \$9 \${10} \$3 \$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
-  elif [ \$2 == 'WS' ]
+  elif [ \$1 == 'WS' ]
   then
-    echo "dog"
+    local startNumNodes=\$4
+    local endNumNodes=\$5
+    local startDimensionM=\$8
+    local startDimensionN=\${11}
+    local startDimensionK=\${14}
+    while [ \$startNumNodes -le \$endNumNodes ];
+    do
+        local fileString=results_${tag1}_SS_\${startNumNodes}nodes_0_1_\${17}bcastRoutine_\${startDimensionM}m_\${startDimensionN}n_\${startDimensionK}k_\${3}numIter.txt
+        launchJobs \$startNumNodes \$2 0 1 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3 \$fileString
+        startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
+        startDimensionM=\$(updateCounter \$startDimensionM \${10} \$9)
+        startDimensionN=\$(updateCounter \$startDimensionN \${13} \${12})
+        startDimensionK=\$(updateCounter \$startDimensionK \${16} \${15})
+    done
   fi
 }
 
 launch$tag2 () {
   # launch CFR3D
-  # Need to loop over the block-size multiplier
-  local blockSizeStartRange=\$5
-  local blockSizeEndRange=\$6
-  while [ \$blockSizeStartRange -le \$blockSizeEndRange ]
-  do
-    echo "aprun -n \$3 \$1 \$4 \$2 \$blockSizeStartRange"
-    blockSizeStartRange=\$((\$blockSizeStartRange+1))
-  done
+  if [ \$1 == 'SS' ]
+  then
+    local startNumNodes=\$4
+    local endNumNodes=\$5
+    while [ \$startNumNodes -le \$endNumNodes ];
+    do
+        local fileString=results_${tag2}_SS_\${startNumNodes}nodes_\$8_\$9_\${10}dim_0bcMult_\${11}inverseCutOffMult_0panelDimMult_\${3}numIter.txt
+        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${11} 0 \$3 \$fileString
+        startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
+    done
+  elif [ \$1 == 'WS' ]
+  then
+    local startNumNodes=\$4
+    local startMatrixDim=\${10}
+    local endNumNodes=\$5
+    while [ \$startNumNodes -le \$endNumNodes ];
+    do
+        local fileString=results_${tag2}_SS_\${startNumNodes}nodes_\$8_\$9_\${startMatrixDim}dim_0bcMult_\${13}inverseCutOffMult_0panelDimMult_\${3}numIter.txt
+        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${13} 0 \$3 \$fileString
+        startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
+        startMatrixDim=\$(updateCounter \$startMatrixDim \$12 \$11)
+    done
+  fi
 }
 
 launch$tag3 () {
@@ -195,95 +229,79 @@ numArguments${tag1}_WS () {
   echo "\$numArgs${tag1}_WS"
 }
 numArguments${tag2}_SS () {
-  echo "\$numArgs${tag2}_SS"
+  echo "\${numArgs${tag2}_SS}"
 }
 numArguments${tag2}_WS () {
-  echo "\$numArgs${tag2}_WS"
+  echo "\${numArgs${tag2}_WS}"
 }
 numArguments${tag3}_SS () {
-  echo "\$numArgs${tag3}_SS"
+  echo "\${numArgs${tag3}_SS}"
 }
 numArguments${tag3}_WS () {
-  echo "\$numArgs${tag3}_WS"
+  echo "\${numArgs${tag3}_WS}"
 }
 numArguments${tag4}_SS () {
-  echo "\$numArgs${tag4}_SS"
+  echo "\${numArgs${tag4}_SS}"
 }
 numArguments${tag4}_WS () {
-  echo "\$numArgs${tag4}_WS"
+  echo "\${numArgs${tag4}_WS}"
 }
 numArguments${tag5}_SS () {
-  echo "\$numArgs${tag5}_SS"
+  echo "\${numArgs${tag5}_SS}"
 }
 numArguments${tag5}_WS () {
-  echo "\$numArgs${tag5}_WS"
+  echo "\${numArgs${tag5}_WS}"
 }
-
-commandLineCounter=1
-index=1
 
 for i in {1..$numBinaries}
 do
-  index=\$commandLineCounter
-  export binaryPath=\${!index}
-  index=\$((\$commandLineCounter+1))
-  export binaryTag=\${!index}
-  index=\$((\$commandLineCounter+2))
-  export scale=\${!index}
-  index=\$((\$commandLineCounter+3))
-  export numIterations=\${!index}
-  index=\$((\$commandLineCounter+4))
-  export startNumNodes=\${!index}
-  index=\$((\$commandLineCounter+5))
-  export endNumNodes=\${!index}
-  index=\$((\$commandLineCounter+6))
-  export jumpNumNodes=\${!index}
-  index=\$((\$commandLineCounter+7))
-  export jumpNumNodesoperator=\${!index}
-  index=\$((\$commandLineCounter+8))
-
+  read -p "Enter binary path: " binaryPath
+  read -p "Enter binary tag [MM3D,CFR3D,CQR2,SCALA_QR,SCALA_CF]: " binaryTag
+  read -p "Enter scale [SS,WS]: " scale
+  read -p "Enter number of iterations: " numIterations
+  read -p "Enter starting number of nodes for this test: " startNumNodes
+  read -p "Enter ending number of nodes for this test: " endNumNodes
+  read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
+  read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above (add[1], subtract[2], multiply[3], divide[4]): " jumpNumNodesoperator
   if [ \$binaryTag == 'MM3D' ]
   then
     if [ \$scale == 'SS' ]
     then
-      export DimensionM=\${!index}
-      index=\$((\$commandLineCounter+9))
-      export DimensionN=\${!index}
-      index=\$((\$commandLineCounter+10))
-      export DimensionK=\${!index}
-      index=\$((\$commandLineCounter+11))
-      export bcastVSallgath=\${!index}
-      index=\$((\$commandLineCounter+12))
+      read -p "In this strong scaling test for MM3D, enter dimension m: " DimensionM
+      read -p "In this strong scaling test for MM3D, enter dimension n: " DimensionN
+      read -p "In this strong scaling test for MM3D, enter dimension k: " DimensionK
+      read -p "Do you want an broadcast-based routine[0], or an Allgather-based routine[1]: " bcastVSallgath
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$DimensionM \$DimensionN \$DimensionK \$bcastVSallgath
-      commandLineCounter=\$((\$commandLineCounter+numArguments\${binaryTag}_\${scale}))
     elif [ \$scale == 'WS' ]
     then
-      export startDimensionM=\${!index}
-      index=\$((\$commandLineCounter+9))
-      export jumpDimensionM=\${!index}
-      index=\$((\$commandLineCounter+10))
-      export jumpDimensionMoperator=\${!index}
-      index=\$((\$commandLineCounter+11))
-      export startDimensionN=\${!index}
-      index=\$((\$commandLineCounter+12))
-      export jumpDimensionN=\${!index}
-      index=\$((\$commandLineCounter+13))
-      export jumpDimensionNoperator=\${!index}
-      index=\$((\$commandLineCounter+14))
-      export startDimensionK=\${!index}
-      index=\$((\$commandLineCounter+15))
-      export jumpDimensionK=\${!index}
-      index=\$((\$commandLineCounter+16))
-      export jumpDimensionKoperator=\${!index}
-      index=\$((\$commandLineCounter+17))
-      export bcastVSallgath=\${!index}
-      index=\$((\$commandLineCounter+18))
+      read -p "In this weak scaling test for MM3D, enter starting dimension m: " startDimensionM
+      read -p "In this weak scaling test for MM3D, enter factor by which to increase dimension m: " jumpDimensionM
+      read -p "In this weak scaling test for MM3D, enter arithmetic operator by which to increase dimension m by the amount specified above (add[1], subtract[2], multiply[3], divide[4]): " jumpDimensionMoperator
+      read -p "In this weak scaling test for MM3D, enter starting dimension n: " startDimensionN
+      read -p "In this weak scaling test for MM3D, enter factor by which to increase dimension n: " jumpDimensionN
+      read -p "In this weak scaling test for MM3D, enter arithmetic operator by which to increase dimension n by the amount specified above (add[1], subtract[2], multiply[3], divide[4]): " jumpDimensionNoperator
+      read -p "In this weak scaling test for MM3D, enter starting dimension k: " startDimensionK
+      read -p "In this weak scaling test for MM3D, enter factor by which to increase dimension k: " jumpDimensionK
+      read -p "In this weak scaling test for MM3D, enter arithmetic operator by which to increase dimension k by the amount specified above (add[1], subtract[2], multiply[3], divide[4]): " jumpDimensionKoperator
+      read -p "Do you want an broadcast-based routine[0], or an Allgather-based routine[1]: " bcastVSallgath
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$startDimensionM \$jumpDimensionM \$jumpDimensionMoperator \$startDimensionN \$jumpDimensionN \$jumpDimensionNoperator \$startDimensionK \$jumpDimensionK \$jumpDimensionKoperator \$bcastVSallgath
-      commandLineCounter=\$((\$commandLineCounter+numArguments\${binaryTag}_\${scale}))
     fi
   elif [ \$binaryTag == 'CFR3D' ]
   then
-    echo "dog"
+    read -p "Factor lower[0] or upper[1]: " factorSide
+    read -p "Do you want to test performance[0] or distributed validation[1]: " PerfOrDSV
+    read -p "Enter the inverseCutOff multiplier (0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.): " inverseCutOffMult
+    if [ \$scale == 'SS' ]
+    then
+      read -p "In this strong scaling test for CFR3D, enter matrix dimension: " matrixDim
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$PerfOrDSV \$matrixDim \$inverseCutOffMult
+    elif [ \$scale == 'WS' ]
+    then
+      read -p "In this weak scaling test for CFR3D, enter starting matrix dimension: " startMatrixDim
+      read -p "In this weak scaling test for CFR3D, enter factor by which to increase matrix dimension: " jumpMatrixDim
+      read -p "In this weak scaling test for CFR3D, enter arithmetic operator by which to increase the matrix dimension by the amount specified above (add[1], subtract[2], multiply[3], divide[4]): " jumpMatrixDimoperator
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$PerfOrDSV \$matrixDim \$jumpMatrixDim \$jumpMatrixDimoperator \$inverseCutOffMult
+    fi
   elif [ \$binaryTag == 'CQR2' ]
   then
     echo "dog"

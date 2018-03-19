@@ -93,7 +93,7 @@ int main(int argc, char** argv)
     MPI_Comm_free(&std::get<2>(commInfo3D));
     MPI_Comm_free(&std::get<3>(commInfo3D));
 
-    int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[7]));
+    int numIterations = atoi(argv[7]);
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
@@ -177,7 +177,7 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
 
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
+      int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
@@ -240,7 +240,7 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
 
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
+      int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
@@ -303,7 +303,7 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
 
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
+      int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
@@ -366,7 +366,7 @@ int main(int argc, char** argv)
       MPI_Comm_free(&std::get<2>(commInfo3D));
       MPI_Comm_free(&std::get<3>(commInfo3D));
   
-      int numIterations = (methodKey2 == 0 ? 1 : atoi(argv[8]));
+      int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
