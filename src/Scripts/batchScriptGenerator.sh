@@ -1,6 +1,12 @@
 #!/bin/bash
 
-read -p "Enter machine name [cetus,mira,theta,bw,stampede2]: " machineName
+tag1='MM3D'
+tag2='CFR3D'
+tag3='CQR2'
+tag4='SCALA_QR'
+tag5='SCALA_CF'
+
+read -p "Enter machine name [cetus,mira,theta,bw,stampede2,porter]: " machineName
 read -p "Enter the Date (DD_MM_YYYY): " dateStr
 read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter maximum number of nodes requested: " numNodes
@@ -12,14 +18,32 @@ read -p "Enter number of seconds of job (only valid on BW): " numSeconds
 numPEs=$((ppn*numNodes))
 fileName=scriptCreator_${dateStr}_${fileID}_${machineName}
 
-tag1='MM3D'
-tag2='CFR3D'
-tag3='CQR2'
-tag4='SCALA_QR'
-tag5='SCALA_CF'
+if [ "${machineName}" == "cetus" ] || [ "${machineName}" == "mira" ]
+then
+  export SCRATCH=/projects/QMCat/huttered
+elif [ "${machineName}" == "bw" ]
+then
+  echo "dog"
+elif [ "${machineName}" == "theta" ]
+then
+  export SCRATCH=/projects/QMCat/huttered/
+elif [ "${machineName}" == "stampede2" ]
+then
+  echo "dog"
+elif [ "${machineName}" == "porter" ]
+then
+  if [ ! -d "../Results" ];
+  then
+    mkdir ../Results/
+  fi
+  export SCRATCH=./../Results
+fi
 
-cat <<-EOF > ${fileName}.sh
+cat <<-EOF > $SCRATCH/${fileName}.sh
 read -p "Enter name of the file to write the official script to (please include the .sh): " scriptName
+mkdir $SCRATCH/${fileName}/
+mkdir $SCRATCH/${fileName}/results
+scriptName=$SCRATCH/${fileName}/\$scriptName
 if [ "${machineName}" == "cetus" ] || [ "${machineName}" == "mira" ]
 then
   echo "#!/bin/sh" > \$scriptName
@@ -55,14 +79,13 @@ elif [ "${machineName}" == "stampede2" ]
 then
   echo "dog" >> \$scriptName
 fi
-
 # Now I need to use a variable for the command-line prompt, since it will change based on the binary executable,
 #   for example, scalapack QR has multiple special inputs that take up comm-line prompts that others dont
 #   I want special functions in the inner-loop to handle this
 
 
 # List all Binary Tags that this script supports
-MM3D=1
+MM3=1
 CFR3D=2
 CQR2=3
 SCALA_QR=4
@@ -114,6 +137,9 @@ launchJobs () {
   elif [ "$machineName" == "stampede2" ]
   then
     echo "dog" >> \$scriptName
+  elif [ "$machineName" == "porter" ]
+  then
+    \${@:2:\$#}" >> \$scriptName
   fi
 }
 
@@ -127,7 +153,7 @@ launch$tag1 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
         local fileString=results_${tag1}_SS_\${startNumNodes}nodes_0_1_\${11}bcastRoutine_\${8}m_\${9}n_\${10}k_\${3}numIter.txt
-        launchJobs \$startNumNodes \$2 0 1 \${11} \$8 \$9 \${10} \$3 \$fileString
+        launchJobs \$startNumNodes \$2 0 1 \${11} \$8 \$9 \${10} \$3 \$SCRATCH/${fileName}/results/\$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
   elif [ \$1 == 'WS' ]
@@ -140,7 +166,7 @@ launch$tag1 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
         local fileString=results_${tag1}_SS_\${startNumNodes}nodes_0_1_\${17}bcastRoutine_\${startDimensionM}m_\${startDimensionN}n_\${startDimensionK}k_\${3}numIter.txt
-        launchJobs \$startNumNodes \$2 0 1 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3 \$fileString
+        launchJobs \$startNumNodes \$2 0 1 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3 $SCRATCH/${fileName}/results/\$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startDimensionM=\$(updateCounter \$startDimensionM \${10} \$9)
         startDimensionN=\$(updateCounter \$startDimensionN \${13} \${12})
@@ -158,7 +184,7 @@ launch$tag2 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
         local fileString=results_${tag2}_SS_\${startNumNodes}nodes_\${8}side_\${9}testtype_\${10}dim_0bcMult_\${11}inverseCutOffMult_0panelDimMult_\${3}numIter.txt
-        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${11} 0 \$3 \$fileString
+        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${11} 0 \$3 $SCRATCH/${fileName}/results/\$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
   elif [ \$1 == 'WS' ]
@@ -169,7 +195,7 @@ launch$tag2 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
         local fileString=results_${tag2}_WS_\${startNumNodes}nodes_\${8}side_\${9}testtype_\${startMatrixDim}dim_0bcMult_\${13}inverseCutOffMult_0panelDimMult_\${3}numIter.txt
-        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${13} 0 \$3 \$fileString
+        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${13} 0 \$3 $SCRATCH/${fileName}/results/\$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startMatrixDim=\$(updateCounter \$startMatrixDim \$12 \$11)
     done
@@ -186,7 +212,7 @@ launch$tag3 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
         local fileString=results_${tag3}_SS_\${startNumNodes}nodes_\${8}perf_\${9}dimM_\${10}dimN_0bcMult_\${13}inverseCutOffMult_0panelDimMult_\${startPdimD}pDimD_\${12}pDimC_\${3}numIter.txt
-        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${13} 0 0 \${startPdimD} \${12} \$3 \$fileString
+        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${13} 0 0 \${startPdimD} \${12} \$3 $SCRATCH/${fileName}/results/\$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startPdimD=\$(updateCounter \$startPdimD \$7 \$6)
     done
@@ -199,7 +225,7 @@ launch$tag3 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
         local fileString=results_${tag3}_WS_\${startNumNodes}nodes_\${8}perf_\${9}dimM_\${12}dimN_0bcMult_\${15}inverseCutOffMult_0panelDimMult_\${startPdimD}pDimD_\${14}pDimC_\${3}numIter.txt
-        launchJobs \$startNumNodes \$2 \$8 \$9 \${12} \${15} 0 0 \${startPdimD} \${14} \$3 \$fileString
+        launchJobs \$startNumNodes \$2 \$8 \$9 \${12} \${15} 0 0 \${startPdimD} \${14} \$3 $SCRATCH/${fileName}/results/\$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startMatrixDimM=\$(updateCounter \$startMatrixDimM \$11 \$10)
         startPdimD=\$(updateCounter \$startPdimD \$7 \$6)
