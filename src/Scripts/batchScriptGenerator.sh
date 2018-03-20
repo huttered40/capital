@@ -233,21 +233,57 @@ launch$tag3 () {
   fi
 }
 
-launch$tag6 () {
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$numProws
+launch$tag4 () {
   # launch scaLAPACK_QR
-  local blockSizeStart=\$6
-  local blockSizeEnd=\$7
-  while [ \$blockSizeStart -le \$blockSizeEnd ]
-  do
-    local numProwsStart=\${10}
-    local numProwsEnd=\${11}
-    while [ \$numProwsStart -le \$numProwsEnd ];
+  if [ \$1 == 'SS' ]
+  then
+    local startNumNodes=\$4
+    local endNumNodes=\$5
+    local matrixDimM=\${8}
+    local matrixDimN=\${9}
+    local numProws=\${10}
+    while [ \$startNumNodes -le \$endNumNodes ];
     do
-      echo "aprun -n \$3 \$1 \$4 \$5 \$blockSizeStart \$2 0 \$numProwsStart 0"
-      numProwsStart=\$(updateCounter \$numProwsStart \${13} \${12})
+      startBlockSize=1
+      div1=\$((\$matrixDimM / \$numProws))
+      numPcols=\$((\$startNumNodes / \$numProws))
+      div2=\$((\$matrixDimN / \$numPcols))
+      endBlockSize=\$((\$div1>\$div2?\$div1:\$div2)) 
+      while [ \$startBlockSize -l2 \$endBlockSize ];
+      do
+          local fileString=results_${tag4}_SS_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter.txt
+          launchJobs \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/results/\$fileString
+          startBlockSize=\$((\$startBlockSize * 2))
+      done
+      startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
+      numProws=\$(updateCounter \$numProws \$7 \$6)
     done
-    blockSizeStart=\$(updateCounter \$blockSizeStart \$9 \$8)
-  done
+  elif [ \$1 == 'WS' ]
+  then
+    local startNumNodes=\$4
+    local endNumNodes=\$5
+    local matrixDimM=\${8}
+    local matrixDimN=\${11}
+    local numProws=\${12}
+    while [ \$startNumNodes -le \$endNumNodes ];
+    do
+      startBlockSize=1
+      div1=\$((\$matrixDimM / \$numProws))
+      numPcols=\$((\$startNumNodes / \$numProws))
+      div2=\$((\$matrixDimN / \$numPcols))
+      endBlockSize=\$((\$div1>\$div2?\$div1:\$div2)) 
+      while [ \$startBlockSize -l2 \$endBlockSize ];
+      do
+          local fileString=results_${tag4}_WS_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter.txt
+          launchJobs \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/results/\$fileString
+          startBlockSize=\$((\$startBlockSize * 2))
+      done
+      startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
+      numProws=\$(updateCounter \$numProws \$7 \$6)
+      matrixDimM=\$(updateCounter \$matrixDimM \${10} \$9)
+    done
+  fi
 }
 
 numArguments${tag1}_SS () {
@@ -353,7 +389,21 @@ do
     fi
   elif [ \$binaryTag == 'SCALA_QR' ]
   then
-    echo "dog"
+    if [ \$scale == 'SS' ]
+    then
+      read -p "In this strong scaling test for Scalapack QR, enter matrix dimension m: " matrixDimM
+      read -p "In this strong scaling test for Scalapack QR, enter matrix dimension n: " matrixDimN
+      read -p "In this strong scaling test for Scalapack QR, enter the starting number of processor rows: " numProws
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$matrixDimN \$numProws
+    elif [ \$scale == 'WS' ]
+    then
+      read -p "In this weak scaling test for Scalapack QR, enter matrix dimension m: " matrixDimM
+      read -p "In this weak scaling test for CQR2, enter factor by which to increase matrix dimension m: " jumpMatrixDimM
+      read -p "In this weak scaling test for CQR2, enter arithmetic operator by which to increase matrix dimension m by the amount specified above (add[1], subtract[2], multiply[3], divide[4]): " jumpMatrixDimMoperator
+      read -p "In this strong scaling test for Scalapack QR, enter matrix dimension n: " matrixDimN
+      read -p "In this strong scaling test for Scalapack QR, enter the starting number of processor rows: " numProws
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$numProws
+    fi
   elif [ \$binaryTag == 'SCALA_CF' ]
   then
     echo "dog"
