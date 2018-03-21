@@ -26,9 +26,17 @@ void QRvalidate<T,U>::validateLocal1D(
   // Assume row-major
   std::vector<T> tau(globalDimensionN);
   std::vector<T> matrixQ = globalMatrixA;		// true copy
+
+  #ifdef BGQ
+  int info;
+  dgeqrf_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &matrixQ[0], &globalDimensionM, &tau[0], &info);
+  dorgqr_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &globalDimensionN, &matrixQ[0],
+    &globalDimensionM, &tau[0], &info);
+  #else
   LAPACKE_dgeqrf(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, &matrixQ[0], globalDimensionM, &tau[0]);
   LAPACKE_dorgqr(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, globalDimensionN, &matrixQ[0],
     globalDimensionM, &tau[0]);
+  #endif
 
   // Q is in globalMatrixA now
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.

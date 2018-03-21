@@ -168,13 +168,24 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(
   MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DOUBLE, MPI_SUM, commWorld);
 
   // Now, localMMvec is replicated on every processor in commWorld
+  #ifdef BGQ
+  char dir = 'U';
+  int info;
+  dpotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
+  #else
   LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
+  #endif
 
   // Need a true copy to avoid corrupting R-inverse.
   std::vector<T> RI = matrixR.getVectorData();
 
   // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
+  #ifdef BGQ
+  char dir2 = 'N';
+  dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &localDimensionN, &RI[0], &localDimensionN, &info);
+  #else
   LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionN, &RI[0], localDimensionN);
+  #endif
 
   // Finish by performing local matrix multiplication Q = A*R^{-1}
   blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
