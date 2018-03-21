@@ -23,6 +23,11 @@
 #include "./../../../Util/util.h"
 #include "./../../../Util/validation.h"
 
+#ifdef BGQ
+extern "C" void dgeqrf_(int*, int*, double*, int*, double*, int*);
+extern "C" void dorgqr_(int*, int*, int*, double*, int*, double*, int*);
+#endif
+
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
 
