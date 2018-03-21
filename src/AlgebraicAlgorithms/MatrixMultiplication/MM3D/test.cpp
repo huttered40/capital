@@ -4,12 +4,11 @@
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
-#include <mpi.h>
 
 // Local includes
+#include "MM3D.h"
 #include "../../../Timer/Timer.h"
 #include "../MMvalidate/MMvalidate.h"
-#include "MM3D.h"
 
 using namespace std;
 

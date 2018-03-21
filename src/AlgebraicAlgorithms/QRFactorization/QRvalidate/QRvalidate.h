@@ -7,7 +7,6 @@
 #include <iostream>
 #include <tuple>
 #include <cmath>
-#include <mpi.h>
 
 #ifdef PORTER
 #include "/home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/LAPACKE/include/lapacke.h"

@@ -9,7 +9,13 @@
 #include <vector>
 #include <utility>
 #include <tuple>
+
+#ifdef CRITTER
+#include "./../../../../../ExternalLibraries/CRITTER/critter/critter.h"
+#endif /*CRITTER*/
+#ifndef CRITTER
 #include <mpi.h>
+#endif /*CRITTER*/
 
 // Local includes
 #include "./../../../Util/shared.h"
@@ -18,10 +24,6 @@
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
-
-#ifdef CRITTER
-#include "./../../../../../ExternalLibraries/CRITTER/critter/critter.h"
-#endif /*CRITTER*/
 
 /*
   We can implement square MM for now, but soon, we will need triangular MM

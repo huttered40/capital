@@ -6,7 +6,6 @@
 #include <utility>
 #include <cmath>
 #include <string>
-#include <mpi.h>
 
 // Local includes
 #include "CFR3D.h"

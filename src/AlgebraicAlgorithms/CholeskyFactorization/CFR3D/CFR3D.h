@@ -6,7 +6,13 @@
 // System includes
 #include <iostream>
 #include <complex>
+
+#ifdef CRITTER
+#include "../../../../../ExternalLibraries/CRITTER/critter/critter.h"
+#endif /*CRITTER*/
+#ifndef CRITTER
 #include <mpi.h>
+#endif /*CRITTER*/
 
 #ifdef PORTER
 #include "/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
@@ -14,6 +20,12 @@
 
 #ifdef THETA
 #include "mkl.h"
+#endif
+
+#ifdef BGQ
+// Note: LAPACK Fortran routines must be externed so that linker knows where to look
+extern "C" void dpotrf_(char*, int*, double*, int*, int*);
+extern "C" void dtrtri_(char*, char*, int*, double*, int*, int*);
 #endif
 
 // Local includes
@@ -25,10 +37,6 @@
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 #include "./../../TriangularSolve/TRSM3D/TRSM3D.h"
 #include "./../../../Util/util.h"
-
-#ifdef CRITTER
-#include "../../../../../ExternalLibraries/CRITTER/critter/critter.h"
-#endif /*CRITTER*/
 
 // Lets use partial template specialization
 // So only declare the fully templated class

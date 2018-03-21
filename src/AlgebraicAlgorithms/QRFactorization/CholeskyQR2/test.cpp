@@ -4,7 +4,6 @@
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
-#include <mpi.h>
 
 // Local includes
 #include "CholeskyQR2.h"
