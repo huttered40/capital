@@ -15,6 +15,10 @@
 #include "mkl.h"
 #endif
 
+#ifdef BGQ
+#include "/soft/libraries/alcf/current/xl/CBLAS/include/cblas.h"
+#endif
+
 // Local includes
 #include "./../Util/shared.h"
 #include "./../Timer/Timer.h"
