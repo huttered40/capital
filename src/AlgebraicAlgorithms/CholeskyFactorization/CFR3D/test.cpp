@@ -14,15 +14,60 @@
 
 using namespace std;
 
+template<
+		typename T, typename U,
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename,int> class Distribution
+	>
+static void runTestCF(
+                        Matrix<T,U,StructureA,Distribution>& matA,
+                        Matrix<T,U,StructureB,Distribution>& matT,
+			int methodKey2, char dir, U inverseCutOffMultiplier, U blockSizeMultiplier, U panelDimensionMultiplier,
+			int pCoordX, int pCoordY, int pGridDimensionSize
+)
+{
+  // Reset matrixA
+  matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
+  #ifdef CRITTER
+  Critter_Clear();
+  #endif
+  TAU_FSTART(Total);
+  auto commInfo3D = util<double,int>::build3DTopology(MPI_COMM_WORLD);
+  CFR3D<double,int,cblasEngine>::Factor(
+    matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, MPI_COMM_WORLD, commInfo3D);
+  util<double,int>::destroy3DTopology(commInfo3D);
+  TAU_FSTOP(Total);
+  #ifdef CRITTER
+  Critter_Print();
+  #endif
+  if (methodKey2 == 0)
+  {
+    Matrix<T,U,StructureA,Distribution> saveA = matA;
+    matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
+    matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
+    CFvalidate<double,int>::validateLocal(saveA, matA, dir, MPI_COMM_WORLD);
+  }
+  else if (methodKey2 == 2)
+  {
+    Matrix<T,U,StructureA,Distribution> saveA = matA;
+    matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
+    auto commInfo3D = util<double,int>::build3DTopology(MPI_COMM_WORLD);
+    CFvalidate<double,int>::validateParallel(
+      saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
+    util<double,int>::destroy3DTopology(commInfo3D);
+  }
+}
+
 int main(int argc, char** argv)
 {
   using MatrixTypeA = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
   using MatrixTypeL = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
   using MatrixTypeR = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
 
-#ifdef PROFILE
+  #ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
-#endif /*PROFILE*/
+  #endif /*PROFILE*/
 
   // argv[1] - Matrix size x where x represents 2^x.
   // So in future, we might want t way to test non power of 2 dimension matrices
@@ -41,12 +86,12 @@ int main(int argc, char** argv)
 
   /*
     methodKey1 -> 0) Lower
-		              1) Upper
+		  1) Upper
   */
   int methodKey1 = atoi(argv[1]);
   /*
     methodKey2 -> 0) Sequential Validation
-		              1) Performance
+		  1) Performance
                   2) Distributed validation
   */
   int methodKey2 = atoi(argv[2]);
@@ -54,90 +99,16 @@ int main(int argc, char** argv)
   int blockSizeMultiplier = atoi(argv[4]);
   int inverseCutOffMultiplier = atoi(argv[5]); // multiplies baseCase dimension by sucessive 2
   int panelDimensionMultiplier = atoi(argv[6]);
-  pTimer myTimer;
-  int numIterations = 1;
+  int numIterations = atoi(argv[7]);
+  char dir = (methodKey1==0 ? 'L' : 'U');
 
-  if (methodKey1 == 0)
+  MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
+  MatrixTypeA matT(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
+
+  for (int i=0; i<numIterations; i++)
   {
-    MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
-    MatrixTypeR matLI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
-
-    matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    // Save matrixA for correctness checking
-    MatrixTypeA saveA = matA;
-
-    numIterations = atoi(argv[7]);
-    for (int i=0; i<numIterations; i++)
-    {
-      // Reset matrixA
-      matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-#ifdef CRITTER
-      Critter_Clear();
-#endif
-      auto commInfo3D = util<double,int>::build3DTopology(
-        MPI_COMM_WORLD);
-      CFR3D<double,int,cblasEngine>::Factor(
-        matA, matLI, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, 'L', MPI_COMM_WORLD, commInfo3D);
-#ifdef CRITTER
-      Critter_Print();
-#endif
-      util<double,int>::destroy3DTopology(commInfo3D);
-    }
-    if (methodKey2 == 0)
-    {
-      CFvalidate<double,int>::validateLocal(
-        saveA, matA, 'L', MPI_COMM_WORLD);
-    }
-    else if (methodKey2 == 2)
-    {
-      auto commInfo3D = util<double,int>::build3DTopology(
-        MPI_COMM_WORLD);
-      CFvalidate<double,int>::validateParallel(
-        saveA, matA, 'L', MPI_COMM_WORLD, commInfo3D);
-      util<double,int>::destroy3DTopology(commInfo3D);
-    }
+    runTestCF(matA, matT, methodKey2, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize);
   }
-  else
-  {
-    MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
-    MatrixTypeR matRI(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
-
-    matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    // Save matrixA for correctness checking
-    MatrixTypeA saveA = matA;
-
-    numIterations = atoi(argv[7]);
-    for (int i=0; i<numIterations; i++)
-    {
-      // Reset matrixA
-      matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-#ifdef CRITTER
-      Critter_Clear();
-#endif
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = util<double,int>::build3DTopology(
-        MPI_COMM_WORLD);
-      CFR3D<double,int,cblasEngine>::Factor(
-        matA, matRI, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, 'U', MPI_COMM_WORLD, commInfo3D);
-#ifdef CRITTER
-      Critter_Print();
-#endif
-      util<double,int>::destroy3DTopology(commInfo3D);
-    }
-    if (methodKey2 == 0)
-    {
-      CFvalidate<double,int>::validateLocal(
-        saveA, matA, 'U', MPI_COMM_WORLD);
-    }
-    else if (methodKey2 == 2)
-    {
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = util<double,int>::build3DTopology(
-        MPI_COMM_WORLD);
-      CFvalidate<double,int>::validateParallel(
-        saveA, matA, 'U', MPI_COMM_WORLD, commInfo3D);
-      util<double,int>::destroy3DTopology(commInfo3D);
-    }
-  }  
-
   MPI_Finalize();
   return 0;
 }

@@ -31,18 +31,21 @@ static void runTestGemm(
 			int pCoordX, int pCoordY, int pGridDimensionSize
 )
 {
-#ifdef CRITTER
+  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+  matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+  matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+  #ifdef CRITTER
   Critter_Clear();
-#endif
+  #endif
   TAU_FSTART(Total);
   auto commInfo3D = util<double,int>::build3DTopology(MPI_COMM_WORLD);
   MM3D<double,int,cblasEngine>::Multiply(
     matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<double,int>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
-#ifdef CRITTER
+  #ifdef CRITTER
   Critter_Print();
-#endif
+  #endif
   if (methodKey2 == 0)
   {
     // Sequential validation after 1 iteration, since numIterations == 1
@@ -69,10 +72,11 @@ static void runTestTrmm(
 			int pCoordX, int pCoordY, int pGridDimensionSize
 )
 {
-  Matrix<T,U,StructureB,Distribution> matBcopy = matB;
-#ifdef CRITTER
+  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+  matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+  #ifdef CRITTER
   Critter_Clear();
-#endif
+  #endif
   TAU_FSTART(Total);
   auto commInfo3D = util<double,int>::build3DTopology(
     MPI_COMM_WORLD);
@@ -80,11 +84,13 @@ static void runTestTrmm(
     matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<double,int>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
-#ifdef CRITTER
+  #ifdef CRITTER
   Critter_Print();
-#endif
+  #endif
   if (methodKey2 == 0)
   {
+    Matrix<T,U,StructureB,Distribution> matBcopy = matB;
+    matBcopy.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
     // Sequential validation after 1 iteration, since numIterations == 1
     MMvalidate<double,int,cblasEngine>::validateLocal(
       matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
@@ -99,9 +105,9 @@ int main(int argc, char** argv)
   using MatrixTypeLT = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
   using MatrixTypeUT = Matrix<double,int,MatrixStructureUpperTriangular,MatrixDistributerCyclic>;
 
-#ifdef PROFILE
+  #ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
-#endif /*TIMER*/
+  #endif /*TIMER*/
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
@@ -137,7 +143,6 @@ int main(int argc, char** argv)
   uint64_t globalMatrixSizeN = atoi(argv[5]);
   uint64_t localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
 
-  pTimer myTimer;
   if (methodKey1 == 0)
   {
     // GEMM
@@ -153,10 +158,6 @@ int main(int argc, char** argv)
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
-      // Don't use rank. Need to use the rank relative to the slice its on, since each slice will start off with the same matrix
-      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-      matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-      matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
       runTestGemm(matA, matB, matC, blasArgs, methodKey2, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
     }
   }
@@ -187,8 +188,6 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-        matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
         runTestTrmm(matA, matB, blasArgs, methodKey2, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
       }
     }
@@ -202,8 +201,6 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-        matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
         runTestTrmm(matA, matB, blasArgs, methodKey2, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
       }
     }
@@ -217,8 +214,6 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-        matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
         runTestTrmm(matA, matB, blasArgs, methodKey2, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
       }
     }
@@ -232,8 +227,6 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-        matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
         runTestTrmm(matA, matB, blasArgs, methodKey2, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
       }
     }
