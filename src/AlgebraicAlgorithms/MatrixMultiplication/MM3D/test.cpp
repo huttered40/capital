@@ -80,18 +80,6 @@ int main(int argc, char** argv)
 
     blasEngineArgumentPackage_gemm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
   
-    // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
-    
-    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-      MPI_COMM_WORLD);
-    MM3D<double,int,cblasEngine>::Multiply(
-      matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-    myTimer.clear();
-    MPI_Comm_free(&std::get<0>(commInfo3D));
-    MPI_Comm_free(&std::get<1>(commInfo3D));
-    MPI_Comm_free(&std::get<2>(commInfo3D));
-    MPI_Comm_free(&std::get<3>(commInfo3D));
-
     int numIterations = atoi(argv[7]);
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
@@ -100,7 +88,7 @@ int main(int argc, char** argv)
       Critter_Clear();
 #endif
       size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-      commInfo3D = setUpCommunicators(
+      auto commInfo3D = setUpCommunicators(
         MPI_COMM_WORLD);
       MM3D<double,int,cblasEngine>::Multiply(
         matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
@@ -165,17 +153,6 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
  
-      // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-        MPI_COMM_WORLD);
-      MM3D<double,int,cblasEngine>::Multiply(
-        matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-      myTimer.clear();
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
-
       int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
@@ -184,7 +161,7 @@ int main(int argc, char** argv)
         Critter_Clear();
 #endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        commInfo3D = setUpCommunicators(
+        auto commInfo3D = setUpCommunicators(
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
@@ -228,17 +205,6 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
   
-      // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-        MPI_COMM_WORLD);
-      MM3D<double,int,cblasEngine>::Multiply(
-        matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-      myTimer.clear();
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
-
       int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
@@ -247,7 +213,7 @@ int main(int argc, char** argv)
         Critter_Clear();
 #endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        commInfo3D = setUpCommunicators(
+        auto commInfo3D = setUpCommunicators(
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
@@ -291,17 +257,6 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
 
-      // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-        MPI_COMM_WORLD);
-      MM3D<double,int,cblasEngine>::Multiply(
-        matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-      myTimer.clear();
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
-
       int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
@@ -310,7 +265,7 @@ int main(int argc, char** argv)
         Critter_Clear();
 #endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        commInfo3D = setUpCommunicators(
+        auto commInfo3D = setUpCommunicators(
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
@@ -354,17 +309,6 @@ int main(int argc, char** argv)
       // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
       MatrixTypeR matBcopy = matB;
 
-      // Perform first iteration outside of loop because there will be a "cold start". Therefore, I don't want to keep track of these numbers.
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-        MPI_COMM_WORLD);
-      MM3D<double,int,cblasEngine>::Multiply(
-        matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-      myTimer.clear();
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
-  
       int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
@@ -373,7 +317,7 @@ int main(int argc, char** argv)
         Critter_Clear();
 #endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        commInfo3D = setUpCommunicators(
+        auto commInfo3D = setUpCommunicators(
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
@@ -406,45 +350,12 @@ int main(int argc, char** argv)
     else
     {
       cout << "Bad input for TRMM\n";
-      MPI_Abort(MPI_COMM_WORLD,0);
+      MPI_Abort(MPI_COMM_WORLD,-1);
     }
   }
   else
   {
-/*
-    // SYRK
-    //
-      Choices for matrixAtranspose: 0) NoTrans
-			      	    1) Trans
-    //
-    int matrixAtranspose = atoi(argv[6]);
-    blasEngineArgumentPackage_syrk<double> blasArgs;
-    blasArgs.order = blasEngineOrder::AblasColumnMajor;
-    blasArgs.uplo = blasEngineUpLo::AblasUpper;			// Lets only use the Upper for testing
-    blasArgs.alpha = 1.;
-    blasArgs.beta = 0;
-    MatrixTypeR matC(localMatrixSizeM,localMatrixSizeM,globalMatrixSizeM,globalMatrixSizeM);
-
-    if (matrixAtranspose == 0)
-    {
-      MatrixTypeR matA(localMatrixSizeN,localMatrixSizeM,globalMatrixSizeN,globalMatrixSizeM);
-      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-      blasArgs.transposeA = blasEngineTranspose::AblasTrans;
-    }
-    else
-    {
-      MatrixTypeR matA(localMatrixSizeM,localMatrixSizeN,globalMatrixSizeM,globalMatrixSizeN);
-      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-      blasArgs.transposeA = blasEngineTranspose::AblasTrans;
-    }
-
-    pTimer myTimer;
-    MM3D<double,int,cblasEngine>::
-      Multiply(matA, matC, localMatrixSizeN, localMatrixSizeK, MPI_COMM_WORLD, blasArgs);
-    MPI_Barrier(MPI_COMM_WORLD);
-    MMvalidate<double,int,cblasEngine>::validateLocal(matC, localMatrixSizeN, localMatrixSizeK,
-      globalMatrixSizeN, globalMatrixSizeK, MPI_COMM_WORLD, blasArgs);
-*/
+    MPI_Abort(MPI_COMM_WORLD, -1);
   }
 
   MPI_Finalize();

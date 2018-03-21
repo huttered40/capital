@@ -95,19 +95,6 @@ int main(int argc, char** argv)
   // save A for correctness checking, since I am overwriting A now.
   MatrixTypeR saveA = matA;
 
-  // Perform "cold run"
-  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> commInfoTunable = getTunableCommunicators(
-    MPI_COMM_WORLD, dimensionD, dimensionC);
-  CholeskyQR2<double,int,cblasEngine>::FactorTunable(
-    matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
-  myTimer.clear();
-  MPI_Comm_free(&std::get<0>(commInfoTunable));
-  MPI_Comm_free(&std::get<1>(commInfoTunable));
-  MPI_Comm_free(&std::get<2>(commInfoTunable));
-  MPI_Comm_free(&std::get<3>(commInfoTunable));
-  MPI_Comm_free(&std::get<4>(commInfoTunable));
-  MPI_Comm_free(&std::get<5>(commInfoTunable));
-
   if (methodKey2 == 1)
   {
     numIterations = atoi(argv[9]);
@@ -120,7 +107,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
     Critter_Clear();
 #endif
-    commInfoTunable = getTunableCommunicators(
+    auto commInfoTunable = getTunableCommunicators(
       MPI_COMM_WORLD, dimensionD, dimensionC);
     CholeskyQR2<double,int,cblasEngine>::FactorTunable(
       matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
@@ -140,7 +127,7 @@ int main(int argc, char** argv)
   }
   else if (methodKey2 == 2)
   {
-    commInfoTunable = getTunableCommunicators(
+    auto commInfoTunable = getTunableCommunicators(
       MPI_COMM_WORLD, dimensionD, dimensionC);
     QRvalidate<double,int>::validateParallelTunable(
       saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);

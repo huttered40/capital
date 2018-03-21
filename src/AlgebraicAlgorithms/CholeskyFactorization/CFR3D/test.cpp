@@ -66,17 +66,6 @@ int main(int argc, char** argv)
     // Save matrixA for correctness checking
     MatrixTypeA saveA = matA;
 
-    // Perform a "cold run" first before keeping tracking of times
-    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-      MPI_COMM_WORLD);
-    CFR3D<double,int,cblasEngine>::Factor(
-      matA, matLI, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, 'L', MPI_COMM_WORLD, commInfo3D);
-    myTimer.clear();
-    MPI_Comm_free(&std::get<0>(commInfo3D));
-    MPI_Comm_free(&std::get<1>(commInfo3D));
-    MPI_Comm_free(&std::get<2>(commInfo3D));
-    MPI_Comm_free(&std::get<3>(commInfo3D));
-
     numIterations = atoi(argv[7]);
     for (int i=0; i<numIterations; i++)
     {
@@ -122,17 +111,6 @@ int main(int argc, char** argv)
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
     // Save matrixA for correctness checking
     MatrixTypeA saveA = matA;
-
-    // Perform a "cold run" first before keeping tracking of times
-    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
-      MPI_COMM_WORLD);
-    CFR3D<double,int,cblasEngine>::Factor(
-      matA, matRI, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, 'U', MPI_COMM_WORLD, commInfo3D);
-    myTimer.clear();
-    MPI_Comm_free(&std::get<0>(commInfo3D));
-    MPI_Comm_free(&std::get<1>(commInfo3D));
-    MPI_Comm_free(&std::get<2>(commInfo3D));
-    MPI_Comm_free(&std::get<3>(commInfo3D));
 
     numIterations = atoi(argv[7]);
     for (int i=0; i<numIterations; i++)
