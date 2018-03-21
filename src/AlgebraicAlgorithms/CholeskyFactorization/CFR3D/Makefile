@@ -31,7 +31,7 @@ ifneq ($(PORTER_machine),)
 	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS2).o -c test.cpp
 
   clean:
-	-rm -f *.o *.err *.out *.gch $(OBJS2) charmrun
+	-rm -f *.o *.err *.out *.gch charmrun $(EXT)$(OBJS1) $(EXT)$(OBJS2)
 endif
 
 ifneq ($(BGQ_machine),)
@@ -52,7 +52,7 @@ ifneq ($(BGQ_machine),)
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
   clean:
-	-rm -f *.o *.err *.out *.gch $(OBJS1) charmrun
+	-rm -f *.o *.err *.out *.gch $(EXT)$(OBJS1)
 endif
 
 ifneq ($(THETA_machine),)
@@ -71,5 +71,5 @@ ifneq ($(THETA_machine),)
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
   clean:
-	-rm -f *.o *.err *.out *.gch $(OBJS1) charmrun
+	-rm -f *.o *.err *.out *.gch $(EXT)$(OBJS1)
 endif

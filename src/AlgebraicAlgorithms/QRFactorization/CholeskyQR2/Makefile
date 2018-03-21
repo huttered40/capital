@@ -25,13 +25,13 @@ ifneq ($(PORTER_machine),)
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
   $(OBJS2): $(OBJS2).o
-	$(CCAMPI) $(CFLAGS) -o $(EXT)$(OBJS2)AMPI $(OBJS2)AMPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+	$(CCAMPI) $(CFLAGS) -o $(EXT)$(OBJS2) $(OBJS2).o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
 
   $(OBJS2).o: test.cpp CholeskyQR2.h
 	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS2).o -c test.cpp
 
   clean:
-	-rm -f *.o *.gch $(OBJS2) charmrun
+	-rm -f *.o *.gch charmrun $(EXT)$(OBJS1) $(EXT)$(OBJS2)
 endif
 
 ifneq ($(BGQ_machine),)
@@ -52,7 +52,7 @@ ifneq ($(BGQ_machine),)
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
   clean:
-	-rm -f *.o *.gch $(OBJS1) charmrun
+	-rm -f *.o *.gch $(EXT)$(OBJS1)
 
 endif
 
@@ -73,5 +73,5 @@ ifneq ($(THETA_machine),)
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
   clean:
-	-rm -f *.o *.gch $(OBJS1) charmrun
+	-rm -f *.o *.gch $(EXT)$(OBJS1)
 endif

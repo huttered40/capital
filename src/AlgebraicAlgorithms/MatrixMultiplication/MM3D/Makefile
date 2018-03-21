@@ -23,14 +23,14 @@ ifneq ($(PORTER_machine),)
   $(OBJS1).o: MM3D.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
-  $(OBJS2): $(OBJS2)AMPI.o
+  $(OBJS2): $(OBJS2).o
 	$(CCAMPI) $(CFLAGS) -o $(EXT)$(OBJS2) $(OBJS2).o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
   $(OBJS2).o: MM3D.h
 	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS2).o -c test.cpp
 
   clean:
-	-rm -f *.o *.gch charmrun $(OBJS1) $(OBJS2)
+	-rm -f *.o *.gch charmrun $(EXT)$(OBJS1) $(EXT)$(OBJS2)
 endif
 
 ifneq ($(BGQ_machine),)
@@ -52,7 +52,7 @@ ifneq ($(BGQ_machine),)
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
   clean:
-	-rm -f *.o *.gch charmrun $(OBJS1)
+	-rm -f *.o *.gch $(EXT)$(OBJS1)
 endif
 
 ifneq ($(THETA_machine),)
@@ -73,6 +73,6 @@ ifneq ($(THETA_machine),)
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
   clean:
-	-rm -f *.o *.gch charmrun $(OBJS1)
+	-rm -f *.o *.gch $(EXT)$(OBJS1)
 
 endif
