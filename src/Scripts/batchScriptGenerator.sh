@@ -21,12 +21,14 @@ fileName=scriptCreator_${dateStr}_${fileID}_${machineName}
 if [ "${machineName}" == "cetus" ] || [ "${machineName}" == "mira" ]
 then
   export SCRATCH=/projects/QMCat/huttered
+  export EXECUTABLES=~/scratch/Executables/
 elif [ "${machineName}" == "bw" ]
 then
   echo "dog"
 elif [ "${machineName}" == "theta" ]
 then
   export SCRATCH=/projects/QMCat/huttered/
+  export EXECUTABLES=~/scratch/Executables/
 elif [ "${machineName}" == "stampede2" ]
 then
   echo "dog"
@@ -37,6 +39,7 @@ then
     mkdir ../Results/
   fi
   export SCRATCH=./../Results
+  export EXECUTABLES=~/hutter2/Executables/
 fi
 
 cat <<-EOF > $SCRATCH/${fileName}.sh
@@ -391,8 +394,8 @@ numArguments${tag5}_WS () {
 
 for i in {1..$numBinaries}
 do
-  read -p "Enter binary path: " binaryPath
-  read -p "Enter binary tag [MM3D,CFR3D,CQR2,SCALA_QR,SCALA_CF]: " binaryTag
+  read -p "Enter binary tag [mm3d,cfr3d,cqr2,bench_scala_qr,bench_scala_cf]: " binaryTag
+  binaryPath=\${EXECUTABLES}\${binaryTag}
   read -p "Enter scale [SS,WS]: " scale
   read -p "Enter number of iterations: " numIterations
   if [ \$binaryTag != 'SCALA_CF' ]

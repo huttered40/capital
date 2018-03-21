@@ -4,7 +4,7 @@ CFLAGS = -g -Wall -O3 -std=c++11
 
 EXT = ~/hutter2/Executables/
 OBJS1 = CFR3D
-OBJS2 = test
+OBJS2 = cfr3d
 
 MPI: $(OBJS2)MPI
 	rm *.o
@@ -31,4 +31,4 @@ $(OBJS1)AMPI.o: CFR3D.h CFR3D.hpp
 	$(CCAMPI) $(CFLAGS) -o $(OBJS1)AMPI.o -c CFR3D.h
 
 clean:
-	-rm -f *.o *.err *.out *.gch test*MPI charmrun
+	-rm -f *.o *.err *.out *.gch $(OBJS2)*MPI charmrun

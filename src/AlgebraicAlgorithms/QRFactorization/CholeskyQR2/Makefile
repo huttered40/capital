@@ -4,7 +4,7 @@ CFLAGS = -g -Wall -O0 -std=c++11
 
 EXT = ~/hutter2/Executables/
 OBJS1 = CholeskyQR2
-OBJS2 = test
+OBJS2 = cqr2
 
 MPI: $(OBJS2)MPI
 	rm *.o
@@ -31,4 +31,4 @@ $(OBJS1)AMPI.o: CholeskyQR2.h CholeskyQR2.hpp
 	$(CCAMPI) $(CFLAGS) -o $(OBJS1)AMPI.o -c CholeskyQR2.h
 
 clean:
-	-rm -f *.o *.gch test*MPI charmrun
+	-rm -f *.o *.gch $(OBJS2)*MPI charmrun
