@@ -473,8 +473,13 @@ void CFR3D<T,U,blasEngine>::baseCase(
         deepBaseCase[i*finalDim+j] = cyclicBaseCaseData[i*checkDim+j];
       }
     }
-    // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
+
+    #ifdef BGQ
+    int info;
+    dpotrf_(/*LAPACK_COL_MAJOR, */&dir, &finalDim/*bcDimension*/, &deepBaseCase[0], &finalDim/*bcDimension*/, &info);
+    #else
     LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, finalDim/*bcDimension*/, &deepBaseCase[0], finalDim/*bcDimension*/);
+    #endif
     // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
     //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
     //   Only then, can we call Serializer into the real matrixL. WRONG! We need to find the data we own according to the cyclic rule first!
@@ -483,7 +488,12 @@ void CFR3D<T,U,blasEngine>::baseCase(
 
     // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
     std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
+    #ifdef BGQ
+    char dir2 = 'N';
+    dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &finalDim/*bcDimension*/, &deepBaseCaseInv[0], &finalDim/*bcDimension*/, &info);
+    #else
     LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', finalDim/*bcDimension*/, &deepBaseCaseInv[0], finalDim/*bcDimension*/);
+    #endif
     // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 
     // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
@@ -527,7 +537,13 @@ void CFR3D<T,U,blasEngine>::baseCase(
   {
     std::vector<T>& storeMat = cyclicBaseCaseData;
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
+    #ifdef BGQ
+    int info;
+    int fTranDim1 = localDimension*pGridDimensionSize;
+    dpotrf_(/*LAPACK_COL_MAJOR, */&dir, &fTranDim1/*bcDimension*/, &storeMat[0], &fTranDim1/*bcDimension*/, &info);
+    #else
     LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, localDimension*pGridDimensionSize, &storeMat[0], localDimension*pGridDimensionSize);
+    #endif
 
     // Now, we have L_{11} located inside the "square" vector cyclicBaseCaseData.
     //   We need to call the "move builder" constructor in order to "move" this "rawData" into its own matrix.
@@ -537,7 +553,12 @@ void CFR3D<T,U,blasEngine>::baseCase(
 
     // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
     std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
+    #ifdef BGQ
+    char dir2 = 'N';
+    dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &fTranDim1/*bcDimension*/, &storeMatInv[0], &fTranDim1/*bcDimension*/, &info);
+    #else
     LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', localDimension*pGridDimensionSize, &storeMatInv[0], localDimension*pGridDimensionSize);
+    #endif
 
     // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 

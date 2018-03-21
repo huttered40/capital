@@ -20,19 +20,19 @@ ifneq ($(PORTER_machine),)
 	$(CCMPI) $(CFLAGS) -o $(EXT)$(OBJS2)MPI $(OBJS2)MPI.o -L/home/hutter2/hutter2/ExternalLibraries/CRITTER/critter/lib /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lcritter -lpthread
 
   $(OBJS2)MPI.o: MM3D.h
-	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI.o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS2)MPI.o -c test.cpp
 
   $(OBJS1)MPI.o: MM3D.h MM3D.hpp
-	$(CCMPI) $(CFLAGS) -o $(OBJS1)MPI.o -c MM3D.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1)MPI.o -c MM3D.h
 
   $(OBJS2)AMPI: $(OBJS2)AMPI.o
 	$(CCAMPI) $(CFLAGS) -o $(EXT)$(OBJS2)AMPI $(OBJS2)AMPI.o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lpthread
 
   $(OBJS2)AMPI.o: MM3D.h
-	$(CCAMPI) $(CFLAGS) -o $(OBJS2)AMPI.o -c test.cpp
+	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS2)AMPI.o -c test.cpp
 
   $(OBJS1)AMPI.o: MM3D.h MM3D.hpp
-	$(CCAMPI) $(CFLAGS) -o $(OBJS1)AMPI.o -c MM3D.h
+	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1)AMPI.o -c MM3D.h
 
   clean:
 	-rm -f *.o *.gch charmrun $(OBJS2)*MPI
@@ -57,10 +57,10 @@ ifneq ($(BGQ_machine),)
 	$(CCMPI) $(CFLAGS) -o $(EXT)$(OBJS2)MPI $(OBJS2)MPI.o -I/soft/libraries/essl/current/essl/5.1/include/ -L/home/huttered/scratch/CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L$(IBM_MAIN_DIR)/xlf/bg/14.1/bglib64 -L$(IBM_MAIN_DIR)/xlsmp/bg/3.1/bglib64/ -L$(IBM_MAIN_DIR)/xlmass/bg/7.3/bglib64/ -lcblas -lblas -lgfortran -lesslbg -lxlf90_r -lxl -lxlopt -lxlfmath -lm -lcritter -Wl,--allow-multiple-definition
 
   $(OBJS2)MPI.o: MM3D.h
-	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI.o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS2)MPI.o -c test.cpp
 
   $(OBJS1)MPI.o: MM3D.h MM3D.hpp
-	$(CCMPI) $(CFLAGS) -o $(OBJS1)MPI.o -c MM3D.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1)MPI.o -c MM3D.h
 
   clean:
 	-rm -f *.o *.gch charmrun $(OBJS2)*MPI
@@ -82,10 +82,10 @@ ifneq ($(THETA_machine),)
 	$(CCMPI) $(CFLAGS) -o $(EXT)$(OBJS2)MPI $(OBJS2)MPI.o -L../../../../../CritterXC40/critter/lib -lcritter
 
   $(OBJS2)MPI.o: MM3D.h
-	$(CCMPI) $(CFLAGS) -o $(OBJS2)MPI.o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS2)MPI.o -c test.cpp
 
   $(OBJS1)MPI.o: MM3D.h MM3D.hpp
-	$(CCMPI) $(CFLAGS) -o $(OBJS1)MPI.o -c MM3D.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1)MPI.o -c MM3D.h
   clean:
 	-rm -f *.o *.gch charmrun $(OBJS2)*MPI
 
