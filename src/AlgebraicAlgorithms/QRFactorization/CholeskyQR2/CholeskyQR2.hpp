@@ -86,6 +86,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
   if (gridDimensionC == gridDimensionD)
   {
     Factor3D(matrixA, matrixR, commWorld, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+    util<T,U>::destroy3DTopology(commInfo3D);
     return;
   }
 
@@ -109,6 +110,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
   MM3D<T,U,blasEngine>::Multiply(
     matrixR2, matrixR, miniCubeComm, commInfo3D, trmmPack1);
 
+  util<T,U>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(FactorTunable);
 }
 

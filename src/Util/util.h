@@ -27,6 +27,9 @@ public:
   static std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> buildTunableTopology(
       MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC);
 
+  static void destroy3DTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D);
+  static void destroyTunableTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable);
+
   static std::vector<T> blockedToCyclic(
     std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize);
 

@@ -114,6 +114,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
     Critter_Print();
 #endif
+    util<double,int>::destroyTunableTopology(commInfoTunable);
     MPI_Comm_free(&std::get<0>(commInfoTunable));
     MPI_Comm_free(&std::get<1>(commInfoTunable));
     MPI_Comm_free(&std::get<2>(commInfoTunable));
@@ -131,12 +132,7 @@ int main(int argc, char** argv)
       MPI_COMM_WORLD, dimensionD, dimensionC);
     QRvalidate<double,int>::validateParallelTunable(
       saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
-    MPI_Comm_free(&std::get<0>(commInfoTunable));
-    MPI_Comm_free(&std::get<1>(commInfoTunable));
-    MPI_Comm_free(&std::get<2>(commInfoTunable));
-    MPI_Comm_free(&std::get<3>(commInfoTunable));
-    MPI_Comm_free(&std::get<4>(commInfoTunable));
-    MPI_Comm_free(&std::get<5>(commInfoTunable));
+    util<double,int>::destroyTunableTopology(commInfoTunable);
   }
 
   MPI_Finalize();

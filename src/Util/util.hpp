@@ -57,6 +57,25 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util<T,U>::bui
   return std::make_tuple(rowComm, columnContigComm, columnAltComm, depthComm, sliceComm, miniCubeComm);
 }
 
+template<typename T, typename U>
+void util<T,U>::destroy3DTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D)
+{
+  MPI_Comm_free(&std::get<0>(commInfo3D));
+  MPI_Comm_free(&std::get<1>(commInfo3D));
+  MPI_Comm_free(&std::get<2>(commInfo3D));
+  MPI_Comm_free(&std::get<3>(commInfo3D));
+}
+
+template<typename T, typename U>
+void util<T,U>::destroyTunableTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable)
+{
+  MPI_Comm_free(&std::get<0>(commInfoTunable));
+  MPI_Comm_free(&std::get<1>(commInfoTunable));
+  MPI_Comm_free(&std::get<2>(commInfoTunable));
+  MPI_Comm_free(&std::get<3>(commInfoTunable));
+  MPI_Comm_free(&std::get<4>(commInfoTunable));
+  MPI_Comm_free(&std::get<5>(commInfoTunable));
+}
 
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename T, typename U>

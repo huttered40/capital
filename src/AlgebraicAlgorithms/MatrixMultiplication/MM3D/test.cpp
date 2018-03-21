@@ -98,10 +98,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
       Critter_Print();
 #endif
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
+      util<double,int>::destroy3DTopology(commInfo3D);
       //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D GEMM iteration", i);
       //MPI_Barrier(MPI_COMM_WORLD);
     }
@@ -171,10 +168,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
         Critter_Print();
 #endif
-        MPI_Comm_free(&std::get<0>(commInfo3D));
-        MPI_Comm_free(&std::get<1>(commInfo3D));
-        MPI_Comm_free(&std::get<2>(commInfo3D));
-        MPI_Comm_free(&std::get<3>(commInfo3D));
+        util<double,int>::destroy3DTopology(commInfo3D);
         //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         //MPI_Barrier(MPI_COMM_WORLD);
       }
@@ -223,10 +217,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
         Critter_Print();
 #endif
-        MPI_Comm_free(&std::get<0>(commInfo3D));
-        MPI_Comm_free(&std::get<1>(commInfo3D));
-        MPI_Comm_free(&std::get<2>(commInfo3D));
-        MPI_Comm_free(&std::get<3>(commInfo3D));
+        util<double,int>::destroy3DTopology(commInfo3D);
         //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         //MPI_Barrier(MPI_COMM_WORLD);
       }
@@ -275,10 +266,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
         Critter_Print();
 #endif
-        MPI_Comm_free(&std::get<0>(commInfo3D));
-        MPI_Comm_free(&std::get<1>(commInfo3D));
-        MPI_Comm_free(&std::get<2>(commInfo3D));
-        MPI_Comm_free(&std::get<3>(commInfo3D));
+        util<double,int>::destroy3DTopology(commInfo3D);
         //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         //MPI_Barrier(MPI_COMM_WORLD);
       }
@@ -327,10 +315,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
         Critter_Print();
 #endif
-        MPI_Comm_free(&std::get<0>(commInfo3D));
-        MPI_Comm_free(&std::get<1>(commInfo3D));
-        MPI_Comm_free(&std::get<2>(commInfo3D));
-        MPI_Comm_free(&std::get<3>(commInfo3D));
+        util<double,int>::destroy3DTopology(commInfo3D);
         //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
         //MPI_Barrier(MPI_COMM_WORLD);
       }

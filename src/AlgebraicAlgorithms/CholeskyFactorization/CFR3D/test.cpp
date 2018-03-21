@@ -81,10 +81,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
       Critter_Print();
 #endif
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
+      util<double,int>::destroy3DTopology(commInfo3D);
     }
     if (methodKey2 == 0)
     {
@@ -97,10 +94,7 @@ int main(int argc, char** argv)
         MPI_COMM_WORLD);
       CFvalidate<double,int>::validateParallel(
         saveA, matA, 'L', MPI_COMM_WORLD, commInfo3D);
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
+      util<double,int>::destroy3DTopology(commInfo3D);
     }
   }
   else
@@ -127,10 +121,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
       Critter_Print();
 #endif
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
+      util<double,int>::destroy3DTopology(commInfo3D);
     }
     if (methodKey2 == 0)
     {
@@ -143,10 +134,7 @@ int main(int argc, char** argv)
         MPI_COMM_WORLD);
       CFvalidate<double,int>::validateParallel(
         saveA, matA, 'U', MPI_COMM_WORLD, commInfo3D);
-      MPI_Comm_free(&std::get<0>(commInfo3D));
-      MPI_Comm_free(&std::get<1>(commInfo3D));
-      MPI_Comm_free(&std::get<2>(commInfo3D));
-      MPI_Comm_free(&std::get<3>(commInfo3D));
+      util<double,int>::destroy3DTopology(commInfo3D);
     }
   }  
 
