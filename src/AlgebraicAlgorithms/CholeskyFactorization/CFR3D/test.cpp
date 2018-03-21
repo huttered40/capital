@@ -74,7 +74,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
       Critter_Clear();
 #endif
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+      auto commInfo3D = util<double,int>::build3DTopology(
         MPI_COMM_WORLD);
       CFR3D<double,int,cblasEngine>::Factor(
         matA, matLI, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, 'L', MPI_COMM_WORLD, commInfo3D);
@@ -93,7 +93,7 @@ int main(int argc, char** argv)
     }
     else if (methodKey2 == 2)
     {
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+      auto commInfo3D = util<double,int>::build3DTopology(
         MPI_COMM_WORLD);
       CFvalidate<double,int>::validateParallel(
         saveA, matA, 'L', MPI_COMM_WORLD, commInfo3D);
@@ -120,7 +120,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
       Critter_Clear();
 #endif
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = util<double,int>::build3DTopology(
         MPI_COMM_WORLD);
       CFR3D<double,int,cblasEngine>::Factor(
         matA, matRI, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, 'U', MPI_COMM_WORLD, commInfo3D);
@@ -139,7 +139,7 @@ int main(int argc, char** argv)
     }
     else if (methodKey2 == 2)
     {
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = util<double,int>::build3DTopology(
         MPI_COMM_WORLD);
       CFvalidate<double,int>::validateParallel(
         saveA, matA, 'U', MPI_COMM_WORLD, commInfo3D);

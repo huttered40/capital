@@ -88,7 +88,7 @@ int main(int argc, char** argv)
       Critter_Clear();
 #endif
       size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-      auto commInfo3D = setUpCommunicators(
+      auto commInfo3D = util<double,int>::build3DTopology(
         MPI_COMM_WORLD);
       MM3D<double,int,cblasEngine>::Multiply(
         matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
@@ -161,7 +161,7 @@ int main(int argc, char** argv)
         Critter_Clear();
 #endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        auto commInfo3D = setUpCommunicators(
+        auto commInfo3D = util<double,int>::build3DTopology(
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
@@ -213,7 +213,7 @@ int main(int argc, char** argv)
         Critter_Clear();
 #endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        auto commInfo3D = setUpCommunicators(
+        auto commInfo3D = util<double,int>::build3DTopology(
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
@@ -265,7 +265,7 @@ int main(int argc, char** argv)
         Critter_Clear();
 #endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        auto commInfo3D = setUpCommunicators(
+        auto commInfo3D = util<double,int>::build3DTopology(
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
@@ -317,7 +317,7 @@ int main(int argc, char** argv)
         Critter_Clear();
 #endif
         size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        auto commInfo3D = setUpCommunicators(
+        auto commInfo3D = util<double,int>::build3DTopology(
           MPI_COMM_WORLD);
         MM3D<double,int,cblasEngine>::Multiply(
           matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);

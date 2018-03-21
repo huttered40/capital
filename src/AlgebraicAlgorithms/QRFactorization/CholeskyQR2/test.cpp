@@ -107,7 +107,7 @@ int main(int argc, char** argv)
 #ifdef CRITTER
     Critter_Clear();
 #endif
-    auto commInfoTunable = getTunableCommunicators(
+    auto commInfoTunable = util<double,int>::buildTunableTopology(
       MPI_COMM_WORLD, dimensionD, dimensionC);
     CholeskyQR2<double,int,cblasEngine>::FactorTunable(
       matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
@@ -127,7 +127,7 @@ int main(int argc, char** argv)
   }
   else if (methodKey2 == 2)
   {
-    auto commInfoTunable = getTunableCommunicators(
+    auto commInfoTunable = util<double,int>::buildTunableTopology(
       MPI_COMM_WORLD, dimensionD, dimensionC);
     QRvalidate<double,int>::validateParallelTunable(
       saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);

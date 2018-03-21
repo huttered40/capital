@@ -1,40 +1,5 @@
 /* Author: Edward Hutter */
 
-static std::tuple<
-			MPI_Comm,
-			MPI_Comm,
-			MPI_Comm,
-			MPI_Comm,
-			MPI_Comm,
-			MPI_Comm
-		 >
-		getTunableCommunicators(
-      MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC)
-{
-  TAU_FSTART(getTunableCommunicators);
-  int worldRank, worldSize, sliceRank, columnRank;
-  MPI_Comm_rank(commWorld, &worldRank);
-  MPI_Comm_size(commWorld, &worldSize);
-
-  int sliceSize = pGridDimensionD*pGridDimensionC;
-  MPI_Comm sliceComm, rowComm, columnComm, columnContigComm, columnAltComm, depthComm, miniCubeComm;
-  MPI_Comm_split(commWorld, worldRank/sliceSize, worldRank, &sliceComm);
-  MPI_Comm_rank(sliceComm, &sliceRank);
-  MPI_Comm_split(sliceComm, sliceRank/pGridDimensionC, sliceRank, &rowComm);
-  int cubeInt = worldRank%sliceSize;
-  MPI_Comm_split(commWorld, cubeInt/(pGridDimensionC*pGridDimensionC), worldRank, &miniCubeComm);
-  MPI_Comm_split(commWorld, cubeInt, worldRank, &depthComm);
-  MPI_Comm_split(sliceComm, sliceRank%pGridDimensionC, sliceRank, &columnComm);
-  MPI_Comm_rank(columnComm, &columnRank);
-  MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
-  MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
-  
-  MPI_Comm_free(&columnComm);
-  TAU_FSTOP(getTunableCommunicators);
-  return std::make_tuple(rowComm, columnContigComm, columnAltComm, depthComm, sliceComm, miniCubeComm);
-}
-
-
 template<typename T,typename U,template<typename,typename> class blasEngine>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
 void CholeskyQR2<T,U,blasEngine>::Factor1D(
@@ -116,7 +81,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
     return;
   }
   MPI_Comm miniCubeComm = std::get<5>(commInfoTunable);
-  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = util<T,U>::build3DTopology(
     miniCubeComm);
   if (gridDimensionC == gridDimensionD)
   {

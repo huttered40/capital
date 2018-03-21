@@ -1,42 +1,5 @@
 /* Author: Edward Hutter */
 
-
-static std::tuple<MPI_Comm,
-                  MPI_Comm,
-                  MPI_Comm,
-                  MPI_Comm,
-		              int,
-                  int,
-                  int>
-                  setUpCommunicators(
-                    MPI_Comm commWorld
-                  )
-{
-  TAU_FSTART(setUpCommunicators);
-  int rank,size;
-  MPI_Comm_rank(commWorld, &rank);
-  MPI_Comm_size(commWorld, &size);
-
-  int pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
-  int helper = pGridDimensionSize;
-  helper *= helper;
-  int pGridCoordX = rank%pGridDimensionSize;
-  int pGridCoordY = (rank%helper)/pGridDimensionSize;
-  int pGridCoordZ = rank/helper;
-
-  MPI_Comm rowComm, columnComm, sliceComm, depthComm;
-
-  // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
-  // Then, subdivide further into row groups and column groups
-  MPI_Comm_split(commWorld, pGridCoordY+pGridDimensionSize*pGridCoordX, rank, &depthComm);
-  MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
-  MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
-  MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
-
-  TAU_FSTOP(setUpCommunicators);
-  return std::make_tuple(rowComm, columnComm, sliceComm, depthComm, pGridCoordX, pGridCoordY, pGridCoordZ);
-}
-
 template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
 template<
   	  template<typename,typename, template<typename,typename,int> class> class StructureB,

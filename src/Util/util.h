@@ -22,6 +22,11 @@ public:
   util& operator=(const util& rhs) = delete;
   util& operator=(util&& rhs) = delete;
 
+  static std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> build3DTopology(
+                    MPI_Comm commWorld);
+  static std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> buildTunableTopology(
+      MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC);
+
   static std::vector<T> blockedToCyclic(
     std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize);
 

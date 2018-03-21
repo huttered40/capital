@@ -106,7 +106,7 @@ void QRvalidate<T,U>::validateParallelTunable(
                       )
 {
   MPI_Comm miniCubeComm = std::get<5>(commInfoTunable);
-  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = setUpCommunicators(
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> commInfo3D = util<T,U>::build3DTopology(
       miniCubeComm);
   MPI_Comm columnAltComm = std::get<2>(commInfoTunable);
   int size; MPI_Comm_size(miniCubeComm, &size);

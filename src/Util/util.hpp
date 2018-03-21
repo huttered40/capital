@@ -1,5 +1,63 @@
 /* Author: Edward Hutter */
 
+template<typename T, typename U>
+std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> util<T,U>::build3DTopology(
+                    MPI_Comm commWorld
+                  )
+{
+  TAU_FSTART(setUpCommunicators);
+  int rank,size;
+  MPI_Comm_rank(commWorld, &rank);
+  MPI_Comm_size(commWorld, &size);
+
+  int pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
+  int helper = pGridDimensionSize;
+  helper *= helper;
+  int pGridCoordX = rank%pGridDimensionSize;
+  int pGridCoordY = (rank%helper)/pGridDimensionSize;
+  int pGridCoordZ = rank/helper;
+
+  MPI_Comm rowComm, columnComm, sliceComm, depthComm;
+
+  // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
+  // Then, subdivide further into row groups and column groups
+  MPI_Comm_split(commWorld, pGridCoordY+pGridDimensionSize*pGridCoordX, rank, &depthComm);
+  MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
+  MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
+  MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
+
+  TAU_FSTOP(setUpCommunicators);
+  return std::make_tuple(rowComm, columnComm, sliceComm, depthComm, pGridCoordX, pGridCoordY, pGridCoordZ);
+}
+
+template<typename T, typename U>
+std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util<T,U>::buildTunableTopology(
+      MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC)
+{
+  TAU_FSTART(getTunableCommunicators);
+  int worldRank, worldSize, sliceRank, columnRank;
+  MPI_Comm_rank(commWorld, &worldRank);
+  MPI_Comm_size(commWorld, &worldSize);
+
+  int sliceSize = pGridDimensionD*pGridDimensionC;
+  MPI_Comm sliceComm, rowComm, columnComm, columnContigComm, columnAltComm, depthComm, miniCubeComm;
+  MPI_Comm_split(commWorld, worldRank/sliceSize, worldRank, &sliceComm);
+  MPI_Comm_rank(sliceComm, &sliceRank);
+  MPI_Comm_split(sliceComm, sliceRank/pGridDimensionC, sliceRank, &rowComm);
+  int cubeInt = worldRank%sliceSize;
+  MPI_Comm_split(commWorld, cubeInt/(pGridDimensionC*pGridDimensionC), worldRank, &miniCubeComm);
+  MPI_Comm_split(commWorld, cubeInt, worldRank, &depthComm);
+  MPI_Comm_split(sliceComm, sliceRank%pGridDimensionC, sliceRank, &columnComm);
+  MPI_Comm_rank(columnComm, &columnRank);
+  MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
+  MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
+  
+  MPI_Comm_free(&columnComm);
+  TAU_FSTOP(getTunableCommunicators);
+  return std::make_tuple(rowComm, columnContigComm, columnAltComm, depthComm, sliceComm, miniCubeComm);
+}
+
+
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename T, typename U>
 std::vector<T> util<T,U>::blockedToCyclicSpecial(
