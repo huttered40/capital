@@ -14,6 +14,84 @@ using namespace std;
 
 // Idea: We calculate 3D Summa as usual, and then we pass it into the MMvalidate solo class
 
+template<
+		typename T, typename U,
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename, template<typename,typename,int> class> class StructureC = MatrixStructureSquare,
+  		template<typename,typename,int> class Distribution
+	>
+static void runTestGemm(
+                        Matrix<T,U,StructureA,Distribution>& matA,
+                        Matrix<T,U,StructureB,Distribution>& matB,
+                        Matrix<T,U,StructureC,Distribution>& matC,
+			blasEngineArgumentPackage_gemm<T>& blasArgs,
+			int methodKey2,
+			int methodKey3,
+			int pCoordX, int pCoordY, int pGridDimensionSize
+)
+{
+#ifdef CRITTER
+  Critter_Clear();
+#endif
+  TAU_FSTART(Total);
+  auto commInfo3D = util<double,int>::build3DTopology(MPI_COMM_WORLD);
+  MM3D<double,int,cblasEngine>::Multiply(
+    matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
+  util<double,int>::destroy3DTopology(commInfo3D);
+  TAU_FSTOP(Total);
+#ifdef CRITTER
+  Critter_Print();
+#endif
+  if (methodKey2 == 0)
+  {
+    // Sequential validation after 1 iteration, since numIterations == 1
+    // Lets make sure matrixA and matrixB are set correctly by re-setting their values
+    matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+    matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+    MMvalidate<double,int,cblasEngine>::validateLocal(
+      matA, matB, matC, MPI_COMM_WORLD, blasArgs);
+  }
+}
+
+template<
+		typename T, typename U,
+		template<typename,typename, template<typename,typename,int> class> class StructureA,
+  		template<typename,typename, template<typename,typename,int> class> class StructureB,
+  		template<typename,typename,int> class Distribution
+	>
+static void runTestTrmm(
+                        Matrix<T,U,StructureA,Distribution>& matA,
+                        Matrix<T,U,StructureB,Distribution>& matB,
+			blasEngineArgumentPackage_trmm<T>& blasArgs,
+			int methodKey2,
+			int methodKey3,
+			int pCoordX, int pCoordY, int pGridDimensionSize
+)
+{
+  Matrix<T,U,StructureB,Distribution> matBcopy = matB;
+#ifdef CRITTER
+  Critter_Clear();
+#endif
+  TAU_FSTART(Total);
+  auto commInfo3D = util<double,int>::build3DTopology(
+    MPI_COMM_WORLD);
+  MM3D<double,int,cblasEngine>::Multiply(
+    matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
+  util<double,int>::destroy3DTopology(commInfo3D);
+  TAU_FSTOP(Total);
+#ifdef CRITTER
+  Critter_Print();
+#endif
+  if (methodKey2 == 0)
+  {
+    // Sequential validation after 1 iteration, since numIterations == 1
+    MMvalidate<double,int,cblasEngine>::validateLocal(
+      matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
+  }
+}
+
+
 int main(int argc, char** argv)
 {
   using MatrixTypeS = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
@@ -33,18 +111,17 @@ int main(int argc, char** argv)
 
   /*
     Choices for methodKey1: 0) Gemm
-			                      1) TRMM
-                            2) SYRK
+			    1) TRMM
   */
   int methodKey1 = atoi(argv[1]);
   /*
     Choices for methodKey2: 0) Sequential validation
-			                      1) Performance testing
+			    1) Performance testing
   */
   int methodKey2 = atoi(argv[2]);
   /*
     Choices for methodKey3: 0) Broadcast + Allreduce
-			                      1) Allgather + Allreduce
+			    1) Allgather + Allreduce
   */
   int methodKey3 = atoi(argv[3]);
 
@@ -66,56 +143,21 @@ int main(int argc, char** argv)
     // GEMM
     uint64_t globalMatrixSizeK = atoi(argv[6]);
     uint64_t localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
-
-    //cout << "localMatrixSizeM - " << localMatrixSizeM << "localMatrixSizeN - " << localMatrixSizeN << "localMatrixSizeK - " << localMatrixSizeK << endl;
+    int numIterations = atoi(argv[7]);
 
     MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matC(globalMatrixSizeN,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
-
-    // Don't use rank. Need to use the rank relative to the slice its on, since each slice will start off with the same matrix
-    matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-    matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-    matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-
     blasEngineArgumentPackage_gemm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
   
-    int numIterations = atoi(argv[7]);
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
-#ifdef CRITTER
-      Critter_Clear();
-#endif
-      size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-      auto commInfo3D = util<double,int>::build3DTopology(
-        MPI_COMM_WORLD);
-      MM3D<double,int,cblasEngine>::Multiply(
-        matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-      myTimer.setEndTime("MM3D::Multiply", index1);
-      myTimer.finalize(MPI_COMM_WORLD);
-      myTimer.clear();
-#ifdef CRITTER
-      Critter_Print();
-#endif
-      util<double,int>::destroy3DTopology(commInfo3D);
-      //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D GEMM iteration", i);
-      //MPI_Barrier(MPI_COMM_WORLD);
-    }
-    if (methodKey2 == 0)
-    {
-      // Sequential validation after 1 iteration, since numIterations == 1
-      // Lets make sure matrixA and matrixB are set correctly by re-setting their values
+      // Don't use rank. Need to use the rank relative to the slice its on, since each slice will start off with the same matrix
       matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
       matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-      MMvalidate<double,int,cblasEngine>::validateLocal(
-        matA, matB, matC, MPI_COMM_WORLD, blasArgs);
-    }
-    else
-    {
-//      TimeController<double,int, MatrixStructureSquare,MatrixDistributerCyclic, cblasEngine> t;
-//      t.displayResults();
-      //myTimer.printRunStats(MPI_COMM_WORLD, "MM3D GEMM");
+      matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+      runTestGemm(matA, matB, matC, blasArgs, methodKey2, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
     }
   }
   else if (methodKey1 == 1)
@@ -132,215 +174,69 @@ int main(int argc, char** argv)
 			        1) Rectangle * Triangle (matrixB * matrixA)
     */
     int triangleSide = atoi(argv[7]);
-    blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasLower,
-      blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
+    int numIterations = atoi(argv[8]);
 
     // I guess I will go through all cases. Ugh!
     if ((matrixUpLo == 0) && (triangleSide == 0))
     {
       MatrixTypeLT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
-
-      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-      matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-
-      blasArgs.side = blasEngineSide::AblasLeft;
-      blasArgs.uplo = blasEngineUpLo::AblasLower;
+      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasLower,
+        blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
  
-      // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
-      MatrixTypeR matBcopy = matB;
- 
-      int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-#ifdef CRITTER
-        Critter_Clear();
-#endif
-        size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        auto commInfo3D = util<double,int>::build3DTopology(
-          MPI_COMM_WORLD);
-        MM3D<double,int,cblasEngine>::Multiply(
-          matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-        myTimer.setEndTime("MM3D::Multiply", index1);
-        myTimer.finalize(MPI_COMM_WORLD);
-        myTimer.clear();
-#ifdef CRITTER
-        Critter_Print();
-#endif
-        util<double,int>::destroy3DTopology(commInfo3D);
-        //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
-        //MPI_Barrier(MPI_COMM_WORLD);
-      }
-      if (methodKey2 == 0)
-      {
-        // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(
-          matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
-      }
-      else
-      {
-        //myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
-        //TimeController<double,int, MatrixStructureSquare,MatrixDistributerCyclic, cblasEngine> t;
-        //t.displayResults();
+        matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+        matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+        runTestTrmm(matA, matB, blasArgs, methodKey2, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
       }
     }
     else if ((matrixUpLo == 0) && (triangleSide == 1))
     {
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeLT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
+      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
+        blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
-      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-      matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-
-      blasArgs.side = blasEngineSide::AblasRight;
-      blasArgs.uplo = blasEngineUpLo::AblasLower;
-
-      // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
-      MatrixTypeR matBcopy = matB;
-  
-      int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-#ifdef CRITTER
-        Critter_Clear();
-#endif
-        size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        auto commInfo3D = util<double,int>::build3DTopology(
-          MPI_COMM_WORLD);
-        MM3D<double,int,cblasEngine>::Multiply(
-          matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-        myTimer.setEndTime("MM3D::Multiply", index1);
-        myTimer.finalize(MPI_COMM_WORLD);
-        myTimer.clear();
-#ifdef CRITTER
-        Critter_Print();
-#endif
-        util<double,int>::destroy3DTopology(commInfo3D);
-        //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
-        //MPI_Barrier(MPI_COMM_WORLD);
-      }
-      if (methodKey2 == 0)
-      {
-        // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(
-          matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
-      }
-      else
-      {
-        //myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
-        //TimeController<double,int, MatrixStructureSquare,MatrixDistributerCyclic, cblasEngine> t;
-        //t.displayResults();
+        matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+        matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+        runTestTrmm(matA, matB, blasArgs, methodKey2, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 0))
     {
       MatrixTypeUT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
-
-      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-      matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-
-      blasArgs.side = blasEngineSide::AblasLeft;
-      blasArgs.uplo = blasEngineUpLo::AblasUpper;
+      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
+        blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   
-      // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
-      MatrixTypeR matBcopy = matB;
-
-      int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-#ifdef CRITTER
-        Critter_Clear();
-#endif
-        size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        auto commInfo3D = util<double,int>::build3DTopology(
-          MPI_COMM_WORLD);
-        MM3D<double,int,cblasEngine>::Multiply(
-          matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-        myTimer.setEndTime("MM3D::Multiply", index1);
-        myTimer.finalize(MPI_COMM_WORLD);
-        myTimer.clear();
-#ifdef CRITTER
-        Critter_Print();
-#endif
-        util<double,int>::destroy3DTopology(commInfo3D);
-        //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
-        //MPI_Barrier(MPI_COMM_WORLD);
-      }
-      if (methodKey2 == 0)
-      {
-        // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(
-          matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
-      }
-      else
-      {
-        //myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
-        //TimeController<double,int, MatrixStructureSquare,MatrixDistributerCyclic, cblasEngine> t;
-        //t.displayResults();
+        matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+        matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+        runTestTrmm(matA, matB, blasArgs, methodKey2, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 1))
     {
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeUT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
+      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
+        blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
-      matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-      matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-
-      blasArgs.side = blasEngineSide::AblasRight;
-      blasArgs.uplo = blasEngineUpLo::AblasUpper;
-
-      // Make a copy of matrixB before it gets overwritten by MM3D. This won't hurt performance numbers of anything
-      MatrixTypeR matBcopy = matB;
-
-      int numIterations = atoi(argv[8]);
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-#ifdef CRITTER
-        Critter_Clear();
-#endif
-        size_t index1 = myTimer.setStartTime("MM3D::Multiply");
-        auto commInfo3D = util<double,int>::build3DTopology(
-          MPI_COMM_WORLD);
-        MM3D<double,int,cblasEngine>::Multiply(
-          matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-        myTimer.setEndTime("MM3D::Multiply", index1);
-        myTimer.finalize(MPI_COMM_WORLD);
-        myTimer.clear();
-#ifdef CRITTER
-        Critter_Print();
-#endif
-        util<double,int>::destroy3DTopology(commInfo3D);
-        //myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "MM3D TRMM iteration", i);
-        //MPI_Barrier(MPI_COMM_WORLD);
-      }
-      if (methodKey2 == 0)
-      {
-        // Sequential validation after 1 iteration, since numIterations == 1
-        MMvalidate<double,int,cblasEngine>::validateLocal(
-          matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
-      }
-      else
-      {
-        //myTimer.printRunStats(MPI_COMM_WORLD, "MM3D TRSM");
-        //TimeController<double,int, MatrixStructureSquare,MatrixDistributerCyclic, cblasEngine> t;
-        //t.displayResults();
+        matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
+        matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+        runTestTrmm(matA, matB, blasArgs, methodKey2, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
       }
     }
-    else
-    {
-      cout << "Bad input for TRMM\n";
-      MPI_Abort(MPI_COMM_WORLD,-1);
-    }
-  }
-  else
-  {
-    MPI_Abort(MPI_COMM_WORLD, -1);
   }
 
   MPI_Finalize();
