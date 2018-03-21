@@ -1,6 +1,6 @@
 HOST=$(shell hostname)
 PORTER_machine=$(shell echo $(HOST) |grep 'porter')
-BGQ_machine=$(shell echo $(HOST) |grep 'mira'\|'cetus')
+BGQ_machine=$(shell echo $(HOST) |grep 'mira\|cetus')
 THETA_machine=$(shell echo $(HOST) |grep 'theta')
 
 ifneq ($(PORTER_machine),)
