@@ -7,7 +7,14 @@
 #include <iostream>
 #include <complex>
 #include <mpi.h>
+
+#ifdef PORTER
 #include "/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
+#endif
+
+#ifdef THETA
+#include "mkl.h"
+#endif
 
 // Local includes
 #include "./../../../Util/shared.h"

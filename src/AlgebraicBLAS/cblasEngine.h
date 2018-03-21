@@ -6,7 +6,14 @@
 
 // System includes
 #include <complex>
+
+#ifdef PORTER
 #include <cblas.h>
+#endif
+
+#ifdef THETA
+#include "mkl.h"
+#endif
 
 // Local includes
 #include "./../Util/shared.h"
