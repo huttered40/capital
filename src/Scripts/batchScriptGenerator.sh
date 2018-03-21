@@ -20,17 +20,16 @@ fileName=scriptCreator_${dateStr}_${fileID}_${machineName}
 
 make -C./.. clean
 make -C./.. MPI
+export BINPATH=./../bin/
 if [ "${machineName}" == "BGQ" ]
 then
   export SCRATCH=/projects/QMCat/huttered
-  export EXECUTABLES=~/scratch/Executables/
 elif [ "${machineName}" == "BW" ]
 then
   echo "dog"
 elif [ "${machineName}" == "THETA" ]
 then
   export SCRATCH=/projects/QMCat/huttered/
-  export EXECUTABLES=~/scratch/Executables/
 elif [ "${machineName}" == "STAMPEDE2" ]
 then
   echo "dog"
@@ -41,7 +40,6 @@ then
     mkdir ../Results/
   fi
   export SCRATCH=./../Results
-  export EXECUTABLES=~/hutter2/Executables/
 fi
 
 cat <<-EOF > $SCRATCH/${fileName}.sh
@@ -352,7 +350,7 @@ launch$tag5 () {
 for i in {1..$numBinaries}
 do
   read -p "Enter binary tag [mm3d,cfr3d,cqr2,bench_scala_qr,bench_scala_cf]: " binaryTag
-  binaryPath=\${EXECUTABLES}\${binaryTag}_${machineName}
+  binaryPath=\${BINPATH}\${binaryTag}_${machineName}
   read -p "Enter scale [SS,WS]: " scale
   read -p "Enter number of iterations: " numIterations
   if [ \$binaryTag != 'SCALA_CF' ]

@@ -2,6 +2,7 @@ HOST=$(shell hostname)
 PORTER_machine=$(shell echo $(HOST) |grep 'porter')
 BGQ_machine=$(shell echo $(HOST) |grep 'mira\|cetus')
 THETA_machine=$(shell echo $(HOST) |grep 'theta')
+BIN=./../../../bin/
 
 ifneq ($(PORTER_machine),)
   MACHINE=PORTER
@@ -9,7 +10,6 @@ ifneq ($(PORTER_machine),)
   CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/multicore-linux-x86_64/bin/ampicxx
   CFLAGS = -g -Wall -O3 -std=c++11
 
-  EXT = ~/hutter2/Executables/
   OBJS1 = cfr3d_$(MACHINE)_mpi
   OBJS2 = cfr3d_$(MACHINE)_ampi
 
@@ -19,19 +19,19 @@ ifneq ($(PORTER_machine),)
 	rm *.o
 
   $(OBJS1): $(OBJS1).o
-	$(CCMPI) $(CFLAGS) -o $(EXT)$(OBJS1) $(OBJS1).o -L/home/hutter2/hutter2/ExternalLibraries/CRITTER/critter/lib /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/liblapack.a -lgfortran -lpthread -lcritter
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L/home/hutter2/hutter2/ExternalLibraries/CRITTER/critter/lib /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/liblapack.a -lgfortran -lpthread -lcritter
 
   $(OBJS1).o: test.cpp CFR3D.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
   $(OBJS2): $(OBJS2).o
-	$(CCAMPI) $(CFLAGS) -o $(EXT)$(OBJS2) $(OBJS2).o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapack.a -lgfortran -lpthread
+	$(CCAMPI) $(CFLAGS) -o $(BIN)$(OBJS2) $(OBJS2).o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/liblapack.a -lgfortran -lpthread
 
   $(OBJS2).o: test.cpp CFR3D.h
 	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS2).o -c test.cpp
 
   clean:
-	-rm -f *.o *.err *.out *.gch charmrun $(EXT)$(OBJS1) $(EXT)$(OBJS2)
+	-rm -f *.o *.err *.out *.gch charmrun $(BIN)$(OBJS1) $(BIN)$(OBJS2)
 endif
 
 ifneq ($(BGQ_machine),)
@@ -39,20 +39,19 @@ ifneq ($(BGQ_machine),)
   CCMPI = mpic++11
   CFLAGS = -std=c++11 -g
 
-  EXT = ~/scratch/Executables/
   OBJS1 = cfr3d_$(MACHINE)
 
   MPI: $(OBJS1)
 	rm *.o
 
   $(OBJS1): $(OBJS1).o
-	$(CCMPI) $(CFLAGS) -o $(EXT)$(OBJS1) $(OBJS1).o -I/soft/libraries/essl/current/essl/5.1/include/ -L../../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64 -llapack -lcblas -lblas -lesslbg -lgfortran -lxlopt -lxlf90_r -lxlfmath -lxl -lcritter
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -I/soft/libraries/essl/current/essl/5.1/include/ -L../../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64 -llapack -lcblas -lblas -lesslbg -lgfortran -lxlopt -lxlf90_r -lxlfmath -lxl -lcritter
 
   $(OBJS1).o: test.cpp CFR3D.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
   clean:
-	-rm -f *.o *.err *.out *.gch $(EXT)$(OBJS1)
+	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)
 endif
 
 ifneq ($(THETA_machine),)
@@ -65,11 +64,11 @@ ifneq ($(THETA_machine),)
   MPI: $(OBJS1)
 
   $(OBJS1): $(OBJS1).o
-	$(CCMPI) $(CFLAGS) -o $(EXT)$(OBJS1) $(OBJS1).o -L../../../../../CritterXC40/critter/lib -lcritter
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L../../../../../CritterXC40/critter/lib -lcritter
 
   $(OBJS1).o: test.cpp CFR3D.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c test.cpp
 
   clean:
-	-rm -f *.o *.err *.out *.gch $(EXT)$(OBJS1)
+	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)
 endif
