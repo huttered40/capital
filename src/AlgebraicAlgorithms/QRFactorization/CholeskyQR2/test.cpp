@@ -53,32 +53,6 @@ int main(int argc, char** argv)
   // Use the grid that the user specifies in the command line
   int dimensionD = atoi(argv[7]);
   int dimensionC = atoi(argv[8]);
-/* Optimal grid choice not in code path anymore. Its always better to manually specify the tunable grid dimensions.
-      // Do an exponent check, but first we need the log-2 of numPEs(size)
-      int exponentNumPEs = std::nearbyint(std::log2(size));
-
-      int sumExponentsD = (exponentNumPEs+exponentM+exponentM - exponentN - exponentN);
-      int sumExponentsC = (exponentNumPEs+exponentN - exponentM);
-
-      int exponentD;
-      int exponentC;
-      if (sumExponentsD%3 == 0) {exponentD = sumExponentsD/3;}
-      else { exponentD = (sumExponentsD - (sumExponentsD%3))/3;}
-
-      if (sumExponentsC <= 0) {exponentC = 0;}
-      else if (sumExponentsC%3==0) {exponentC = sumExponentsC/3;}
-      else {exponentC = (sumExponentsC - (sumExponentsC%3))/3;}
-
-      // Find the optimal grid based on the number of processors, size, and the dimensions of matrix A
-      dimensionD = std::min(size, (1<<exponentD));
-      dimensionC = std::max(1,(1<<exponentC));
-
-      // Extra error check so that we use all of the processors
-      if (dimensionD*dimensionC*dimensionC < size)
-      {
-        dimensionD <<= (exponentNumPEs - exponentD - 2*exponentC);
-      }
-*/
   int sliceSize = dimensionD*dimensionC;
   int pCoordX = rank%dimensionC;
   int pCoordY = (rank%sliceSize)/dimensionC;
@@ -104,23 +78,17 @@ int main(int argc, char** argv)
   {
     // reset the matrix before timer starts
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
-#ifdef CRITTER
+    #ifdef CRITTER
     Critter_Clear();
-#endif
+    #endif
     auto commInfoTunable = util<double,int>::buildTunableTopology(
       MPI_COMM_WORLD, dimensionD, dimensionC);
     CholeskyQR2<double,int,cblasEngine>::FactorTunable(
       matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
-#ifdef CRITTER
+    #ifdef CRITTER
     Critter_Print();
-#endif
+    #endif
     util<double,int>::destroyTunableTopology(commInfoTunable);
-    MPI_Comm_free(&std::get<0>(commInfoTunable));
-    MPI_Comm_free(&std::get<1>(commInfoTunable));
-    MPI_Comm_free(&std::get<2>(commInfoTunable));
-    MPI_Comm_free(&std::get<3>(commInfoTunable));
-    MPI_Comm_free(&std::get<4>(commInfoTunable));
-    MPI_Comm_free(&std::get<5>(commInfoTunable));
   }
   if (methodKey2 == 0)
   {
