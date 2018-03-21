@@ -13,7 +13,7 @@ ifneq ($(PORTER_machine),)
   OBJS1 = cfr3d_$(MACHINE)_mpi
   OBJS2 = cfr3d_$(MACHINE)_ampi
 
-  MPI: $(OBJS2)
+  MPI: $(OBJS1)
 	rm *.o
   AMPI: $(OBJS2)
 	rm *.o

@@ -6,7 +6,7 @@ tag3='CQR2'
 tag4='SCALA_QR'
 tag5='SCALA_CF'
 
-read -p "Enter machine name [cetus,mira,theta,bw,stampede2,porter]: " machineName
+read -p "Enter machine name [BGQ (cetus,mira), THETA, BW, STAMPEDE2, PORTER]: " machineName
 read -p "Enter the Date (MM_DD_YYYY): " dateStr
 read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter maximum number of nodes requested: " numNodes
@@ -18,21 +18,23 @@ read -p "Enter number of seconds of job (only valid on BW): " numSeconds
 numPEs=$((ppn*numNodes))
 fileName=scriptCreator_${dateStr}_${fileID}_${machineName}
 
-if [ "${machineName}" == "cetus" ] || [ "${machineName}" == "mira" ]
+make -C./.. clean
+make -C./.. MPI
+if [ "${machineName}" == "BGQ" ]
 then
   export SCRATCH=/projects/QMCat/huttered
   export EXECUTABLES=~/scratch/Executables/
-elif [ "${machineName}" == "bw" ]
+elif [ "${machineName}" == "BW" ]
 then
   echo "dog"
-elif [ "${machineName}" == "theta" ]
+elif [ "${machineName}" == "THETA" ]
 then
   export SCRATCH=/projects/QMCat/huttered/
   export EXECUTABLES=~/scratch/Executables/
-elif [ "${machineName}" == "stampede2" ]
+elif [ "${machineName}" == "STAMPEDE2" ]
 then
   echo "dog"
-elif [ "${machineName}" == "porter" ]
+elif [ "${machineName}" == "PORTER" ]
 then
   if [ ! -d "../Results" ];
   then
@@ -103,19 +105,6 @@ CQR2=3
 SCALA_QR=4
 SCALA_CF=5
 
-# Each Binary tag has a specific number of command-line arguments that it accepts
-let numArgs${tag1}_SS=8
-let numArgs${tag2}_SS=1000
-let numArgs${tag3}_SS=1000
-let numArgs${tag4}_SS=1000
-let numArgs${tag5}_SS=1000
-let numArgs${tag1}_WS=14
-let numArgs${tag2}_WS=1000
-let numArgs${tag3}_WS=1000
-let numArgs${tag4}_WS=1000
-let numArgs${tag5}_WS=1000
-
-
 updateCounter () {
   local counter=\$1
   if [ \$2 -eq 1 ]
@@ -142,23 +131,22 @@ log2 () {
     echo \$x
 }
 
-
 # Functions that write the actual script, depending on machine
 launchJobs () {
   local numProcesses=\$((\$1 * $ppn))
-  if [ "$machineName" == "mira" ] || [ "$machineName" == "cetus" ]
+  if [ "$machineName" == "BGQ" ]
   then
     echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:2:\$#}" >> \$scriptName
-  elif [ "$machineName" == "bw" ]
+  elif [ "$machineName" == "BW" ]
   then
     echo "aprun -n \$numProcesses \$@" > \$scriptName
-  elif [ "$machineName" == "theta" ]
+  elif [ "$machineName" == "THETA" ]
   then
     echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core \${@:2:\$#}" >> \$scriptName
-  elif [ "$machineName" == "stampede2" ]
+  elif [ "$machineName" == "STAMPEDE2" ]
   then
     echo "dog" >> \$scriptName
-  elif [ "$machineName" == "porter" ]
+  elif [ "$machineName" == "PORTER" ]
   then
     echo "\${@:2:\$#}" >> \$scriptName
   fi
@@ -361,41 +349,10 @@ launch$tag5 () {
   fi
 }
 
-numArguments${tag1}_SS () {
-  echo "\$numArgs${tag1}_SS"
-}
-numArguments${tag1}_WS () {
-  echo "\$numArgs${tag1}_WS"
-}
-numArguments${tag2}_SS () {
-  echo "\${numArgs${tag2}_SS}"
-}
-numArguments${tag2}_WS () {
-  echo "\${numArgs${tag2}_WS}"
-}
-numArguments${tag3}_SS () {
-  echo "\${numArgs${tag3}_SS}"
-}
-numArguments${tag3}_WS () {
-  echo "\${numArgs${tag3}_WS}"
-}
-numArguments${tag4}_SS () {
-  echo "\${numArgs${tag4}_SS}"
-}
-numArguments${tag4}_WS () {
-  echo "\${numArgs${tag4}_WS}"
-}
-numArguments${tag5}_SS () {
-  echo "\${numArgs${tag5}_SS}"
-}
-numArguments${tag5}_WS () {
-  echo "\${numArgs${tag5}_WS}"
-}
-
 for i in {1..$numBinaries}
 do
   read -p "Enter binary tag [mm3d,cfr3d,cqr2,bench_scala_qr,bench_scala_cf]: " binaryTag
-  binaryPath=\${EXECUTABLES}\${binaryTag}
+  binaryPath=\${EXECUTABLES}\${binaryTag}_${machineName}
   read -p "Enter scale [SS,WS]: " scale
   read -p "Enter number of iterations: " numIterations
   if [ \$binaryTag != 'SCALA_CF' ]
