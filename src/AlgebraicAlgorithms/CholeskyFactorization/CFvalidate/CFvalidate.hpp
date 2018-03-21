@@ -39,7 +39,12 @@ void CFvalidate<T,U>::validateLocal(
     }
   }
 
+  #ifdef BGQ
+  int info;
+  dpotrf_(/*LAPACK_COL_MAJOR, */&dir, &globalDimension, &globalMatrixA[0], &globalDimension, &info);
+  #else 
   LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, globalDimension, &globalMatrixA[0], globalDimension);
+  #endif
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
   T error = (dir == 'L' ? getResidualTriangleLower(matrixSol_CF.getVectorData(), globalMatrixA, localDimension, globalDimension, commInfo)
