@@ -16,8 +16,9 @@ void validator<T,U>::validateResidualParallel(
 			std::string& label
                       )
 {
-  int rank,size;
+  int rank,size,rankCommWorld;
   MPI_Comm_rank(commWorld, &rank);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rankCommWorld);	// Used for printing out to file.
   MPI_Comm_size(commWorld, &size);
 
   auto commInfo = util<T,U>::getCommunicatorSlice(
@@ -102,10 +103,9 @@ void validator<T,U>::validateResidualParallel(
     globalX += pGridDimensionSize;
   }
   error = std::sqrt(error);
-  //std::cout << "localError = " << error << std::endl;
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, depthComm);
-  if (rank == 0) {std::cout << label << error << std::endl;}
+  if (rankCommWorld == 0) {std::cout << label << error << std::endl;}
   MPI_Comm_free(&sliceComm);
 }
 
