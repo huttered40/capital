@@ -23,7 +23,7 @@ template<
 static void runTestCF(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matT,
-			int methodKey2, char dir, U inverseCutOffMultiplier, U blockSizeMultiplier, U panelDimensionMultiplier,
+			int methodKey2, char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
 			int pCoordX, int pCoordY, int pGridDimensionSize
 )
 {
@@ -33,10 +33,10 @@ static void runTestCF(
   Critter_Clear();
   #endif
   TAU_FSTART(Total);
-  auto commInfo3D = util<double,int>::build3DTopology(MPI_COMM_WORLD);
-  CFR3D<double,int,cblasEngine>::Factor(
+  auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
+  CFR3D<T,U,cblasEngine>::Factor(
     matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, MPI_COMM_WORLD, commInfo3D);
-  util<double,int>::destroy3DTopology(commInfo3D);
+  util<T,U>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
   #ifdef CRITTER
   Critter_Print();
@@ -46,24 +46,24 @@ static void runTestCF(
     Matrix<T,U,StructureA,Distribution> saveA = matA;
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    CFvalidate<double,int>::validateLocal(saveA, matA, dir, MPI_COMM_WORLD);
+    CFvalidate<T,U>::validateLocal(saveA, matA, dir, MPI_COMM_WORLD);
   }
   else if (methodKey2 == 2)
   {
     Matrix<T,U,StructureA,Distribution> saveA = matA;
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    auto commInfo3D = util<double,int>::build3DTopology(MPI_COMM_WORLD);
-    CFvalidate<double,int>::validateParallel(
+    auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
+    CFvalidate<T,U>::validateParallel(
       saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
-    util<double,int>::destroy3DTopology(commInfo3D);
+    util<T,U>::destroy3DTopology(commInfo3D);
   }
 }
 
 int main(int argc, char** argv)
 {
-  using MatrixTypeA = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
-  using MatrixTypeL = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
-  using MatrixTypeR = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixTypeA = Matrix<DATATYPE,INTTYPE,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixTypeL = Matrix<DATATYPE,INTTYPE,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixTypeR = Matrix<DATATYPE,INTTYPE,MatrixStructureSquare,MatrixDistributerCyclic>;
 
   #ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
@@ -95,7 +95,7 @@ int main(int argc, char** argv)
                   2) Distributed validation
   */
   int methodKey2 = atoi(argv[2]);
-  uint64_t globalMatrixSize = atoi(argv[3]);
+  INTTYPE globalMatrixSize = atoi(argv[3]);
   int blockSizeMultiplier = atoi(argv[4]);
   int inverseCutOffMultiplier = atoi(argv[5]); // multiplies baseCase dimension by sucessive 2
   int panelDimensionMultiplier = atoi(argv[6]);

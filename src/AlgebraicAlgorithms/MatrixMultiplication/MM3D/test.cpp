@@ -6,6 +6,7 @@
 #include <cmath>
 
 // Local includes
+#include "./../../../Util/shared.h"
 #include "MM3D.h"
 #include "../../../Timer/Timer.h"
 #include "../MMvalidate/MMvalidate.h"
@@ -38,10 +39,10 @@ static void runTestGemm(
   Critter_Clear();
   #endif
   TAU_FSTART(Total);
-  auto commInfo3D = util<double,int>::build3DTopology(MPI_COMM_WORLD);
-  MM3D<double,int,cblasEngine>::Multiply(
+  auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
+  MM3D<T,U,cblasEngine>::Multiply(
     matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-  util<double,int>::destroy3DTopology(commInfo3D);
+  util<T,U>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
   #ifdef CRITTER
   Critter_Print();
@@ -52,7 +53,7 @@ static void runTestGemm(
     // Lets make sure matrixA and matrixB are set correctly by re-setting their values
     matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
     matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-    MMvalidate<double,int,cblasEngine>::validateLocal(
+    MMvalidate<T,U,cblasEngine>::validateLocal(
       matA, matB, matC, MPI_COMM_WORLD, blasArgs);
   }
 }
@@ -78,11 +79,11 @@ static void runTestTrmm(
   Critter_Clear();
   #endif
   TAU_FSTART(Total);
-  auto commInfo3D = util<double,int>::build3DTopology(
+  auto commInfo3D = util<T,U>::build3DTopology(
     MPI_COMM_WORLD);
-  MM3D<double,int,cblasEngine>::Multiply(
+  MM3D<T,U,cblasEngine>::Multiply(
     matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-  util<double,int>::destroy3DTopology(commInfo3D);
+  util<T,U>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
   #ifdef CRITTER
   Critter_Print();
@@ -92,7 +93,7 @@ static void runTestTrmm(
     Matrix<T,U,StructureB,Distribution> matBcopy = matB;
     matBcopy.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
     // Sequential validation after 1 iteration, since numIterations == 1
-    MMvalidate<double,int,cblasEngine>::validateLocal(
+    MMvalidate<T,U,cblasEngine>::validateLocal(
       matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
   }
 }
@@ -100,10 +101,10 @@ static void runTestTrmm(
 
 int main(int argc, char** argv)
 {
-  using MatrixTypeS = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
-  using MatrixTypeR = Matrix<double,int,MatrixStructureRectangle,MatrixDistributerCyclic>;
-  using MatrixTypeLT = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
-  using MatrixTypeUT = Matrix<double,int,MatrixStructureUpperTriangular,MatrixDistributerCyclic>;
+  using MatrixTypeS = Matrix<DATATYPE,INTTYPE,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixTypeR = Matrix<DATATYPE,INTTYPE,MatrixStructureRectangle,MatrixDistributerCyclic>;
+  using MatrixTypeLT = Matrix<DATATYPE,INTTYPE,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
+  using MatrixTypeUT = Matrix<DATATYPE,INTTYPE,MatrixStructureUpperTriangular,MatrixDistributerCyclic>;
 
   #ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
@@ -138,22 +139,22 @@ int main(int argc, char** argv)
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
 
-  uint64_t globalMatrixSizeM = atoi(argv[4]);
-  uint64_t localMatrixSizeM = globalMatrixSizeM/pGridDimensionSize;
-  uint64_t globalMatrixSizeN = atoi(argv[5]);
-  uint64_t localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
+  INTTYPE globalMatrixSizeM = atoi(argv[4]);
+  INTTYPE localMatrixSizeM = globalMatrixSizeM/pGridDimensionSize;
+  INTTYPE globalMatrixSizeN = atoi(argv[5]);
+  INTTYPE localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
 
   if (methodKey1 == 0)
   {
     // GEMM
-    uint64_t globalMatrixSizeK = atoi(argv[6]);
-    uint64_t localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
+    INTTYPE globalMatrixSizeK = atoi(argv[6]);
+    INTTYPE localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
     int numIterations = atoi(argv[7]);
 
     MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matC(globalMatrixSizeN,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
-    blasEngineArgumentPackage_gemm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
+    blasEngineArgumentPackage_gemm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
   
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
@@ -182,7 +183,7 @@ int main(int argc, char** argv)
     {
       MatrixTypeLT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
-      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasLower,
+      blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasLower,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
  
       // Loop for getting a good range of results.
@@ -195,7 +196,7 @@ int main(int argc, char** argv)
     {
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeLT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
-      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
+      blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
@@ -208,7 +209,7 @@ int main(int argc, char** argv)
     {
       MatrixTypeUT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
-      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
+      blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   
       // Loop for getting a good range of results.
@@ -221,7 +222,7 @@ int main(int argc, char** argv)
     {
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeUT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
-      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
+      blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.

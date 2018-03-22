@@ -16,10 +16,10 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-  using MatrixTypeS = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
-  using MatrixTypeR = Matrix<double,int,MatrixStructureRectangle,MatrixDistributerCyclic>;
-  using MatrixTypeLT = Matrix<double,int,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
-  using MatrixTypeUT = Matrix<double,int,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixTypeS = Matrix<DATATYPE,INTTYPE,MatrixStructureSquare,MatrixDistributerCyclic>;
+  using MatrixTypeR = Matrix<DATATYPE,INTTYPE,MatrixStructureRectangle,MatrixDistributerCyclic>;
+  using MatrixTypeLT = Matrix<DATATYPE,INTTYPE,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
+  using MatrixTypeUT = Matrix<DATATYPE,INTTYPE,MatrixStructureSquare,MatrixDistributerCyclic>;
 
 #ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
@@ -32,8 +32,6 @@ int main(int argc, char** argv)
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-  int numIterations = 1;
-  pTimer myTimer;
 
   /*
     methodKey2 -> 0) Sequential validaton
@@ -43,8 +41,8 @@ int main(int argc, char** argv)
   int methodKey2 = atoi(argv[1]);
 
   // size -- total number of processors in the tunable grid
-  int globalMatrixDimensionM = atoi(argv[2]);
-  int globalMatrixDimensionN = atoi(argv[3]);
+  INTTYPE globalMatrixDimensionM = atoi(argv[2]);
+  INTTYPE globalMatrixDimensionN = atoi(argv[3]);
 
   int baseCaseMultiplier = atoi(argv[4]);
   int inverseCutOffMultiplier = atoi(argv[5]);
@@ -58,21 +56,15 @@ int main(int argc, char** argv)
   int pCoordY = (rank%sliceSize)/dimensionC;
   int pCoordZ = rank/sliceSize;
 
-  int localMatrixDimensionM = globalMatrixDimensionM/dimensionD;
-  int localMatrixDimensionN = globalMatrixDimensionN/dimensionC;
+  INTTYPE localMatrixDimensionM = globalMatrixDimensionM/dimensionD;
+  INTTYPE localMatrixDimensionN = globalMatrixDimensionN/dimensionC;
+
+  int numIterations=atoi(argv[9]);
 
   // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
   MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
   MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, dimensionC, dimensionC);
 
-  matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
-  // save A for correctness checking, since I am overwriting A now.
-  MatrixTypeR saveA = matA;
-
-  if (methodKey2 == 1)
-  {
-    numIterations = atoi(argv[9]);
-  }
   // Loop for getting a good range of results.
   for (int i=0; i<numIterations; i++)
   {
@@ -81,28 +73,27 @@ int main(int argc, char** argv)
     #ifdef CRITTER
     Critter_Clear();
     #endif
-    auto commInfoTunable = util<double,int>::buildTunableTopology(
+    TAU_FSTART(Total);
+    auto commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
       MPI_COMM_WORLD, dimensionD, dimensionC);
-    CholeskyQR2<double,int,cblasEngine>::FactorTunable(
+    CholeskyQR2<DATATYPE,INTTYPE,cblasEngine>::FactorTunable(
       matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+    util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
+    TAU_FSTOP(Total);
     #ifdef CRITTER
     Critter_Print();
     #endif
-    util<double,int>::destroyTunableTopology(commInfoTunable);
+    if (methodKey2 == 2)
+    {
+      MatrixTypeR saveA = matA;
+      matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+      auto commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
+        MPI_COMM_WORLD, dimensionD, dimensionC);
+      QRvalidate<DATATYPE,INTTYPE>::validateParallelTunable(
+        saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
+      util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
+    }
   }
-  if (methodKey2 == 0)
-  {
-    // Currently no sequential validation. Not really necessary anymore.
-  }
-  else if (methodKey2 == 2)
-  {
-    auto commInfoTunable = util<double,int>::buildTunableTopology(
-      MPI_COMM_WORLD, dimensionD, dimensionC);
-    QRvalidate<double,int>::validateParallelTunable(
-      saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
-    util<double,int>::destroyTunableTopology(commInfoTunable);
-  }
-
   MPI_Finalize();
   return 0;
 }

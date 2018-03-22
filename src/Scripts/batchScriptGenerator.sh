@@ -18,6 +18,30 @@ read -p "Enter number of seconds of job (only valid on BW): " numSeconds
 numPEs=$((ppn*numNodes))
 fileName=scriptCreator_${dateStr}_${fileID}_${machineName}
 
+read -p "What datatype? float[0], double[1], complex<float>[2], complex<double>[3]: " dataType
+read -p "What integer type? int[0], int64_t[1]: " intType
+if [ ${dataType} == 0 ]
+then
+  export DATATYPE=FLOAT_TYPE
+elif [ ${dataType} == 1 ]
+then
+  export DATATYPE=DOUBLE_TYPE
+elif [ ${dataType} == 2 ]
+then
+  export DATATYPE=COMPLEX_FLOAT_TYPE
+elif [ ${dataType} == 3 ]
+then
+  export DATATYPE=COMPLEX_DOUBLE_TYPE
+fi
+if [ ${intType} == 0 ]
+then
+  export INTTYPE=INT_TYPE
+elif [ ${intType} == 1 ]
+then
+  export INTTYPE=INT64_T_TYPE
+fi
+
+read -p "Is this a performance run [0] or a validation run [1]: " runType
 make -C./.. clean
 make -C./.. MPI
 export BINPATH=./../bin/

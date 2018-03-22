@@ -150,7 +150,7 @@ void MatrixStructureRectangle<T,U,Distributer>::Dissamble(std::vector<T*>& matri
 template<typename T, typename U, template<typename,typename,int> class Distributer>
 void MatrixStructureRectangle<T,U,Distributer>::Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY)
 {
-  int numElems = 0;
+  U numElems = 0;
   Assemble(data, matrix, numElems, dimensionX, dimensionY);
   std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
