@@ -4,6 +4,14 @@ BGQ_machine=$(shell echo $(HOST) |grep 'mira\|cetus')
 THETA_machine=$(shell echo $(HOST) |grep 'theta')
 BIN=./../../../bin/
 
+# If make is called outside of the batch script generator, a few environment variables need to be set by default (double,int)
+ifeq ($(DATATYPE),)
+  DATATYPE=DOUBLE_TYPE
+endif
+ifeq ($(INTTYPE),)
+  INTTYPE=INT_TYPE
+endif
+
 ifneq ($(PORTER_machine),)
   MACHINE=PORTER
   CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx

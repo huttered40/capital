@@ -24,7 +24,7 @@ template<
 static void runTestCF(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matT,
-			int methodKey2, char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
+			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
 			int pCoordX, int pCoordY, int pGridDimensionSize
 )
 {
@@ -42,6 +42,7 @@ static void runTestCF(
   #ifdef CRITTER
   Critter_Print();
   #endif
+/* Sequential validation is no longer in the codepath. For use, create a new branch and comment in this code.
   if (methodKey2 == 0)
   {
     Matrix<T,U,StructureA,Distribution> saveA = matA;
@@ -49,15 +50,13 @@ static void runTestCF(
     matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
     CFvalidate<T,U>::validateLocal(saveA, matA, dir, MPI_COMM_WORLD);
   }
-  else if (methodKey2 == 2)
-  {
-    Matrix<T,U,StructureA,Distribution> saveA = matA;
-    matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-    auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
-    CFvalidate<T,U>::validateParallel(
-      saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
-    util<T,U>::destroy3DTopology(commInfo3D);
-  }
+*/
+  Matrix<T,U,StructureA,Distribution> saveA = matA;
+  matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
+  commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
+  CFvalidate<T,U>::validateParallel(
+    saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
+  util<T,U>::destroy3DTopology(commInfo3D);
 }
 
 int main(int argc, char** argv)
@@ -90,17 +89,11 @@ int main(int argc, char** argv)
 		  1) Upper
   */
   int methodKey1 = atoi(argv[1]);
-  /*
-    methodKey2 -> 0) Sequential Validation
-		  1) Performance
-                  2) Distributed validation
-  */
-  int methodKey2 = atoi(argv[2]);
-  INTTYPE globalMatrixSize = atoi(argv[3]);
-  int blockSizeMultiplier = atoi(argv[4]);
-  int inverseCutOffMultiplier = atoi(argv[5]); // multiplies baseCase dimension by sucessive 2
-  int panelDimensionMultiplier = atoi(argv[6]);
-  int numIterations = atoi(argv[7]);
+  INTTYPE globalMatrixSize = atoi(argv[2]);
+  int blockSizeMultiplier = atoi(argv[3]);
+  int inverseCutOffMultiplier = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
+  int panelDimensionMultiplier = atoi(argv[5]);
+  int numIterations = atoi(argv[6]);
   char dir = (methodKey1==0 ? 'L' : 'U');
 
   MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
@@ -108,7 +101,7 @@ int main(int argc, char** argv)
 
   for (int i=0; i<numIterations; i++)
   {
-    runTestCF(matA, matT, methodKey2, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize);
+    runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize);
   }
   MPI_Finalize();
   return 0;
