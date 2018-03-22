@@ -990,7 +990,7 @@ void MM3D<T,U,blasEngine>::BroadcastPanels(
   {
     // TODO: Is this causing a memory leak? Usually I would be overwriting vector allocated memory. Not sure if this will cause issues or if
     //         the vector will still delete itself.
-    data = new double[size];
+    data = new T[size];
     MPI_Bcast(data, size, MPI_DOUBLE, pGridCoordZ, panelComm);
   }
   TAU_FSTOP(MM3D::BroadcastPanels);

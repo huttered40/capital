@@ -23,8 +23,22 @@
 #include "./../../../Util/validation.h"
 
 #ifdef BGQ
+#ifdef FLOAT_TYPE
+extern "C" void sgeqrf_(int*, int*, double*, int*, double*, int*);
+extern "C" void sorgqr_(int*, int*, int*, double*, int*, double*, int*);
+#endif
+#ifdef DOUBLE_TYPE
 extern "C" void dgeqrf_(int*, int*, double*, int*, double*, int*);
 extern "C" void dorgqr_(int*, int*, int*, double*, int*, double*, int*);
+#endif
+#ifdef COMPLEX_FLOAT_TYPE
+extern "C" void cgeqrf_(int*, int*, double*, int*, double*, int*);
+extern "C" void corgqr_(int*, int*, int*, double*, int*, double*, int*);
+#endif
+#ifdef COMPLEX_DOUBLE_TYPE
+extern "C" void zgeqrf_(int*, int*, double*, int*, double*, int*);
+extern "C" void zorgqr_(int*, int*, int*, double*, int*, double*, int*);
+#endif
 #endif
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors

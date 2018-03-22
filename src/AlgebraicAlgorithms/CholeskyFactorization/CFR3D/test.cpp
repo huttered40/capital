@@ -8,6 +8,7 @@
 #include <string>
 
 // Local includes
+#include "./../../../Util/shared.h"
 #include "CFR3D.h"
 #include "../CFvalidate/CFvalidate.h"
 #include "../../../Timer/Timer.h"

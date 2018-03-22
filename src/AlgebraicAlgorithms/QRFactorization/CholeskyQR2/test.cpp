@@ -6,6 +6,7 @@
 #include <cmath>
 
 // Local includes
+#include "./../../../Util/shared.h"
 #include "CholeskyQR2.h"
 #include "./../QRvalidate/QRvalidate.h"
 #include "../../../Timer/Timer.h"

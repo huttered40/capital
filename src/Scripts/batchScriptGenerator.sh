@@ -6,8 +6,19 @@ tag3='CQR2'
 tag4='SCALA_QR'
 tag5='SCALA_CF'
 
-read -p "Enter machine name [BGQ (cetus,mira), THETA, BW, STAMPEDE2, PORTER]: " machineName
-read -p "Enter the Date (MM_DD_YYYY): " dateStr
+if [ $(hostname |grep "porter") != "" ]
+then
+  machineName=PORTER
+elif [ $(hostname |grep "mira") != "" ] || [ $(hostname |grep "cetus") != "" ]
+then
+  machineName=BGQ
+elif [ $(hostname |grep "theta") != "" ]
+then
+  machineName=THETA
+fi
+#read -p "Enter machine name [BGQ (cetus,mira), THETA, BW, STAMPEDE2, PORTER]: " machineName
+#read -p "Enter the Date (MM_DD_YYYY): " dateStr
+dateStr=$(date +%Y-%m-%d-%H:%M:%S)
 read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter maximum number of nodes requested: " numNodes
 read -p "Enter ppn: " ppn

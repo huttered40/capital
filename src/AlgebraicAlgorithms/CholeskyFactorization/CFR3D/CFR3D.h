@@ -24,8 +24,22 @@
 
 #ifdef BGQ
 // Note: LAPACK Fortran routines must be externed so that linker knows where to look
+#ifdef FLOAT_TYPE
+extern "C" void spotrf_(char*, int*, double*, int*, int*);
+extern "C" void strtri_(char*, char*, int*, double*, int*, int*);
+#endif
+#ifdef DOUBLE_TYPE
 extern "C" void dpotrf_(char*, int*, double*, int*, int*);
 extern "C" void dtrtri_(char*, char*, int*, double*, int*, int*);
+#endif
+#ifdef COMPLEX_FLOAT_TYPE
+extern "C" void cpotrf_(char*, int*, double*, int*, int*);
+extern "C" void ctrtri_(char*, char*, int*, double*, int*, int*);
+#endif
+#ifdef COMPLEX_DOUBLE_TYPE
+extern "C" void zpotrf_(char*, int*, double*, int*, int*);
+extern "C" void ztrtri_(char*, char*, int*, double*, int*, int*);
+#endif
 #endif
 
 // Local includes

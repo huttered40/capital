@@ -138,20 +138,51 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(
   #ifdef BGQ
   char dir = 'U';
   int info;
-  dpotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
-  #else
-  LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
-  #endif
-
-  // Need a true copy to avoid corrupting R-inverse.
+  #ifdef FLOAT_TYPE
+  spotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
   std::vector<T> RI = matrixR.getVectorData();
-
-  // Next: sequential triangular inverse. Question: does DTRTRI require packed storage or square storage? I think square, so that it can use BLAS-3.
-  #ifdef BGQ
+  char dir2 = 'N';
+  strtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &localDimensionN, &RI[0], &localDimensionN, &info);
+  #endif
+  #ifdef DOUBLE_TYPE
+  dpotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
+  std::vector<T> RI = matrixR.getVectorData();
   char dir2 = 'N';
   dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &localDimensionN, &RI[0], &localDimensionN, &info);
+  #endif
+  #ifdef COMPLEX_FLOAT_TYPE
+  cpotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
+  std::vector<T> RI = matrixR.getVectorData();
+  char dir2 = 'N';
+  ctrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &localDimensionN, &RI[0], &localDimensionN, &info);
+  #endif
+  #ifdef COMPLEX_DOUBLE_TYPE
+  zpotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
+  std::vector<T> RI = matrixR.getVectorData();
+  char dir2 = 'N';
+  ztrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &localDimensionN, &RI[0], &localDimensionN, &info);
+  #endif
   #else
+  #ifdef FLOAT_TYPE
+  LAPACKE_spotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
+  std::vector<T> RI = matrixR.getVectorData();
+  LAPACKE_strtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionN, &RI[0], localDimensionN);
+  #endif
+  #ifdef DOUBLE_TYPE
+  LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
+  std::vector<T> RI = matrixR.getVectorData();
   LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionN, &RI[0], localDimensionN);
+  #endif
+  #ifdef COMPLEX_FLOAT_TYPE
+  LAPACKE_cpotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
+  std::vector<T> RI = matrixR.getVectorData();
+  LAPACKE_ctrtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionN, &RI[0], localDimensionN);
+  #endif
+  #ifdef COMPLEX_DOUBLE_TYPE
+  LAPACKE_zpotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
+  std::vector<T> RI = matrixR.getVectorData();
+  LAPACKE_ztrtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionN, &RI[0], localDimensionN);
+  #endif
   #endif
 
   // Finish by performing local matrix multiplication Q = A*R^{-1}
