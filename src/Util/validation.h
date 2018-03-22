@@ -34,8 +34,9 @@ public:
                         char dir,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        MPI_Comm columnAltComm = MPI_COMM_WORLD
-                      );
+                        MPI_Comm columnAltComm,
+			std::string& label
+			);
 
   template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>
@@ -43,7 +44,8 @@ public:
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        MPI_Comm columnAltComm = MPI_COMM_WORLD
+                        MPI_Comm columnAltComm,
+			std::string& label
                       );
 };
 

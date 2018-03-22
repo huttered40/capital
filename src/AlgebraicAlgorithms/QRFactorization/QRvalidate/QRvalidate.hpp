@@ -118,10 +118,12 @@ void QRvalidate<T,U>::validateParallel3D(
   int size; MPI_Comm_size(commWorld, &size);
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   util<T,U>::removeTriangle(myR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
+  std::string str1 = "Residual: ";
   validator<T,U>::validateResidualParallel(
-    myQ, myR, matrixA, 'F', commWorld, commInfo3D);
+    myQ, myR, matrixA, 'F', commWorld, commInfo3D, str1);
+  std::string str2 = "Deviation from orthogonality: ";
   validator<T,U>::validateOrthogonalityParallel(
-    myQ,commWorld, commInfo3D);
+    myQ,commWorld, commInfo3D, str2);
   return;
 }
 
@@ -146,10 +148,12 @@ void QRvalidate<T,U>::validateParallelTunable(
   int size; MPI_Comm_size(miniCubeComm, &size);
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   util<T,U>::removeTriangle(myR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
+  std::string str1 = "Residual: ";
   validator<T,U>::validateResidualParallel(
-    myQ, myR, matrixA, 'F', miniCubeComm, commInfo3D);
+    myQ, myR, matrixA, 'F', miniCubeComm, commInfo3D, MPI_COMM_WORLD, str1);
+  std::string str2 = "Deviation from orthogonality: ";
   validator<T,U>::validateOrthogonalityParallel(
-    myQ, miniCubeComm, commInfo3D, columnAltComm);
+    myQ, miniCubeComm, commInfo3D, columnAltComm, str2);
   util<T,U>::destroy3DTopology(commInfo3D);
   return;
 }

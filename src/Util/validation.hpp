@@ -12,7 +12,8 @@ void validator<T,U>::validateResidualParallel(
                         char dir,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        MPI_Comm columnAltComm
+                        MPI_Comm columnAltComm,
+			std::string& label
                       )
 {
   int rank,size;
@@ -22,11 +23,12 @@ void validator<T,U>::validateResidualParallel(
   auto commInfo = util<T,U>::getCommunicatorSlice(
     commWorld);
 
+  MPI_Comm depthComm = std::get<3>(commInfo3D);
   MPI_Comm sliceComm = std::get<0>(commInfo);
-  U pGridCoordX = std::get<1>(commInfo);
-  U pGridCoordY = std::get<2>(commInfo);
-  U pGridCoordZ = std::get<3>(commInfo);
-  U pGridDimensionSize = std::get<4>(commInfo);
+  int pGridCoordX = std::get<1>(commInfo);
+  int pGridCoordY = std::get<2>(commInfo);
+  int pGridCoordZ = std::get<3>(commInfo);
+  int pGridDimensionSize = std::get<4>(commInfo);
   int helper = pGridDimensionSize;
   helper *= helper;
 
@@ -102,7 +104,8 @@ void validator<T,U>::validateResidualParallel(
   error = std::sqrt(error);
   //std::cout << "localError = " << error << std::endl;
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  if (rank == 0) {std::cout << "Residual error = " << error << std::endl;}
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, depthComm);
+  if (rank == 0) {std::cout << label << error << std::endl;}
   MPI_Comm_free(&sliceComm);
 }
 
@@ -113,7 +116,8 @@ void validator<T,U>::validateOrthogonalityParallel(
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        MPI_Comm columnAltComm
+                        MPI_Comm columnAltComm,
+			std::string& label
                       )
 {
   int rank,size;
@@ -141,6 +145,6 @@ void validator<T,U>::validateOrthogonalityParallel(
   U numElems = localNumRows*localNumColumns;
   Matrix<T,U,StructureArg,Distribution> matrixI(std::vector<T>(numElems,0), localNumColumns, localNumRows, globalNumColumns, globalNumRows, true);
   validateResidualParallel(
-    matrixQtrans,matrixQ,matrixI,'I',commWorld, commInfo3D, columnAltComm);
+    matrixQtrans,matrixQ,matrixI,'I',commWorld, commInfo3D, columnAltComm, label);
   MPI_Comm_free(&sliceComm);
 }

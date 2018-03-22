@@ -122,8 +122,9 @@ void CFvalidate<T,U>::validateParallel(
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixTriTrans = matrixTri;
   util<T,U>::transposeSwap(
     matrixTriTrans, rank, transposePartner, MPI_COMM_WORLD);
+  std::string str = "Residual: ";
   validator<T,U>::validateResidualParallel(
-    (dir == 'L' ? matrixTri : matrixTriTrans), (dir == 'L' ? matrixTriTrans : matrixTri), matrixA, dir, commWorld, commInfo3D);
+    (dir == 'L' ? matrixTri : matrixTriTrans), (dir == 'L' ? matrixTriTrans : matrixTri), matrixA, dir, commWorld, commInfo3D, MPI_COMM_WORLD, str);
 }
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
