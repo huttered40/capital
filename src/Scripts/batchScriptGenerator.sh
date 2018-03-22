@@ -52,7 +52,6 @@ then
   export INTTYPE=INT64_T_TYPE
 fi
 
-read -p "Is this a performance run [0] or a validation run [1]: " runType
 make -C./.. clean
 make -C./.. MPI
 export BINPATH=./../bin/
@@ -195,7 +194,7 @@ launch$tag1 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
         local fileString="> \$SCRATCH/${fileName}/results/results_${tag1}_SS_\${startNumNodes}nodes_0_1_\${11}bcastRoutine_\${8}m_\${9}n_\${10}k_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 0 1 \${11} \$8 \$9 \${10} \$3 \$fileString
+        launchJobs \$startNumNodes \$2 0 \${11} \$8 \$9 \${10} \$3 \$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
   elif [ \$1 == 'WS' ]
@@ -208,7 +207,7 @@ launch$tag1 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
         local fileString="> $SCRATCH/${fileName}/results/results_${tag1}_SS_\${startNumNodes}nodes_0_1_\${17}bcastRoutine_\${startDimensionM}m_\${startDimensionN}n_\${startDimensionK}k_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 0 1 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3 \$fileString
+        launchJobs \$startNumNodes \$2 0 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3 \$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startDimensionM=\$(updateCounter \$startDimensionM \${10} \$9)
         startDimensionN=\$(updateCounter \$startDimensionN \${13} \${12})
@@ -225,21 +224,21 @@ launch$tag2 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="> $SCRATCH/${fileName}/results/results_${tag2}_SS_\${startNumNodes}nodes_\${8}side_\${9}testtype_\${10}dim_0bcMult_\${11}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${11} 0 \$3 \$fileString
+        local fileString="> $SCRATCH/${fileName}/results/results_${tag2}_SS_\${startNumNodes}nodes_\${8}side_\${9}dim_0bcMult_\${10}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
+        launchJobs \$startNumNodes \$2 \$8 \${9} \${10} 0 \$3 \$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
   elif [ \$1 == 'WS' ]
   then
     local startNumNodes=\$4
-    local startMatrixDim=\${10}
+    local startMatrixDim=\${9}
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="> $SCRATCH/${fileName}/results/results_${tag2}_WS_\${startNumNodes}nodes_\${8}side_\${9}testtype_\${startMatrixDim}dim_0bcMult_\${13}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${13} 0 \$3 \$fileString
+        local fileString="> $SCRATCH/${fileName}/results/results_${tag2}_WS_\${startNumNodes}nodes_\${8}side_\${startMatrixDim}dim_0bcMult_\${12}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
+        launchJobs \$startNumNodes \$2 \$8 \${startMatrixDim} \${12} 0 \$3 \$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
-        startMatrixDim=\$(updateCounter \$startMatrixDim \$12 \$11)
+        startMatrixDim=\$(updateCounter \$startMatrixDim \${11} \${10})
     done
   fi
 }
@@ -250,11 +249,11 @@ launch$tag3 () {
   then
     local startNumNodes=\$4
     local endNumNodes=\$5
-    local startPdimD=\${11}
+    local startPdimD=\${10}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="> $SCRATCH/${fileName}/results/results_${tag3}_SS_\${startNumNodes}nodes_\${8}perf_\${9}dimM_\${10}dimN_0bcMult_\${13}inverseCutOffMult_0panelDimMult_\${startPdimD}pDimD_\${12}pDimC_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 \$8 \$9 \${10} \${13} 0 0 \${startPdimD} \${12} \$3 \$fileString
+        local fileString="> $SCRATCH/${fileName}/results/results_${tag3}_SS_\${startNumNodes}nodes_\${8}dimM_\${9}dimN_0bcMult_\${12}inverseCutOffMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC_\${3}numIter.txt"
+        launchJobs \$startNumNodes \$2 \$8 \${9} \${12} 0 0 \${startPdimD} \${11} \$3 \$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startPdimD=\$(updateCounter \$startPdimD \$7 \$6)
     done
@@ -262,14 +261,14 @@ launch$tag3 () {
   then
     local startNumNodes=\$4
     local endNumNodes=\$5
-    local startMatrixDimM=\${9}
-    local startPdimD=\${13}
+    local startMatrixDimM=\${8}
+    local startPdimD=\${12}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="> $SCRATCH/${fileName}/results/results_${tag3}_WS_\${startNumNodes}nodes_\${8}perf_\${9}dimM_\${12}dimN_0bcMult_\${15}inverseCutOffMult_0panelDimMult_\${startPdimD}pDimD_\${14}pDimC_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 \$8 \$9 \${12} \${15} 0 0 \${startPdimD} \${14} \$3 \$fileString
+        local fileString="> $SCRATCH/${fileName}/results/results_${tag3}_WS_\${startNumNodes}nodes_\${startMatrixDimM}dimM_\${11}dimN_0bcMult_\${14}inverseCutOffMult_0panelDimMult_\${startPdimD}pDimD_\${13}pDimC_\${3}numIter.txt"
+        launchJobs \$startNumNodes \$2 \${8} \${11} \${14} 0 0 \${startPdimD} \${13} \$3 \$fileString
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
-        startMatrixDimM=\$(updateCounter \$startMatrixDimM \$11 \$10)
+        startMatrixDimM=\$(updateCounter \$startMatrixDimM \${10} \${9})
         startPdimD=\$(updateCounter \$startPdimD \$7 \$6)
     done
   fi
@@ -382,6 +381,7 @@ launch$tag5 () {
   fi
 }
 
+
 for i in {1..$numBinaries}
 do
   read -p "Enter binary tag [mm3d,cfr3d,cqr2,bench_scala_qr,bench_scala_cf]: " binaryTag
@@ -421,22 +421,20 @@ do
   elif [ \$binaryTag == 'CFR3D' ]
   then
     read -p "Factor lower[0] or upper[1]: " factorSide
-    read -p "Do you want to test performance[0] or distributed validation[1]: " PerfOrDSV
     read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
     if [ \$scale == 'SS' ]
     then
       read -p "In this strong scaling test for CFR3D, enter matrix dimension: " matrixDim
-      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$PerfOrDSV \$matrixDim \$inverseCutOffMult
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$matrixDim \$inverseCutOffMult
     elif [ \$scale == 'WS' ]
     then
       read -p "In this weak scaling test for CFR3D, enter starting matrix dimension: " startMatrixDim
       read -p "In this weak scaling test for CFR3D, enter factor by which to increase matrix dimension: " jumpMatrixDim
       read -p "In this weak scaling test for CFR3D, enter arithmetic operator by which to increase the matrix dimension by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpMatrixDimoperator
-      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$PerfOrDSV \$startMatrixDim \$jumpMatrixDim \$jumpMatrixDimoperator \$inverseCutOffMult
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$startMatrixDim \$jumpMatrixDim \$jumpMatrixDimoperator \$inverseCutOffMult
     fi
   elif [ \$binaryTag == 'CQR2' ]
   then
-    read -p "Do you want to test performance[0] or distributed validation[1]: " PerfOrDSV
     read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
     if [ \$scale == 'SS' ]
     then
@@ -444,7 +442,7 @@ do
       read -p "In this strong scaling test for CQR2, enter matrix dimension n: " matrixDimN
       read -p "In this strong scaling test for CQR2, enter starting tunable processor grid dimension d: " pDimD
       read -p "In this strong scaling test for CQR2, enter static tunable processor grid dimension c: " pDimC
-      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$PerfOrDSV \$matrixDimM \$matrixDimN \$pDimD \$pDimC \$inverseCutOffMult
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$matrixDimN \$pDimD \$pDimC \$inverseCutOffMult
     elif [ \$scale == 'WS' ]
     then
       read -p "In this weak scaling test for CQR2, enter matrix dimension m: " startMatrixDimM
@@ -453,7 +451,7 @@ do
       read -p "In this weak scaling test for CQR2, enter matrix dimension n: " matrixDimN
       read -p "In this weak scaling test for CQR2, enter starting tunable processor grid dimension d: " pDimD
       read -p "In this weak scaling test for CQR2, enter static tunable processor grid dimension c: " pDimC
-      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$PerfOrDSV \$startMatrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$pDimD \$pDimC \$inverseCutOffMult
+      launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$startMatrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$pDimD \$pDimC \$inverseCutOffMult
     fi
   elif [ \$binaryTag == 'SCALA_QR' ]
   then
