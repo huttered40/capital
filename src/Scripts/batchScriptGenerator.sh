@@ -503,3 +503,15 @@ do
   fi
 done
 EOF
+
+chmod +x $SCRATCH/${fileName}.sh
+./$SCRATCH/${fileName}.sh
+
+if [ "${machineName}" != "PORTER" ]
+  then
+  cd $SCRATCH
+  if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
+  then
+    qsub -A QMCat -t ${numMinutes} -n ${numNodes} --moe script ${fileName}.sh
+  fi
+fi
