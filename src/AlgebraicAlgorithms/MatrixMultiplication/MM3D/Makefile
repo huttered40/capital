@@ -26,7 +26,8 @@ ifneq ($(PORTER_machine),)
   MPI: $(OBJS1)
 	rm *.o
   AMPI: $(OBJS2)
-	rm *.o
+	rm *.o; \
+	mv charmrun $(BIN)charmrun
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L/home/hutter2/hutter2/ExternalLibraries/CRITTER/critter/lib /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lcritter -lpthread
@@ -41,7 +42,7 @@ ifneq ($(PORTER_machine),)
 	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -o $(OBJS2).o -c test.cpp
 
   clean:
-	-rm -f *.o *.gch charmrun $(BIN)$(OBJS1) $(BIN)$(OBJS2)
+	-rm -f *.o *.gch $(BIN)charmrun $(BIN)$(OBJS1) $(BIN)$(OBJS2)
 endif
 
 ifneq ($(BGQ_machine),)

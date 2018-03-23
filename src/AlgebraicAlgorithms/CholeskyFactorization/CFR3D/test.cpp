@@ -52,7 +52,7 @@ static void runTestCF(
   }
 */
   Matrix<T,U,StructureA,Distribution> saveA = matA;
-  matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
+  saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
   CFvalidate<T,U>::validateParallel(
     saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);

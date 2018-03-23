@@ -10,10 +10,10 @@ if [ $(hostname |grep "porter") != "" ]
 then
   machineName=PORTER
   read -p "Do you want to use MPI[mpi] or AMPI[ampi]? Note that use of AMPI forfeits Profiling output. : " mpiType
-  if [ ${mpiType} == 'mpi' ]
+  if [ "${mpiType}" == "mpi" ]
   then
     export MPITYPE=MPI_TYPE
-  elif [ ${mpiType} == 'ampi' ]
+  elif [ "${mpiType}" == "ampi" ]
   then
     export MPITYPE=AMPI_TYPE
   fi
@@ -63,7 +63,7 @@ then
 fi
 
 make -C./.. clean
-make -C./.. MPI
+make -C./.. ${mpiType}
 export BINPATH=./../bin/
 if [ "${machineName}" == "BGQ" ]
 then
@@ -183,12 +183,12 @@ launchJobs () {
     echo "dog" >> \$scriptName
   elif [ "$machineName" == "PORTER" ]
   then
-    if [ ${mpiType} == 'mpi' ]
+    if [ "${mpiType}" == "mpi" ]
     then
       mpiexec -n \$numProcesses \${@:3:\$#} > \${@:1:1}
-    elif [ ${mpiType} == 'ampi' ]
+    elif [ "${mpiType}" == "ampi" ]
     then
-      ./charmrun +p1 +vp\${numProcesses} \${@:3:\$#} > \${@:1:1}
+      ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:3:\$#} > \${@:1:1}
     fi
   fi
 }
@@ -234,7 +234,7 @@ launch$tag2 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
         local fileString="$SCRATCH/${fileName}/results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${9}dim_0bcMult_\${10}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
-        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} \${10} 0 \$3
+        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} 0 \${10} 0 \$3
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
   elif [ \$1 == 'WS' ]
@@ -245,7 +245,7 @@ launch$tag2 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
         local fileString="$SCRATCH/${fileName}/results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${startMatrixDim}dim_0bcMult_\${12}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
-        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${startMatrixDim} \${12} 0 \$3
+        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${startMatrixDim} 0 \${12} 0 \$3
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startMatrixDim=\$(updateCounter \$startMatrixDim \${11} \${10})
     done
