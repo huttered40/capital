@@ -33,11 +33,19 @@ read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter maximum number of nodes requested: " numNodes
 read -p "Enter ppn: " ppn
 read -p "Enter number of tests (equal to number of binaries that will be run): " numBinaries
-read -p "Enter number of hours of job (only valid on BW): " numHours
-read -p "Enter number of minutes of job (only valid on BW): " numMinutes
-read -p "Enter number of seconds of job (only valid on BW): " numSeconds
+
+if [ "${machineName}" == "BW" ]
+then
+  read -p "Enter number of hours of job (only valid on BW): " numHours
+  read -p "Enter number of minutes of job (only valid on BW): " numMinutes
+  read -p "Enter number of seconds of job (only valid on BW): " numSeconds
+elif [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
+then
+  read -p "Enter number of minutes of job (only valid on BW): " numMinutes
+fi
+
 numPEs=$((ppn*numNodes))
-fileName=scriptCreator_${dateStr}_${fileID}_${machineName}
+fileName=scriptID${fileID}_${dateStr}_${machineName}
 
 read -p "What datatype? float[0], double[1], complex<float>[2], complex<double>[3]: " dataType
 read -p "What integer type? int[0], int64_t[1]: " intType
@@ -89,8 +97,7 @@ fi
 cat <<-EOF > $SCRATCH/${fileName}.sh
 if [ "${machineName}" != "PORTER" ]
 then
-  read -p "Enter name of the file to write the official script to (please include the .sh): " scriptName
-  scriptName=$SCRATCH/${fileName}/\$scriptName
+  scriptName=$SCRATCH/${fileName}/script.sh
 fi
 if [ ! -d "$SCRATCH/${fileName}/" ];
 then
@@ -506,12 +513,12 @@ EOF
 
 chmod +x $SCRATCH/${fileName}.sh
 ./$SCRATCH/${fileName}.sh
-
+rm $SCRATCH/${fileName}.sh
 if [ "${machineName}" != "PORTER" ]
   then
   cd $SCRATCH
   if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
   then
-    qsub -A QMCat -t ${numMinutes} -n ${numNodes} --moe script ${fileName}.sh
+    qsub -A QMCat -t ${numMinutes} -n ${numNodes} --mode script ${fileName}/script.sh
   fi
 fi

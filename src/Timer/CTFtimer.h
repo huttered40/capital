@@ -58,6 +58,7 @@ namespace CTF {
       int index;
       int exited;
       int original;
+      bool printBool;
     
     public:
       Timer(const std::string& name);

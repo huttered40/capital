@@ -115,6 +115,11 @@ namespace CTF{
   Timer::Timer(const std::string& name){
   #ifdef PROFILE
     int i;
+
+    // Special addition so that wonly output for functions with the tag "Total" are used for output.
+    if (name == "Total") {printBool = true;}
+    else {printBool = false;}
+
     // This test should only pass once, on the very first instance of Timer
     if (function_timers == NULL)
     {
@@ -304,7 +309,10 @@ namespace CTF{
       if (comm != MPI_COMM_WORLD){
         return;
       }
-      print_timers("all");  
+      if (printBool)
+      {
+        print_timers("all");  
+      }
       function_timers->clear();
       delete function_timers;
       function_timers = NULL;
