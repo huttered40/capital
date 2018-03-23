@@ -11,6 +11,9 @@ endif
 ifeq ($(INTTYPE),)
   INTTYPE=INT_TYPE
 endif
+ifeq ($(MPITYPE),)
+  MPITYPE=MPI
+endif
 
 ifneq ($(PORTER_machine),)
   MACHINE=PORTER
@@ -30,13 +33,13 @@ ifneq ($(PORTER_machine),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L/home/hutter2/hutter2/ExternalLibraries/CRITTER/critter/lib /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread -lcritter
 
   $(OBJS1).o: test.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
 
   $(OBJS2): $(OBJS2).o
 	$(CCAMPI) $(CFLAGS) -o $(BIN)$(OBJS2) $(OBJS2).o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
 
   $(OBJS2).o: test.cpp CholeskyQR2.h
-	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -o $(OBJS2).o -c test.cpp
+	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -o $(OBJS2).o -c test.cpp
 
   clean:
 	-rm -f *.o *.gch charmrun $(BIN)$(OBJS1) $(BIN)$(OBJS2)
@@ -56,7 +59,7 @@ ifneq ($(BGQ_machine),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -I/soft/libraries/essl/current/essl/5.1/include/ -L../../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64 -llapack -lcblas -lblas -lesslbg -lgfortran -lxlopt -lxlf90_r -lxlfmath -lxl -lcritter
 
   $(OBJS1).o: test.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -76,7 +79,7 @@ ifneq ($(THETA_machine),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L../../../../../CritterXC40/critter/lib -lcritter
 
   $(OBJS1).o: test.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)

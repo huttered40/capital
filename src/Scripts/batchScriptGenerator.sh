@@ -1,20 +1,30 @@
 #!/bin/bash
 
-tag1='MM3D'
-tag2='CFR3D'
-tag3='CQR2'
-tag4='SCALA_QR'
-tag5='SCALA_CF'
+tag1='mm3d'
+tag2='cfr3d'
+tag3='cqr2'
+tag4='bench_scala_qr'
+tag5='bench_scala_cf'
 
 if [ $(hostname |grep "porter") != "" ]
 then
   machineName=PORTER
+  read -p "Do you want to use MPI[mpi] or AMPI[ampi]? Note that use of AMPI forfeits Profiling output. : " mpiType
+  if [ ${mpiType} == 'mpi' ]
+  then
+    export MPITYPE=MPI_TYPE
+  elif [ ${mpiType} == 'ampi' ]
+  then
+    export MPITYPE=AMPI_TYPE
+  fi
 elif [ $(hostname |grep "mira") != "" ] || [ $(hostname |grep "cetus") != "" ]
 then
   machineName=BGQ
+  export MPITYPE=MPI_TYPE
 elif [ $(hostname |grep "theta") != "" ]
 then
   machineName=THETA
+  export MPITYPE=MPI_TYPE
 fi
 #read -p "Enter machine name [BGQ (cetus,mira), THETA, BW, STAMPEDE2, PORTER]: " machineName
 #read -p "Enter the Date (MM_DD_YYYY): " dateStr
@@ -77,7 +87,11 @@ then
 fi
 
 cat <<-EOF > $SCRATCH/${fileName}.sh
-read -p "Enter name of the file to write the official script to (please include the .sh): " scriptName
+if [ "${machineName}" != "PORTER" ]
+then
+  read -p "Enter name of the file to write the official script to (please include the .sh): " scriptName
+  scriptName=$SCRATCH/${fileName}/\$scriptName
+fi
 if [ ! -d "$SCRATCH/${fileName}/" ];
 then
   mkdir $SCRATCH/${fileName}/
@@ -86,7 +100,6 @@ if [ ! -d "$SCRATCH/${fileName}/results" ];
 then
   mkdir $SCRATCH/${fileName}/results
 fi
-scriptName=$SCRATCH/${fileName}/\$scriptName
 if [ "${machineName}" == "cetus" ] || [ "${machineName}" == "mira" ]
 then
   echo "#!/bin/sh" > \$scriptName
@@ -121,21 +134,11 @@ then
 elif [ "${machineName}" == "stampede2" ]
 then
   echo "dog" > \$scriptName
-elif [ "${machineName}" == "porter" ]
-then
-  echo "" > \$scriptName
 fi
 # Now I need to use a variable for the command-line prompt, since it will change based on the binary executable,
 #   for example, scalapack QR has multiple special inputs that take up comm-line prompts that others dont
 #   I want special functions in the inner-loop to handle this
 
-
-# List all Binary Tags that this script supports
-MM3=1
-CFR3D=2
-CQR2=3
-SCALA_QR=4
-SCALA_CF=5
 
 updateCounter () {
   local counter=\$1
@@ -165,22 +168,28 @@ log2 () {
 
 # Functions that write the actual script, depending on machine
 launchJobs () {
-  local numProcesses=\$((\$1 * $ppn))
+  local numProcesses=\$((\$2 * $ppn))
   if [ "$machineName" == "BGQ" ]
   then
-    echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:2:\$#}" >> \$scriptName
+    echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:3:\$#} > \${@:1:1}" >> \$scriptName
   elif [ "$machineName" == "BW" ]
   then
     echo "aprun -n \$numProcesses \$@" > \$scriptName
   elif [ "$machineName" == "THETA" ]
   then
-    echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core \${@:2:\$#}" >> \$scriptName
+    echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core \${@:3:\$#} > \${@:1:1}" >> \$scriptName
   elif [ "$machineName" == "STAMPEDE2" ]
   then
     echo "dog" >> \$scriptName
   elif [ "$machineName" == "PORTER" ]
   then
-    echo "\${@:2:\$#}" >> \$scriptName
+    if [ ${mpiType} == 'mpi' ]
+    then
+      mpiexec -n \$numProcesses \${@:3:\$#} > \${@:1:1}
+    elif [ ${mpiType} == 'ampi' ]
+    then
+      ./charmrun +p1 +vp\${numProcesses} \${@:3:\$#} > \${@:1:1}
+    fi
   fi
 }
 
@@ -193,8 +202,8 @@ launch$tag1 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="> \$SCRATCH/${fileName}/results/results_${tag1}_SS_\${startNumNodes}nodes_0_1_\${11}bcastRoutine_\${8}m_\${9}n_\${10}k_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 0 \${11} \$8 \$9 \${10} \$3 \$fileString
+        local fileString="$SCRATCH/${fileName}/results/results_${tag1}_\$1_\${startNumNodes}nodes_0_\${11}bcastRoutine_\${8}m_\${9}n_\${10}k_\${3}numIter.txt"
+        launchJobs \${fileString} \$startNumNodes \$2 0 \${11} \$8 \$9 \${10} \$3
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
   elif [ \$1 == 'WS' ]
@@ -206,8 +215,8 @@ launch$tag1 () {
     local startDimensionK=\${14}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="> $SCRATCH/${fileName}/results/results_${tag1}_SS_\${startNumNodes}nodes_0_1_\${17}bcastRoutine_\${startDimensionM}m_\${startDimensionN}n_\${startDimensionK}k_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 0 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3 \$fileString
+        local fileString="$SCRATCH/${fileName}/results/results_${tag1}_\$1_\${startNumNodes}nodes_0_\${17}bcastRoutine_\${startDimensionM}m_\${startDimensionN}n_\${startDimensionK}k_\${3}numIter.txt"
+        launchJobs \${fileString} \$startNumNodes \$2 0 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startDimensionM=\$(updateCounter \$startDimensionM \${10} \$9)
         startDimensionN=\$(updateCounter \$startDimensionN \${13} \${12})
@@ -224,8 +233,8 @@ launch$tag2 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="> $SCRATCH/${fileName}/results/results_${tag2}_SS_\${startNumNodes}nodes_\${8}side_\${9}dim_0bcMult_\${10}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 \$8 \${9} \${10} 0 \$3 \$fileString
+        local fileString="$SCRATCH/${fileName}/results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${9}dim_0bcMult_\${10}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
+        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} \${10} 0 \$3
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
   elif [ \$1 == 'WS' ]
@@ -235,8 +244,8 @@ launch$tag2 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="> $SCRATCH/${fileName}/results/results_${tag2}_WS_\${startNumNodes}nodes_\${8}side_\${startMatrixDim}dim_0bcMult_\${12}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 \$8 \${startMatrixDim} \${12} 0 \$3 \$fileString
+        local fileString="$SCRATCH/${fileName}/results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${startMatrixDim}dim_0bcMult_\${12}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
+        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${startMatrixDim} \${12} 0 \$3
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startMatrixDim=\$(updateCounter \$startMatrixDim \${11} \${10})
     done
@@ -252,8 +261,8 @@ launch$tag3 () {
     local startPdimD=\${10}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="> $SCRATCH/${fileName}/results/results_${tag3}_SS_\${startNumNodes}nodes_\${8}dimM_\${9}dimN_0bcMult_\${12}inverseCutOffMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 \$8 \${9} \${12} 0 0 \${startPdimD} \${11} \$3 \$fileString
+        local fileString="$SCRATCH/${fileName}/results/results_${tag3}_\$1_\${startNumNodes}nodes_\${8}dimM_\${9}dimN_\${12}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC_\${3}numIter.txt"
+        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} \${12} 0 0 \${startPdimD} \${11} \$3
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startPdimD=\$(updateCounter \$startPdimD \$7 \$6)
     done
@@ -265,8 +274,8 @@ launch$tag3 () {
     local startPdimD=\${12}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="> $SCRATCH/${fileName}/results/results_${tag3}_WS_\${startNumNodes}nodes_\${startMatrixDimM}dimM_\${11}dimN_0bcMult_\${14}inverseCutOffMult_0panelDimMult_\${startPdimD}pDimD_\${13}pDimC_\${3}numIter.txt"
-        launchJobs \$startNumNodes \$2 \${8} \${11} \${14} 0 0 \${startPdimD} \${13} \$3 \$fileString
+        local fileString="$SCRATCH/${fileName}/results/results_${tag3}_\$1_\${startNumNodes}nodes_\${startMatrixDimM}dimM_\${11}dimN_\${14}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${13}pDimC_\${3}numIter.txt"
+        launchJobs \${fileString} \$startNumNodes \$2 \${8} \${11} \${14} 0 0 \${startPdimD} \${13} \$3
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startMatrixDimM=\$(updateCounter \$startMatrixDimM \${10} \${9})
         startPdimD=\$(updateCounter \$startPdimD \$7 \$6)
@@ -292,8 +301,8 @@ launch$tag4 () {
       endBlockSize=\$((\$div1>\$div2?\$div1:\$div2))
       while [ \$startBlockSize -le \$endBlockSize ];
       do
-          local fileString="> $SCRATCH/${fileName}/results/results_${tag4}_SS_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter.txt"
-          launchJobs \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0 \$fileString
+          local fileString="$SCRATCH/${fileName}/results/results_${tag4}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter.txt"
+          launchJobs \${fileString} \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0
           startBlockSize=\$((\$startBlockSize * 2))
       done
       startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
@@ -315,8 +324,8 @@ launch$tag4 () {
       endBlockSize=\$((\$div1>\$div2?\$div1:\$div2))
       while [ \$startBlockSize -le \$endBlockSize ];
       do
-          local fileString="> $SCRATCH/${fileName}/results/results_${tag4}_WS_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter.txt"
-          launchJobs \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0 \$fileString
+          local fileString="$SCRATCH/${fileName}/results/results_${tag4}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter.txt"
+          launchJobs \${fileString} \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0
           startBlockSize=\$((\$startBlockSize * 2))
       done
       startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
@@ -346,8 +355,8 @@ launch$tag5 () {
       while [ \$startBlockSize -le \$endBlockSize ];
       do
           temp3=\$((1<<\$startBlockSize))
-          local fileString="> $SCRATCH/${fileName}/results/results_${tag5}_SS_\$((\$startNumNodesRoot * \$startNumNodesRoot))nodes_\${matrixDimRoot}dimM_\${temp3}blockSize_\${3}numIter.txt"
-          launchJobs \$curNumNodes \$2 \${matrixDimRoot} \${specialMatDimLog} \${startBlockSize} \${3} \$fileString
+          local fileString="$SCRATCH/${fileName}/results/results_${tag5}_\$1_\$((\$startNumNodesRoot * \$startNumNodesRoot))nodes_\${matrixDimRoot}dimM_\${temp3}blockSize_\${3}numIter.txt"
+          launchJobs \${fileString} \$curNumNodes \$2 \${matrixDimRoot} \${specialMatDimLog} \${startBlockSize} \${3}
           startBlockSize=\$((\$startBlockSize + 1))
       done
       startNumNodesRoot=\$(updateCounter \$startNumNodesRoot \$7 \$6)
@@ -370,8 +379,8 @@ launch$tag5 () {
       while [ \$startBlockSize -le \$endBlockSize ];
       do
           temp3=\$((1<<\$startBlockSize))
-          local fileString="> $SCRATCH/${fileName}/results/results_${tag5}_SS_\$((\$startNumNodesRoot * \$startNumNodesRoot))nodes_\${matrixDimRoot}dimM_\$((\$temp3))blockSize_\${3}numIter.txt"
-          launchJobs \$curNumNodes \$2 \${matrixDimRoot} \${specialMatDimLog} \${startBlockSize} \${3} \$fileString
+          local fileString="$SCRATCH/${fileName}/results/results_${tag5}_\$1_\$((\$startNumNodesRoot * \$startNumNodesRoot))nodes_\${matrixDimRoot}dimM_\$((\$temp3))blockSize_\${3}numIter.txt"
+          launchJobs \${fileString} \$curNumNodes \$2 \${matrixDimRoot} \${specialMatDimLog} \${startBlockSize} \${3}
           startBlockSize=\$((\$startBlockSize + 1))
       done
       startNumNodesRoot=\$(updateCounter \$startNumNodesRoot \$7 \$6)
@@ -385,17 +394,21 @@ launch$tag5 () {
 for i in {1..$numBinaries}
 do
   read -p "Enter binary tag [mm3d,cfr3d,cqr2,bench_scala_qr,bench_scala_cf]: " binaryTag
-  binaryPath=\${BINPATH}\${binaryTag}_${machineName}
+  binaryPath=${BINPATH}\${binaryTag}_${machineName}
+  if [ "${machineName}" == "PORTER" ]
+  then
+    binaryPath=\${binaryPath}_${mpiType}
+  fi
   read -p "Enter scale [SS,WS]: " scale
   read -p "Enter number of iterations: " numIterations
-  if [ \$binaryTag != 'SCALA_CF' ]
+  if [ \$binaryTag != 'bench_scala_cf' ]
   then
       read -p "Enter starting number of nodes for this test: " startNumNodes
       read -p "Enter ending number of nodes for this test: " endNumNodes
       read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
       read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
   fi
-  if [ \$binaryTag == 'MM3D' ]
+  if [ \$binaryTag == 'mm3d' ]
   then
     if [ \$scale == 'SS' ]
     then
@@ -418,7 +431,7 @@ do
       read -p "Do you want an broadcast-based routine[0], or an Allgather-based routine[1]: " bcastVSallgath
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$startDimensionM \$jumpDimensionM \$jumpDimensionMoperator \$startDimensionN \$jumpDimensionN \$jumpDimensionNoperator \$startDimensionK \$jumpDimensionK \$jumpDimensionKoperator \$bcastVSallgath
     fi
-  elif [ \$binaryTag == 'CFR3D' ]
+  elif [ \$binaryTag == 'cfr3d' ]
   then
     read -p "Factor lower[0] or upper[1]: " factorSide
     read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
@@ -433,7 +446,7 @@ do
       read -p "In this weak scaling test for CFR3D, enter arithmetic operator by which to increase the matrix dimension by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpMatrixDimoperator
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$startMatrixDim \$jumpMatrixDim \$jumpMatrixDimoperator \$inverseCutOffMult
     fi
-  elif [ \$binaryTag == 'CQR2' ]
+  elif [ \$binaryTag == 'cqr2' ]
   then
     read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
     if [ \$scale == 'SS' ]
@@ -453,7 +466,7 @@ do
       read -p "In this weak scaling test for CQR2, enter static tunable processor grid dimension c: " pDimC
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$startMatrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$pDimD \$pDimC \$inverseCutOffMult
     fi
-  elif [ \$binaryTag == 'SCALA_QR' ]
+  elif [ \$binaryTag == 'bench_scala_qr' ]
   then
     if [ \$scale == 'SS' ]
     then
@@ -470,7 +483,7 @@ do
       read -p "In this strong scaling test for Scalapack QR, enter the starting number of processor rows: " numProws
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$numProws
     fi
-  elif [ \$binaryTag == 'SCALA_CF' ]
+  elif [ \$binaryTag == 'bench_scala_cf' ]
   then
     read -p "Enter the starting square root of the number of nodes: " startNumNodesRoot
     read -p "Enter the ending square root of the number of nodes: " endNumNodesRoot

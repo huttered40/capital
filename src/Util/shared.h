@@ -3,9 +3,10 @@
 #ifndef SHARED
 #define SHARED
 
-// Choose whether or not to define TIMER
-//#define PROFILE
-//#define CRITTER
+#ifdef MPI_TYPE
+  #define PROFILE
+  #define CRITTER
+#endif
 
 #ifdef FLOAT_TYPE
   #define DATATYPE float
