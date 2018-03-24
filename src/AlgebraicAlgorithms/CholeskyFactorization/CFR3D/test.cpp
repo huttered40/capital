@@ -51,6 +51,8 @@ static void runTestCF(
     CFvalidate<T,U>::validateLocal(saveA, matA, dir, MPI_COMM_WORLD);
   }
 */
+  int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (rank == 0) { std::cout << "\nNUMERICS\n"; }
   Matrix<T,U,StructureA,Distribution> saveA = matA;
   saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);

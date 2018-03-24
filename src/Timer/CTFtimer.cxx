@@ -117,7 +117,10 @@ namespace CTF{
     int i;
 
     // Special addition so that wonly output for functions with the tag "Total" are used for output.
-    if (name == "Total") {printBool = true;}
+    if (name == "Total")
+    {
+      printBool = true;
+    }
     else {printBool = false;}
 
     // This test should only pass once, on the very first instance of Timer
@@ -311,6 +314,12 @@ namespace CTF{
       }
       if (printBool)
       {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if (rank == 0)
+        {
+          printf("\nPROFILE\n");
+        }
         print_timers("all");  
       }
       function_timers->clear();

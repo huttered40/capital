@@ -78,6 +78,7 @@ int main(int argc, char** argv)
     Critter_Print();
     #endif
 
+    if (rank == 0) { std::cout << "\nNUMERICS\n"; }
     MatrixTypeR saveA = matA;
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
     commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
