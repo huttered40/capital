@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 
     if (rank == 0) { std::cout << "\nNUMERICS\n"; }
     MatrixTypeR saveA = matA;
-    matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+    saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
     commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
       MPI_COMM_WORLD, dimensionD, dimensionC);
     QRvalidate<DATATYPE,INTTYPE>::validateParallelTunable(
