@@ -121,9 +121,9 @@ Arguments: 1 -> CholeskyQR
 """
 
 def printResults(A, orthogonalityCheckMatrix1, orthogonalityCheckMatrix2, residualCheckMatrix, numColumns, numRows):
-    print "Deviation from orthogonality (Q.T*Q-I) - ",la.norm(orthogonalityCheckMatrix1 - np.eye(numColumns),2)
-    print "Deviation from orthogonality (Q*Q.T-I)- ",la.norm(orthogonalityCheckMatrix2 - np.eye(numRows),2)
-    print "Residual - ",la.norm(residualCheckMatrix - A, 2)
+    print "Deviation from orthogonality (Q.T*Q-I) - ",la.norm(orthogonalityCheckMatrix1 - np.eye(numColumns),2) / np.sqrt(numColumns)
+    print "Deviation from orthogonality (Q*Q.T-I)- ",la.norm(orthogonalityCheckMatrix2 - np.eye(numRows),2) / np.sqrt(numColumns)
+    print "Residual - ",la.norm(residualCheckMatrix - A, 2) / la.norm(A,2)
 
 def testQRalg():
     arg = input("Enter method to test: CQR[1], CQR2[2]: ")
