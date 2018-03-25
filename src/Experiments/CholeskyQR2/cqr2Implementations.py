@@ -1,28 +1,16 @@
 #!/usr/bin/env python
 
 '''
-
-Implementation of different Cholesky-QR2 algorithm
-
+Implementation of different Cholesky-QR2 algorithms
 '''
 
 import numpy as np
 import numpy.linalg as la
 import sys
 
-def CQR(A,p):
+def CQR(A):
     m = A.shape[0]
     n = A.shape[1]
-    
-    # Error checking for sanity
-    if (m%p != 0):
-        sys.exit()
-    if (m != n*p):
-        sys.exit()
-
-    #A_sum = np.zeros((n,n))
-    #for i in range(p):
-    #    A_sum = A_sum + np.dot(A[i*(m/p) : (i+1)*(m/p),:].T, A[i*(m/p) : (i+1)*(m/p),:])
     B = np.dot(A.T,A)
     print "Condition number of computed B - ", la.cond(B)
     R = la.cholesky(B)
@@ -30,50 +18,18 @@ def CQR(A,p):
     Q = np.dot(A, la.inv(R).T)
     return (Q,R)
 
-def CQR2(A,p):
+def CQR2(A):
     m = A.shape[0]
     n = A.shape[1]
-    
-    # Error checking for sanity
-# Comment these out for now while experimenting with qr2D
-#    if (m%p != 0):
-#        sys.exit()
-#    if (m != n*p):
-#        sys.exit()
 
-    #A_sum = np.zeros((n,n))
-    #for i in range(p):
-    #    A_sum = A_sum + np.dot(A[i*(m/p) : (i+1)*(m/p),:].T, A[i*(m/p) : (i+1)*(m/p),:])
-    B_chol = np.dot(A.T,A)
-    B = la.cholesky(B_chol)
-    # Note that B_1 is lower-triangular, so we need to transpose it
-    
-    print("condition number of R1 ", la.cond(B))
-    print("condition number of inverse of R1 ", la.cond(la.inv(B)))
-    Q_1 = np.dot(A, la.inv(B).T)
-    #Q_1_sum = np.zeros((n,n))
-    #for i in range(p):
-    #    Q_1_sum = Q_1_sum + np.dot(Q_1[i*(m/p) : (i+1)*(m/p),:].T, Q_1[i*(m/p) : (i+1)*(m/p),:])
-    B2 = np.dot(Q_1.T, Q_1)
-    C = la.cholesky(B2)
-
-    Q = np.dot(Q_1, la.inv(C).T)
-    R = np.dot(C.T, B.T)    
-    return (Q,R)
-
-def CQR2_Alt(A,p):
-        # need to fill this in, after trying to get better understanding of this algorithm.
+    Q1,R1 = CQR(A)
+    Q,R2 = CQR(Q1)
+    R = np.dot(R2.T, R1.T)    
     return (Q,R)
 
 def CQR2_Alt(A,p):
     m = A.shape[0]
     n = A.shape[1]
-    
-    # Error checking for sanity
-    if (m%p != 0):
-        sys.exit()
-    if (m != n*p):
-        sys.exit()
     
     Q_1 = np.zeros((p,m/p,n))
     R_1 = np.zeros((p,n,n))
@@ -169,11 +125,11 @@ def printResults(A, orthogonalityCheckMatrix1, orthogonalityCheckMatrix2, residu
     print "Deviation from orthogonality (Q*Q.T-I)- ",la.norm(orthogonalityCheckMatrix2 - np.eye(numRows),2)
     print "Residual - ",la.norm(residualCheckMatrix - A, 2)
 
-def testQRalg(arg):
+def testQRalg():
+    arg = input("Enter method to test: CQR[1], CQR2[2]: ")
     numRows = input("Enter number of rows: ")
     numColumns = input("Enter number of columns: ")
     blockSize = input("Enter block size: ")
-    numProcessors = input("Enter number of processors: ")
     conditionNumberStart = input("Enter condition number start: ")
     conditionNumberEnd = input("Enter condition number end: ")
     IntervalSize = input("Enter interval size: ")
@@ -185,7 +141,6 @@ def testQRalg(arg):
 
     # Try tests for all different condition numbers in the range
     interval = 2**(np.arange(conditionNumberStart, conditionNumberEnd, IntervalSize))
-    print(interval)
 
     for z in interval:
         # Change the singular values, which will change the condition number in the Euclidean norm
@@ -194,24 +149,24 @@ def testQRalg(arg):
         A = np.dot(U,np.diag(D))
         A = np.dot(A,V.T)
 
-        #print("Condition number of current test is ", D[0]/D[-1])  # why not use cond?
         print "Condition number of current test is ", la.cond(A)  # why not use cond?
         Z = np.dot(A,la.inv(A))
         print("Condition number of A, A_inverse, and Z - ", la.cond(A), la.cond(la.inv(A)), la.cond(Z))
+        print("Error in I-AA^-1", la.norm(np.eye(A.shape[0])-np.dot(A,la.inv(A)),2))
     
         if (arg == 1):
-            Q,R = CQR(A, numProcessors)
+            Q,R = CQR(A)
             orthogonalityCheck1 = np.dot(Q.T, Q)
             orthogonalityCheck2 = np.dot(Q, Q.T)
             residualCheck = np.dot(Q, R)
             print "Condition number of computed Q - ", la.cond(Q)
-            U1,D1,V1 = la.svd(Q,1)
-            print "Singular values of Q - ", D1
             print "Condition number of computed R - ", la.cond(R)
             print "Condition number of computed R_inv - ", la.cond(la.inv(R))
+            U1,D1,V1 = la.svd(Q,1)
+            print "Singular values of Q - ", D1
             printResults(A, orthogonalityCheck1, orthogonalityCheck2, residualCheck, numColumns, numRows)
         elif (arg == 2):
-            Q,R = CQR2(A, numProcessors)
+            Q,R = CQR2(A)
             orthogonalityCheck1 = np.dot(Q.T, Q)
             orthogonalityCheck2 = np.dot(Q, Q.T)
             residualCheck = np.dot(Q, R)
@@ -224,14 +179,15 @@ def testQRalg(arg):
         #elif (arg == 3):
             # nothing yet
         elif (arg == 4):
-            Q_i,R = CQR2_Alt(A, numProcessors)
+            Q_i,R = CQR2_Alt(A)
             orthogonalityCheck1 = np.zeros((numColumns,numColumns))
             orthogonalityCheck1 = np.zeros((numRows,numRows))
             residualCheck = np.zeros((numRows, numColumns))
-            for i in range(numProcessors):
-                orthogonalityCheck1 += np.dot(Q_i[i,:,:].T, Q_i[i,:,:])
-                orthogonalityCheck2 += np.dot(Q_i[i,:,:], Q_i[i,:,:].T)
-                residualCheck[i*(numRows/numProcessors) : (i+1)*(numRows/numProcessors),:] = np.dot(Q_i[i,:,:], R)
+
+#            for i in range(numProcessors):
+#                orthogonalityCheck1 += np.dot(Q_i[i,:,:].T, Q_i[i,:,:])
+#                orthogonalityCheck2 += np.dot(Q_i[i,:,:], Q_i[i,:,:].T)
+#                residualCheck[i*(numRows/numProcessors) : (i+1)*(numRows/numProcessors),:] = np.dot(Q_i[i,:,:], R)
             printResults(A, orthogonalityCheck1, orthogonalityCheck2, residualCheck, numColumns, numRows)
         elif (arg == 5):
             Q,R = la.qr(A)
@@ -259,4 +215,5 @@ def testQRalg(arg):
         print "\n"
 
 
-testQRalg(2)
+
+testQRalg()
