@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
+#include <string>
 
 // Local includes
 #include "./../../../Util/shared.h"
@@ -28,7 +29,7 @@ static void runTestGemm(
                         Matrix<T,U,StructureC,Distribution>& matC,
 			blasEngineArgumentPackage_gemm<T>& blasArgs,
 			int methodKey3,
-			int pCoordX, int pCoordY, int pGridDimensionSize
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrCritter, FILE* fptrTimer, int iterNum
 )
 {
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
@@ -37,14 +38,14 @@ static void runTestGemm(
   #ifdef CRITTER
   Critter_Clear();
   #endif
-  TAU_FSTART(Total);
+  TAU_FSTART_FILE(Total, fileStrTimer);
   auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
   MM3D<T,U,cblasEngine>::Multiply(
     matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<T,U>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
   #ifdef CRITTER
-  Critter_Print();
+  Critter_Print(fptrCritter, iterNum);
   #endif
 /*
   // No reason to do sequential validation here, as it will overrun the memory footprint on large tests.
@@ -69,7 +70,7 @@ static void runTestTrmm(
                         Matrix<T,U,StructureB,Distribution>& matB,
 			blasEngineArgumentPackage_trmm<T>& blasArgs,
 			int methodKey3,
-			int pCoordX, int pCoordY, int pGridDimensionSize
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrCritter, FILE* fptrTimer, int iterNum
 )
 {
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
@@ -77,7 +78,7 @@ static void runTestTrmm(
   #ifdef CRITTER
   Critter_Clear();
   #endif
-  TAU_FSTART(Total);
+  TAU_FSTART_FILE(Total, fileStrTimer);
   auto commInfo3D = util<T,U>::build3DTopology(
     MPI_COMM_WORLD);
   MM3D<T,U,cblasEngine>::Multiply(
@@ -85,7 +86,7 @@ static void runTestTrmm(
   util<T,U>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
   #ifdef CRITTER
-  Critter_Print();
+  Critter_Print(fptrCritter, iterNum);
   #endif
 /*
   // No reason to do sequential validation here, as it will overrun the memory footprint on large tests.
@@ -145,6 +146,11 @@ int main(int argc, char** argv)
     INTTYPE globalMatrixSizeK = atoi(argv[5]);
     INTTYPE localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
     int numIterations = atoi(argv[6]);
+    string fileStr = argv[7];
+    string fileStrTimer=fileStr+"_timer.txt";
+    string fileStrCritter=fileStr+"_critter.txt";
+    FILE* fptrCritter = fopen(fileStrCritter.c_str(),"w");
+    FILE* fptrTimer = fopen(fileStrTimer.c_str(),"w");
 
     MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,pGridDimensionSize,pGridDimensionSize);
@@ -154,7 +160,7 @@ int main(int argc, char** argv)
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
-      runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
+      runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
     }
   }
   else if (methodKey1 == 1)
@@ -172,6 +178,11 @@ int main(int argc, char** argv)
     */
     int triangleSide = atoi(argv[6]);
     int numIterations = atoi(argv[7]);
+    string fileStr = argv[8];
+    string fileStrTimer=fileStr+"_timer.txt";
+    string fileStrCritter=fileStr+"_critter.txt";
+    FILE* fptrCritter = fopen(fileStrCritter.c_str(),"w");
+    FILE* fptrTimer = fopen(fileStrTimer.c_str(),"w");
 
     // I guess I will go through all cases. Ugh!
     if ((matrixUpLo == 0) && (triangleSide == 0))
@@ -184,7 +195,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
+        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
       }
     }
     else if ((matrixUpLo == 0) && (triangleSide == 1))
@@ -197,7 +208,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
+        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 0))
@@ -210,7 +221,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
+        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 1))
@@ -223,7 +234,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize);
+        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
       }
     }
   }

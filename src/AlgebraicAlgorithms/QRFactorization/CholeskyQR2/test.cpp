@@ -54,6 +54,11 @@ int main(int argc, char** argv)
   INTTYPE localMatrixDimensionN = globalMatrixDimensionN/dimensionC;
 
   int numIterations=atoi(argv[8]);
+  string fileStr = argv[9];
+  string fileStrTimer=fileStr+"_timer.txt";
+  string fileStrCritter=fileStr+"_critter.txt";
+  FILE* fptrCritter = fopen(fileStrCritter.c_str(),"w");
+  FILE* fptrTimer = fopen(fileStrTimer.c_str(),"w");
 
   // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
   MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
@@ -75,7 +80,7 @@ int main(int argc, char** argv)
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
     TAU_FSTOP(Total);
     #ifdef CRITTER
-    Critter_Print();
+    Critter_Print(fptrCritter,i);
     #endif
 
     if (rank == 0) { std::cout << "\nNUMERICS\n"; }

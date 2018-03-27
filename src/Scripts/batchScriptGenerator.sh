@@ -178,13 +178,13 @@ launchJobs () {
   local numProcesses=\$((\$2 * $ppn))
   if [ "$machineName" == "BGQ" ]
   then
-    echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:3:\$#} > \${@:1:1}" >> \$scriptName
+    echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:3:\$#} > \${@:1:1}.txt" >> \$scriptName
   elif [ "$machineName" == "BW" ]
   then
     echo "aprun -n \$numProcesses \$@" > \$scriptName
   elif [ "$machineName" == "THETA" ]
   then
-    echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core \${@:3:\$#} > \${@:1:1}" >> \$scriptName
+    echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core \${@:3:\$#} > \${@:1:1}.txt" >> \$scriptName
   elif [ "$machineName" == "STAMPEDE2" ]
   then
     echo "dog" >> \$scriptName
@@ -192,10 +192,10 @@ launchJobs () {
   then
     if [ "${mpiType}" == "mpi" ]
     then
-      mpiexec -n \$numProcesses \${@:3:\$#} > \${@:1:1}
+      mpiexec -n \$numProcesses \${@:3:\$#} > \${@:1:1}.txt
     elif [ "${mpiType}" == "ampi" ]
     then
-      ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:3:\$#} > \${@:1:1}
+      ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:3:\$#} > \${@:1:1}.txt
     fi
   fi
 }
@@ -209,8 +209,8 @@ launch$tag1 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="$SCRATCH/${fileName}/results/results_${tag1}_\$1_\${startNumNodes}nodes_0_\${11}bcastRoutine_\${8}m_\${9}n_\${10}k_\${3}numIter.txt"
-        launchJobs \${fileString} \$startNumNodes \$2 0 \${11} \$8 \$9 \${10} \$3
+        local fileString="$SCRATCH/${fileName}/results/results_${tag1}_\$1_\${startNumNodes}nodes_0_\${11}bcastRoutine_\${8}m_\${9}n_\${10}k_\${3}numIter"
+        launchJobs \${fileString} \$startNumNodes \$2 0 \${11} \$8 \$9 \${10} \$3 \${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
   elif [ \$1 == 'WS' ]
@@ -222,8 +222,8 @@ launch$tag1 () {
     local startDimensionK=\${14}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="$SCRATCH/${fileName}/results/results_${tag1}_\$1_\${startNumNodes}nodes_0_\${17}bcastRoutine_\${startDimensionM}m_\${startDimensionN}n_\${startDimensionK}k_\${3}numIter.txt"
-        launchJobs \${fileString} \$startNumNodes \$2 0 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3
+        local fileString="$SCRATCH/${fileName}/results/results_${tag1}_\$1_\${startNumNodes}nodes_0_\${17}bcastRoutine_\${startDimensionM}m_\${startDimensionN}n_\${startDimensionK}k_\${3}numIter"
+        launchJobs \${fileString} \$startNumNodes \$2 0 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3 \${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startDimensionM=\$(updateCounter \$startDimensionM \${10} \$9)
         startDimensionN=\$(updateCounter \$startDimensionN \${13} \${12})
@@ -240,8 +240,8 @@ launch$tag2 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="$SCRATCH/${fileName}/results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${9}dim_0bcMult_\${10}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
-        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} 0 \${10} 0 \$3
+        local fileString="$SCRATCH/${fileName}/results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${9}dim_0bcMult_\${10}inverseCutOffMult_0panelDimMult_\${3}numIter"
+        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} 0 \${10} 0 \$3 \${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
     done
   elif [ \$1 == 'WS' ]
@@ -251,8 +251,8 @@ launch$tag2 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="$SCRATCH/${fileName}/results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${startMatrixDim}dim_0bcMult_\${12}inverseCutOffMult_0panelDimMult_\${3}numIter.txt"
-        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${startMatrixDim} 0 \${12} 0 \$3
+        local fileString="$SCRATCH/${fileName}/results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${startMatrixDim}dim_0bcMult_\${12}inverseCutOffMult_0panelDimMult_\${3}numIter"
+        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${startMatrixDim} 0 \${12} 0 \$3 \${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startMatrixDim=\$(updateCounter \$startMatrixDim \${11} \${10})
     done
@@ -268,8 +268,8 @@ launch$tag3 () {
     local startPdimD=\${10}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="$SCRATCH/${fileName}/results/results_${tag3}_\$1_\${startNumNodes}nodes_\${8}dimM_\${9}dimN_\${12}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC_\${3}numIter.txt"
-        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} \${12} 0 0 \${startPdimD} \${11} \$3
+        local fileString="$SCRATCH/${fileName}/results/results_${tag3}_\$1_\${startNumNodes}nodes_\${8}dimM_\${9}dimN_\${12}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC_\${3}numIter"
+        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} \${12} 0 0 \${startPdimD} \${11} \$3 \${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startPdimD=\$(updateCounter \$startPdimD \$7 \$6)
     done
@@ -281,8 +281,8 @@ launch$tag3 () {
     local startPdimD=\${12}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
-        local fileString="$SCRATCH/${fileName}/results/results_${tag3}_\$1_\${startNumNodes}nodes_\${startMatrixDimM}dimM_\${11}dimN_\${14}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${13}pDimC_\${3}numIter.txt"
-        launchJobs \${fileString} \$startNumNodes \$2 \${8} \${11} \${14} 0 0 \${startPdimD} \${13} \$3
+        local fileString="$SCRATCH/${fileName}/results/results_${tag3}_\$1_\${startNumNodes}nodes_\${startMatrixDimM}dimM_\${11}dimN_\${14}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${13}pDimC_\${3}numIter"
+        launchJobs \${fileString} \$startNumNodes \$2 \${8} \${11} \${14} 0 0 \${startPdimD} \${13} \$3 \${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
         startMatrixDimM=\$(updateCounter \$startMatrixDimM \${10} \${9})
         startPdimD=\$(updateCounter \$startPdimD \$7 \$6)
@@ -308,8 +308,8 @@ launch$tag4 () {
       endBlockSize=\$((\$div1>\$div2?\$div1:\$div2))
       while [ \$startBlockSize -le \$endBlockSize ];
       do
-          local fileString="$SCRATCH/${fileName}/results/results_${tag4}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter.txt"
-          launchJobs \${fileString} \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0
+          local fileString="$SCRATCH/${fileName}/results/results_${tag4}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter"
+          launchJobs \${fileString} \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0 \${fileString}
           startBlockSize=\$((\$startBlockSize * 2))
       done
       startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
@@ -331,8 +331,8 @@ launch$tag4 () {
       endBlockSize=\$((\$div1>\$div2?\$div1:\$div2))
       while [ \$startBlockSize -le \$endBlockSize ];
       do
-          local fileString="$SCRATCH/${fileName}/results/results_${tag4}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter.txt"
-          launchJobs \${fileString} \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0
+          local fileString="$SCRATCH/${fileName}/results/results_${tag4}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter"
+          launchJobs \${fileString} \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0 \${fileString}
           startBlockSize=\$((\$startBlockSize * 2))
       done
       startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
@@ -362,8 +362,8 @@ launch$tag5 () {
       while [ \$startBlockSize -le \$endBlockSize ];
       do
           temp3=\$((1<<\$startBlockSize))
-          local fileString="$SCRATCH/${fileName}/results/results_${tag5}_\$1_\$((\$startNumNodesRoot * \$startNumNodesRoot))nodes_\${matrixDimRoot}dimM_\${temp3}blockSize_\${3}numIter.txt"
-          launchJobs \${fileString} \$curNumNodes \$2 \${matrixDimRoot} \${specialMatDimLog} \${startBlockSize} \${3}
+          local fileString="$SCRATCH/${fileName}/results/results_${tag5}_\$1_\$((\$startNumNodesRoot * \$startNumNodesRoot))nodes_\${matrixDimRoot}dimM_\${temp3}blockSize_\${3}numIter"
+          launchJobs \${fileString} \$curNumNodes \$2 \${matrixDimRoot} \${specialMatDimLog} \${startBlockSize} \${3} \${fileString}
           startBlockSize=\$((\$startBlockSize + 1))
       done
       startNumNodesRoot=\$(updateCounter \$startNumNodesRoot \$7 \$6)
@@ -386,8 +386,8 @@ launch$tag5 () {
       while [ \$startBlockSize -le \$endBlockSize ];
       do
           temp3=\$((1<<\$startBlockSize))
-          local fileString="$SCRATCH/${fileName}/results/results_${tag5}_\$1_\$((\$startNumNodesRoot * \$startNumNodesRoot))nodes_\${matrixDimRoot}dimM_\$((\$temp3))blockSize_\${3}numIter.txt"
-          launchJobs \${fileString} \$curNumNodes \$2 \${matrixDimRoot} \${specialMatDimLog} \${startBlockSize} \${3}
+          local fileString="$SCRATCH/${fileName}/results/results_${tag5}_\$1_\$((\$startNumNodesRoot * \$startNumNodesRoot))nodes_\${matrixDimRoot}dimM_\$((\$temp3))blockSize_\${3}numIter"
+          launchJobs \${fileString} \$curNumNodes \$2 \${matrixDimRoot} \${specialMatDimLog} \${startBlockSize} \${3} \${fileString}
           startBlockSize=\$((\$startBlockSize + 1))
       done
       startNumNodesRoot=\$(updateCounter \$startNumNodesRoot \$7 \$6)

@@ -112,11 +112,12 @@ namespace CTF{
 
   // Timer is local to each MPI process, so there is no overlap or anything. If threading is added, might need to be careful, but we probably won't do
   //  task-thread-parallelism anyways so it should never really matter.
-  Timer::Timer(const std::string& name){
+  Timer::Timer(const std::string& name, const std::string& file){
   #ifdef PROFILE
     int i;
 
-    // Special addition so that wonly output for functions with the tag "Total" are used for output.
+    this->fileStr=file;
+    // Special addition so that only output for functions with the tag "Total" are used for output.
     if (name == "Total")
     {
       printBool = true;

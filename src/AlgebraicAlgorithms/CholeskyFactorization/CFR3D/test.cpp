@@ -25,7 +25,7 @@ static void runTestCF(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matT,
 			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
-			int pCoordX, int pCoordY, int pGridDimensionSize
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrCritter, FILE* fptrTimer, int iterNum
 )
 {
   // Reset matrixA
@@ -40,7 +40,7 @@ static void runTestCF(
   util<T,U>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
   #ifdef CRITTER
-  Critter_Print();
+  Critter_Print(fptrCritter, iterNum);
   #endif
 /* Sequential validation is no longer in the codepath. For use, create a new branch and comment in this code.
   if (methodKey2 == 0)
@@ -91,19 +91,25 @@ int main(int argc, char** argv)
 		  1) Upper
   */
   int methodKey1 = atoi(argv[1]);
+  char dir = (methodKey1==0 ? 'L' : 'U');
   INTTYPE globalMatrixSize = atoi(argv[2]);
   int blockSizeMultiplier = atoi(argv[3]);
   int inverseCutOffMultiplier = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
   int panelDimensionMultiplier = atoi(argv[5]);
   int numIterations = atoi(argv[6]);
-  char dir = (methodKey1==0 ? 'L' : 'U');
+
+  string fileStr = argv[7];
+  string fileStrTimer=fileStr+"_timer.txt";
+  string fileStrCritter=fileStr+"_critter.txt";
+  FILE* fptrCritter = fopen(fileStrCritter.c_str(),"w");
+  FILE* fptrTimer = fopen(fileStrTimer.c_str(),"w");
 
   MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
   MatrixTypeA matT(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
   for (int i=0; i<numIterations; i++)
   {
-    runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize);
+    runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
   }
   MPI_Finalize();
   return 0;
