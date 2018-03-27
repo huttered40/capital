@@ -27,32 +27,31 @@ def CQR2(A):
     R = np.dot(R2.T, R1.T)    
     return (Q,R)
 
-def CQR2_Alt(A,p):
+def CQR2_Alt(A,b):
     m = A.shape[0]
     n = A.shape[1]
     
-    Q_1 = np.zeros((p,m/p,n))
-    R_1 = np.zeros((p,n,n))
+    Q_1 = np.zeros((b,m/b,n))
+    R_1 = np.zeros((b,n,n))
     R_1_sum = np.zeros((n,n))
-    for i in range(p):
-        Q_1[i,:,:],R_1[i,:,:] = la.qr(A[(i*(m/p)):((i+1)*(m/p)),:])
+    for i in range(b):
+        Q_1[i,:,:],R_1[i,:,:] = la.qr(A[(i*(m/b)):((i+1)*(m/b)),:])
         R_1_sum = R_1_sum + np.dot(R_1[i,:,:].T, R_1[i,:,:])
     B_1 = la.cholesky(R_1_sum)
     # Note that B_1 is lower-triangular, so we need to transpose it
     
-    R_2 = np.zeros((p,n,n))
+    R_2 = np.zeros((b,n,n))
     R_2_sum = np.zeros((n,n))
-    for i in range(p):
+    for i in range(b):
         R_2[i,:,:] = np.dot(R_1[i,:,:], la.inv(B_1).T)
         R_2_sum = R_2_sum + np.dot(R_2[i,:,:].T, R_2[i,:,:])
     C_1 = la.cholesky(R_2_sum)
     
     R = np.dot(C_1.T, B_1.T)
-    Q = np.zeros((p,m/p,n))
-    for i in range(p):
+    Q = np.zeros((b,m/b,n))
+    for i in range(b):
         Q[i,:,:] = np.dot(Q_1[i,:,:], R_1[i,:,:])
         Q[i,:,:] = np.dot(Q[i,:,:], la.inv(R))
-    
     return (Q,R)
 
 # 2D experimentation with CholeskyQR2 as panel factorization
@@ -121,12 +120,12 @@ Arguments: 1 -> CholeskyQR
 """
 
 def printResults(A, orthogonalityCheckMatrix1, orthogonalityCheckMatrix2, residualCheckMatrix, numColumns, numRows):
-    print "Deviation from orthogonality (Q.T*Q-I) - ",la.norm(orthogonalityCheckMatrix1 - np.eye(numColumns),2)
-    print "Deviation from orthogonality (Q*Q.T-I)- ",la.norm(orthogonalityCheckMatrix2 - np.eye(numRows),2)
-    print "Residual - ",la.norm(residualCheckMatrix - A, 2)
+    print "Deviation from orthogonality (Q.T*Q-I) - ",la.norm(orthogonalityCheckMatrix1 - np.eye(numColumns),2) / np.sqrt(numColumns)
+    print "Deviation from orthogonality (Q*Q.T-I)- ",la.norm(orthogonalityCheckMatrix2 - np.eye(numRows),2) / np.sqrt(numColumns)
+    print "Residual - ",la.norm(residualCheckMatrix - A, 2) / la.norm(A,2)
 
 def testQRalg():
-    arg = input("Enter method to test: CQR[1], CQR2[2]: ")
+    arg = input("Enter method to test: CQR[1], CQR2[2], Alternate CQR2[3]: ")
     numRows = input("Enter number of rows: ")
     numColumns = input("Enter number of columns: ")
     blockSize = input("Enter block size: ")
@@ -150,9 +149,9 @@ def testQRalg():
         A = np.dot(A,V.T)
 
         print "Condition number of current test is ", la.cond(A)  # why not use cond?
-        Z = np.dot(A,la.inv(A))
-        print("Condition number of A, A_inverse, and Z - ", la.cond(A), la.cond(la.inv(A)), la.cond(Z))
-        print("Error in I-AA^-1", la.norm(np.eye(A.shape[0])-np.dot(A,la.inv(A)),2))
+#        Z = np.dot(A,la.inv(A))
+#        print("Condition number of A, A_inverse, and Z - ", la.cond(A), la.cond(la.inv(A)), la.cond(Z))
+#        print("Error in I-AA^-1", la.norm(np.eye(A.shape[0])-np.dot(A,la.inv(A)),2))
     
         if (arg == 1):
             Q,R = CQR(A)
@@ -176,18 +175,16 @@ def testQRalg():
             print "Condition number of computed R - ", la.cond(R)
             print "Condition number of computed R_inv - ", la.cond(la.inv(R))
             printResults(A, orthogonalityCheck1, orthogonalityCheck2, residualCheck, numColumns, numRows)
-        #elif (arg == 3):
-            # nothing yet
-        elif (arg == 4):
-            Q_i,R = CQR2_Alt(A)
+        elif (arg == 3):
+            Q_i,R = CQR2_Alt(A, blockSize)
             orthogonalityCheck1 = np.zeros((numColumns,numColumns))
-            orthogonalityCheck1 = np.zeros((numRows,numRows))
+            orthogonalityCheck2 = np.zeros((numRows,numRows))
             residualCheck = np.zeros((numRows, numColumns))
 
-#            for i in range(numProcessors):
-#                orthogonalityCheck1 += np.dot(Q_i[i,:,:].T, Q_i[i,:,:])
-#                orthogonalityCheck2 += np.dot(Q_i[i,:,:], Q_i[i,:,:].T)
-#                residualCheck[i*(numRows/numProcessors) : (i+1)*(numRows/numProcessors),:] = np.dot(Q_i[i,:,:], R)
+            for i in range(blockSize):
+                orthogonalityCheck1 += np.dot(Q_i[i,:,:].T, Q_i[i,:,:])
+#               orthogonalityCheck2 += np.dot(Q_i[i,:,:], Q_i[i,:,:].T)
+                residualCheck[i*(numRows/blockSize) : (i+1)*(numRows/blockSize),:] = np.dot(Q_i[i,:,:], R)
             printResults(A, orthogonalityCheck1, orthogonalityCheck2, residualCheck, numColumns, numRows)
         elif (arg == 5):
             Q,R = la.qr(A)
