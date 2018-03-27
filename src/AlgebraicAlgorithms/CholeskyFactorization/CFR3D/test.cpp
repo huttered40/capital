@@ -25,7 +25,7 @@ static void runTestCF(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matT,
 			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrCritter, FILE* fptrTimer, int iterNum
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter
 )
 {
   // Reset matrixA
@@ -40,7 +40,7 @@ static void runTestCF(
   util<T,U>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
   #ifdef CRITTER
-  Critter_Print(fptrCritter, iterNum);
+  Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
 /* Sequential validation is no longer in the codepath. For use, create a new branch and comment in this code.
   if (methodKey2 == 0)
@@ -99,17 +99,25 @@ int main(int argc, char** argv)
   int numIterations = atoi(argv[6]);
 
   string fileStr = argv[7];
-  string fileStrTimer=fileStr+"_timer.txt";
-  string fileStrCritter=fileStr+"_critter.txt";
-  FILE* fptrCritter = fopen(fileStrCritter.c_str(),"w");
-  FILE* fptrTimer = fopen(fileStrTimer.c_str(),"w");
+  string fileStrTotal=fileStr;
+  string fileStrAvg=fileStr;
+  #ifdef PROFILE
+  fileStrTotal += "_timer.txt";
+  fileStrAvg += "_timer_avg.txt";
+  #endif
+  #ifdef CRITTER
+  fileStrTotal += "_critter.txt";
+  fileStrAvg += "_critter_avg.txt";
+  #endif
+  FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
+  FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
 
   MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
   MatrixTypeA matT(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
   for (int i=0; i<numIterations; i++)
   {
-    runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
+    runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
   }
   MPI_Finalize();
   return 0;

@@ -55,10 +55,18 @@ int main(int argc, char** argv)
 
   int numIterations=atoi(argv[8]);
   string fileStr = argv[9];
-  string fileStrTimer=fileStr+"_timer.txt";
-  string fileStrCritter=fileStr+"_critter.txt";
-  FILE* fptrCritter = fopen(fileStrCritter.c_str(),"w");
-  FILE* fptrTimer = fopen(fileStrTimer.c_str(),"w");
+  string fileStrTotal=fileStr;
+  string fileStrAvg=fileStr;
+  #ifdef PROFILE
+  fileStrTotal += "_timer.txt";
+  fileStrAvg += "_timer_avg.txt";
+  #endif
+  #ifdef CRITTER
+  fileStrTotal += "_critter.txt";
+  fileStrAvg += "_critter_avg.txt";
+  #endif
+  FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
+  FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
 
   // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
   MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
@@ -80,7 +88,7 @@ int main(int argc, char** argv)
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
     TAU_FSTOP(Total);
     #ifdef CRITTER
-    Critter_Print(fptrCritter,i);
+    Critter_Print(fptrTotal, i, fptrAvg, numIterations);
     #endif
 
     if (rank == 0) { std::cout << "\nNUMERICS\n"; }

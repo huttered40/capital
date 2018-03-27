@@ -29,7 +29,7 @@ static void runTestGemm(
                         Matrix<T,U,StructureC,Distribution>& matC,
 			blasEngineArgumentPackage_gemm<T>& blasArgs,
 			int methodKey3,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrCritter, FILE* fptrTimer, int iterNum
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter
 )
 {
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
@@ -45,7 +45,7 @@ static void runTestGemm(
   util<T,U>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
   #ifdef CRITTER
-  Critter_Print(fptrCritter, iterNum);
+  Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
 /*
   // No reason to do sequential validation here, as it will overrun the memory footprint on large tests.
@@ -70,7 +70,7 @@ static void runTestTrmm(
                         Matrix<T,U,StructureB,Distribution>& matB,
 			blasEngineArgumentPackage_trmm<T>& blasArgs,
 			int methodKey3,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrCritter, FILE* fptrTimer, int iterNum
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter
 )
 {
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
@@ -86,7 +86,7 @@ static void runTestTrmm(
   util<T,U>::destroy3DTopology(commInfo3D);
   TAU_FSTOP(Total);
   #ifdef CRITTER
-  Critter_Print(fptrCritter, iterNum);
+  Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
 /*
   // No reason to do sequential validation here, as it will overrun the memory footprint on large tests.
@@ -147,10 +147,18 @@ int main(int argc, char** argv)
     INTTYPE localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
     int numIterations = atoi(argv[6]);
     string fileStr = argv[7];
-    string fileStrTimer=fileStr+"_timer.txt";
-    string fileStrCritter=fileStr+"_critter.txt";
-    FILE* fptrCritter = fopen(fileStrCritter.c_str(),"w");
-    FILE* fptrTimer = fopen(fileStrTimer.c_str(),"w");
+    string fileStrTotal=fileStr;
+    string fileStrAvg=fileStr;
+    #ifdef PROFILE
+    fileStrTotal += "_timer.txt";
+    fileStrAvg += "_timer_avg.txt";
+    #endif
+    #ifdef CRITTER
+    fileStrTotal += "_critter.txt";
+    fileStrAvg += "_critter_avg.txt";
+    #endif
+    FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
+    FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
 
     MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,pGridDimensionSize,pGridDimensionSize);
@@ -160,7 +168,7 @@ int main(int argc, char** argv)
     // Loop for getting a good range of results.
     for (int i=0; i<numIterations; i++)
     {
-      runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
+      runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
     }
   }
   else if (methodKey1 == 1)
@@ -179,10 +187,18 @@ int main(int argc, char** argv)
     int triangleSide = atoi(argv[6]);
     int numIterations = atoi(argv[7]);
     string fileStr = argv[8];
-    string fileStrTimer=fileStr+"_timer.txt";
-    string fileStrCritter=fileStr+"_critter.txt";
-    FILE* fptrCritter = fopen(fileStrCritter.c_str(),"w");
-    FILE* fptrTimer = fopen(fileStrTimer.c_str(),"w");
+    string fileStrTotal=fileStr;
+    string fileStrAvg=fileStr;
+    #ifdef PROFILE
+    fileStrTotal += "_timer.txt";
+    fileStrAvg += "_timer_avg.txt";
+    #endif
+    #ifdef CRITTER
+    fileStrTotal += "_critter.txt";
+    fileStrAvg += "_critter_avg.txt";
+    #endif
+    FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
+    FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
 
     // I guess I will go through all cases. Ugh!
     if ((matrixUpLo == 0) && (triangleSide == 0))
@@ -195,7 +211,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
+        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
       }
     }
     else if ((matrixUpLo == 0) && (triangleSide == 1))
@@ -208,7 +224,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
+        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 0))
@@ -221,7 +237,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
+        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
       }
     }
     else if ((matrixUpLo == 1) && (triangleSide == 1))
@@ -234,7 +250,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrCritter, fptrTimer, i);
+        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
       }
     }
   }

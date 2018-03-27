@@ -26,6 +26,19 @@ then
   machineName=THETA
   export MPITYPE=MPI_TYPE
 fi
+
+if [ "${mpiType}" == "mpi" ]
+then
+  read -p "Do you want Profiling/Timer[T] output or Critter[C] output? " profType
+  if [ "${profType}" == "T" ]
+  then
+    export PROFTYPE=TIMER_TYPE
+  elif [ "${mpiType}" == "C" ]
+  then
+    export PROFTYPE=CRITTER_TYPE
+  fi
+fi
+
 #read -p "Enter machine name [BGQ (cetus,mira), THETA, BW, STAMPEDE2, PORTER]: " machineName
 #read -p "Enter the Date (MM_DD_YYYY): " dateStr
 dateStr=$(date +%Y-%m-%d-%H:%M:%S)
@@ -45,7 +58,7 @@ then
 fi
 
 numPEs=$((ppn*numNodes))
-fileName=scriptID${fileID}_${dateStr}_${machineName}
+fileName=scriptID${fileID}_${dateStr}_${machineName}_${profType}
 
 read -p "What datatype? float[0], double[1], complex<float>[2], complex<double>[3]: " dataType
 read -p "What integer type? int[0], int64_t[1]: " intType

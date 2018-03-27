@@ -3,8 +3,10 @@
 #ifndef SHARED
 #define SHARED
 
-#ifdef MPI_TYPE
+#ifdef TIMER_TYPE
   #define PROFILE
+#endif
+#ifdef CRITTER_TYPE
   #define CRITTER
 #endif
 
