@@ -75,7 +75,7 @@ void MM3D<T,U,blasEngine>::Multiply(
       (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
       localDimensionM, srcPackage);
-    MPI_Allreduce(MPI_IN_PLACE,matrixCforEnginePtr, sizeC, MPI_DOUBLE, MPI_SUM, depthComm);
+    MPI_Allreduce(MPI_IN_PLACE,matrixCforEnginePtr, sizeC, MPI_DATATYPE, MPI_SUM, depthComm);
   }
   else
   {
@@ -85,7 +85,7 @@ void MM3D<T,U,blasEngine>::Multiply(
        (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
        (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
        localDimensionM, srcPackage); 
-    MPI_Allreduce(MPI_IN_PLACE, &holdProduct[0], sizeC, MPI_DOUBLE, MPI_SUM, depthComm);
+    MPI_Allreduce(MPI_IN_PLACE, &holdProduct[0], sizeC, MPI_DATATYPE, MPI_SUM, depthComm);
     for (U i=0; i<sizeC; i++)
     {
       matrixC[i] = srcPackage.beta*matrixC[i] + holdProduct[i];
@@ -348,7 +348,7 @@ void MM3D<T,U,blasEngine>::Multiply(
     blasEngine<T,U>::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionN,
       (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
-  MPI_Allreduce(MPI_IN_PLACE,matrixBEnginePtr, sizeB, MPI_DOUBLE, MPI_SUM, depthComm);
+  MPI_Allreduce(MPI_IN_PLACE,matrixBEnginePtr, sizeB, MPI_DATATYPE, MPI_SUM, depthComm);
   std::memcpy(matrixB, matrixBEnginePtr, sizeB*sizeof(T));
   if ((srcPackage.side == blasEngineSide::AblasLeft) && (!isRootColumn)) delete[] foreignB;
   if ((srcPackage.side == blasEngineSide::AblasRight) && (!isRootRow)) delete[] foreignB;
@@ -745,11 +745,11 @@ void MM3D<T,U,blasEngine>::_end1(
   // Prevents buffer aliasing, which MPI does not like.
   if ((dir) || (matrixEnginePtr == matrix.getRawData()))
   {
-    MPI_Allreduce(MPI_IN_PLACE,matrixEnginePtr, numElems, MPI_DOUBLE, MPI_SUM, depthComm);
+    MPI_Allreduce(MPI_IN_PLACE,matrixEnginePtr, numElems, MPI_DATATYPE, MPI_SUM, depthComm);
   }
   else
   {
-    MPI_Allreduce(matrixEnginePtr, matrix.getRawData(), numElems, MPI_DOUBLE, MPI_SUM, depthComm);
+    MPI_Allreduce(matrixEnginePtr, matrix.getRawData(), numElems, MPI_DATATYPE, MPI_SUM, depthComm);
   }
   TAU_FSTOP(MM3D::_end1);
 }
@@ -816,11 +816,11 @@ void MM3D<T,U,blasEngine>::_start2(
   {
     std::vector<T> partitionMatrixA(messageSizeA,0);
     memcpy(&partitionMatrixA[0], &dataA[dataAOffset], (messageSizeA - localNumRowsA)*sizeof(T));  // truncation should be fine here. Rest is zeros
-    MPI_Allgather(&partitionMatrixA[0], messageSizeA, MPI_DOUBLE, &collectMatrixA[0], messageSizeA, MPI_DOUBLE, rowComm);
+    MPI_Allgather(&partitionMatrixA[0], messageSizeA, MPI_DATATYPE, &collectMatrixA[0], messageSizeA, MPI_DATATYPE, rowComm);
   }
   else
   {
-    MPI_Allgather(&dataA[dataAOffset], messageSizeA, MPI_DOUBLE, &collectMatrixA[0], messageSizeA, MPI_DOUBLE, rowComm);
+    MPI_Allgather(&dataA[dataAOffset], messageSizeA, MPI_DATATYPE, &collectMatrixA[0], messageSizeA, MPI_DATATYPE, rowComm);
   }
 
 
@@ -885,14 +885,14 @@ void MM3D<T,U,blasEngine>::_start2(
   {
     memcpy(&partitionMatrixB[i*blockLengthB], &matrixB.getRawData()[dataBOffset + i*localNumRowsB], writeSize*sizeof(T));
   }
-  MPI_Allgather(&partitionMatrixB[0], partitionMatrixB.size(), MPI_DOUBLE, &collectMatrixB[0], partitionMatrixB.size(), MPI_DOUBLE, columnComm);
+  MPI_Allgather(&partitionMatrixB[0], partitionMatrixB.size(), MPI_DATATYPE, &collectMatrixB[0], partitionMatrixB.size(), MPI_DATATYPE, columnComm);
 /*
   // Allgathering matrixB is a problem for AMPI when using derived datatypes
   MPI_Datatype matrixBcolumnData;
-  MPI_Type_vector(localNumColumnsB,blockLengthB,localNumRowsB,MPI_DOUBLE,&matrixBcolumnData);
+  MPI_Type_vector(localNumColumnsB,blockLengthB,localNumRowsB,MPI_DATATYPE,&matrixBcolumnData);
   MPI_Type_commit(&matrixBcolumnData);
   U messageSizeB = sizeB/columnCommSize;
-  MPI_Allgather(&dataB[dataBOffset], 1, matrixBcolumnData, &collectMatrixB[0], messageSizeB, MPI_DOUBLE, columnComm);
+  MPI_Allgather(&dataB[dataBOffset], 1, matrixBcolumnData, &collectMatrixB[0], messageSizeB, MPI_DATATYPE, columnComm);
 */
   // Then need to re-shuffle the data in collectMatrixB because of the format Allgather puts the received data in 
   // Note: there is a particular order to it beyond the AllGather order. Depends what z coordinate we are on (that determines the shift)
@@ -962,12 +962,12 @@ void MM3D<T,U,blasEngine>::BroadcastPanels(
   TAU_FSTART(MM3D::BroadcastPanels);
   if (isRoot)
   {
-    MPI_Bcast(&data[0], size, MPI_DOUBLE, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panelComm);
   }
   else
   {
     data.resize(size);
-    MPI_Bcast(&data[0], size, MPI_DOUBLE, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panelComm);
   }
   TAU_FSTOP(MM3D::BroadcastPanels);
 }
@@ -984,14 +984,14 @@ void MM3D<T,U,blasEngine>::BroadcastPanels(
   TAU_FSTART(MM3D::BroadcastPanels);
   if (isRoot)
   {
-    MPI_Bcast(data, size, MPI_DOUBLE, pGridCoordZ, panelComm);
+    MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panelComm);
   }
   else
   {
     // TODO: Is this causing a memory leak? Usually I would be overwriting vector allocated memory. Not sure if this will cause issues or if
     //         the vector will still delete itself.
     data = new T[size];
-    MPI_Bcast(data, size, MPI_DOUBLE, pGridCoordZ, panelComm);
+    MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panelComm);
   }
   TAU_FSTOP(MM3D::BroadcastPanels);
 }

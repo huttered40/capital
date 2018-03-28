@@ -76,7 +76,7 @@ void QRvalidate<T,U>::validateLocal1D(
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
   T error = getResidual1D_RowCyclic(myQ.getVectorData(), matrixQ, globalDimensionN, globalDimensionM, localDimensionM, commWorld);
 
-  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DATATYPE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myQ - solQ is " << error << std::endl;}
 
   // Now generate R using Q and A
@@ -87,16 +87,16 @@ void QRvalidate<T,U>::validateLocal1D(
 
   // Need to set up error2 for matrix R, but do that later
   T error2 = getResidual1D_Full(myR.getVectorData(), matrixR, globalDimensionN, globalDimensionM, commWorld);
-  MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DOUBLE, MPI_SUM, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DATATYPE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myR - solR is " << error2 << std::endl;}
 
   // generate A_computed = myQ*myR and compare against original A
   T error3 = getResidual1D(matrixA.getVectorData(), myQ.getVectorData(), myR.getVectorData(), globalDimensionN, globalDimensionM, localDimensionM, commWorld);
-  MPI_Allreduce(MPI_IN_PLACE, &error3, 1, MPI_DOUBLE, MPI_SUM, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, &error3, 1, MPI_DATATYPE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total residual error is " << error3 << std::endl;}
 
   T error4 = testOrthogonality1D(myQ.getVectorData(), globalDimensionN, globalDimensionM, localDimensionM, commWorld);
-  MPI_Allreduce(MPI_IN_PLACE, &error4, 1, MPI_DOUBLE, MPI_SUM, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, &error4, 1, MPI_DATATYPE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error4 << std::endl;}
 
   return;
@@ -209,7 +209,7 @@ T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, 
     localDimensionY, 0., &myI[0], globalDimensionX);
 
   // To complete the sum (rightward movement of Matvecs), perform an AllReduce
-  MPI_Allreduce(MPI_IN_PLACE, &myI[0], globalDimensionX*globalDimensionX, MPI_DOUBLE, MPI_SUM, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, &myI[0], globalDimensionX*globalDimensionX, MPI_DATATYPE, MPI_SUM, commWorld);
 
   T error = 0;
   for (U i=0; i<globalDimensionX; i++)
@@ -341,7 +341,7 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distr
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
   std::vector<T> Qvector = myQ.getVectorData();							// This is a straight copy, because we can't corrupt Q's data
   //Matrix<T,U,MatrixStructureRectangle,Distribution> QT = myQ;
-  MPI_Sendrecv_replace(&Qvector[0], localDimensionN*localDimensionM, MPI_DOUBLE, transposePartner, 0,
+  MPI_Sendrecv_replace(&Qvector[0], localDimensionN*localDimensionM, MPI_DATATYPE, transposePartner, 0,
     transposePartner, 0, commWorld, MPI_STATUS_IGNORE);
 
   Matrix<T,U,MatrixStructureRectangle,Distribution> QT(std::move(Qvector), localDimensionM, localDimensionN, globalDimensionM, globalDimensionN, true);
@@ -411,7 +411,7 @@ std::vector<T> QRvalidate<T,U>::getReferenceMatrix1D(
   std::vector<T> blockedMatrix(globalSize);
   std::vector<T> cyclicMatrix(globalSize);
   U localSize = localMatrix.getNumRowsLocal()*localMatrix.getNumColumnsLocal();
-  MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DOUBLE, &blockedMatrix[0], localSize, MPI_DOUBLE, commWorld);
+  MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DATATYPE, &blockedMatrix[0], localSize, MPI_DATATYPE, commWorld);
 
   U writeIndex = 0;
   // MACRO loop over all columns

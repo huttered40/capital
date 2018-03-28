@@ -132,7 +132,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(
   // MPI_Allreduce to replicate the dimensionY x dimensionY matrix on each processor
   // Optimization potential: only Allreduce half of this matrix because its symmetric
   //   but only try this later to see if it actually helps, because to do this, I will have to serialize and re-serialize. Would only make sense if dimensionX is huge.
-  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DOUBLE, MPI_SUM, commWorld);
+  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, MPI_SUM, commWorld);
 
   // Now, localMMvec is replicated on every processor in commWorld
   #ifdef BGQ
@@ -230,10 +230,10 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
   blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
 
-  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DOUBLE,
+  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE,
     MPI_SUM, pGridCoordZ, columnComm);
 
-  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DOUBLE, pGridCoordY, depthComm);
+  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, pGridCoordY, depthComm);
 
   // Create an extra matrix for R-inverse
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
@@ -321,12 +321,12 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
   blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
 
-  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DOUBLE,
+  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE,
     MPI_SUM, pCoordZ, columnContigComm);
-  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DOUBLE,
+  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE,
     MPI_SUM, columnAltComm);
 
-  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DOUBLE, columnContigRank, depthComm);
+  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, columnContigRank, depthComm);
 
   // Create an extra matrix for R-inverse
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
@@ -375,12 +375,12 @@ void CholeskyQR2<T,U,blasEngine>::BroadcastPanels(
   TAU_FSTART(BroadcastPanels);
   if (isRoot)
   {
-    MPI_Bcast(&data[0], size, MPI_DOUBLE, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panelComm);
   }
   else
   {
     data.resize(size);
-    MPI_Bcast(&data[0], size, MPI_DOUBLE, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panelComm);
   }
   TAU_FSTOP(BroadcastPanels);
 }

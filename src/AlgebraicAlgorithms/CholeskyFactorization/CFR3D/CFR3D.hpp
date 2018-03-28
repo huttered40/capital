@@ -670,8 +670,8 @@ std::vector<T> CFR3D<T,U,blasEngine>::blockedToCyclicTransformation(
     U aggregSize = baseCaseMatrixA.getNumElems()*pGridDimensionSize*pGridDimensionSize;
     std::vector<T> blockedBaseCaseData(aggregSize);
     // Note: recv buffer will be larger tha send buffer * pGridDimensionSize**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
-    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DOUBLE,
-      &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DOUBLE, slice2Dcomm);
+    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DATATYPE,
+      &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DATATYPE, slice2Dcomm);
 
     TAU_FSTOP(CFR3D::blockedToCyclicTransformation);
     return util<T,U>::blockedToCyclicSpecial(
@@ -688,8 +688,8 @@ std::vector<T> CFR3D<T,U,blasEngine>::blockedToCyclicTransformation(
     U aggregSize = baseCaseMatrixA.getNumElems()*pGridDimensionSize*pGridDimensionSize;
     std::vector<T> blockedBaseCaseData(aggregSize);
     // Note: recv buffer will be larger tha send buffer * pGridDimensionSize**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
-    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DOUBLE,
-      &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DOUBLE, slice2Dcomm);
+    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DATATYPE,
+      &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DATATYPE, slice2Dcomm);
 
     TAU_FSTOP(CFR3D::blockedToCyclicTransformation);
     return util<T,U>::blockedToCyclicSpecial(

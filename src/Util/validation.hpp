@@ -59,7 +59,7 @@ void validator<T,U>::validateResidualParallel(
       matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
     if (columnAltComm != MPI_COMM_WORLD)
     {
-      MPI_Allreduce(MPI_IN_PLACE, matrixC.getRawData(), matrixC.getNumElems(), MPI_DOUBLE,
+      MPI_Allreduce(MPI_IN_PLACE, matrixC.getRawData(), matrixC.getNumElems(), MPI_DATATYPE,
         MPI_SUM, columnAltComm);
     }
   }
@@ -108,10 +108,10 @@ void validator<T,U>::validateResidualParallel(
     }
     globalX += pGridDimensionSize;
   }
-  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  MPI_Allreduce(MPI_IN_PLACE, &control, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DATATYPE, MPI_SUM, sliceComm);
+  MPI_Allreduce(MPI_IN_PLACE, &control, 1, MPI_DATATYPE, MPI_SUM, sliceComm);
   error = std::sqrt(error) / std::sqrt(control);
-  //MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, depthComm);
+  //MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DATATYPE, MPI_SUM, depthComm);
   if (rankCommWorld == 0) {std::cout << label << error << std::endl;}
   MPI_Comm_free(&sliceComm);
 }
