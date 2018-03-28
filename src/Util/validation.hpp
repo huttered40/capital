@@ -5,7 +5,7 @@ template< template<typename,typename,template<typename,typename,int> class> clas
   template<typename,typename,template<typename,typename,int> class> class StructureArg2,
   template<typename,typename,template<typename,typename,int> class> class StructureArg3,
   template<typename,typename,int> class Distribution>
-void validator<T,U>::validateResidualParallel(
+T validator<T,U>::validateResidualParallel(
                         Matrix<T,U,StructureArg1,Distribution>& matrixA,
                         Matrix<T,U,StructureArg2,Distribution>& matrixB,
                         Matrix<T,U,StructureArg3,Distribution>& matrixC,
@@ -114,12 +114,13 @@ void validator<T,U>::validateResidualParallel(
   //MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DATATYPE, MPI_SUM, depthComm);
   if (rankCommWorld == 0) {std::cout << label << error << std::endl;}
   MPI_Comm_free(&sliceComm);
+  return error;
 }
 
 template<typename T, typename U>
 template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>
-void validator<T,U>::validateOrthogonalityParallel(
+T validator<T,U>::validateOrthogonalityParallel(
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
@@ -151,7 +152,8 @@ void validator<T,U>::validateOrthogonalityParallel(
   U globalNumColumns = matrixQ.getNumColumnsGlobal();
   U numElems = localNumRows*localNumColumns;
   Matrix<T,U,StructureArg,Distribution> matrixI(std::vector<T>(numElems,0), localNumColumns, localNumRows, globalNumColumns, globalNumRows, true);
-  validateResidualParallel(
+  T error = validateResidualParallel(
     matrixQtrans,matrixQ,matrixI,'I',commWorld, commInfo3D, columnAltComm, label);
   MPI_Comm_free(&sliceComm);
+  return error;
 }

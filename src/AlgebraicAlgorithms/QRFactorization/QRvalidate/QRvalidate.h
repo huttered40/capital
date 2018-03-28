@@ -6,6 +6,7 @@
 // System includes
 #include <iostream>
 #include <tuple>
+#include <utility>
 #include <cmath>
 
 #ifdef PORTER
@@ -66,10 +67,7 @@ public:
 
   // We require that for a 3D algorithm, Q is square and R is square
   template<template<typename,typename,int> class Distribution>
-  static void validateParallel3D(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
+  static std::pair<T,T> validateParallel3D(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -78,10 +76,7 @@ public:
                       );
 
   template<template<typename,typename,int> class Distribution>
-  static void validateParallelTunable(
-#ifdef TIMER
-                        pTimer& timer,
-#endif
+  static std::pair<T,T> validateParallelTunable(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,

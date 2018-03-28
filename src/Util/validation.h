@@ -27,7 +27,7 @@ public:
     template<typename,typename,template<typename,typename,int> class> class StructureArg2,
     template<typename,typename,template<typename,typename,int> class> class StructureArg3,
     template<typename,typename,int> class Distribution>
-  static void validateResidualParallel(
+  static T validateResidualParallel(
                         Matrix<T,U,StructureArg1,Distribution>& matrixA,
                         Matrix<T,U,StructureArg2,Distribution>& matrixB,
                         Matrix<T,U,StructureArg3,Distribution>& matrixC,
@@ -40,7 +40,7 @@ public:
 
   template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
     template<typename,typename,int> class Distribution>
-  static void validateOrthogonalityParallel(
+  static T validateOrthogonalityParallel(
                         Matrix<T,U,StructureArg,Distribution>& matrixQ,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,

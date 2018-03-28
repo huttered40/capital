@@ -95,7 +95,7 @@ void CFvalidate<T,U>::validateLocal(
 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void CFvalidate<T,U>::validateParallel(
+T CFvalidate<T,U>::validateParallel(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTri,
                         char dir,
@@ -123,7 +123,7 @@ void CFvalidate<T,U>::validateParallel(
   util<T,U>::transposeSwap(
     matrixTriTrans, rank, transposePartner, MPI_COMM_WORLD);
   std::string str = "Residual: ";
-  validator<T,U>::validateResidualParallel(
+  return validator<T,U>::validateResidualParallel(
     (dir == 'L' ? matrixTri : matrixTriTrans), (dir == 'L' ? matrixTriTrans : matrixTri), matrixA, dir, commWorld, commInfo3D, MPI_COMM_WORLD, str);
 }
 

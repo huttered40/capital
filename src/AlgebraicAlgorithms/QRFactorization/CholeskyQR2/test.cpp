@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
+#include <utility>
 
 // Local includes
 #include "./../../../Util/shared.h"
@@ -57,6 +58,8 @@ int main(int argc, char** argv)
   string fileStr = argv[9];
   string fileStrTotal=fileStr;
   string fileStrAvg=fileStr;
+  string fileStrNumericsTotal=fileStr + "_numerics.txt";
+  string fileStrNumericsAvg=fileStr + "_numerics_avg.txt";
   #ifdef PROFILE
   fileStrTotal += "_timer.txt";
   fileStrAvg += "_timer_avg.txt";
@@ -67,12 +70,16 @@ int main(int argc, char** argv)
   #endif
   FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
   FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
+  FILE* fptrNumericsTotal = fopen(fileStrNumericsTotal.c_str(),"w");
+  FILE* fptrNumericsAvg = fopen(fileStrNumericsAvg.c_str(),"w");
 
   // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
   MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
   MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, dimensionC, dimensionC);
 
   // Loop for getting a good range of results.
+  DATATYPE totalError1 = 0;
+  DATATYPE totalError2 = 0;
   for (int i=0; i<numIterations; i++)
   {
     // reset the matrix before timer starts
@@ -96,10 +103,17 @@ int main(int argc, char** argv)
     saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
     commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
       MPI_COMM_WORLD, dimensionD, dimensionC);
-    QRvalidate<DATATYPE,INTTYPE>::validateParallelTunable(
+    pair<DATATYPE,DATATYPE> error = QRvalidate<DATATYPE,INTTYPE>::validateParallelTunable(
       saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
+    if (rank == 0)
+    {
+      fprintf(fptrNumericsTotal, "%d\t %g\t %g\n", i, error.first, error.second);
+      totalError1 += error.first;
+      totalError2 += error.second;
+    }
   }
+  if (rank == 0) fprintf(fptrNumericsAvg, "%g\t %g\n", totalError1/numIterations, totalError2/numIterations);
   MPI_Finalize();
   return 0;
 }

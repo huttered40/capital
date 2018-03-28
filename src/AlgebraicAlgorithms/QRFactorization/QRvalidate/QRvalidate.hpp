@@ -106,7 +106,7 @@ void QRvalidate<T,U>::validateLocal1D(
 /* Validation against sequential BLAS/LAPACK constructs */
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void QRvalidate<T,U>::validateParallel3D(
+std::pair<T,T> QRvalidate<T,U>::validateParallel3D(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -119,19 +119,19 @@ void QRvalidate<T,U>::validateParallel3D(
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   util<T,U>::removeTriangle(myR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
   std::string str1 = "Residual: ";
-  validator<T,U>::validateResidualParallel(
+  T error1 = validator<T,U>::validateResidualParallel(
     myQ, myR, matrixA, 'F', commWorld, commInfo3D, str1);
   std::string str2 = "Deviation from orthogonality: ";
-  validator<T,U>::validateOrthogonalityParallel(
+  T error2 = validator<T,U>::validateOrthogonalityParallel(
     myQ,commWorld, commInfo3D, str2);
-  return;
+  return std::make_pair(error1,error2);
 }
 
 
 /* Validation against sequential BLAS/LAPACK constructs */
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void QRvalidate<T,U>::validateParallelTunable(
+std::pair<T,T> QRvalidate<T,U>::validateParallelTunable(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
@@ -149,13 +149,13 @@ void QRvalidate<T,U>::validateParallelTunable(
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   util<T,U>::removeTriangle(myR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
   std::string str1 = "Residual: ";
-  validator<T,U>::validateResidualParallel(
+  T error1 = validator<T,U>::validateResidualParallel(
     myQ, myR, matrixA, 'F', miniCubeComm, commInfo3D, MPI_COMM_WORLD, str1);
   std::string str2 = "Deviation from orthogonality: ";
-  validator<T,U>::validateOrthogonalityParallel(
+  T error2 = validator<T,U>::validateOrthogonalityParallel(
     myQ, miniCubeComm, commInfo3D, columnAltComm, str2);
   util<T,U>::destroy3DTopology(commInfo3D);
-  return;
+  return std::make_pair(error1,error2);
 }
 
 

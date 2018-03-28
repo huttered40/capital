@@ -21,11 +21,11 @@ template<
   		template<typename,typename, template<typename,typename,int> class> class StructureB,
   		template<typename,typename,int> class Distribution
 	>
-static void runTestCF(
+static T runTestCF(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matT,
 			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, FILE* fptrNumericsTotal, FILE* fptrNumericsAvg, int iterNum, int numIter
 )
 {
   // Reset matrixA
@@ -56,9 +56,10 @@ static void runTestCF(
   Matrix<T,U,StructureA,Distribution> saveA = matA;
   saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
-  CFvalidate<T,U>::validateParallel(
+  T error = CFvalidate<T,U>::validateParallel(
     saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
   util<T,U>::destroy3DTopology(commInfo3D);
+  return error;
 }
 
 int main(int argc, char** argv)
@@ -101,6 +102,8 @@ int main(int argc, char** argv)
   string fileStr = argv[7];
   string fileStrTotal=fileStr;
   string fileStrAvg=fileStr;
+  string fileStrNumericsTotal=fileStr + "_numerics.txt";
+  string fileStrNumericsAvg=fileStr + "_numerics_avg.txt";
   #ifdef PROFILE
   fileStrTotal += "_timer.txt";
   fileStrAvg += "_timer_avg.txt";
@@ -111,14 +114,23 @@ int main(int argc, char** argv)
   #endif
   FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
   FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
+  FILE* fptrNumericsTotal = fopen(fileStrNumericsTotal.c_str(),"w");
+  FILE* fptrNumericsAvg = fopen(fileStrNumericsAvg.c_str(),"w");
 
   MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
   MatrixTypeA matT(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
+  DATATYPE totalError = 0;
   for (int i=0; i<numIterations; i++)
   {
-    runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
+    DATATYPE error = runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, fptrNumericsTotal, fptrNumericsAvg, i, numIterations);
+    if (rank == 0)
+    {
+      fprintf(fptrNumericsTotal, "%d\t %g\n", i, error);
+      totalError += error;
+    }
   }
+  if (rank == 0) fprintf(fptrNumericsAvg, "%g\n", totalError/numIterations);
   MPI_Finalize();
   return 0;
 }

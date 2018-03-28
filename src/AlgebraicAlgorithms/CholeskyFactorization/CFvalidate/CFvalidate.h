@@ -44,7 +44,7 @@ public:
                       );
 
   template<template<typename,typename,int> class Distribution>
-  static void validateParallel(
+  static T validateParallel(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
                         char dir,
