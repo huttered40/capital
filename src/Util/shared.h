@@ -9,6 +9,9 @@
 #ifdef CRITTER_TYPE
   #define CRITTER
 #endif
+#ifdef PERF_TYPE
+  #define PERFORMANCE
+#endif
 
 #ifdef FLOAT_TYPE
   #define DATATYPE float

@@ -9,7 +9,7 @@ tag5='bench_scala_cf'
 if [ $(hostname |grep "porter") != "" ]
 then
   machineName=PORTER
-  read -p "Do you want to use MPI[mpi] or AMPI[ampi]? Note that use of AMPI forfeits Profiling output. : " mpiType
+  read -p "Do you want to use MPI[mpi] or AMPI[ampi]? Note that use of AMPI forfeits Profiling/Critter output. : " mpiType
   if [ "${mpiType}" == "mpi" ]
   then
     export MPITYPE=MPI_TYPE
@@ -29,14 +29,28 @@ fi
 
 if [ "${mpiType}" == "mpi" ]
 then
-  read -p "Do you want Profiling/Timer[T] output or Critter[C] output? " profType
+  read -p "Do you want Profiling/Timer[T] output, Critter[C] output, or absolute performance[P] output? " profType
   if [ "${profType}" == "T" ]
   then
     export PROFTYPE=TIMER_TYPE
   elif [ "${profType}" == "C" ]
   then
     export PROFTYPE=CRITTER_TYPE
+  elif [ "${profType}" == "P" ]
+  then
+    export PROFTYPE=PERF_TYPE
   fi
+fi
+
+if [ "${mpiType}" == "ampi" ]
+then
+  export PROFTYPE=PERF_TYPE
+fi
+
+read -p "Should we delete the items in Results directory? Yes[1], No[0] " delDecision1
+if [ "${delDecision1}" == "1" ]
+then
+  rm -rf ../Results/*
 fi
 
 #read -p "Enter machine name [BGQ (cetus,mira), THETA, BW, STAMPEDE2, PORTER]: " machineName

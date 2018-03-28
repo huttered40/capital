@@ -23,40 +23,39 @@ template<
   		template<typename,typename, template<typename,typename,int> class> class StructureC = MatrixStructureSquare,
   		template<typename,typename,int> class Distribution
 	>
-static void runTestGemm(
+static double runTestGemm(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matB,
                         Matrix<T,U,StructureC,Distribution>& matC,
 			blasEngineArgumentPackage_gemm<T>& blasArgs,
 			int methodKey3,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter, int rank
 )
 {
+  double totalTime;
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   #ifdef CRITTER
   Critter_Clear();
   #endif
-  TAU_FSTART_FILE(Total, fileStrTimer);
+  TAU_FSTART(Total);
+  #ifdef PERFORMANCE
+  double startTime=MPI_Wtime();
+  #endif
   auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
   MM3D<T,U,cblasEngine>::Multiply(
     matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<T,U>::destroy3DTopology(commInfo3D);
-  TAU_FSTOP(Total);
+  #ifdef PERFORMANCE
+  totalTime=MPI_Wtime() - startTime;
+  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
+  #endif
+  TAU_FSTOP(Total);//, fptrTotal, fptrAvg, iterNum, numIter);
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
-/*
-  // No reason to do sequential validation here, as it will overrun the memory footprint on large tests.
-  // If this is needed, comment this out and try small tests on a separate branch.
-  // Sequential validation after 1 iteration, since numIterations == 1
-  // Lets make sure matrixA and matrixB are set correctly by re-setting their values
-  matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
-  matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-  MMvalidate<T,U,cblasEngine>::validateLocal(
-    matA, matB, matC, MPI_COMM_WORLD, blasArgs);
-*/
+  return totalTime;
 }
 
 template<
@@ -65,38 +64,38 @@ template<
   		template<typename,typename, template<typename,typename,int> class> class StructureB,
   		template<typename,typename,int> class Distribution
 	>
-static void runTestTrmm(
+static double runTestTrmm(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matB,
 			blasEngineArgumentPackage_trmm<T>& blasArgs,
 			int methodKey3,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter, int rank
 )
 {
+  double totalTime;
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   #ifdef CRITTER
   Critter_Clear();
   #endif
-  TAU_FSTART_FILE(Total, fileStrTimer);
+  TAU_FSTART(Total);
+  #ifdef PERFORMANCE
+  double startTime=MPI_Wtime();
+  #endif
   auto commInfo3D = util<T,U>::build3DTopology(
     MPI_COMM_WORLD);
   MM3D<T,U,cblasEngine>::Multiply(
     matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<T,U>::destroy3DTopology(commInfo3D);
+  #ifdef PERFORMANCE
+  totalTime=MPI_Wtime() - startTime;
+  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
+  #endif
   TAU_FSTOP(Total);
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
-/*
-  // No reason to do sequential validation here, as it will overrun the memory footprint on large tests.
-  // If this is needed, comment this out and try small tests on a separate branch.
-  Matrix<T,U,StructureB,Distribution> matBcopy = matB;
-  matBcopy.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
-  // Sequential validation after 1 iteration, since numIterations == 1
-  MMvalidate<T,U,cblasEngine>::validateLocal(
-    matA, matBcopy, matB, MPI_COMM_WORLD, blasArgs);
-*/
+  return totalTime;
 }
 
 
@@ -157,6 +156,10 @@ int main(int argc, char** argv)
     fileStrTotal += "_critter.txt";
     fileStrAvg += "_critter_avg.txt";
     #endif
+    #ifdef PERFORMANCE
+    fileStrTotal += "_perf.txt";
+    fileStrAvg += "_perf_avg.txt";
+    #endif
     FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
     FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
 
@@ -166,10 +169,15 @@ int main(int argc, char** argv)
     blasEngineArgumentPackage_gemm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
   
     // Loop for getting a good range of results.
+    double totalTime = 0;
     for (int i=0; i<numIterations; i++)
     {
-      runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
+      double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank);
+      totalTime += iterTime;
     }
+    #ifdef PERFORMANCE
+    if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+    #endif
   }
   else if (methodKey1 == 1)
   {
@@ -197,6 +205,10 @@ int main(int argc, char** argv)
     fileStrTotal += "_critter.txt";
     fileStrAvg += "_critter_avg.txt";
     #endif
+    #ifdef PERFORMANCE
+    fileStrTotal += "_perf.txt";
+    fileStrAvg += "_perf_avg.txt";
+    #endif
     FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
     FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
 
@@ -209,10 +221,15 @@ int main(int argc, char** argv)
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
  
       // Loop for getting a good range of results.
+      double totalTime = 0;
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank);
+        totalTime += iterTime;
       }
+      #ifdef PERFORMANCE
+      if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+      #endif
     }
     else if ((matrixUpLo == 0) && (triangleSide == 1))
     {
@@ -222,10 +239,15 @@ int main(int argc, char** argv)
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
+      double totalTime = 0;
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank);
+        totalTime += iterTime;
       }
+      #ifdef PERFORMANCE
+      if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+      #endif
     }
     else if ((matrixUpLo == 1) && (triangleSide == 0))
     {
@@ -235,10 +257,15 @@ int main(int argc, char** argv)
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   
       // Loop for getting a good range of results.
+      double totalTime = 0;
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank);
+        totalTime += iterTime;
       }
+      #ifdef PERFORMANCE
+      if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+      #endif
     }
     else if ((matrixUpLo == 1) && (triangleSide == 1))
     {
@@ -248,10 +275,15 @@ int main(int argc, char** argv)
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
+      double totalTime = 0;
       for (int i=0; i<numIterations; i++)
       {
-        runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank);
+        totalTime += iterTime;
       }
+      #ifdef PERFORMANCE
+      if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+      #endif
     }
   }
 

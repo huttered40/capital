@@ -55,14 +55,13 @@ namespace CTF {
   class Timer{
     public:
       std::string timer_name;
-      std::string fileStr;
       int index;
       int exited;
       int original;
       bool printBool;
     
     public:
-      Timer(const std::string& name, const std::string& file = "");
+      Timer(const std::string& name);
       ~Timer();
       void stop();
       void start();
@@ -137,11 +136,11 @@ namespace CTF {
 #define TAU_FSTART(ARG)                                           \
   do { CTF::Timer t(#ARG); t.start(); } while (0);
 
-#define TAU_FSTART_FILE(ARG1, ARG2)                                           \
-  do { CTF::Timer t(#ARG1, #ARG2); t.start(); } while (0);
-
 #define TAU_FSTOP(ARG)                                            \
   do { CTF::Timer t(#ARG); t.stop(); } while (0);
+
+#define TAU_FSTOP_FILE(ARG1,ARG2,ARG3,ARG4)                       \
+  do { CTF::Timer t(#ARG1); t.stop(); } while (0);
 
 #define TAU_PROFILE_TIMER(ARG1, ARG2, ARG3, ARG4)                 
 
@@ -159,6 +158,5 @@ namespace CTF {
 #define TAU_PROFILE_SET_CONTEXT(ARG)                              \
   if (ARG==0) CTF::set_context(MPI_COMM_WORLD);                    \
   else CTF::set_context((MPI_Comm)ARG);
-
 
 #endif /*CTF_TIMER_H_*/

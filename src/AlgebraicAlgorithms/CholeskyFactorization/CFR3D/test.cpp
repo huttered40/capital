@@ -6,6 +6,7 @@
 #include <utility>
 #include <cmath>
 #include <string>
+#include <utility>
 
 // Local includes
 #include "./../../../Util/shared.h"
@@ -21,23 +22,32 @@ template<
   		template<typename,typename, template<typename,typename,int> class> class StructureB,
   		template<typename,typename,int> class Distribution
 	>
-static T runTestCF(
+static pair<T,T> runTestCF(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matT,
 			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, FILE* fptrNumericsTotal, FILE* fptrNumericsAvg, int iterNum, int numIter
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, FILE* fptrNumericsTotal, FILE* fptrNumericsAvg,
+			int iterNum, int numIter, int rank
 )
 {
+  double totalTime;
   // Reset matrixA
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   #ifdef CRITTER
   Critter_Clear();
   #endif
   TAU_FSTART(Total);
+  #ifdef PERFORMANCE
+  double startTime=MPI_Wtime();
+  #endif
   auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
   CFR3D<T,U,cblasEngine>::Factor(
     matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, MPI_COMM_WORLD, commInfo3D);
   util<T,U>::destroy3DTopology(commInfo3D);
+  #ifdef PERFORMANCE
+  totalTime=MPI_Wtime() - startTime;
+  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
+  #endif
   TAU_FSTOP(Total);
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
@@ -51,7 +61,6 @@ static T runTestCF(
     CFvalidate<T,U>::validateLocal(saveA, matA, dir, MPI_COMM_WORLD);
   }
 */
-  int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   if (rank == 0) { std::cout << "\nNUMERICS\n"; }
   Matrix<T,U,StructureA,Distribution> saveA = matA;
   saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
@@ -59,7 +68,7 @@ static T runTestCF(
   T error = CFvalidate<T,U>::validateParallel(
     saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
   util<T,U>::destroy3DTopology(commInfo3D);
-  return error;
+  return make_pair(error, totalTime);
 }
 
 int main(int argc, char** argv)
@@ -112,6 +121,10 @@ int main(int argc, char** argv)
   fileStrTotal += "_critter.txt";
   fileStrAvg += "_critter_avg.txt";
   #endif
+  #ifdef PERFORMANCE
+  fileStrTotal += "_perf.txt";
+  fileStrAvg += "_perf_avg.txt";
+  #endif
   FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
   FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
   FILE* fptrNumericsTotal = fopen(fileStrNumericsTotal.c_str(),"w");
@@ -121,16 +134,22 @@ int main(int argc, char** argv)
   MatrixTypeA matT(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
   DATATYPE totalError = 0;
+  double totalTime = 0;
   for (int i=0; i<numIterations; i++)
   {
-    DATATYPE error = runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, fptrNumericsTotal, fptrNumericsAvg, i, numIterations);
+    pair<DATATYPE,double> info = runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, fptrNumericsTotal, fptrNumericsAvg, i, numIterations, rank);
     if (rank == 0)
     {
-      fprintf(fptrNumericsTotal, "%d\t %g\n", i, error);
-      totalError += error;
+      fprintf(fptrNumericsTotal, "%d\t %g\n", i, info.first);
+      totalError += info.first;
+      totalTime += info.second;
     }
   }
-  if (rank == 0) fprintf(fptrNumericsAvg, "%g\n", totalError/numIterations);
+  if (rank == 0)
+  {
+    fprintf(fptrNumericsAvg, "%g\n", totalError/numIterations);
+    fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+  }
   MPI_Finalize();
   return 0;
 }

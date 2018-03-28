@@ -68,6 +68,10 @@ int main(int argc, char** argv)
   fileStrTotal += "_critter.txt";
   fileStrAvg += "_critter_avg.txt";
   #endif
+  #ifdef PERFORMANCE
+  fileStrTotal += "_perf.txt";
+  fileStrAvg += "_perf_avg.txt";
+  #endif
   FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
   FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
   FILE* fptrNumericsTotal = fopen(fileStrNumericsTotal.c_str(),"w");
@@ -80,19 +84,32 @@ int main(int argc, char** argv)
   // Loop for getting a good range of results.
   DATATYPE totalError1 = 0;
   DATATYPE totalError2 = 0;
+  double totalTime = 0;
   for (int i=0; i<numIterations; i++)
   {
+    double saveTime;
     // reset the matrix before timer starts
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
     #ifdef CRITTER
     Critter_Clear();
     #endif
     TAU_FSTART(Total);
+    #ifdef PERFORMANCE
+    double startTime=MPI_Wtime();
+    #endif
     auto commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
       MPI_COMM_WORLD, dimensionD, dimensionC);
     CholeskyQR2<DATATYPE,INTTYPE,cblasEngine>::FactorTunable(
       matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
+    #ifdef PERFORMANCE
+    if (rank == 0) {
+      double totalTimeLocal=MPI_Wtime() - startTime;
+      fprintf(fptrTotal, "%d\t %g\n", i, totalTimeLocal);
+      totalTime += totalTimeLocal;
+      cout << "\nPERFORMANCE\nTotal time: " << totalTimeLocal << endl;
+    }
+    #endif
     TAU_FSTOP(Total);
     #ifdef CRITTER
     Critter_Print(fptrTotal, i, fptrAvg, numIterations);
@@ -113,7 +130,11 @@ int main(int argc, char** argv)
       totalError2 += error.second;
     }
   }
-  if (rank == 0) fprintf(fptrNumericsAvg, "%g\t %g\n", totalError1/numIterations, totalError2/numIterations);
+  if (rank == 0)
+  {
+    fprintf(fptrNumericsAvg, "%g\t %g\n", totalError1/numIterations, totalError2/numIterations);
+    fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+  }
   MPI_Finalize();
   return 0;
 }
