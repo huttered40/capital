@@ -110,7 +110,7 @@ int main(int argc, char** argv)
       cout << "\nPERFORMANCE\nTotal time: " << totalTimeLocal << endl;
     }
     #endif
-    TAU_FSTOP(Total);
+    TAU_FSTOP_FILE(Total, fptrTotal, fptrAvg, i, numIterations);
     #ifdef CRITTER
     Critter_Print(fptrTotal, i, fptrAvg, numIterations);
     #endif

@@ -42,7 +42,7 @@ namespace CTF {
       //~Function_timer();
       void compute_totals(MPI_Comm comm);
       bool operator<(const Function_timer& w) const ;
-      void print(FILE* output, 
+      void print(FILE* output, FILE* fptr,
                  MPI_Comm comm, 
                  int rank,
                  int np);
@@ -63,9 +63,9 @@ namespace CTF {
     public:
       Timer(const std::string& name);
       ~Timer();
-      void stop();
+      void stop(FILE* fptr=nullptr, int numIter=-1);
       void start();
-      void exit();
+      void exit(FILE* fptr=nullptr, int numIter=-1);
   };
 
   /**
@@ -139,8 +139,8 @@ namespace CTF {
 #define TAU_FSTOP(ARG)                                            \
   do { CTF::Timer t(#ARG); t.stop(); } while (0);
 
-#define TAU_FSTOP_FILE(ARG1,ARG2,ARG3,ARG4)                       \
-  do { CTF::Timer t(#ARG1); t.stop(); } while (0);
+#define TAU_FSTOP_FILE(ARG1,ARG2,ARG3,ARG4,ARG5)                       \
+  do { CTF::Timer t(#ARG1); t.stop(ARG2,ARG4); } while (0);
 
 #define TAU_PROFILE_TIMER(ARG1, ARG2, ARG3, ARG4)                 
 

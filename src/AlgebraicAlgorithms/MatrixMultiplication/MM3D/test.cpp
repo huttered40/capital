@@ -51,7 +51,7 @@ static double runTestGemm(
   totalTime=MPI_Wtime() - startTime;
   if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
   #endif
-  TAU_FSTOP(Total);//, fptrTotal, fptrAvg, iterNum, numIter);
+  TAU_FSTOP_FILE(Total, fptrTotal, fptrAvg, iterNum, numIter);
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
@@ -91,7 +91,7 @@ static double runTestTrmm(
   totalTime=MPI_Wtime() - startTime;
   if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
   #endif
-  TAU_FSTOP(Total);
+  TAU_FSTOP_FILE(Total, fptrTotal, fptrAvg, iterNum, numIter);
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif

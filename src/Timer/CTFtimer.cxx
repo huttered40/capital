@@ -72,7 +72,7 @@ namespace CTF{
     return total_time > w.total_time;
   }
 
-  void Function_timer::print(FILE* output, 
+  void Function_timer::print(FILE* output, FILE* fptr,
                              MPI_Comm comm, 
                              int rank,
                              int np)
@@ -89,6 +89,17 @@ namespace CTF{
       space[i] = '\0';
       fprintf(output, "%s", space.c_str());
       fprintf(output,"%5d   %3d.%03d   %3d.%02d  %3d.%03d   %3d.%02d\n",
+              total_calls/np,
+              (int)(total_time/np),
+              ((int)(1000.*(total_time)/np))%1000,
+              (int)(100.*(total_time)/complete_time),
+              ((int)(10000.*(total_time)/complete_time))%100,
+              (int)(total_excl_time/np),
+              ((int)(1000.*(total_excl_time)/np))%1000,
+              (int)(100.*(total_excl_time)/complete_time),
+              ((int)(10000.*(total_excl_time)/complete_time))%100);
+      fprintf(fptr, "\t%s", name.c_str());
+      fprintf(fptr,"\t%d\t%d.%d\t%d.%d\t%d.%d\t%d.%d",
               total_calls/np,
               (int)(total_time/np),
               ((int)(1000.*(total_time)/np))%1000,
@@ -168,7 +179,7 @@ namespace CTF{
   #endif
   }
 
-  void Timer::stop(){
+  void Timer::stop(FILE* fptr, int numIter){
   #ifdef PROFILE
     // Note that when we started the timer, as long as exited wasn't equal to 2, we set exited<-0, so this should really pass most of the time
     if (exited == 0){
@@ -183,7 +194,7 @@ namespace CTF{
         // Only increment calls when we have a start ^ stop match
         (*function_timers)[index].calls++;
       }
-      exit();
+      exit(fptr, numIter);
       exited = 1;
     }
   #endif
@@ -191,7 +202,7 @@ namespace CTF{
 
   Timer::~Timer(){ }
 
-  void print_timers(const string& name){
+  void print_timers(const string& name, FILE* fptr, int iterNum){
     int rank, np, i, j, len_symbols, nrecv_symbols;
 
     int is_fin = 0;
@@ -300,13 +311,15 @@ namespace CTF{
     std::sort(function_timers->begin(), function_timers->end());
     complete_time = (*function_timers)[0].total_time;
     if (rank == 0){
+      fprintf(fptr, "%d", iterNum);
       for (i=0; i<(int)function_timers->size(); i++){
-        (*function_timers)[i].print(output,comm,rank,np);
+        (*function_timers)[i].print(output,fptr,comm,rank,np);
       }
+      fprintf(fptr, "\n");
     }
   }
 
-  void Timer::exit(){
+  void Timer::exit(FILE* fptr, int numIter){
   #ifdef PROFILE
     if (set_contxt && original && !exited) {
       if (comm != MPI_COMM_WORLD){
@@ -320,7 +333,7 @@ namespace CTF{
         {
           printf("\nPROFILE\n");
         }
-        print_timers("all");  
+        print_timers("all", fptr, numIter);  
       }
       function_timers->clear();
       delete function_timers;
