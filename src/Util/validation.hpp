@@ -23,6 +23,7 @@ void validator<T,U>::validateResidualParallel(
 
   auto commInfo = util<T,U>::getCommunicatorSlice(
     commWorld);
+  Matrix<T,U,StructureArg3,Distribution> saveMatC = matrixC;
 
   MPI_Comm depthComm = std::get<3>(commInfo3D);
   MPI_Comm sliceComm = std::get<0>(commInfo);
@@ -69,6 +70,7 @@ void validator<T,U>::validateResidualParallel(
 
   // Now just calculate residual
   T error = 0;
+  T control = 0;
   U localNumRows = matrixC.getNumRowsLocal();
   U localNumColumns = matrixC.getNumColumnsLocal();
   U globalX = pGridCoordX;
@@ -79,32 +81,37 @@ void validator<T,U>::validateResidualParallel(
     for (int j=0; j<localNumRows; j++)
     {
       T val = 0;
+      T temp = 0;
       if ((dir == 'F') || ((dir == 'L') && (globalY >= globalX)) || ((dir == 'U') && (globalY <= globalX)))
       {
         val = matrixC.getRawData()[i*localNumRows+j];
+        temp = saveMatC.getRawData()[i*localNumRows+j];
       }
       else if (dir == 'I')
       {
         if (globalX == globalY)
         {
           val = std::abs(1. - matrixC.getRawData()[i*localNumRows+j]);
+          temp = 1;
         }
         else
         {
           val = matrixC.getRawData()[i*localNumRows+j];
+          temp = 0;
         }
         //if (matrixC.getRawData()[i*localNumRows+j] > .5) {std::cout << "CHECK THIS at global " << globalX << " " << globalY <<  std::endl;}
       }
-      val *= val;
-      //if (rank == 0) std::cout << val << " " << i << " " << j << std::endl;
-      error += std::abs(val);
+      error += std::abs(val*val);
+      control += std::abs(temp*temp);
       globalY += pGridDimensionSize;
+      //if (rank == 0) std::cout << val << " " << i << " " << j << std::endl;
     }
     globalX += pGridDimensionSize;
   }
-  error = std::sqrt(error);
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
-  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, depthComm);
+  MPI_Allreduce(MPI_IN_PLACE, &control, 1, MPI_DOUBLE, MPI_SUM, sliceComm);
+  error = std::sqrt(error) / std::sqrt(control);
+  //MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_SUM, depthComm);
   if (rankCommWorld == 0) {std::cout << label << error << std::endl;}
   MPI_Comm_free(&sliceComm);
 }
