@@ -33,7 +33,7 @@ then
   if [ "${profType}" == "T" ]
   then
     export PROFTYPE=TIMER_TYPE
-  elif [ "${mpiType}" == "C" ]
+  elif [ "${profType}" == "C" ]
   then
     export PROFTYPE=CRITTER_TYPE
   fi
