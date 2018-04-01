@@ -9,6 +9,7 @@ tag5='bench_scala_cf'
 if [ $(hostname |grep "porter") != "" ]
 then
   machineName=PORTER
+  scaplotDir=~/hutter2/ExternalLibraries/SCAPLOT/scaplot/
   read -p "Do you want to use MPI[mpi] or AMPI[ampi]? Note that use of AMPI forfeits Profiling/Critter output. : " mpiType
   if [ "${mpiType}" == "mpi" ]
   then
@@ -189,6 +190,17 @@ updateCounter () {
   then
     counter=\$((\$counter / \$3)) 
   fi
+  echo "\$counter"
+}
+
+findCountLength () {
+  local curr=\$1
+  local counter=0
+  while [ \$curr -le \$2 ];
+  do
+    curr=\$(updateCounter \$curr \$3 \$4)
+    counter=\$(( counter+1 ))
+  done
   echo "\$counter"
 }
 
@@ -425,6 +437,11 @@ launch$tag5 () {
 }
 
 
+# Note: in future, I may want to decouple numBinaries and numPlotTargets, but only when I find it necessary
+read -p "Enter the number of plot targets for these runs (for now, make this be the same as numTargets): " numPlotTargets
+echo "echo \"1\"" > $SCRATCH/${fileName}/plotInstructions.sh
+echo "echo \"\${numPlotTargets}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
 for i in {1..$numBinaries}
 do
   read -p "Enter binary tag [mm3d,cfr3d,cqr2,bench_scala_qr,bench_scala_cf]: " binaryTag
@@ -450,6 +467,9 @@ do
       read -p "In this strong scaling test for MM3D, enter dimension n: " DimensionN
       read -p "In this strong scaling test for MM3D, enter dimension k: " DimensionK
       read -p "Do you want an broadcast-based routine[0], or an Allgather-based routine[1]: " bcastVSallgath
+      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${DimensionM}_\${DimensionN}_\${DimensionK}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$DimensionM \$DimensionN \$DimensionK \$bcastVSallgath
     elif [ \$scale == 'WS' ]
     then
@@ -463,6 +483,9 @@ do
       read -p "In this weak scaling test for MM3D, enter factor by which to increase dimension k: " jumpDimensionK
       read -p "In this weak scaling test for MM3D, enter arithmetic operator by which to increase dimension k by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpDimensionKoperator
       read -p "Do you want an broadcast-based routine[0], or an Allgather-based routine[1]: " bcastVSallgath
+      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${startDimensionM}_\${startDimensionN}_\${startDimensionK}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$startDimensionM \$jumpDimensionM \$jumpDimensionMoperator \$startDimensionN \$jumpDimensionN \$jumpDimensionNoperator \$startDimensionK \$jumpDimensionK \$jumpDimensionKoperator \$bcastVSallgath
     fi
   elif [ \$binaryTag == 'cfr3d' ]
@@ -472,12 +495,18 @@ do
     if [ \$scale == 'SS' ]
     then
       read -p "In this strong scaling test for CFR3D, enter matrix dimension: " matrixDim
+      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${factorSide}_\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$matrixDim \$inverseCutOffMult
     elif [ \$scale == 'WS' ]
     then
       read -p "In this weak scaling test for CFR3D, enter starting matrix dimension: " startMatrixDim
       read -p "In this weak scaling test for CFR3D, enter factor by which to increase matrix dimension: " jumpMatrixDim
       read -p "In this weak scaling test for CFR3D, enter arithmetic operator by which to increase the matrix dimension by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpMatrixDimoperator
+      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${startMatrixDim}_\${factorSide}_\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$startMatrixDim \$jumpMatrixDim \$jumpMatrixDimoperator \$inverseCutOffMult
     fi
   elif [ \$binaryTag == 'cqr2' ]
@@ -489,6 +518,9 @@ do
       read -p "In this strong scaling test for CQR2, enter matrix dimension n: " matrixDimN
       read -p "In this strong scaling test for CQR2, enter starting tunable processor grid dimension d: " pDimD
       read -p "In this strong scaling test for CQR2, enter static tunable processor grid dimension c: " pDimC
+      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$matrixDimN \$pDimD \$pDimC \$inverseCutOffMult
     elif [ \$scale == 'WS' ]
     then
@@ -498,6 +530,9 @@ do
       read -p "In this weak scaling test for CQR2, enter matrix dimension n: " matrixDimN
       read -p "In this weak scaling test for CQR2, enter starting tunable processor grid dimension d: " pDimD
       read -p "In this weak scaling test for CQR2, enter static tunable processor grid dimension c: " pDimC
+      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${startMatrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$startMatrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$pDimD \$pDimC \$inverseCutOffMult
     fi
   elif [ \$binaryTag == 'bench_scala_qr' ]
@@ -507,6 +542,9 @@ do
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension m: " matrixDimM
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension n: " matrixDimN
       read -p "In this strong scaling test for Scalapack QR, enter the starting number of processor rows: " numProws
+      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$matrixDimN \$numProws
     elif [ \$scale == 'WS' ]
     then
@@ -515,6 +553,9 @@ do
       read -p "In this weak scaling test for Scalapack QR, enter arithmetic operator by which to increase matrix dimension m by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpMatrixDimMoperator
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension n: " matrixDimN
       read -p "In this strong scaling test for Scalapack QR, enter the starting number of processor rows: " numProws
+      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$numProws
     fi
   elif [ \$binaryTag == 'bench_scala_cf' ]
@@ -526,12 +567,18 @@ do
     if [ \$scale == 'SS' ]
     then
       read -p "In this strong scaling test for Scalapack CF, enter the matrix dimension: " matrixDim
+      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesRoot}_\${matrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"\$(findCountLength \$startNumNodesRoot \$endNumNodesRoot \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodesRoot \$endNumNodesRoot \$jumpNumNodes \$jumpNumNodesoperator \$matrixDim
     elif [ \$scale == 'WS' ]
     then
       read -p "In this weak scaling test for Scalapack CF, enter the matrix dimension: " matrixDim
       read -p "In this weak scaling test for Scalapack CF, enter factor by which to increase matrix dimension: " jumpMatrixDim
       read -p "In this weak scaling test for Scalapack CF, enter arithmetic operator by which to increase the matrix dimension by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpMatrixDimoperator
+      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesRoot}_\${matrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"\$(findCountLength \$startNumNodesRoot \$endNumNodesRoot \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodesRoot \$endNumNodesRoot \$jumpNumNodes \$jumpNumNodesoperator \$matrixDim \$jumpMatrixDim \$jumpMatrixDimoperator
     fi
   fi
@@ -539,7 +586,7 @@ done
 EOF
 
 chmod +x $SCRATCH/${fileName}.sh
-./$SCRATCH/${fileName}.sh
+bash $SCRATCH/${fileName}.sh
 rm $SCRATCH/${fileName}.sh
 if [ "${machineName}" != "PORTER" ]
   then
@@ -549,3 +596,10 @@ if [ "${machineName}" != "PORTER" ]
     qsub -A QMCat -t ${numMinutes} -n ${numNodes} --mode script ${fileName}/script.sh
   fi
 fi
+
+# Generate the Makefile for Scaplot
+#if [ "${machineName}" == "PORTER" ]
+#then
+  #chmod +x $SCRATCH/${fileName}/plotInstructions.sh
+  #bash $SCRATCH/${fileName}/plotInstructions.sh | bash $SCAPLOT/makefileGenerator.sh
+#fi
