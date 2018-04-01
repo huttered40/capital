@@ -99,7 +99,7 @@ namespace CTF{
               (int)(100.*(total_excl_time)/complete_time),
               ((int)(10000.*(total_excl_time)/complete_time))%100);
       fprintf(fptr, "\t%s", name.c_str());
-      fprintf(fptr,"\t%d\t%d.%d\t%d.%d\t%d.%d\t%d.%d",
+      fprintf(fptr,"\t%d\t%3d.%03d\t%3d.%03d\t%3d.%03d\t%3d.%03d",
               total_calls/np,
               (int)(total_time/np),
               ((int)(1000.*(total_time)/np))%1000,
@@ -179,9 +179,10 @@ namespace CTF{
   #endif
   }
 
-  void Timer::stop(FILE* fptr, int numIter){
+  int Timer::stop(FILE* fptr, int numIter){
   #ifdef PROFILE
     // Note that when we started the timer, as long as exited wasn't equal to 2, we set exited<-0, so this should really pass most of the time
+    int numFuncs;
     if (exited == 0){
       int is_fin;
       MPI_Finalized(&is_fin);
@@ -194,20 +195,22 @@ namespace CTF{
         // Only increment calls when we have a start ^ stop match
         (*function_timers)[index].calls++;
       }
-      exit(fptr, numIter);
+      numFuncs = exit(fptr, numIter);
       exited = 1;
     }
+    return numFuncs;
   #endif
   }
 
   Timer::~Timer(){ }
 
-  void print_timers(const string& name, FILE* fptr, int iterNum){
+  int print_timers(const string& name, FILE* fptr, int iterNum){
     int rank, np, i, j, len_symbols, nrecv_symbols;
+    int numFuncs = 0;
 
     int is_fin = 0;
     MPI_Finalized(&is_fin);
-    if (is_fin) return;
+    if (is_fin) return 0;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &np);
 
@@ -314,16 +317,19 @@ namespace CTF{
       fprintf(fptr, "%d", iterNum);
       for (i=0; i<(int)function_timers->size(); i++){
         (*function_timers)[i].print(output,fptr,comm,rank,np);
+	numFuncs++;
       }
       fprintf(fptr, "\n");
     }
+    return numFuncs;
   }
 
-  void Timer::exit(FILE* fptr, int numIter){
+  int Timer::exit(FILE* fptr, int numIter){
   #ifdef PROFILE
+    int numFuncs;
     if (set_contxt && original && !exited) {
       if (comm != MPI_COMM_WORLD){
-        return;
+        return 0;
       }
       if (printBool)
       {
@@ -333,12 +339,13 @@ namespace CTF{
         {
           printf("\nPROFILE\n");
         }
-        print_timers("all", fptr, numIter);  
+        numFuncs = print_timers("all", fptr, numIter);  
       }
       function_timers->clear();
       delete function_timers;
       function_timers = NULL;
     }
+    return numFuncs;
   #endif
   }
 

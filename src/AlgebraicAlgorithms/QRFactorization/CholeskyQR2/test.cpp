@@ -63,6 +63,7 @@ int main(int argc, char** argv)
   #ifdef PROFILE
   fileStrTotal += "_timer.txt";
   fileStrAvg += "_timer_avg.txt";
+  int numFuncs = 0;				// For figuring out how many functions are being profiled (smart way to find average over all iterations)
   #endif
   #ifdef CRITTER
   fileStrTotal += "_critter.txt";
@@ -110,7 +111,7 @@ int main(int argc, char** argv)
       cout << "\nPERFORMANCE\nTotal time: " << totalTimeLocal << endl;
     }
     #endif
-    TAU_FSTOP_FILE(Total, fptrTotal, fptrAvg, i, numIterations);
+    TAU_FSTOP_FILE(Total, fptrTotal, i, numFuncs);
     #ifdef CRITTER
     Critter_Print(fptrTotal, i, fptrAvg, numIterations);
     #endif
@@ -133,8 +134,22 @@ int main(int argc, char** argv)
   if (rank == 0)
   {
     fprintf(fptrNumericsAvg, "%g\t %g\n", totalError1/numIterations, totalError2/numIterations);
+    #ifdef PERFORMANCE
     fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+    #endif
   }
+  fclose(fptrTotal);
+  #ifdef PERFORMANCE
+  fclose(fptrAvg);
+  #endif
+  #ifdef CRITTER
+  fclose(fptrAvg);
+  #endif
+  #ifdef PROFILE
+  util<DATATYPE,INTTYPE>::processAveragesFromFile(fptrAvg, fileStrTotal, numFuncs, numIterations, rank);
+  fclose(fptrAvg);
+  #endif
+
   MPI_Finalize();
   return 0;
 }

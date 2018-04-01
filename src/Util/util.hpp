@@ -368,3 +368,52 @@ void util<T,U>::removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, in
     globalDimHoriz += pGridDimensionSize;
   }
 }
+
+template<typename T, typename U>
+void util<T,U>::processAveragesFromFile(FILE* fptrAvg, std::string& fileStrTotal, int numFuncs, int numIterations, int rank)
+{
+  if (rank == 0)
+  {
+    std::ifstream fptrTotal2(fileStrTotal.c_str());
+    //debugging
+    if (!fptrTotal2.is_open())
+    {
+      abort();
+    }
+    using profileType = std::tuple<std::string,int,double,double,double,double>;
+    std::vector<profileType> profileVector(numFuncs, std::make_tuple("",0,0,0,0,0));
+    for (int i=0; i<numIterations; i++)
+    {
+      // read in first item on line: iteration #
+      int numIter;
+      fptrTotal2 >> numIter;
+      for (int j=0; j<numFuncs; j++)
+      {
+        std::string funcName;
+        int numCalls;
+        double info1,info2,info3,info4;
+        fptrTotal2 >> funcName >> numCalls >> info1 >> info2 >> info3 >> info4;
+	// Below statement is for debugging
+	std::cout << "check this: " << funcName << " " << numCalls << " " << info1 << " " << info2 << " " << info3 << " " << info4 << std::endl;
+        std::get<0>(profileVector[j]) = funcName;
+        std::get<1>(profileVector[j]) = numCalls;
+        std::get<2>(profileVector[j]) += info1;
+        std::get<3>(profileVector[j]) += info2;
+        std::get<4>(profileVector[j]) += info3;
+        std::get<5>(profileVector[j]) += info4;
+      }
+    }
+    for (int i=0; i<numFuncs; i++)
+    {
+      if (i>0) fprintf(fptrAvg, "\t");
+      fprintf(fptrAvg, "%s", std::get<0>(profileVector[i]).c_str());
+      fprintf(fptrAvg, "\t%d", std::get<1>(profileVector[i]));
+      fprintf(fptrAvg, "\t%g", std::get<2>(profileVector[i])/numIterations);
+      fprintf(fptrAvg, "\t%g", std::get<3>(profileVector[i])/numIterations);
+      fprintf(fptrAvg, "\t%g", std::get<4>(profileVector[i])/numIterations);
+      fprintf(fptrAvg, "\t%g", std::get<5>(profileVector[i])/numIterations);
+    }
+    fprintf(fptrAvg, "\n");
+    fptrTotal2.close();
+  }
+}

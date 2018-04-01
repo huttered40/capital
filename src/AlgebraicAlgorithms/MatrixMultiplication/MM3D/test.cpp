@@ -29,7 +29,7 @@ static double runTestGemm(
                         Matrix<T,U,StructureC,Distribution>& matC,
 			blasEngineArgumentPackage_gemm<T>& blasArgs,
 			int methodKey3,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter, int rank
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter, int rank, int& numFuncs
 )
 {
   double totalTime;
@@ -51,7 +51,7 @@ static double runTestGemm(
   totalTime=MPI_Wtime() - startTime;
   if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
   #endif
-  TAU_FSTOP_FILE(Total, fptrTotal, fptrAvg, iterNum, numIter);
+  TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
@@ -69,7 +69,7 @@ static double runTestTrmm(
                         Matrix<T,U,StructureB,Distribution>& matB,
 			blasEngineArgumentPackage_trmm<T>& blasArgs,
 			int methodKey3,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter, int rank
+			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter, int rank, int& numFuncs
 )
 {
   double totalTime;
@@ -91,7 +91,7 @@ static double runTestTrmm(
   totalTime=MPI_Wtime() - startTime;
   if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
   #endif
-  TAU_FSTOP_FILE(Total, fptrTotal, fptrAvg, iterNum, numIter);
+  TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
@@ -170,13 +170,23 @@ int main(int argc, char** argv)
   
     // Loop for getting a good range of results.
     double totalTime = 0;
+    int numFuncs = 0;
     for (int i=0; i<numIterations; i++)
     {
-      double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank);
+      double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, numFuncs);
       totalTime += iterTime;
     }
+    fclose(fptrTotal);
     #ifdef PERFORMANCE
     if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+    fclose(fptrAvg);
+    #endif
+    #ifdef CRITTER
+    fclose(fptrAvg);
+    #endif
+    #ifdef PROFILE
+    util<DATATYPE,INTTYPE>::processAveragesFromFile(fptrAvg, fileStrTotal, numFuncs, numIterations, rank);
+    fclose(fptrAvg);
     #endif
   }
   else if (methodKey1 == 1)
@@ -213,6 +223,8 @@ int main(int argc, char** argv)
     FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
 
     // I guess I will go through all cases. Ugh!
+    double totalTime = 0;
+    int numFuncs = 0;
     if ((matrixUpLo == 0) && (triangleSide == 0))
     {
       MatrixTypeLT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
@@ -221,15 +233,11 @@ int main(int argc, char** argv)
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
  
       // Loop for getting a good range of results.
-      double totalTime = 0;
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, numFuncs);
         totalTime += iterTime;
       }
-      #ifdef PERFORMANCE
-      if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
-      #endif
     }
     else if ((matrixUpLo == 0) && (triangleSide == 1))
     {
@@ -239,15 +247,11 @@ int main(int argc, char** argv)
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
-      double totalTime = 0;
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, numFuncs);
         totalTime += iterTime;
       }
-      #ifdef PERFORMANCE
-      if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
-      #endif
     }
     else if ((matrixUpLo == 1) && (triangleSide == 0))
     {
@@ -257,15 +261,11 @@ int main(int argc, char** argv)
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   
       // Loop for getting a good range of results.
-      double totalTime = 0;
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, numFuncs);
         totalTime += iterTime;
       }
-      #ifdef PERFORMANCE
-      if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
-      #endif
     }
     else if ((matrixUpLo == 1) && (triangleSide == 1))
     {
@@ -275,16 +275,24 @@ int main(int argc, char** argv)
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
-      double totalTime = 0;
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, numFuncs);
         totalTime += iterTime;
       }
-      #ifdef PERFORMANCE
-      if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
-      #endif
     }
+    fclose(fptrTotal);
+    #ifdef PERFORMANCE
+    if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+    fclose(fptrAvg);
+    #endif
+    #ifdef CRITTER
+    fclose(fptrAvg);
+    #endif
+    #ifdef PROFILE
+    util<DATATYPE,INTTYPE>::processAveragesFromFile(fptrAvg, fileStrTotal, numFuncs, numIterations, rank);
+    fclose(fptrAvg);
+    #endif
   }
 
   MPI_Finalize();

@@ -27,7 +27,7 @@ static pair<T,T> runTestCF(
                         Matrix<T,U,StructureB,Distribution>& matT,
 			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
 			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, FILE* fptrNumericsTotal, FILE* fptrNumericsAvg,
-			int iterNum, int numIter, int rank
+			int iterNum, int numIter, int rank, int& numFuncs
 )
 {
   double totalTime;
@@ -48,7 +48,7 @@ static pair<T,T> runTestCF(
   totalTime=MPI_Wtime() - startTime;
   if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
   #endif
-  TAU_FSTOP_FILE(Total, fptrTotal, fptrAvg, iterNum, numIter);
+  TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
@@ -135,9 +135,11 @@ int main(int argc, char** argv)
 
   DATATYPE totalError = 0;
   double totalTime = 0;
+  int numFuncs=0;
   for (int i=0; i<numIterations; i++)
   {
-    pair<DATATYPE,double> info = runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, fptrNumericsTotal, fptrNumericsAvg, i, numIterations, rank);
+    pair<DATATYPE,double> info = runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize,
+      fptrTotal, fptrAvg, fptrNumericsTotal, fptrNumericsAvg, i, numIterations, rank, numFuncs);
     if (rank == 0)
     {
       fprintf(fptrNumericsTotal, "%d\t %g\n", i, info.first);
@@ -148,8 +150,22 @@ int main(int argc, char** argv)
   if (rank == 0)
   {
     fprintf(fptrNumericsAvg, "%g\n", totalError/numIterations);
+    #ifdef PERFORMANCE
     fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+    #endif
   }
+  fclose(fptrTotal);
+  #ifdef PERFORMANCE
+  fclose(fptrAvg);
+  #endif
+  #ifdef CRITTER
+  fclose(fptrAvg);
+  #endif
+  #ifdef PROFILE
+  util<DATATYPE,INTTYPE>::processAveragesFromFile(fptrAvg, fileStrTotal, numFuncs, numIterations, rank);
+  fclose(fptrAvg);
+  #endif
+
   MPI_Finalize();
   return 0;
 }

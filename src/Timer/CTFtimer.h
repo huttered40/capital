@@ -63,9 +63,9 @@ namespace CTF {
     public:
       Timer(const std::string& name);
       ~Timer();
-      void stop(FILE* fptr=nullptr, int numIter=-1);
+      int stop(FILE* fptr=nullptr, int numIter=-1);
       void start();
-      void exit(FILE* fptr=nullptr, int numIter=-1);
+      int exit(FILE* fptr=nullptr, int numIter=-1);
   };
 
   /**
@@ -139,8 +139,8 @@ namespace CTF {
 #define TAU_FSTOP(ARG)                                            \
   do { CTF::Timer t(#ARG); t.stop(); } while (0);
 
-#define TAU_FSTOP_FILE(ARG1,ARG2,ARG3,ARG4,ARG5)                       \
-  do { CTF::Timer t(#ARG1); t.stop(ARG2,ARG4); } while (0);
+#define TAU_FSTOP_FILE(ARG1,ARG2,ARG3,ARG4)                       \
+  do { CTF::Timer t(#ARG1); ARG4 = t.stop(ARG2,ARG3); } while (0);
 
 #define TAU_PROFILE_TIMER(ARG1, ARG2, ARG3, ARG4)                 
 
