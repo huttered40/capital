@@ -193,6 +193,8 @@ updateCounter () {
   echo "\$counter"
 }
 
+# Note: this function is only used for finding the number of dependencies for each binary run
+# Therefore, I can multiply the output by 2 (total and average) and it won't affect anything else
 findCountLength () {
   local curr=\$1
   local counter=0
@@ -201,6 +203,7 @@ findCountLength () {
     curr=\$(updateCounter \$curr \$3 \$4)
     counter=\$(( counter+1 ))
   done
+  counter=\$(( counter*2 ))
   echo "\$counter"
 }
 
@@ -212,21 +215,41 @@ log2 () {
     echo \$x
 }
 
+writePlotFileName() {
+  if [ "${profType}" == "T" ]
+  then
+    echo "echo \"\${1}_timer.txt\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+    echo "echo \"\${1}_timer_avg.txt\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  elif [ "${profType}" == "C" ]
+  then
+    echo "echo \"\${1}_critter.txt\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+    echo "echo \"\${1}_critter_avg.txt\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  elif [ "${profType}" == "P" ]
+  then
+    echo "echo \"\${1}_perf.txt\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+    echo "echo \"\${1}_perf_avg.txt\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  fi
+}
+
 # Functions that write the actual script, depending on machine
 launchJobs () {
   local numProcesses=\$((\$2 * $ppn))
   if [ "$machineName" == "BGQ" ]
   then
     echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:3:\$#} > \${@:1:1}.txt" >> \$scriptName
+    writePlotFileName \${@:1:1}
   elif [ "$machineName" == "BW" ]
   then
     echo "aprun -n \$numProcesses \$@" > \$scriptName
+    writePlotFileName \${@:1:1}
   elif [ "$machineName" == "THETA" ]
   then
     echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core \${@:3:\$#} > \${@:1:1}.txt" >> \$scriptName
+    writePlotFileName \${@:1:1}
   elif [ "$machineName" == "STAMPEDE2" ]
   then
     echo "dog" >> \$scriptName
+    writePlotFileName \${@:1:1}
   elif [ "$machineName" == "PORTER" ]
   then
     if [ "${mpiType}" == "mpi" ]
@@ -236,6 +259,7 @@ launchJobs () {
     then
       ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:3:\$#} > \${@:1:1}.txt
     fi
+    writePlotFileName \${@:1:1}
   fi
 }
 
@@ -587,7 +611,7 @@ EOF
 
 chmod +x $SCRATCH/${fileName}.sh
 bash $SCRATCH/${fileName}.sh
-rm $SCRATCH/${fileName}.sh
+#rm $SCRATCH/${fileName}.sh
 if [ "${machineName}" != "PORTER" ]
   then
   cd $SCRATCH
