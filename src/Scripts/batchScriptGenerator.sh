@@ -609,9 +609,9 @@ do
 done
 EOF
 
-chmod +x $SCRATCH/${fileName}.sh
+#chmod +x $SCRATCH/${fileName}.sh
 bash $SCRATCH/${fileName}.sh
-#rm $SCRATCH/${fileName}.sh
+rm $SCRATCH/${fileName}.sh
 if [ "${machineName}" != "PORTER" ]
   then
   cd $SCRATCH
@@ -622,8 +622,8 @@ if [ "${machineName}" != "PORTER" ]
 fi
 
 # Generate the Makefile for Scaplot
-#if [ "${machineName}" == "PORTER" ]
-#then
+if [ "${machineName}" == "PORTER" ]
+then
   #chmod +x $SCRATCH/${fileName}/plotInstructions.sh
-  #bash $SCRATCH/${fileName}/plotInstructions.sh | bash $SCAPLOT/makefileGenerator.sh
-#fi
+  bash $SCRATCH/${fileName}/plotInstructions.sh | bash $SCAPLOT/makefileGenerator.sh
+fi

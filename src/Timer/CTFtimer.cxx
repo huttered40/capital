@@ -195,11 +195,12 @@ namespace CTF{
         // Only increment calls when we have a start ^ stop match
         (*function_timers)[index].calls++;
       }
-      numFuncs = exit(fptr, numIter);
+      numFuncs = exitTimer(fptr, numIter);
       exited = 1;
     }
     return numFuncs;
   #endif
+  return 0;
   }
 
   Timer::~Timer(){ }
@@ -324,7 +325,7 @@ namespace CTF{
     return numFuncs;
   }
 
-  int Timer::exit(FILE* fptr, int numIter){
+  int Timer::exitTimer(FILE* fptr, int numIter){
   #ifdef PROFILE
     int numFuncs;
     if (set_contxt && original && !exited) {
@@ -346,7 +347,8 @@ namespace CTF{
       function_timers = NULL;
     }
     return numFuncs;
-  #endif
+    #endif
+    return 0;
   }
 
   void set_main_args(int argc, const char * const * argv){

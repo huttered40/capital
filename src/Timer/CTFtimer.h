@@ -6,6 +6,7 @@
 // System includes
 #include <string>
 #include <cstring>
+#include <stdio.h>
 
 // Local includes
 #include "../Util/shared.h"
@@ -63,9 +64,9 @@ namespace CTF {
     public:
       Timer(const std::string& name);
       ~Timer();
-      int stop(FILE* fptr=nullptr, int numIter=-1);
+      int stop(FILE* fptr=nullptr, int numIter=0);
       void start();
-      int exit(FILE* fptr=nullptr, int numIter=-1);
+      int exitTimer(FILE* fptr=nullptr, int numIter=0);
   };
 
   /**
@@ -126,11 +127,6 @@ namespace CTF {
   };
 
   void set_main_args(int argc, const char * const * argv);
-
-/**
- * @}
- */
-
 }
 
 #define TAU_FSTART(ARG)                                           \

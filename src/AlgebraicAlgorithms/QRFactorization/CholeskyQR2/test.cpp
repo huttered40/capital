@@ -63,7 +63,6 @@ int main(int argc, char** argv)
   #ifdef PROFILE
   fileStrTotal += "_timer.txt";
   fileStrAvg += "_timer_avg.txt";
-  int numFuncs = 0;				// For figuring out how many functions are being profiled (smart way to find average over all iterations)
   #endif
   #ifdef CRITTER
   fileStrTotal += "_critter.txt";
@@ -86,6 +85,7 @@ int main(int argc, char** argv)
   DATATYPE totalError1 = 0;
   DATATYPE totalError2 = 0;
   double totalTime = 0;
+  int numFuncs = 0;				// For figuring out how many functions are being profiled (smart way to find average over all iterations)
   for (int i=0; i<numIterations; i++)
   {
     double saveTime;
