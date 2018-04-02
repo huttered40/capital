@@ -9,7 +9,7 @@ tag5='bench_scala_cf'
 if [ $(hostname |grep "porter") != "" ]
 then
   machineName=PORTER
-  scaplotDir=~/hutter2/ExternalLibraries/SCAPLOT/scaplot/
+  scaplotDir=~/hutter2/ExternalLibraries/SCAPLOT/scaplot
   read -p "Do you want to use MPI[mpi] or AMPI[ampi]? Note that use of AMPI forfeits Profiling/Critter output. : " mpiType
   if [ "${mpiType}" == "mpi" ]
   then
@@ -117,9 +117,10 @@ elif [ "${machineName}" == "PORTER" ]
 then
   if [ ! -d "../Results" ];
   then
-    mkdir ../Results/
+    echo "dog"
+    mkdir ~/hutter2/ParallelAlgebraicAlgorithms/src/Results
   fi
-  export SCRATCH=./../Results
+  export SCRATCH=~/hutter2/ParallelAlgebraicAlgorithms/src/Results
 fi
 
 cat <<-EOF > $SCRATCH/${fileName}.sh
@@ -229,6 +230,8 @@ writePlotFileName() {
     echo "echo \"\${1}_perf.txt\"" >> $SCRATCH/${fileName}/plotInstructions.sh
     echo "echo \"\${1}_perf_avg.txt\"" >> $SCRATCH/${fileName}/plotInstructions.sh
   fi
+  echo "echo \"\${1}_numerics.txt\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  echo "echo \"\${1}_numerics_avg.txt\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 }
 
 # Functions that write the actual script, depending on machine
@@ -625,5 +628,6 @@ fi
 if [ "${machineName}" == "PORTER" ]
 then
   #chmod +x $SCRATCH/${fileName}/plotInstructions.sh
-  bash $SCRATCH/${fileName}/plotInstructions.sh | bash $SCAPLOT/makefileGenerator.sh
+  cd ${scaplotDir}
+  bash $SCRATCH/${fileName}/plotInstructions.sh | bash makefileGenerator.sh
 fi
