@@ -671,5 +671,5 @@ if [ "${machineName}" == "PORTER" ]
 then
   #chmod +x $SCRATCH/${fileName}/plotInstructions.sh
   cd ${scaplotDir}
-  bash $SCRATCH/${fileName}/plotInstructions.sh | bash makefileGenerator.sh
+  bash $SCRATCH/${fileName}/plotInstructions.sh | bash MakePlotScript.sh
 fi
