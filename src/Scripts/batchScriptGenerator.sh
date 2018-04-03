@@ -471,17 +471,23 @@ echo "echo \"${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 for ((i=1; i<=${numTests}; i++))
 do
   echo -e "\nTest #\${i}\n"
+  read -p "Enter binary tag [mm3d,cfr3d,cqr2,bench_scala_qr,bench_scala_cf]: " binaryTag
+  binaryPath=${BINPATH}\${binaryTag}_${machineName}
+  if [ "${machineName}" == "PORTER" ]
+  then
+    binaryPath=\${binaryPath}_${mpiType}
+  fi
+  read -p "Enter scaling type [SS,WS]: " scale
   read -p "Enter number of different configurations/binaries which will be used for this test: " numBinaries
+
+  # Echo for SCAPLOT makefile generator
+  echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  echo "echo \"\${scale}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
   echo "echo \"\${numBinaries}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
   for ((j=1; j<=\${numBinaries}; j++))
   do
-    read -p "Enter binary tag [mm3d,cfr3d,cqr2,bench_scala_qr,bench_scala_cf]: " binaryTag
-    binaryPath=${BINPATH}\${binaryTag}_${machineName}
-    if [ "${machineName}" == "PORTER" ]
-    then
-      binaryPath=\${binaryPath}_${mpiType}
-    fi
-    read -p "Enter scaling type [SS,WS]: " scale
+    echo -e "\nStage #\${j}"
     read -p "Enter number of iterations: " numIterations
     if [ \$binaryTag != 'bench_scala_cf' ]
     then
