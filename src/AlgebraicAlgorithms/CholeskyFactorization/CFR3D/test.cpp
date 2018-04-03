@@ -27,7 +27,7 @@ static pair<T,T> runTestCF(
                         Matrix<T,U,StructureB,Distribution>& matT,
 			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
 			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, FILE* fptrNumericsTotal, FILE* fptrNumericsAvg,
-			int iterNum, int numIter, int rank, int& numFuncs
+			int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
   double totalTime;
@@ -46,7 +46,7 @@ static pair<T,T> runTestCF(
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   totalTime=MPI_Wtime() - startTime;
-  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
+  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t%d\t%g\n", size, iterNum, totalTime); }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
@@ -139,19 +139,19 @@ int main(int argc, char** argv)
   for (int i=0; i<numIterations; i++)
   {
     pair<DATATYPE,double> info = runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize,
-      fptrTotal, fptrAvg, fptrNumericsTotal, fptrNumericsAvg, i, numIterations, rank, numFuncs);
+      fptrTotal, fptrAvg, fptrNumericsTotal, fptrNumericsAvg, i, numIterations, rank, size, numFuncs);
     if (rank == 0)
     {
-      fprintf(fptrNumericsTotal, "%d\t %g\n", i, info.first);
+      fprintf(fptrNumericsTotal, "%d\t%g\n", size, i, info.first);
       totalError += info.first;
       totalTime += info.second;
     }
   }
   if (rank == 0)
   {
-    fprintf(fptrNumericsAvg, "%g\n", totalError/numIterations);
+    fprintf(fptrNumericsAvg, "%d\t%g\n", size, totalError/numIterations);
     #ifdef PERFORMANCE
-    fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+    fprintf(fptrAvg, "%d\t%g\n", size, totalTime/numIterations);
     #endif
   }
   fclose(fptrTotal);

@@ -106,7 +106,7 @@ int main(int argc, char** argv)
     #ifdef PERFORMANCE
     if (rank == 0) {
       double totalTimeLocal=MPI_Wtime() - startTime;
-      fprintf(fptrTotal, "%d\t %g\n", i, totalTimeLocal);
+      fprintf(fptrTotal, "%d\t%d\t%g\n", size, i, totalTimeLocal);
       totalTime += totalTimeLocal;
       cout << "\nPERFORMANCE\nTotal time: " << totalTimeLocal << endl;
     }
@@ -126,16 +126,16 @@ int main(int argc, char** argv)
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
     if (rank == 0)
     {
-      fprintf(fptrNumericsTotal, "%d\t %g\t %g\n", i, error.first, error.second);
+      fprintf(fptrNumericsTotal, "%d\t%d\t%g\t%g\n", size, i, error.first, error.second);
       totalError1 += error.first;
       totalError2 += error.second;
     }
   }
   if (rank == 0)
   {
-    fprintf(fptrNumericsAvg, "%g\t %g\n", totalError1/numIterations, totalError2/numIterations);
+    fprintf(fptrNumericsAvg, "%d\t%g\t%g\n", size, totalError1/numIterations, totalError2/numIterations);
     #ifdef PERFORMANCE
-    fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+    fprintf(fptrAvg, "%%d\tg\n", size, totalTime/numIterations);
     #endif
   }
   fclose(fptrTotal);

@@ -28,8 +28,8 @@ static double runTestGemm(
                         Matrix<T,U,StructureB,Distribution>& matB,
                         Matrix<T,U,StructureC,Distribution>& matC,
 			blasEngineArgumentPackage_gemm<T>& blasArgs,
-			int methodKey3,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter, int rank, int& numFuncs
+			int methodKey3, int pCoordX, int pCoordY, int pGridDimensionSize,
+			FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
   double totalTime;
@@ -49,7 +49,7 @@ static double runTestGemm(
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   totalTime=MPI_Wtime() - startTime;
-  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
+  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t%d\t %g\n", size, iterNum, totalTime); }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
@@ -68,8 +68,8 @@ static double runTestTrmm(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matB,
 			blasEngineArgumentPackage_trmm<T>& blasArgs,
-			int methodKey3,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter, int rank, int& numFuncs
+			int methodKey3, int pCoordX, int pCoordY, int pGridDimensionSize,
+			FILE* fptrTotal, FILE* fptrAvg, int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
   double totalTime;
@@ -89,7 +89,7 @@ static double runTestTrmm(
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   totalTime=MPI_Wtime() - startTime;
-  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t %g\n", iterNum, totalTime); }
+  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t%d\t %g\n", size, iterNum, totalTime); }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
@@ -173,12 +173,12 @@ int main(int argc, char** argv)
     int numFuncs = 0;
     for (int i=0; i<numIterations; i++)
     {
-      double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, numFuncs);
+      double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, size, numFuncs);
       totalTime += iterTime;
     }
     fclose(fptrTotal);
     #ifdef PERFORMANCE
-    if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+    if (rank == 0) fprintf(fptrAvg, "%d\t%g\n", size, totalTime/numIterations);
     fclose(fptrAvg);
     #endif
     #ifdef CRITTER
@@ -235,7 +235,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, numFuncs);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
@@ -249,7 +249,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, numFuncs);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
@@ -263,7 +263,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, numFuncs);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
@@ -277,13 +277,13 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, numFuncs);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
     fclose(fptrTotal);
     #ifdef PERFORMANCE
-    if (rank == 0) fprintf(fptrAvg, "%g\n", totalTime/numIterations);
+    if (rank == 0) fprintf(fptrAvg, "%d\t%g\n", size, totalTime/numIterations);
     fclose(fptrAvg);
     #endif
     #ifdef CRITTER
