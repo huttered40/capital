@@ -468,7 +468,7 @@ echo "echo \"${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
 # Echo for data collection from remote machine (not porter) to PAA/src/Results
 # This temporary file will be deleted while collectScript.sh is called.
-echo "echo \"${fileName}\"" >> collectInstructions.sh
+echo "echo \"${fileName}\"" > collectInstructions.sh
 
 
 for ((i=1; i<=${numTests}; i++))
