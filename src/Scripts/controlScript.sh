@@ -460,6 +460,7 @@ launch$tag5 () {
 # Note: in future, I may want to decouple numBinaries and numPlotTargets, but only when I find it necessary
 # Write to Plot Instructions file, for use by SCAPLOT makefile generator
 echo "echo \"1\"" > $SCRATCH/${fileName}/plotInstructions.sh
+echo "echo \"${fileName}\"" > $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${numTests}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${profType}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
