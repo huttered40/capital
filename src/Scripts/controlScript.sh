@@ -465,6 +465,11 @@ echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${profType}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
+# Echo for data collection from remote machine (not porter) to PAA/src/Results
+# This temporary file will be deleted while collectScript.sh is called.
+echo "echo \"${fileName}\"" >> collectInstructions.sh
+
+
 for ((i=1; i<=${numTests}; i++))
 do
   echo -e "\nTest #\${i}\n"
@@ -661,12 +666,4 @@ if [ "${machineName}" != "PORTER" ]
   then
     qsub -A QMCat -t ${numMinutes} -n ${numNodes} --mode script ${fileName}/script.sh
   fi
-fi
-
-# Generate the Makefile for Scaplot
-if [ "${machineName}" == "PORTER" ]
-then
-  #chmod +x $SCRATCH/${fileName}/plotInstructions.sh
-  cd ${scaplotDir}
-  bash $SCRATCH/${fileName}/plotInstructions.sh | bash MakePlotScript.sh
 fi
