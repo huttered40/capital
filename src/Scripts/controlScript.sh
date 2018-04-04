@@ -52,7 +52,7 @@ fi
 
 #read -p "Enter machine name [BGQ (cetus,mira), THETA, BW, STAMPEDE2, PORTER]: " machineName
 #read -p "Enter the Date (MM_DD_YYYY): " dateStr
-dateStr=$(date +%Y-%m-%d-%H:%M:%S)
+dateStr=$(date +%Y-%m-%d-%H_%M_%S)
 read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter maximum number of nodes requested: " numNodes
 read -p "Enter ppn: " ppn
@@ -114,16 +114,13 @@ then
   if [ ! -d "../Results" ];
   then
     echo "dog"
-    mkdir ~/hutter2/ParallelAlgebraicAlgorithms/src/Results
+    mkdir ../Results
   fi
-  export SCRATCH=~/hutter2/ParallelAlgebraicAlgorithms/src/Results
+  export SCRATCH=../Results
 fi
 
 cat <<-EOF > $SCRATCH/${fileName}.sh
-if [ "${machineName}" != "PORTER" ]
-then
-  scriptName=$SCRATCH/${fileName}/script.sh
-fi
+scriptName=$SCRATCH/${fileName}/script.sh
 if [ ! -d "$SCRATCH/${fileName}/" ];
 then
   mkdir $SCRATCH/${fileName}/
