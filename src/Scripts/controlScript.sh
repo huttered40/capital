@@ -485,7 +485,7 @@ do
   for ((j=0; j<\${nodeCount}; j++))
   do
     read -p "Enter number of nodes (\${j} of \${nodeCount}: " nodeNumber
-    echo "\"\${nodeNumber}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+    echo "echo \"\${nodeNumber}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
   done
 
   for ((j=1; j<=\${numBinaries}; j++))
