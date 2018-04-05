@@ -480,6 +480,13 @@ do
   # Echo for SCAPLOT makefile generator
   echo "echo \"\${scale}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
   echo "echo \"\${numBinaries}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  read -p "Enter number of disinct nodes across all binaries of this test. Afterward, list them in increasing order: " nodeCount
+  echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
+  for ((j=0; j<\${nodeCount}; j++))
+  do
+    read -p "Enter number of nodes (\${j} of \${nodeCount}: " nodeNumber
+    echo "\"\${nodeNumber}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  done
 
   for ((j=1; j<=\${numBinaries}; j++))
   do
