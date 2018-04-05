@@ -268,6 +268,12 @@ launch$tag1 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
+        # Write to plotInstructions file
+	echo "\"\${8}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${9}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${10}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        echo "\"\${11}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
         local fileString="results/results_${tag1}_\$1_\${startNumNodes}nodes_0_\${11}bcastRoutine_\${8}m_\${9}n_\${10}k_\${3}numIter"
         launchJobs \${fileString} \$startNumNodes \$2 0 \${11} \$8 \$9 \${10} \$3 $SCRATCH/${fileName}/\${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
@@ -281,6 +287,12 @@ launch$tag1 () {
     local startDimensionK=\${14}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
+        # Write to plotInstructions file
+	echo "\"\${startDimensionM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${startDimensionN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${startDimensionK}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${17}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
         local fileString="/results/results_${tag1}_\$1_\${startNumNodes}nodes_0_\${17}bcastRoutine_\${startDimensionM}m_\${startDimensionN}n_\${startDimensionK}k_\${3}numIter"
         launchJobs \${fileString} \$startNumNodes \$2 0 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3 $SCRATCH/${fileName}/\${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
@@ -299,6 +311,10 @@ launch$tag2 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
+        # Write to plotInstructions file
+	echo "\"\${9}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${10}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
         local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${9}dim_0bcMult_\${10}inverseCutOffMult_0panelDimMult_\${3}numIter"
         launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} 0 \${10} 0 \$3 $SCRATCH/${fileName}/\${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
@@ -310,6 +326,10 @@ launch$tag2 () {
     local endNumNodes=\$5
     while [ \$startNumNodes -le \$endNumNodes ];
     do
+        # Write to plotInstructions file
+	echo "\"\${startMatrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${12}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
         local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${startMatrixDim}dim_0bcMult_\${12}inverseCutOffMult_0panelDimMult_\${3}numIter"
         launchJobs \${fileString} \$startNumNodes \$2 \$8 \${startMatrixDim} 0 \${12} 0 \$3 $SCRATCH/${fileName}/\${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
@@ -327,6 +347,13 @@ launch$tag3 () {
     local startPdimD=\${10}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
+        # Write to plotInstructions file
+	echo "\"\${8}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${9}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${startPdimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${12}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
         local fileString="results/results_${tag3}_\$1_\${startNumNodes}nodes_\${8}dimM_\${9}dimN_\${12}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC_\${3}numIter"
         launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} \${12} 0 0 \${startPdimD} \${11} \$3 $SCRATCH/${fileName}/\${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
@@ -340,6 +367,13 @@ launch$tag3 () {
     local startPdimD=\${12}
     while [ \$startNumNodes -le \$endNumNodes ];
     do
+        # Write to plotInstructions file
+	echo "\"\${startMatrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${11}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${startPdimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "\"\${14}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
         local fileString="results/results_${tag3}_\$1_\${startNumNodes}nodes_\${startMatrixDimM}dimM_\${11}dimN_\${14}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${13}pDimC_\${3}numIter"
         launchJobs \${fileString} \$startNumNodes \$2 \${8} \${11} \${14} 0 0 \${startPdimD} \${13} \$3 $SCRATCH/${fileName}/\${fileString}
         startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
