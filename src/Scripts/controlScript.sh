@@ -13,6 +13,7 @@ then
 fi
 
 scalaDir=""
+machineName=""
 if [ "$(hostname |grep "porter")" != "" ]
 then
   machineName=PORTER
@@ -148,10 +149,10 @@ if [ ! -d "$SCRATCH/${fileName}/results" ];
 then
   mkdir $SCRATCH/${fileName}/results
 fi
-if [ "${machineName}" == "cetus" ] || [ "${machineName}" == "mira" ]
+if [ "${machineName}" == "BGQ" ]
 then
   echo "#!/bin/sh" > \$scriptName
-elif [ "${machineName}" == "bw" ]
+elif [ "${machineName}" == "BW" ]
 then
   echo "#!/bin/bash" > \$scriptName
   echo "#PBS -l nodes=$numNodes:ppn=${ppn}:xe" >> \$scriptName
@@ -166,7 +167,7 @@ then
   echo "cd \$PBS_O_WORKDIR" >> \$scriptName
   echo "#module load craype-hugepages2M  perftools" >> \$scriptName
   echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \$scriptName
-elif [ "${machineName}" == "theta" ]
+elif [ "${machineName}" == "THETA" ]
 then
   echo "#!/bin/sh" > \$scriptName
   echo "#COBALT -t ${numMinutes}" >> \$scriptName
@@ -182,7 +183,7 @@ then
   echo "export n_openmp_threads_per_rank=\${numOMPthreadsPerRank}" >> \$scriptName
   echo "export n_hyperthreads_per_core=\${numHyperThreadsPerCore}" >> \$scriptName
   echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \$scriptName
-elif [ "${machineName}" == "stampede2" ]
+elif [ "${machineName}" == "STAMPEDE22" ]
 then
   echo "dog" > \$scriptName
 fi
