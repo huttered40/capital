@@ -6,6 +6,12 @@ tag3='cqr2'
 tag4='bench_scala_qr'
 tag5='bench_scala_cf'
 
+# Make sure that the src/bin directory is created, or else compilation won't work
+if [ ! -d "../bin" ];
+then
+  mkdir ../bin
+fi
+
 scalaDir=""
 if [ "$(hostname |grep "porter")" != "" ]
 then
