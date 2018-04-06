@@ -72,7 +72,7 @@ endif
 ifneq ($(THETA_machine),)
   MACHINE=THETA
   CCMPI = CC
-  CFLAGS = -g -Wall -O3 -std=c++11 -mkl=parallel
+  CFLAGS = -g -Wall -O3 -std=c++11 -mkl=parallel -xMIC-AVX512
 
   OBJS1 = mm3d_$(MACHINE)
 

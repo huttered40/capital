@@ -73,7 +73,7 @@ endif
 ifneq ($(THETA_machine),)
   MACHINE=THETA
   CCMPI = CC
-  CFLAGS = -g -Wall -fast -std=c++11 -mkl=parallel
+  CFLAGS = -g -Wall -fast -std=c++11 -mkl=parallel -xMIC-AVX512
 
   OBJS1 = cqr2_$(MACHINE)
 
