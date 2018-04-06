@@ -7,7 +7,7 @@ tag4='bench_scala_qr'
 tag5='bench_scala_cf'
 
 scalaDir=""
-if [ $(hostname |grep "porter") != "" ]
+if [ "$(hostname |grep "porter")" != "" ]
 then
   machineName=PORTER
   scalaDir=~/hutter2/ExternalLibraries/CANDMC/CANDMC
@@ -20,17 +20,17 @@ then
   then
     export MPITYPE=AMPI_TYPE
   fi
-elif [ $(hostname |grep "mira") != "" ] || [ $(hostname |grep "cetus") != "" ]
+elif [ "$(hostname |grep "mira")" != "" ] || [ "$(hostname |grep "cetus")" != "" ]
 then
   machineName=BGQ
   scalaDir=~/scratch/CANDMC
   export MPITYPE=MPI_TYPE
-elif [ $(hostname |grep "theta") != "" ]
+elif [ "$(hostname |grep "theta")" != "" ]
 then
   machineName=THETA
   scalaDir=~/scratch/CANDMC
   export MPITYPE=MPI_TYPE
-elif [ $(hostname |grep "stampede2") != "" ]
+elif [ "$(hostname |grep "stampede2")" != "" ]
 then
   machineName=STAMPEDE2
   scalaDir=""                # Fill in soon
@@ -170,9 +170,12 @@ then
   echo "export n_nodes=\$COBALT_JOBSIZE" >> \$scriptName
   echo "export n_mpi_ranks_per_node=${ppn}" >> \$scriptName
   echo "export n_mpi_ranks=\$((${numNodes} * ${ppn}))" >> \$scriptName
-  echo "export n_openmp_threads_per_rank=4" >> \$scriptName
-  echo "export n_hyperthreads_per_core=2" >> \$scriptName
-  echo "export n_hyperthreads_skipped_between_ranks=4" >> \$scriptName
+  read -p "Enter number of OpenMP threads per rank: " numOMPthreadsPerRank
+  read -p "Enter number of hyperthreads per core: " numHyperThreadsPerCore
+  read -p "Enter number of hyperthreads skipped per rank: " numHyperThreadsSkippedPerRank
+  echo "export n_openmp_threads_per_rank=\${numOMPthreadsPerRank}" >> \$scriptName
+  echo "export n_hyperthreads_per_core=\${numHyperThreadsPerCore}" >> \$scriptName
+  echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \$scriptName
 elif [ "${machineName}" == "stampede2" ]
 then
   echo "dog" > \$scriptName
