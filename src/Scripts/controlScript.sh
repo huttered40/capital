@@ -65,12 +65,12 @@ read -p "Enter number of tests (equal to number of strong scaling or weak scalin
 
 if [ "${machineName}" == "BW" ]
 then
-  read -p "Enter number of hours of job (only valid on BW): " numHours
-  read -p "Enter number of minutes of job (only valid on BW): " numMinutes
-  read -p "Enter number of seconds of job (only valid on BW): " numSeconds
+  read -p "Enter number of hours of job: " numHours
+  read -p "Enter number of minutes of job: " numMinutes
+  read -p "Enter number of seconds of job: " numSeconds
 elif [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
 then
-  read -p "Enter number of minutes of job (only valid on BW): " numMinutes
+  read -p "Enter number of minutes of job: " numMinutes
 fi
 
 numPEs=$((ppn*numNodes))
