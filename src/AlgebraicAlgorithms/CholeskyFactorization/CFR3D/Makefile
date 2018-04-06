@@ -77,6 +77,7 @@ ifneq ($(THETA_machine),)
   OBJS1 = cfr3d_$(MACHINE)
 
   MPI: $(OBJS1)
+	rm *.o
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L../../../../../CritterXC40/critter/lib -lcritter
