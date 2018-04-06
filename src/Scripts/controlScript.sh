@@ -151,7 +151,7 @@ then
 fi
 if [ "${machineName}" == "BGQ" ]
 then
-  echo "#!/bin/sh" > \$scriptName
+  echo "#!/bin/sh" > \${scriptName}
 elif [ "${machineName}" == "BW" ]
 then
   echo "#!/bin/bash" > \$scriptName
@@ -169,12 +169,12 @@ then
   echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \$scriptName
 elif [ "${machineName}" == "THETA" ]
 then
-  echo "#!/bin/sh" > \$scriptName
+  echo "#!/bin/bash" > \$scriptName
   echo "#COBALT -t ${numMinutes}" >> \$scriptName
   echo "#COBALT -n ${numNodes}" >> \$scriptName
   echo "#COBALT --attrs mcdram=cache:numa=quad" >> \$scriptName
-  echo "#COBALT -A QMCat" >> \$scriptName
-  echo "export n_nodes=\$COBALT_JOBSIZE" >> \$scriptName
+  echo "#COBALT -A QMCat" >> \${scriptName}
+  echo "export n_nodes=${numNodes}" >> \$scriptName
   echo "export n_mpi_ranks_per_node=${ppn}" >> \$scriptName
   echo "export n_mpi_ranks=\$((${numNodes} * ${ppn}))" >> \$scriptName
   read -p "Enter number of OpenMP threads per rank: " numOMPthreadsPerRank
@@ -264,7 +264,7 @@ launchJobs () {
     writePlotFileName \${@:1:1}
   elif [ "$machineName" == "THETA" ]
   then
-    echo "#aprun -n $numNodes -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core \${@:3:\$#} > $SCRATCH/${fileName}/\${@:1:1}.txt" >> \$scriptName
+    echo "#aprun -n \${numProcesses} -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core \${@:3:\$#} > $SCRATCH/${fileName}/\${@:1:1}.txt" >> \$scriptName
     writePlotFileName \${@:1:1}
   elif [ "$machineName" == "STAMPEDE2" ]
   then
@@ -733,6 +733,6 @@ if [ "${machineName}" != "PORTER" ]
   cd $SCRATCH
   if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
   then
-    qsub -A QMCat -t ${numMinutes} -n ${numNodes} --mode script ${fileName}/script.sh
+    #qsub -A QMCat -t ${numMinutes} -n ${numNodes} --mode script ${fileName}/script.sh
   fi
 fi
