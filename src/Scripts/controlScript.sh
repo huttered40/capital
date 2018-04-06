@@ -6,9 +6,11 @@ tag3='cqr2'
 tag4='bench_scala_qr'
 tag5='bench_scala_cf'
 
+scalaDir=""
 if [ $(hostname |grep "porter") != "" ]
 then
   machineName=PORTER
+  scalaDir=~/hutter2/ExternalLibraries/CANDMC/CANDMC
   scaplotDir=~/hutter2/ExternalLibraries/SCAPLOT/scaplot
   read -p "Do you want to use MPI[mpi] or AMPI[ampi]? " mpiType
   if [ "${mpiType}" == "mpi" ]
@@ -21,14 +23,17 @@ then
 elif [ $(hostname |grep "mira") != "" ] || [ $(hostname |grep "cetus") != "" ]
 then
   machineName=BGQ
+  scalaDir=~/scratch/CANDMC
   export MPITYPE=MPI_TYPE
 elif [ $(hostname |grep "theta") != "" ]
 then
   machineName=THETA
+  scalaDir=~/scratch/CANDMC
   export MPITYPE=MPI_TYPE
 elif [ $(hostname |grep "stampede2") != "" ]
 then
   machineName=STAMPEDE2
+  scalaDir=""                # Fill in soon
   export MPITYPE=MPI_TYPE
 fi
 
@@ -94,8 +99,17 @@ then
   export INTTYPE=INT64_T_TYPE
 fi
 
+# Build PAA code
 make -C./.. clean
 make -C./.. ${mpiType}
+
+# Build CANDMC code
+#cd ${scalaDir}
+#make clean
+#./configure
+#make bench_scala_qr bench_scala_cf
+#mv bin/bench/* ../bin/
+
 export BINPATH=./../bin/
 if [ "${machineName}" == "BGQ" ]
 then
@@ -518,7 +532,7 @@ do
   echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
   for ((j=0; j<\${nodeCount}; j++))
   do
-    read -p "Enter number of nodes (\${j} of \${nodeCount}: " nodeNumber
+    read -p "Enter number of nodes (\${j} of \${nodeCount}): " nodeNumber
     echo "echo \"\${nodeNumber}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
   done
 
