@@ -183,6 +183,7 @@ then
   echo "export n_openmp_threads_per_rank=\${numOMPthreadsPerRank}" >> \$scriptName
   echo "export n_hyperthreads_per_core=\${numHyperThreadsPerCore}" >> \$scriptName
   echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \$scriptName
+  
 elif [ "${machineName}" == "STAMPEDE22" ]
 then
   echo "dog" > \$scriptName
@@ -264,7 +265,7 @@ launchJobs () {
     writePlotFileName \${@:1:1}
   elif [ "$machineName" == "THETA" ]
   then
-    echo "#aprun -n \${numProcesses} -N \$n_mpi_ranks_per_node --env OMP_NUM_THREADS=\$n_openmp_threads_per_rank -cc depth -d \$n_hyperthreads_skipped_between_ranks -j \$n_hyperthreads_per_core \${@:3:\$#} > $SCRATCH/${fileName}/\${@:1:1}.txt" >> \$scriptName
+    echo "#aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:3:\$#} > $SCRATCH/${fileName}/\${@:1:1}.txt" >> \$scriptName
     writePlotFileName \${@:1:1}
   elif [ "$machineName" == "STAMPEDE2" ]
   then
@@ -733,6 +734,7 @@ if [ "${machineName}" != "PORTER" ]
   cd $SCRATCH
   if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
   then
-    #qsub -A QMCat -t ${numMinutes} -n ${numNodes} --mode script ${fileName}/script.sh
+    chmod +x ${fileName}/script.sh
+    qsub -A QMCat -t ${numMinutes} -n ${numNodes} --mode script ${fileName}/script.sh
   fi
 fi
