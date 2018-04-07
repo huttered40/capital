@@ -49,6 +49,7 @@ static double runTestGemm(
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   totalTime=MPI_Wtime() - startTime;
+  MPI_Reduce(MPI_IN_PLACE, &totalTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t%d\t %g\n", size, iterNum, totalTime); }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
@@ -89,6 +90,7 @@ static double runTestTrmm(
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   totalTime=MPI_Wtime() - startTime;
+  MPI_Reduce(MPI_IN_PLACE, &totalTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t%d\t %g\n", size, iterNum, totalTime); }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);

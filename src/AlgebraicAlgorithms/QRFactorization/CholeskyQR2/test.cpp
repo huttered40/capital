@@ -104,12 +104,13 @@ int main(int argc, char** argv)
       matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
     #ifdef PERFORMANCE
+    double totalTimeLocal=MPI_Wtime() - startTime;
+    MPI_Reduce(MPI_IN_PLACE, &totalTimeLocal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) {
-      double totalTimeLocal=MPI_Wtime() - startTime;
+      cout << "\nPERFORMANCE\nTotal time: " << totalTimeLocal << endl;
       fprintf(fptrTotal,"%d\t%d\t", size, i);
       fprintf(fptrTotal,"%g\n", totalTimeLocal);
       totalTime += totalTimeLocal;
-      cout << "\nPERFORMANCE\nTotal time: " << totalTimeLocal << endl;
     }
     #endif
     TAU_FSTOP_FILE(Total, fptrTotal, i, numFuncs);
@@ -125,6 +126,8 @@ int main(int argc, char** argv)
     pair<DATATYPE,DATATYPE> error = QRvalidate<DATATYPE,INTTYPE>::validateParallelTunable(
       saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
+    MPI_Reduce(MPI_IN_PLACE, &error.first, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(MPI_IN_PLACE, &error.second, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0)
     {
       fprintf(fptrNumericsTotal, "%d\t%d\t", size, i);

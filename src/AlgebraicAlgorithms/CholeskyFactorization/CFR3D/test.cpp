@@ -46,6 +46,7 @@ static pair<T,T> runTestCF(
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   totalTime=MPI_Wtime() - startTime;
+  MPI_Reduce(MPI_IN_PLACE, &totalTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t%d\t%g\n", size, iterNum, totalTime); }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
@@ -67,6 +68,7 @@ static pair<T,T> runTestCF(
   commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
   T error = CFvalidate<T,U>::validateParallel(
     saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
+  MPI_Reduce(MPI_IN_PLACE, &error, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   util<T,U>::destroy3DTopology(commInfo3D);
   return make_pair(error, totalTime);
 }
