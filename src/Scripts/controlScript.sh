@@ -117,7 +117,6 @@ make -C./.. ${mpiType}
 #make bench_scala_qr bench_scala_cf
 #mv bin/bench/* ../bin/
 
-export BINPATH=./../bin/
 if [ "${machineName}" == "BGQ" ]
 then
   export SCRATCH=/projects/QMCat/huttered
@@ -126,7 +125,8 @@ then
   echo "dog"
 elif [ "${machineName}" == "THETA" ]
 then
-  export SCRATCH=/projects/QMCat/huttered/
+  export SCRATCH=/projects/QMCat/huttered
+  export BINPATH=${SCRATCH}/${fileName}/bin/
 elif [ "${machineName}" == "STAMPEDE2" ]
 then
   echo "dog"
@@ -137,6 +137,7 @@ then
     mkdir ../Results
   fi
   export SCRATCH=../Results
+  export BINPATH=./../bin/
 fi
 
 cat <<-EOF > $SCRATCH/${fileName}.sh
@@ -265,7 +266,7 @@ launchJobs () {
     writePlotFileName \${@:1:1}
   elif [ "$machineName" == "THETA" ]
   then
-    echo "#aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:3:\$#} > $SCRATCH/${fileName}/\${@:1:1}.txt" >> \$scriptName
+    echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:3:\$#} > $SCRATCH/${fileName}/\${@:1:1}.txt" >> \$scriptName
     writePlotFileName \${@:1:1}
   elif [ "$machineName" == "STAMPEDE2" ]
   then
@@ -539,7 +540,7 @@ do
   # Echo for SCAPLOT makefile generator
   echo "echo \"\${scale}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
   echo "echo \"\${numBinaries}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-  read -p "Enter number of disinct nodes across all binaries of this test. Afterward, list them in increasing order: " nodeCount
+  read -p "Enter number of distinct nodes across all binaries of this test. Afterward, list them in increasing order: " nodeCount
   echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
   for ((j=0; j<\${nodeCount}; j++))
   do
@@ -730,11 +731,13 @@ EOF
 bash $SCRATCH/${fileName}.sh
 rm $SCRATCH/${fileName}.sh
 if [ "${machineName}" != "PORTER" ]
-  then
-  cd $SCRATCH
+then
   if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
   then
+    mkdir $SCRATCH/${fileName}/bin
+    mv ../bin/* $SCRATCH/${fileName}/bin
+    cd $SCRATCH
     chmod +x ${fileName}/script.sh
-    qsub -A QMCat -t ${numMinutes} -n ${numNodes} --mode script ${fileName}/script.sh
+    qsub ${fileName}/script.sh
   fi
 fi
