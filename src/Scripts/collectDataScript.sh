@@ -14,13 +14,19 @@ then
   export RESULTSPATH=../../../PAA_data
 elif [ "$(hostname |grep "stampede2")" != "" ]
 then
+  echo "dog"
 fi
 
 read -p "Enter the directory name within ${SCRATCH} where the results are hidden: " resultsDir
-cp ${SCRATCH}/${resultsDir}/* ${RESULTSPATH}/${resultsDir}/
+cp -r ${SCRATCH}/${resultsDir}/* ${RESULTSPATH}/${resultsDir}/
 
 cd ${RESULTSPATH}
 
 # Get rid of the binaries before making the tarball
 rm -rf ${resultsDir}/bin
 tar -cvf ${resultsDir}.tar ${resultsDir}/*
+
+cd -
+# Push the changes, which should just a single file - collectInstructions.sh
+git add -A && git commit -m "Commiting updated collectInstructions.sh, which contains useful info for plotting on local machine."
+git push origin master
