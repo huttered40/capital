@@ -39,4 +39,4 @@ scriptDir=$(pwd)
 
 # Generate the Makefile for Scaplot
 cd ${scaplotDir}
-bash ${scriptDir}/../Results/${resultsDir}/plotInstructions.sh | bash MakePlotScript.sh
+bash ../../../../myData/${resultsDir}/plotInstructions.sh | bash MakePlotScript.sh
