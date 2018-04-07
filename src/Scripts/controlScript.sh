@@ -56,11 +56,12 @@ then
   export PROFTYPE=PERF_TYPE
 fi
 
-read -p "Should we delete the items in Results directory? Yes[1], No[0] " delDecision1
-if [ "${delDecision1}" == "1" ]
-then
-  rm -rf ../Results/*
-fi
+# Note: leaving this code inactive for now. I can always manually remove data files once it gets too large
+#read -p "Should we delete the items in Results directory? Yes[1], No[0] " delDecision1
+#if [ "${delDecision1}" == "1" ]
+#then
+#  rm -rf ../Results/*
+#fi
 
 #read -p "Enter machine name [BGQ (cetus,mira), THETA, BW, STAMPEDE2, PORTER]: " machineName
 #read -p "Enter the Date (MM_DD_YYYY): " dateStr
@@ -132,11 +133,7 @@ then
   echo "dog"
 elif [ "${machineName}" == "PORTER" ]
 then
-  if [ ! -d "../Results" ];
-  then
-    mkdir ../Results
-  fi
-  export SCRATCH=../Results
+  export SCRATCH=../../../PAA_data
   export BINPATH=./../bin/
 fi
 
