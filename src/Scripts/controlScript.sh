@@ -526,6 +526,7 @@ echo "echo \"${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 # Echo for data collection from remote machine (not porter) to PAA/src/Results
 # This temporary file will be deleted while collectScript.sh is called.
 echo "echo \"${fileName}\"" > collectInstructions.sh
+echo "echo \"${machineName}\"" >> collectInstructions.sh
 
 
 for ((i=1; i<=${numTests}; i++))
@@ -658,7 +659,7 @@ do
 	then
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${startMatrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         fi
-	echo "\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$startMatrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$pDimD \$pDimC \$inverseCutOffMult
       fi
     elif [ \$binaryTag == 'bench_scala_qr' ]
