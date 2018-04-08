@@ -72,7 +72,7 @@ namespace CTF{
     return total_time > w.total_time;
   }
 
-  void Function_timer::print(FILE* output, FILE* fptr,
+  void Function_timer::print(FILE* output, std::ofstream& fptr,
                              MPI_Comm comm, 
                              int rank,
                              int np)
@@ -98,17 +98,8 @@ namespace CTF{
               ((int)(1000.*(total_excl_time)/np))%1000,
               (int)(100.*(total_excl_time)/complete_time),
               ((int)(10000.*(total_excl_time)/complete_time))%100);
-      fprintf(fptr, "\t%s", name.c_str());
-      fprintf(fptr,"\t%d\t%3d.%03d\t%3d.%03d\t%3d.%03d\t%3d.%03d",
-              total_calls/np,
-              (int)(total_time/np),
-              ((int)(1000.*(total_time)/np))%1000,
-              (int)(100.*(total_time)/complete_time),
-              ((int)(10000.*(total_time)/complete_time))%100,
-              (int)(total_excl_time/np),
-              ((int)(1000.*(total_excl_time)/np))%1000,
-              (int)(100.*(total_excl_time)/complete_time),
-              ((int)(10000.*(total_excl_time)/complete_time))%100);
+      fptr << "\t" << name.c_str();
+      fptr << "\t" << total_calls/np << "\t" << (int)(total_time/np) << ((int)(1000.*(total_time)/np))%1000 << "\t" << (int)(100.*(total_time)/complete_time) << ((int)(10000.*(total_time)/complete_time))%100 << "\t" << (int)(total_excl_time/np) << ((int)(1000.*(total_excl_time)/np))%1000 << "\t" << (int)(100.*(total_excl_time)/complete_time) << ((int)(10000.*(total_excl_time)/complete_time))%100;
     } 
   }
 
@@ -179,7 +170,7 @@ namespace CTF{
   #endif
   }
 
-  int Timer::stop(FILE* fptr, int numIter){
+  int Timer::stop(std::ofstream& fptr, int numIter){
   #ifdef PROFILE
     // Note that when we started the timer, as long as exited wasn't equal to 2, we set exited<-0, so this should really pass most of the time
     int numFuncs;
@@ -202,10 +193,32 @@ namespace CTF{
   #endif
   return 0;
   }
+  
+  void Timer::stopFunction(){
+  #ifdef PROFILE
+    // Note that when we started the timer, as long as exited wasn't equal to 2, we set exited<-0, so this should really pass most of the time
+    int numFuncs;
+    if (exited == 0){
+      int is_fin;
+      MPI_Finalized(&is_fin);
+      if (!is_fin){
+        double delta_time = MPI_Wtime() - (*function_timers)[index].start_time;
+        (*function_timers)[index].acc_time += delta_time;
+        (*function_timers)[index].acc_excl_time += delta_time - 
+              (excl_time- (*function_timers)[index].start_excl_time); 
+        excl_time = (*function_timers)[index].start_excl_time + delta_time;
+        // Only increment calls when we have a start ^ stop match
+        (*function_timers)[index].calls++;
+      }
+      numFuncs = exitTimerFunction();
+      exited = 1;
+    }
+  #endif
+  }
 
   Timer::~Timer(){ }
 
-  int print_timers(const string& name, FILE* fptr, int iterNum){
+  int print_timers(const string& name, std::ofstream& fptr, int iterNum){
     int rank, np, i, j, len_symbols, nrecv_symbols;
     int numFuncs = 0;
 
@@ -315,17 +328,17 @@ namespace CTF{
     std::sort(function_timers->begin(), function_timers->end());
     complete_time = (*function_timers)[0].total_time;
     if (rank == 0){
-      fprintf(fptr, "%d", iterNum);
+      fptr << iterNum;
       for (i=0; i<(int)function_timers->size(); i++){
         (*function_timers)[i].print(output,fptr,comm,rank,np);
 	numFuncs++;
       }
-      fprintf(fptr, "\n");
+      fptr << "\n";
     }
     return numFuncs;
   }
 
-  int Timer::exitTimer(FILE* fptr, int numIter){
+  int Timer::exitTimer(std::ofstream& fptr, int numIter){
   #ifdef PROFILE
     int numFuncs;
     if (set_contxt && original && !exited) {
@@ -349,6 +362,31 @@ namespace CTF{
     return numFuncs;
     #endif
     return 0;
+  }
+  
+  void Timer::exitTimerFunction(){
+  #ifdef PROFILE
+    int numFuncs;
+    if (set_contxt && original && !exited) {
+      if (comm != MPI_COMM_WORLD){
+        return 0;
+      }
+      if (printBool)
+      {
+        assert(0);			// In this function, we should never get in here
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if (rank == 0)
+        {
+          printf("\nPROFILE\n");
+        }
+        //numFuncs = print_timers("all", fptr, numIter);  
+      }
+      function_timers->clear();
+      delete function_timers;
+      function_timers = NULL;
+    }
+    #endif
   }
 
   void set_main_args(int argc, const char * const * argv){

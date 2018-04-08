@@ -5,6 +5,7 @@
 
 // System includes
 #include <string>
+#include <fstream>
 #include <cstring>
 #include <stdio.h>
 
@@ -43,7 +44,7 @@ namespace CTF {
       //~Function_timer();
       void compute_totals(MPI_Comm comm);
       bool operator<(const Function_timer& w) const ;
-      void print(FILE* output, FILE* fptr,
+      void print(FILE* output, std::ofstream& fptr,
                  MPI_Comm comm, 
                  int rank,
                  int np);
@@ -64,9 +65,11 @@ namespace CTF {
     public:
       Timer(const std::string& name);
       ~Timer();
-      int stop(FILE* fptr=nullptr, int numIter=0);
+      int stop(std::ofstream& fptr, int numIter);
+      void stopFunction();
       void start();
-      int exitTimer(FILE* fptr=nullptr, int numIter=0);
+      int exitTimer(std::ofstream& fptr, int numIter);
+      void exitTimerFunction();
   };
 
   /**
@@ -133,7 +136,7 @@ namespace CTF {
   do { CTF::Timer t(#ARG); t.start(); } while (0);
 
 #define TAU_FSTOP(ARG)                                            \
-  do { CTF::Timer t(#ARG); t.stop(); } while (0);
+  do { CTF::Timer t(#ARG); t.stopFunction(); } while (0);
 
 #define TAU_FSTOP_FILE(ARG1,ARG2,ARG3,ARG4)                       \
   do { CTF::Timer t(#ARG1); ARG4 = t.stop(ARG2,ARG3); } while (0);

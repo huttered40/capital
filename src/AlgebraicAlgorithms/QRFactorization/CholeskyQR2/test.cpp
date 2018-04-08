@@ -2,6 +2,7 @@
 
 // System includes
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 #include <cmath>
 #include <utility>
@@ -72,10 +73,11 @@ int main(int argc, char** argv)
   fileStrTotal += "_perf.txt";
   fileStrAvg += "_perf_avg.txt";
   #endif
-  FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
-  FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
-  FILE* fptrNumericsTotal = fopen(fileStrNumericsTotal.c_str(),"w");
-  FILE* fptrNumericsAvg = fopen(fileStrNumericsAvg.c_str(),"w");
+  ofstream fptrTotal,fptrAvg,fptrNumericsTotal,fptrNumericsAvg;
+  fptrTotal.open(fileStrTotal.c_str());
+  fptrAvg.open(fileStrAvg.c_str());
+  fptrNumericsTotal.open(fileStrNumericsTotal.c_str());
+  fptrNumericsAvg.open(fileStrNumericsAvg.c_str());
 
   // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
   MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
@@ -108,8 +110,7 @@ int main(int argc, char** argv)
     MPI_Reduce(MPI_IN_PLACE, &totalTimeLocal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) {
       cout << "\nPERFORMANCE\nTotal time: " << totalTimeLocal << endl;
-      fprintf(fptrTotal,"%d\t%d\t", size, i);
-      fprintf(fptrTotal,"%g\n", totalTimeLocal);
+      fptrTotal << size << "\t" << i << "\t" << totalTimeLocal << endl;
       totalTime += totalTimeLocal;
     }
     #endif
@@ -130,31 +131,28 @@ int main(int argc, char** argv)
     MPI_Reduce(MPI_IN_PLACE, &error.second, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0)
     {
-      fprintf(fptrNumericsTotal, "%d\t%d\t", size, i);
-      fprintf(fptrNumericsTotal, "%f\t%f\n", error.first, error.second);
+      fptrNumericsTotal << size << "\t" << i << "\t" << error.first << "\t" << error.second << endl;
       totalError1 += error.first;
       totalError2 += error.second;
     }
   }
   if (rank == 0)
   {
-    fprintf(fptrNumericsAvg, "%d\t", size);
-    fprintf(fptrNumericsAvg, "%f\t%f\n", totalError1/numIterations, totalError2/numIterations);
+    fptrNumericsAvg << size << "\t" << totalError1/numIterations << "\t" << totalError2/numIterations << endl;
     #ifdef PERFORMANCE
-    fprintf(fptrAvg, "%d\t", size);
-    fprintf(fptrAvg, "%f\n", totalTime/numIterations);
+    fptrAvg << size << "\t" << totalTime/numIterations << endl;
     #endif
   }
-  fclose(fptrTotal);
+  fptrTotal.close();
   #ifdef PERFORMANCE
-  fclose(fptrAvg);
+  fptrAvg.close();
   #endif
   #ifdef CRITTER
-  fclose(fptrAvg);
+  fptrAvg.close();
   #endif
   #ifdef PROFILE
   util<DATATYPE,INTTYPE>::processAveragesFromFile(fptrAvg, fileStrTotal, numFuncs, numIterations, rank);
-  fclose(fptrAvg);
+  fptrAvg.close();
   #endif
 
   MPI_Finalize();

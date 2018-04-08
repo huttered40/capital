@@ -2,6 +2,7 @@
 
 // System includes
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 #include <utility>
 #include <cmath>
@@ -26,7 +27,7 @@ static pair<T,T> runTestCF(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matT,
 			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
-			int pCoordX, int pCoordY, int pGridDimensionSize, FILE* fptrTotal, FILE* fptrAvg, FILE* fptrNumericsTotal, FILE* fptrNumericsAvg,
+			int pCoordX, int pCoordY, int pGridDimensionSize, ofstream& fptrTotal, ofstream& fptrAvg, ofstream& fptrNumericsTotal, ofstream& fptrNumericsAvg,
 			int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
@@ -47,7 +48,7 @@ static pair<T,T> runTestCF(
   #ifdef PERFORMANCE
   totalTime=MPI_Wtime() - startTime;
   MPI_Reduce(MPI_IN_PLACE, &totalTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fprintf(fptrTotal, "%d\t%d\t%g\n", size, iterNum, totalTime); }
+  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fptrTotal << size << "\t" << iterNum << "\t" << totalTime << endl; }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
@@ -127,10 +128,11 @@ int main(int argc, char** argv)
   fileStrTotal += "_perf.txt";
   fileStrAvg += "_perf_avg.txt";
   #endif
-  FILE* fptrTotal = fopen(fileStrTotal.c_str(),"w");
-  FILE* fptrAvg = fopen(fileStrAvg.c_str(),"w");
-  FILE* fptrNumericsTotal = fopen(fileStrNumericsTotal.c_str(),"w");
-  FILE* fptrNumericsAvg = fopen(fileStrNumericsAvg.c_str(),"w");
+  ofstream fptrTotal,fptrAvg,fptrNumericsTotal,fptrNumericsAvg;
+  fptrTotal.open(fileStrTotal.c_str());
+  fptrAvg.open(fileStrAvg.c_str());
+  fptrNumericsTotal.open(fileStrNumericsTotal.c_str());
+  fptrNumericsAvg.open(fileStrNumericsAvg.c_str());
 
   MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
   MatrixTypeA matT(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
@@ -144,28 +146,28 @@ int main(int argc, char** argv)
       fptrTotal, fptrAvg, fptrNumericsTotal, fptrNumericsAvg, i, numIterations, rank, size, numFuncs);
     if (rank == 0)
     {
-      fprintf(fptrNumericsTotal, "%d\t%g\n", size, i, info.first);
+      fptrNumericsTotal << size << "\t" << i << "\t" << info.first << endl;
       totalError += info.first;
       totalTime += info.second;
     }
   }
   if (rank == 0)
   {
-    fprintf(fptrNumericsAvg, "%d\t%g\n", size, totalError/numIterations);
+    fptrNumericsAvg << size << "\t" << totalError/numIterations << endl;
     #ifdef PERFORMANCE
-    fprintf(fptrAvg, "%d\t%g\n", size, totalTime/numIterations);
+    fptrAvg << size << "\t" << totalTime/numIterations << endl;
     #endif
   }
-  fclose(fptrTotal);
+  fptrTotal.close();
   #ifdef PERFORMANCE
-  fclose(fptrAvg);
+  fptrAvg.close();
   #endif
   #ifdef CRITTER
-  fclose(fptrAvg);
+  fptrAvg.close();
   #endif
   #ifdef PROFILE
   util<DATATYPE,INTTYPE>::processAveragesFromFile(fptrAvg, fileStrTotal, numFuncs, numIterations, rank);
-  fclose(fptrAvg);
+  fptrAvg.close();
   #endif
 
   MPI_Finalize();

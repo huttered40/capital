@@ -62,7 +62,7 @@ public:
     template<typename,typename,int> class Distribution>
   static void removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, int pGridCoordX, int pGridCoordY, int pGridDimensionSize, char dir);
   
-  static void processAveragesFromFile(FILE* fptrAvg, std::string& fileStrTotal, int numFuncs, int numIterations, int rank);
+  static void processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, int numFuncs, int numIterations, int rank);
 };
 
 #include "util.hpp"

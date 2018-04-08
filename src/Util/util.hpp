@@ -370,7 +370,7 @@ void util<T,U>::removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, in
 }
 
 template<typename T, typename U>
-void util<T,U>::processAveragesFromFile(FILE* fptrAvg, std::string& fileStrTotal, int numFuncs, int numIterations, int rank)
+void util<T,U>::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, int numFuncs, int numIterations, int rank)
 {
   if (rank == 0)
   {
@@ -405,15 +405,15 @@ void util<T,U>::processAveragesFromFile(FILE* fptrAvg, std::string& fileStrTotal
     }
     for (int i=0; i<numFuncs; i++)
     {
-      if (i>0) fprintf(fptrAvg, "\t");
-      fprintf(fptrAvg, "%s", std::get<0>(profileVector[i]).c_str());
-      fprintf(fptrAvg, "\t%d", std::get<1>(profileVector[i]));
-      fprintf(fptrAvg, "\t%g", std::get<2>(profileVector[i])/numIterations);
-      fprintf(fptrAvg, "\t%g", std::get<3>(profileVector[i])/numIterations);
-      fprintf(fptrAvg, "\t%g", std::get<4>(profileVector[i])/numIterations);
-      fprintf(fptrAvg, "\t%g", std::get<5>(profileVector[i])/numIterations);
+      if (i>0) fptrAvg << "\t";
+      fptrAvg << std::get<0>(profileVector[i]).c_str();
+      fptrAvg << "\t" << std::get<1>(profileVector[i]);
+      fptrAvg << "\t" << std::get<2>(profileVector[i])/numIterations;
+      fptrAvg << "\t" << std::get<3>(profileVector[i])/numIterations;
+      fptrAvg << "\t" << std::get<4>(profileVector[i])/numIterations;
+      fptrAvg << "\t" << std::get<5>(profileVector[i])/numIterations;
     }
-    fprintf(fptrAvg, "\n");
+    fptrAvg << std::endl;
     fptrTotal2.close();
   }
 }
