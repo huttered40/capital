@@ -23,7 +23,7 @@ template<
   		template<typename,typename, template<typename,typename,int> class> class StructureB,
   		template<typename,typename,int> class Distribution
 	>
-static pair<T,T> runTestCF(
+static pair<T,double> runTestCF(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matT,
 			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
@@ -31,7 +31,7 @@ static pair<T,T> runTestCF(
 			int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
-  double totalTime;
+  double iterTimeLocal,iterTimeGlobal;
   // Reset matrixA
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   #ifdef CRITTER
@@ -46,9 +46,9 @@ static pair<T,T> runTestCF(
     matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, MPI_COMM_WORLD, commInfo3D);
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
-  totalTime=MPI_Wtime() - startTime;
-  MPI_Reduce(&totalTime, &totalTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fptrTotal << size << "\t" << iterNum << "\t" << totalTime << endl; }
+  iterTimeLocal=MPI_Wtime() - startTime;
+  MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << iterTimeGlobal << endl; fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
@@ -67,11 +67,12 @@ static pair<T,T> runTestCF(
   Matrix<T,U,StructureA,Distribution> saveA = matA;
   saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
-  T error = CFvalidate<T,U>::validateParallel(
+  T iterErrorLocal,iterErrorGlobal;
+  iterErrorLocal = CFvalidate<T,U>::validateParallel(
     saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
-  MPI_Reduce(&error, &error, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   util<T,U>::destroy3DTopology(commInfo3D);
-  return make_pair(error, totalTime);
+  return make_pair(iterErrorGlobal, iterTimeGlobal);
 }
 
 int main(int argc, char** argv)

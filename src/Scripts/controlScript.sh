@@ -744,7 +744,7 @@ EOF
 
 #chmod +x $SCRATCH/${fileName}.sh
 bash $SCRATCH/${fileName}.sh
-#rm $SCRATCH/${fileName}.sh
+rm $SCRATCH/${fileName}.sh
 
 # Note that for Porter, no need to do this, since we are submitting to a queue
 if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
@@ -754,5 +754,5 @@ then
   #mv ${scalaDir}/bin/benchmarks/* $SCRATCH/${fileName}/bin  # move all scalapack benchmarks to same place before job is submitted
   cd $SCRATCH
   chmod +x ${fileName}/script.sh
-  #qsub ${fileName}/script.sh
+  qsub ${fileName}/script.sh
 fi

@@ -33,7 +33,7 @@ static double runTestGemm(
 			ofstream& fptrTotal, ofstream& fptrAvg, int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
-  double totalTime;
+  double iterTimeLocal,iterTimeGlobal;
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
@@ -49,15 +49,15 @@ static double runTestGemm(
     matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
-  totalTime=MPI_Wtime() - startTime;
-  MPI_Reduce(&totalTime, &totalTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fptrTotal << size << "\t" << iterNum << "\t" << totalTime << endl; }
+  iterTimeLocal=MPI_Wtime() - startTime;
+  MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << iterTimeGlobal << endl; fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
-  return totalTime;
+  return iterTimeGlobal;
 }
 
 template<
@@ -74,7 +74,7 @@ static double runTestTrmm(
 			ofstream& fptrTotal, ofstream& fptrAvg, int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
-  double totalTime;
+  double iterTimeLocal,iterTimeGlobal;
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   #ifdef CRITTER
@@ -90,15 +90,15 @@ static double runTestTrmm(
     matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
-  totalTime=MPI_Wtime() - startTime;
-  MPI_Reduce(&totalTime, &totalTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << totalTime << endl; fptrTotal << size << "\t" << iterNum << "\t" << totalTime << endl; }
+  iterTimeLocal=MPI_Wtime() - startTime;
+  MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << iterTimeGlobal << endl; fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
-  return totalTime;
+  return iterTimeGlobal;
 }
 
 

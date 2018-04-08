@@ -106,12 +106,13 @@ int main(int argc, char** argv)
       matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
     #ifdef PERFORMANCE
-    double totalTimeLocal=MPI_Wtime() - startTime;
-    MPI_Reduce(&totalTimeLocal, &totalTimeLocal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    double iterTimeLocal=MPI_Wtime() - startTime;
+    double iterTimeGlobal = 0;
+    MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) {
-      cout << "\nPERFORMANCE\nTotal time: " << totalTimeLocal << endl;
-      fptrTotal << size << "\t" << i << "\t" << totalTimeLocal << endl;
-      totalTime += totalTimeLocal;
+      cout << "\nPERFORMANCE\nTotal time: " << iterTimeGlobal << endl;
+      fptrTotal << size << "\t" << i << "\t" << iterTimeGlobal << endl;
+      totalTime += iterTimeGlobal;
     }
     #endif
     TAU_FSTOP_FILE(Total, fptrTotal, i, numFuncs);
@@ -127,13 +128,14 @@ int main(int argc, char** argv)
     pair<DATATYPE,DATATYPE> error = QRvalidate<DATATYPE,INTTYPE>::validateParallelTunable(
       saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
-    MPI_Reduce(&error.first, &error.first, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&error.second, &error.second, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    double residualErrorGlobal,orthogonalityErrorGlobal;
+    MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0)
     {
-      fptrNumericsTotal << size << "\t" << i << "\t" << error.first << "\t" << error.second << endl;
-      totalError1 += error.first;
-      totalError2 += error.second;
+      fptrNumericsTotal << size << "\t" << i << "\t" << residualErrorGlobal << "\t" << orthogonalityErrorGlobal << endl;
+      totalError1 += residualErrorGlobal;
+      totalError2 += orthogonalityErrorGlobal;
     }
   }
   if (rank == 0)
