@@ -4,7 +4,7 @@ tag1='mm3d'
 tag2='cfr3d'
 tag3='cqr2'
 tag4='bench_scala_qr'
-tag5='bench_scala_cf'
+tag5='bench_scala_cholesky'
 
 # Make sure that the src/bin directory is created, or else compilation won't work
 if [ ! -d "../bin" ];
@@ -115,8 +115,10 @@ make -C./.. ${mpiType}
 cd ${scalaDir}
 ./configure
 make clean
-make bench_scala_qr  # Add bench_scala_cf later, once I have it working
+make bench_scala_qr bench_scala_cholesky
 cd -
+mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}
+mv ${scalaDir}/bin/benchmarks/bench_scala_cholesky ${scalaDir}/bin/benchmarks/bench_scala_cholesky_${machineName}
 mv ${scalaDir}/bin/benchmarks/* ../bin/
 
 if [ "${machineName}" == "BGQ" ]
@@ -568,7 +570,7 @@ do
     echo -e "\nStage #\${j}"
 
     # Echo for SCAPLOT makefile generator
-    read -p "Enter binary tag [mm3d,cfr3d,cqr2,bench_scala_qr,bench_scala_cf]: " binaryTag
+    read -p "Enter binary tag [mm3d,cfr3d,cqr2,bench_scala_qr,bench_scala_cholesky]: " binaryTag
     binaryPath=${BINPATH}\${binaryTag}_${machineName}
     if [ "${machineName}" == "PORTER" ]
     then
@@ -577,7 +579,7 @@ do
     echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
     read -p "Enter number of iterations: " numIterations
-    if [ \$binaryTag != 'bench_scala_cf' ]
+    if [ \$binaryTag != 'bench_scala_cholesky' ]
     then
       read -p "Enter starting number of nodes for this test: " startNumNodes
       read -p "Enter ending number of nodes for this test: " endNumNodes
@@ -708,7 +710,7 @@ do
 	echo "echo \"\$(findCountLengthScalaQR \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$numProws
       fi
-    elif [ \$binaryTag == 'bench_scala_cf' ]
+    elif [ \$binaryTag == 'bench_scala_cholesky' ]
     then
       read -p "Enter the starting square root of the number of nodes: " startNumNodesRoot
       read -p "Enter the ending square root of the number of nodes: " endNumNodesRoot
