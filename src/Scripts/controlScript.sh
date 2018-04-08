@@ -112,11 +112,12 @@ make -C./.. clean
 make -C./.. ${mpiType}
 
 # Build CANDMC code
-#cd ${scalaDir}
-#make clean
-#./configure
-#make bench_scala_qr bench_scala_cf
-#mv bin/bench/* ../bin/
+cd ${scalaDir}
+./configure
+make clean
+make bench_scala_qr  # Add bench_scala_cf later, once I have it working
+mv bin/bench/* ../bin/
+cd -
 
 if [ "${machineName}" == "BGQ" ]
 then
@@ -220,6 +221,19 @@ findCountLength () {
     counter=\$(( counter+1 ))
   done
   counter=\$(( counter*4 ))
+  echo "\$counter"
+}
+
+# Different function than above because we multiply by 2, not 4, since we have no numerics plots. Note that this can be merged with the above with an addition of a single argument later
+findCountLengthScalaQR () {
+  local curr=\$1
+  local counter=0
+  while [ \$curr -le \$2 ];
+  do
+    curr=\$(updateCounter \$curr \$3 \$4)
+    counter=\$(( counter+1 ))
+  done
+  counter=\$(( counter*2 ))
   echo "\$counter"
 }
 
@@ -674,7 +688,7 @@ do
 	then
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         fi
-	echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "echo \"\$(findCountLengthScalaQR \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$matrixDimN \$numProws
       elif [ \$scale == 'WS' ]
       then
@@ -688,7 +702,7 @@ do
 	then
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         fi
-	echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+	echo "echo \"\$(findCountLengthScalaQR \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$numProws
       fi
     elif [ \$binaryTag == 'bench_scala_cf' ]
@@ -728,14 +742,14 @@ EOF
 #chmod +x $SCRATCH/${fileName}.sh
 bash $SCRATCH/${fileName}.sh
 rm $SCRATCH/${fileName}.sh
-if [ "${machineName}" != "PORTER" ]
+
+# Note that for Porter, no need to do this, since we are submitting to a queue
+if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
 then
-  if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
-  then
-    mkdir $SCRATCH/${fileName}/bin
-    mv ../bin/* $SCRATCH/${fileName}/bin
-    cd $SCRATCH
-    chmod +x ${fileName}/script.sh
-    qsub ${fileName}/script.sh
-  fi
+  mkdir $SCRATCH/${fileName}/bin
+  mv ../bin/* $SCRATCH/${fileName}/bin
+  #mv ${scalaDir}/bin/benchmarks/* $SCRATCH/${fileName}/bin  # move all scalapack benchmarks to same place before job is submitted
+  cd $SCRATCH
+  chmod +x ${fileName}/script.sh
+  qsub ${fileName}/script.sh
 fi
