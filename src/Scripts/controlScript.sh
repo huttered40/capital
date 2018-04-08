@@ -116,8 +116,8 @@ cd ${scalaDir}
 ./configure
 make clean
 make bench_scala_qr  # Add bench_scala_cf later, once I have it working
-mv bin/bench/* ../bin/
 cd -
+mv ${scalaDir}/bin/benchmarks/* ../bin/
 
 if [ "${machineName}" == "BGQ" ]
 then
@@ -429,21 +429,22 @@ launch$tag4 () {
     local matrixDimM=\${8}
     local matrixDimN=\${9}
     local numProws=\${10}
-    while [ \$startNumNodes -le \$endNumNodes ];
+    while [ \${startNumNodes} -le \${endNumNodes} ];
     do
       startBlockSize=1
-      div1=\$((\$matrixDimM / \$numProws))
-      numPcols=\$((\$startNumNodes / \$numProws))
-      div2=\$((\$matrixDimN / \$numPcols))
-      endBlockSize=\$((\$div1>\$div2?\$div1:\$div2))
-      while [ \$startBlockSize -le \$endBlockSize ];
+      div1=\$(( \${matrixDimM} / \${numProws} ))
+      curNumProcesses=\$(( \${startNumNodes}*${ppn} ))
+      numPcols=\$(( \${curNumProcesses} / \${numProws} ))
+      div2=\$(( \${matrixDimN} / \${numPcols} ))
+      endBlockSize=\$(( \${div1}>\${div2}?\${div1}:\${div2} ))
+      while [ \${startBlockSize} -le \${endBlockSize} ];
       do
           local fileString="results/results_${tag4}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter"
           launchJobs \${fileString} \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
-          startBlockSize=\$((\$startBlockSize * 2))
+          startBlockSize=\$(( \$startBlockSize * 2 ))
       done
-      startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
-      numProws=\$(updateCounter \$numProws \$7 \$6)
+      startNumNodes=\$(updateCounter \${startNumNodes} \$7 \$6)
+      numProws=\$(updateCounter \${numProws} \$7 \$6)
     done
   elif [ \$1 == 'WS' ]
   then
@@ -455,23 +456,25 @@ launch$tag4 () {
     while [ \$startNumNodes -le \$endNumNodes ];
     do
       startBlockSize=1
-      div1=\$((\$matrixDimM / \$numProws))
-      numPcols=\$((\$startNumNodes / \$numProws))
-      div2=\$((\$matrixDimN / \$numPcols))
-      endBlockSize=\$((\$div1>\$div2?\$div1:\$div2))
+      div1=\$(( \${matrixDimM} / \${numProws} ))
+      curNumProcesses=\$(( \${startNumNodes}*${ppn} ))
+      numPcols=\$(( \${curNumProcesses} / \${numProws} ))
+      div2=\$(( \${matrixDimN} / \${numPcols} ))
+      endBlockSize=\$(( \${div1}>\${div2}?\${div1}:\${div2} ))
       while [ \$startBlockSize -le \$endBlockSize ];
       do
           local fileString="results/results_${tag4}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${3}numIter"
           launchJobs \${fileString} \$startNumNodes \$2 \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
-          startBlockSize=\$((\$startBlockSize * 2))
+          startBlockSize=\$(( \${startBlockSize} * 2 ))
       done
-      startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
-      numProws=\$(updateCounter \$numProws \$7 \$6)
-      matrixDimM=\$(updateCounter \$matrixDimM \${10} \$9)
+      startNumNodes=\$(updateCounter \${startNumNodes} \$7 \$6)
+      numProws=\$(updateCounter \${numProws} \$7 \$6)
+      matrixDimM=\$(updateCounter \${matrixDimM} \${10} \$9)
     done
   fi
 }
 
+# This will need some fixing
 launch$tag5 () {
   # launch scaLAPACK_CF
   if [ \$1 == 'SS' ]
@@ -741,7 +744,7 @@ EOF
 
 #chmod +x $SCRATCH/${fileName}.sh
 bash $SCRATCH/${fileName}.sh
-rm $SCRATCH/${fileName}.sh
+#rm $SCRATCH/${fileName}.sh
 
 # Note that for Porter, no need to do this, since we are submitting to a queue
 if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
@@ -751,5 +754,5 @@ then
   #mv ${scalaDir}/bin/benchmarks/* $SCRATCH/${fileName}/bin  # move all scalapack benchmarks to same place before job is submitted
   cd $SCRATCH
   chmod +x ${fileName}/script.sh
-  qsub ${fileName}/script.sh
+  #qsub ${fileName}/script.sh
 fi
