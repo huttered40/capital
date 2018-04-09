@@ -387,7 +387,7 @@ do
     echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
     read -p "Enter number of iterations: " numIterations
-    if [ \$binaryTag == 'cqr2' ]
+    if [ \${binaryTag} == 'cqr2' ]
     then
       read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
       read -p "In this strong scaling test for CQR2, enter matrix dimension m: " matrixDimM
@@ -397,8 +397,9 @@ do
       
       # Write to plotInstructions file
       echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_perf.txt\"" >> collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_numerics.txt\"" >> collectInstructions.sh
+      echo "echo \"\${binaryTag}\"" >> collectInstructions.sh
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_perf\"" >> collectInstructions.sh
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_numerics\"" >> collectInstructions.sh
       echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >>collectInstructions.sh
       # Write to plotInstructions file
       echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -408,8 +409,8 @@ do
       echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC} $SCRATCH/${fileName}/plotInstructions.sh
   
-      launch\$binaryTag \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult}
-    elif [ \$binaryTag == 'bench_scala_qr' ]
+      launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult}
+    elif [ \${binaryTag} == 'bench_scala_qr' ]
     then
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension m: " matrixDimM
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension n: " matrixDimN
@@ -417,7 +418,10 @@ do
       
       # Write to plotInstructions file
       echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}.txt\"" >> collectInstructions.sh
+      echo "echo \"\${binaryTag}\"" >> collectInstructions.sh
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_NoFormQ\"" >> collectInstructions.sh
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_FormQ\"" >> collectInstructions.sh
+      # This is where the last tricky part is: how many files do we need, because blockSize must be precomputed basically, and then multiplied by findCountLength
       # Write to plotInstructions file
       echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh

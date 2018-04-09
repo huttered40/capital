@@ -32,17 +32,18 @@ do
   read -p "Enter number of configurations (files to write to): " numConfigFiles
   for ((j=0; j<${numConfigFiles}; j++))
   do
-    read -p "Enter performance/profiling/critter file to write to: " configFilePerf
-    read -p "Enter numerics file to write to: " configFileNumerics
+    read -p "Enter binary tag: " binaryTag
+    read -p "Enter performance/profiling/critter/NoFormQ file to write to: " configFile1
+    read -p "Enter numerics/FormQ file to write to: " configFile2
     read -p "Enter number of files to read from: " numInputFiles
     for ((k=0; k<${numInputFiles}; k++))
     do
       # Currently, every other input file will be performance, so that is how this inner-loop code will be structured
       read -p "Enter file to read from: " InputFile
-      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFilePerf} ${RESULTSPATH}/${resultsDir}/${InputFile}
+      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFile1} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 1
       rm ${RESULTSPATH}/${resultsDir}/${InputFile}
       read -p "Enter file to read from: " InputFile
-      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileNumerics} ${RESULTSPATH}/${resultsDir}/${InputFile}
+      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFile2} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 2
       rm ${RESULTSPATH}/${resultsDir}/${InputFile}
     done
   done
@@ -58,4 +59,4 @@ cd -
 rm fileTransfer
 # Push the changes, which should just a single file - collectInstructions.sh
 git add -A && git commit -m "Commiting updated collectInstructions.sh, which contains useful info for plotting on local machine."
-git push origin master
+git push origin
