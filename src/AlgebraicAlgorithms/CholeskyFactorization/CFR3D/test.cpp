@@ -27,7 +27,7 @@ static pair<T,double> runTestCF(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matT,
 			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
-			int pCoordX, int pCoordY, int pGridDimensionSize, ofstream& fptrTotal, ofstream& fptrAvg, ofstream& fptrNumericsTotal, ofstream& fptrNumericsAvg,
+			int pCoordX, int pCoordY, int pGridDimensionSize, ofstream& fptrTotal, ofstream& fptrNumericsTotal,
 			int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
@@ -48,7 +48,7 @@ static pair<T,double> runTestCF(
   #ifdef PERFORMANCE
   iterTimeLocal=MPI_Wtime() - startTime;
   MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << iterTimeGlobal << endl; fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
+  if (rank == 0) { fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
@@ -63,7 +63,6 @@ static pair<T,double> runTestCF(
     CFvalidate<T,U>::validateLocal(saveA, matA, dir, MPI_COMM_WORLD);
   }
 */
-  if (rank == 0) { std::cout << "\nNUMERICS\n"; }
   Matrix<T,U,StructureA,Distribution> saveA = matA;
   saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
@@ -114,26 +113,19 @@ int main(int argc, char** argv)
 
   string fileStr = argv[7];
   string fileStrTotal=fileStr;
-  string fileStrAvg=fileStr;
   string fileStrNumericsTotal=fileStr + "_numerics.txt";
-  string fileStrNumericsAvg=fileStr + "_numerics_avg.txt";
   #ifdef PROFILE
   fileStrTotal += "_timer.txt";
-  fileStrAvg += "_timer_avg.txt";
   #endif
   #ifdef CRITTER
   fileStrTotal += "_critter.txt";
-  fileStrAvg += "_critter_avg.txt";
   #endif
   #ifdef PERFORMANCE
   fileStrTotal += "_perf.txt";
-  fileStrAvg += "_perf_avg.txt";
   #endif
-  ofstream fptrTotal,fptrAvg,fptrNumericsTotal,fptrNumericsAvg;
+  ofstream fptrTotal,fptrNumericsTotal;
   fptrTotal.open(fileStrTotal.c_str());
-  fptrAvg.open(fileStrAvg.c_str());
   fptrNumericsTotal.open(fileStrNumericsTotal.c_str());
-  fptrNumericsAvg.open(fileStrNumericsAvg.c_str());
 
   MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
   MatrixTypeA matT(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
@@ -144,7 +136,7 @@ int main(int argc, char** argv)
   for (int i=0; i<numIterations; i++)
   {
     pair<DATATYPE,double> info = runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize,
-      fptrTotal, fptrAvg, fptrNumericsTotal, fptrNumericsAvg, i, numIterations, rank, size, numFuncs);
+      fptrTotal, fptrNumericsTotal, i, numIterations, rank, size, numFuncs);
     if (rank == 0)
     {
       fptrNumericsTotal << size << "\t" << i << "\t" << info.first << endl;
@@ -152,25 +144,7 @@ int main(int argc, char** argv)
       totalTime += info.second;
     }
   }
-  if (rank == 0)
-  {
-    fptrNumericsAvg << size << "\t" << totalError/numIterations << endl;
-    #ifdef PERFORMANCE
-    fptrAvg << size << "\t" << totalTime/numIterations << endl;
-    #endif
-  }
   fptrTotal.close();
-  #ifdef PERFORMANCE
-  fptrAvg.close();
-  #endif
-  #ifdef CRITTER
-  fptrAvg.close();
-  #endif
-  #ifdef PROFILE
-  util<DATATYPE,INTTYPE>::processAveragesFromFile(fptrAvg, fileStrTotal, numFuncs, numIterations, rank);
-  fptrAvg.close();
-  #endif
-
   MPI_Finalize();
   return 0;
 }

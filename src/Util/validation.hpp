@@ -112,7 +112,6 @@ T validator<T,U>::validateResidualParallel(
   MPI_Allreduce(MPI_IN_PLACE, &control, 1, MPI_DATATYPE, MPI_SUM, sliceComm);
   error = std::sqrt(error) / std::sqrt(control);
   //MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DATATYPE, MPI_SUM, depthComm);
-  if (rankCommWorld == 0) {std::cout << label << error << std::endl;}
   MPI_Comm_free(&sliceComm);
   return error;
 }

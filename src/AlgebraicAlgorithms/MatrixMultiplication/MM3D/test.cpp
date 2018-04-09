@@ -30,7 +30,7 @@ static double runTestGemm(
                         Matrix<T,U,StructureC,Distribution>& matC,
 			blasEngineArgumentPackage_gemm<T>& blasArgs,
 			int methodKey3, int pCoordX, int pCoordY, int pGridDimensionSize,
-			ofstream& fptrTotal, ofstream& fptrAvg, int iterNum, int numIter, int rank, int size, int& numFuncs
+			ofstream& fptrTotal, int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
   double iterTimeLocal,iterTimeGlobal;
@@ -51,11 +51,11 @@ static double runTestGemm(
   #ifdef PERFORMANCE
   iterTimeLocal=MPI_Wtime() - startTime;
   MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << iterTimeGlobal << endl; fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
+  if (rank == 0) { fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
+  Critter_Print(fptrTotal, iterNum, numIter);
   #endif
   return iterTimeGlobal;
 }
@@ -71,7 +71,7 @@ static double runTestTrmm(
                         Matrix<T,U,StructureB,Distribution>& matB,
 			blasEngineArgumentPackage_trmm<T>& blasArgs,
 			int methodKey3, int pCoordX, int pCoordY, int pGridDimensionSize,
-			ofstream& fptrTotal, ofstream& fptrAvg, int iterNum, int numIter, int rank, int size, int& numFuncs
+			ofstream& fptrTotal, int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
   double iterTimeLocal,iterTimeGlobal;
@@ -92,11 +92,11 @@ static double runTestTrmm(
   #ifdef PERFORMANCE
   iterTimeLocal=MPI_Wtime() - startTime;
   MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  if (rank == 0) { cout << "\nPERFORMANCE\nTotal time: " << iterTimeGlobal << endl; fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
+  if (rank == 0) { fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
+  Critter_Print(fptrTotal, iterNum, numIter);
   #endif
   return iterTimeGlobal;
 }
@@ -150,22 +150,17 @@ int main(int argc, char** argv)
     int numIterations = atoi(argv[6]);
     string fileStr = argv[7];
     string fileStrTotal=fileStr;
-    string fileStrAvg=fileStr;
     #ifdef PROFILE
     fileStrTotal += "_timer.txt";
-    fileStrAvg += "_timer_avg.txt";
     #endif
     #ifdef CRITTER
     fileStrTotal += "_critter.txt";
-    fileStrAvg += "_critter_avg.txt";
     #endif
     #ifdef PERFORMANCE
     fileStrTotal += "_perf.txt";
-    fileStrAvg += "_perf_avg.txt";
     #endif
-    ofstream fptrTotal,fptrAvg;
+    ofstream fptrTotal;
     fptrTotal.open(fileStrTotal.c_str());
-    fptrAvg.open(fileStrAvg.c_str());
 
     MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,pGridDimensionSize,pGridDimensionSize);
@@ -177,21 +172,10 @@ int main(int argc, char** argv)
     int numFuncs = 0;
     for (int i=0; i<numIterations; i++)
     {
-      double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, size, numFuncs);
+      double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
       totalTime += iterTime;
     }
     fptrTotal.close();
-    #ifdef PERFORMANCE
-    if (rank == 0) fptrAvg << size << "\t" << totalTime/numIterations << endl;
-    fptrAvg.close();
-    #endif
-    #ifdef CRITTER
-    fptrAvg.close();
-    #endif
-    #ifdef PROFILE
-    util<DATATYPE,INTTYPE>::processAveragesFromFile(fptrAvg, fileStrTotal, numFuncs, numIterations, rank);
-    fptrAvg.close();
-    #endif
   }
   else if (methodKey1 == 1)
   {
@@ -210,22 +194,17 @@ int main(int argc, char** argv)
     int numIterations = atoi(argv[7]);
     string fileStr = argv[8];
     string fileStrTotal=fileStr;
-    string fileStrAvg=fileStr;
     #ifdef PROFILE
     fileStrTotal += "_timer.txt";
-    fileStrAvg += "_timer_avg.txt";
     #endif
     #ifdef CRITTER
     fileStrTotal += "_critter.txt";
-    fileStrAvg += "_critter_avg.txt";
     #endif
     #ifdef PERFORMANCE
     fileStrTotal += "_perf.txt";
-    fileStrAvg += "_perf_avg.txt";
     #endif
-    ofstream fptrTotal,fptrAvg;
+    ofstream fptrTotal;
     fptrTotal.open(fileStrTotal.c_str());
-    fptrAvg.open(fileStrAvg.c_str());
 
     // I guess I will go through all cases. Ugh!
     double totalTime = 0;
@@ -240,7 +219,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, size, numFuncs);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
@@ -254,7 +233,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, size, numFuncs);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
@@ -268,7 +247,7 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, size, numFuncs);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
@@ -282,22 +261,11 @@ int main(int argc, char** argv)
       // Loop for getting a good range of results.
       for (int i=0; i<numIterations; i++)
       {
-        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, fptrAvg, i, numIterations, rank, size, numFuncs);
+        double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
     fptrTotal.close();
-    #ifdef PERFORMANCE
-    if (rank == 0) fptrAvg << size << "\t" << totalTime/numIterations << endl;
-    fptrAvg.close();
-    #endif
-    #ifdef CRITTER
-    fptrAvg.close();
-    #endif
-    #ifdef PROFILE
-    util<DATATYPE,INTTYPE>::processAveragesFromFile(fptrAvg, fileStrTotal, numFuncs, numIterations, rank);
-    fptrAvg.close();
-    #endif
   }
 
   MPI_Finalize();
