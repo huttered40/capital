@@ -67,7 +67,8 @@ fi
 #read -p "Enter the Date (MM_DD_YYYY): " dateStr
 dateStr=$(date +%Y-%m-%d-%H_%M_%S)
 read -p "Enter ID of auto-generated file this program will create: " fileID
-read -p "Enter maximum number of nodes requested: " numNodes
+read -p "Enter minimum number of nodes requested: " minNumNodes
+read -p "Enter maximum number of nodes requested: " maxNumNodes
 read -p "Enter ppn: " ppn
 read -p "Enter number of tests (equal to number of strong scaling or weak scaling tests that will be run): " numTests
 
@@ -82,7 +83,7 @@ then
 fi
 
 numPEs=$((ppn*numNodes))
-fileName=scriptID${fileID}_${dateStr}_${machineName}_${profType}
+fileName=benchQR${fileID}_${dateStr}_${machineName}_${profType}
 
 read -p "What datatype? float[0], double[1], complex<float>[2], complex<double>[3]: " dataType
 read -p "What integer type? int[0], int64_t[1]: " intType
@@ -109,16 +110,15 @@ fi
 
 # Build PAA code
 make -C./.. clean
-make -C./.. ${mpiType}
+make -C./.. cqr2_${mpiType}
 
 # Build CANDMC code
 cd ${scalaDir}
 ./configure
 make clean
-make bench_scala_qr bench_scala_cholesky
+make bench_scala_qr
 cd -
 mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}
-mv ${scalaDir}/bin/benchmarks/bench_scala_cholesky ${scalaDir}/bin/benchmarks/bench_scala_cholesky_${machineName}
 mv ${scalaDir}/bin/benchmarks/* ../bin/
 
 if [ "${machineName}" == "BGQ" ]
@@ -298,85 +298,6 @@ launchJobs () {
   fi
 }
 
-# Functions for launching specific jobs based on certain parameters
-launch$tag1 () {
-  # launch MM3D
-  if [ \$1 == 'SS' ]
-  then
-    local startNumNodes=\$4
-    local endNumNodes=\$5
-    while [ \$startNumNodes -le \$endNumNodes ];
-    do
-        # Write to plotInstructions file
-	echo "echo \"\${8}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-	echo "echo \"\${9}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-	echo "echo \"\${10}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${11}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-
-        local fileString="results/results_${tag1}_\$1_\${startNumNodes}nodes_0_\${11}bcastRoutine_\${8}m_\${9}n_\${10}k_\${3}numIter"
-        launchJobs \${fileString} \$startNumNodes \$2 0 \${11} \$8 \$9 \${10} \$3 $SCRATCH/${fileName}/\${fileString}
-        startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
-    done
-  elif [ \$1 == 'WS' ]
-  then
-    local startNumNodes=\$4
-    local endNumNodes=\$5
-    local startDimensionM=\$8
-    local startDimensionN=\${11}
-    local startDimensionK=\${14}
-    while [ \$startNumNodes -le \$endNumNodes ];
-    do
-        # Write to plotInstructions file
-	echo "echo \"\${startDimensionM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-	echo "echo \"\${startDimensionN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-	echo "echo \"\${startDimensionK}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-	echo "echo \"\${17}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-
-        local fileString="/results/results_${tag1}_\$1_\${startNumNodes}nodes_0_\${17}bcastRoutine_\${startDimensionM}m_\${startDimensionN}n_\${startDimensionK}k_\${3}numIter"
-        launchJobs \${fileString} \$startNumNodes \$2 0 \${17} \$startDimensionM \$startDimensionN \$startDimensionK \$3 $SCRATCH/${fileName}/\${fileString}
-        startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
-        startDimensionM=\$(updateCounter \$startDimensionM \${10} \$9)
-        startDimensionN=\$(updateCounter \$startDimensionN \${13} \${12})
-        startDimensionK=\$(updateCounter \$startDimensionK \${16} \${15})
-    done
-  fi
-}
-
-launch$tag2 () {
-  # launch CFR3D
-  if [ \$1 == 'SS' ]
-  then
-    local startNumNodes=\$4
-    local endNumNodes=\$5
-    while [ \$startNumNodes -le \$endNumNodes ];
-    do
-        # Write to plotInstructions file
-	echo "echo \"\${9}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-	echo "echo \"\${10}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-
-        local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${9}dim_0bcMult_\${10}inverseCutOffMult_0panelDimMult_\${3}numIter"
-        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${9} 0 \${10} 0 \$3 $SCRATCH/${fileName}/\${fileString}
-        startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
-    done
-  elif [ \$1 == 'WS' ]
-  then
-    local startNumNodes=\$4
-    local startMatrixDim=\${9}
-    local endNumNodes=\$5
-    while [ \$startNumNodes -le \$endNumNodes ];
-    do
-        # Write to plotInstructions file
-	echo "echo \"\${startMatrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-	echo "echo \"\${12}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-
-        local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${8}side_\${startMatrixDim}dim_0bcMult_\${12}inverseCutOffMult_0panelDimMult_\${3}numIter"
-        launchJobs \${fileString} \$startNumNodes \$2 \$8 \${startMatrixDim} 0 \${12} 0 \$3 $SCRATCH/${fileName}/\${fileString}
-        startNumNodes=\$(updateCounter \$startNumNodes \$7 \$6)
-        startMatrixDim=\$(updateCounter \$startMatrixDim \${11} \${10})
-    done
-  fi
-}
-
 launch$tag3 () {
   # launch CQR2
   if [ \$1 == 'SS' ]
@@ -476,62 +397,6 @@ launch$tag4 () {
   fi
 }
 
-# This will need some fixing
-launch$tag5 () {
-  # launch scaLAPACK_CF
-  if [ \$1 == 'SS' ]
-  then
-    local startNumNodesRoot=\$4
-    local endNumNodesRoot=\$5
-    local matrixDim=\${8}
-    local matrixDimRoot=\$(log2 \$matrixDim)
-    while [ \$startNumNodesRoot -le \$endNumNodesRoot ];
-    do
-      temp1=\$(log2 \$startNumNodesRoot)
-      temp2=\$((\$matrixDimRoot - \$temp1))
-      specialMatDim=\$((1<<\$temp2))
-      specialMatDimLog=\$(log2 \$specialMatDim)
-      startBlockSize=1
-      endBlockSize=\$specialMatDimLog
-      curNumNodes=\$((\$startNumNodesRoot * \$startNumNodesRoot))
-      while [ \$startBlockSize -le \$endBlockSize ];
-      do
-          temp3=\$((1<<\$startBlockSize))
-          local fileString="results/results_${tag5}_\$1_\$((\$startNumNodesRoot * \$startNumNodesRoot))nodes_\${matrixDimRoot}dimM_\${temp3}blockSize_\${3}numIter"
-          launchJobs \${fileString} \$curNumNodes \$2 \${matrixDimRoot} \${specialMatDimLog} \${startBlockSize} \${3} $SCRATCH/${fileName}/\${fileString}
-          startBlockSize=\$((\$startBlockSize + 1))
-      done
-      startNumNodesRoot=\$(updateCounter \$startNumNodesRoot \$7 \$6)
-    done
-  elif [ \$1 == 'WS' ]
-  then
-    local startNumNodesRoot=\$4
-    local endNumNodesRoot=\$5
-    local matrixDim=\${8}
-    local matrixDimRoot=\$(log2 \$matrixDim)
-    temp1=\$(log2 \$startNumNodesRoot)
-    temp2=\$((\$matrixDimRoot - \$temp1))
-    local specialMatDim=\$((1<<\$temp2))
-    local specialMatDimLog=\$(log2 \$specialMatDim)
-    while [ \$startNumNodesRoot -le \$endNumNodesRoot ];
-    do
-      startBlockSize=1
-      endBlockSize=\$specialMatDimLog
-      curNumNodes=\$((\$startNumNodesRoot * \$startNumNodesRoot))
-      while [ \$startBlockSize -le \$endBlockSize ];
-      do
-          temp3=\$((1<<\$startBlockSize))
-          local fileString="results/results_${tag5}_\$1_\$((\$startNumNodesRoot * \$startNumNodesRoot))nodes_\${matrixDimRoot}dimM_\$((\$temp3))blockSize_\${3}numIter"
-          launchJobs \${fileString} \$curNumNodes \$2 \${matrixDimRoot} \${specialMatDimLog} \${startBlockSize} \${3} $SCRATCH/${fileName}/\${fileString}
-          startBlockSize=\$((\$startBlockSize + 1))
-      done
-      startNumNodesRoot=\$(updateCounter \$startNumNodesRoot \$7 \$6)
-      matrixDim=\$(updateCounter \$matrixDim \${10} \$9)
-      matrixDimRoot=\$(log2 \$matrixDim)
-    done
-  fi
-}
-
 
 # Note: in future, I may want to decouple numBinaries and numPlotTargets, but only when I find it necessary
 # Write to Plot Instructions file, for use by SCAPLOT makefile generator
@@ -586,70 +451,7 @@ do
       read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
       read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
     fi
-    if [ \$binaryTag == 'mm3d' ]
-    then
-      if [ \$scale == 'SS' ]
-      then
-        read -p "In this strong scaling test for MM3D, enter dimension m: " DimensionM
-        read -p "In this strong scaling test for MM3D, enter dimension n: " DimensionN
-        read -p "In this strong scaling test for MM3D, enter dimension k: " DimensionK
-        read -p "Do you want an broadcast-based routine[0], or an Allgather-based routine[1]: " bcastVSallgath
-        # Write to plotInstructions file
-        # Only print out this tag for the first configuration of a test.
-	if [ \${j} == 1 ]
-	then
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${DimensionM}_\${DimensionN}_\${DimensionK}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        fi
-	echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$DimensionM \$DimensionN \$DimensionK \$bcastVSallgath
-      elif [ \$scale == 'WS' ]
-      then
-        read -p "In this weak scaling test for MM3D, enter starting dimension m: " startDimensionM
-        read -p "In this weak scaling test for MM3D, enter factor by which to increase dimension m: " jumpDimensionM
-        read -p "In this weak scaling test for MM3D, enter arithmetic operator by which to increase dimension m by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpDimensionMoperator
-        read -p "In this weak scaling test for MM3D, enter starting dimension n: " startDimensionN
-        read -p "In this weak scaling test for MM3D, enter factor by which to increase dimension n: " jumpDimensionN
-        read -p "In this weak scaling test for MM3D, enter arithmetic operator by which to increase dimension n by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpDimensionNoperator
-        read -p "In this weak scaling test for MM3D, enter starting dimension k: " startDimensionK
-        read -p "In this weak scaling test for MM3D, enter factor by which to increase dimension k: " jumpDimensionK
-        read -p "In this weak scaling test for MM3D, enter arithmetic operator by which to increase dimension k by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpDimensionKoperator
-        read -p "Do you want an broadcast-based routine[0], or an Allgather-based routine[1]: " bcastVSallgath
-        # Write to plotInstructions file
-	if [ \${j} == 1 ]
-	then
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${startDimensionM}_\${startDimensionN}_\${startDimensionK}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        fi
-	echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$startDimensionM \$jumpDimensionM \$jumpDimensionMoperator \$startDimensionN \$jumpDimensionN \$jumpDimensionNoperator \$startDimensionK \$jumpDimensionK \$jumpDimensionKoperator \$bcastVSallgath
-      fi
-    elif [ \$binaryTag == 'cfr3d' ]
-    then
-      read -p "Factor lower[0] or upper[1]: " factorSide
-      read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
-      if [ \$scale == 'SS' ]
-      then
-        read -p "In this strong scaling test for CFR3D, enter matrix dimension: " matrixDim
-        # Write to plotInstructions file
-	if [ \${j} == 1 ]
-	then
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${factorSide}_\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        fi
-	echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$matrixDim \$inverseCutOffMult
-      elif [ \$scale == 'WS' ]
-      then
-        read -p "In this weak scaling test for CFR3D, enter starting matrix dimension: " startMatrixDim
-        read -p "In this weak scaling test for CFR3D, enter factor by which to increase matrix dimension: " jumpMatrixDim
-        read -p "In this weak scaling test for CFR3D, enter arithmetic operator by which to increase the matrix dimension by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpMatrixDimoperator
-        # Write to plotInstructions file
-	if [ \${j} == 1 ]
-	then
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${startMatrixDim}_\${factorSide}_\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        fi
-	echo "echo \"\$(findCountLength \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$factorSide \$startMatrixDim \$jumpMatrixDim \$jumpMatrixDimoperator \$inverseCutOffMult
-      fi
-    elif [ \$binaryTag == 'cqr2' ]
+    if [ \$binaryTag == 'cqr2' ]
     then
       read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
       if [ \$scale == 'SS' ]
@@ -709,35 +511,6 @@ do
         fi
 	echo "echo \"\$(findCountLengthScalaQR \$startNumNodes \$endNumNodes \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodes \$endNumNodes \$jumpNumNodes \$jumpNumNodesoperator \$matrixDimM \$jumpMatrixDimM \$jumpMatrixDimMoperator \$matrixDimN \$numProws
-      fi
-    elif [ \$binaryTag == 'bench_scala_cholesky' ]
-    then
-      read -p "Enter the starting square root of the number of nodes: " startNumNodesRoot
-      read -p "Enter the ending square root of the number of nodes: " endNumNodesRoot
-      read -p "Enter factor by which to increase the square root of the number of nodes: " jumpNumNodes
-      read -p "Enter arithmetic operator by which to increase the square root of the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
-      if [ \$scale == 'SS' ]
-      then
-        read -p "In this strong scaling test for Scalapack CF, enter the matrix dimension: " matrixDim
-        # Write to plotInstructions file
-	if [ \${j} == 1 ]
-	then
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesRoot}_\${matrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        fi
-	echo "echo \"\$(findCountLength \$startNumNodesRoot \$endNumNodesRoot \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodesRoot \$endNumNodesRoot \$jumpNumNodes \$jumpNumNodesoperator \$matrixDim
-      elif [ \$scale == 'WS' ]
-      then
-        read -p "In this weak scaling test for Scalapack CF, enter the matrix dimension: " matrixDim
-        read -p "In this weak scaling test for Scalapack CF, enter factor by which to increase matrix dimension: " jumpMatrixDim
-        read -p "In this weak scaling test for Scalapack CF, enter arithmetic operator by which to increase the matrix dimension by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpMatrixDimoperator
-        # Write to plotInstructions file
-	if [ \${j} == 1 ]
-	then
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesRoot}_\${matrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        fi
-	echo "echo \"\$(findCountLength \$startNumNodesRoot \$endNumNodesRoot \$jumpNumNodesoperator \$jumpNumNodes)\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        launch\$binaryTag \$scale \$binaryPath \$numIterations \$startNumNodesRoot \$endNumNodesRoot \$jumpNumNodes \$jumpNumNodesoperator \$matrixDim \$jumpMatrixDim \$jumpMatrixDimoperator
       fi
     fi
   done
