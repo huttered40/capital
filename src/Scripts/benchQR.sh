@@ -259,14 +259,14 @@ launchJobs () {
   local numProcesses=\$((\${2} * $ppn))
   if [ "$machineName" == "BGQ" ]
   then
-    echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:3:\$#} > $SCRATCH/${fileName}/\${@:1:1}.txt" >> $SCRATCH/${fileName}/script\${2}.sh
+    echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:3:\$#}" >> $SCRATCH/${fileName}/script\${2}.sh
   elif [ "$machineName" == "BW" ]
   then
     echo "Note: this is probably wrong, and I need to check this once I get BW access"
-    echo "aprun -n \$numProcesses \$@ > $SCRATCH/${fileName}/{@:1:1}.txt" >> $SCRATCH/${fileName}/script\${2}.sh
+    echo "aprun -n \$numProcesses \$@" >> $SCRATCH/${fileName}/script\${2}.sh
   elif [ "$machineName" == "THETA" ]
   then
-    echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:3:\$#} > $SCRATCH/${fileName}/\${@:1:1}.txt" >> $SCRATCH/${fileName}/script\${2}.sh
+    echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:3:\$#}" >> $SCRATCH/${fileName}/script\${2}.sh
   elif [ "$machineName" == "STAMPEDE2" ]
   then
     echo "dog" >> $SCRATCH/${fileName}/script\${2}.sh
@@ -274,10 +274,10 @@ launchJobs () {
   then
     if [ "${mpiType}" == "mpi" ]
     then
-      mpiexec -n \$numProcesses \${@:3:\$#} > $SCRATCH/${fileName}/\${@:1:1}.txt
+      mpiexec -n \$numProcesses \${@:3:\$#}
     elif [ "${mpiType}" == "ampi" ]
     then
-      ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:3:\$#} > $SCRATCH/${fileName}/\${@:1:1}.txt
+      ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:3:\$#}
     fi
   fi
   writePlotFileName \${@:1:1} collectInstructions.sh
