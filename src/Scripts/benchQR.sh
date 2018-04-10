@@ -15,6 +15,7 @@ rm -f collectInstructions.sh
 
 scalaDir=""
 machineName=""
+mpiType=""
 if [ "$(hostname |grep "porter")" != "" ]
 then
   machineName=PORTER
@@ -33,15 +34,18 @@ then
   machineName=BGQ
   scalaDir=~/scratch/CANDMC
   export MPITYPE=MPI_TYPE
+  mpiType=mpi
 elif [ "$(hostname |grep "theta")" != "" ]
 then
   machineName=THETA
   scalaDir=~/scratch/CANDMC
   export MPITYPE=MPI_TYPE
+  mpiType=mpi
 elif [ "$(hostname |grep "stampede2")" != "" ]
 then
   machineName=STAMPEDE2
   scalaDir=""                # Fill in soon
+  mpiType=mpi
   export MPITYPE=MPI_TYPE
 fi
 
@@ -174,21 +178,21 @@ do
     echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \$scriptName
   elif [ "${machineName}" == "THETA" ]
   then
-    echo "#!/bin/bash" > \$scriptName
+    echo "#!/bin/bash" > \${scriptName}
     echo "#COBALT -t ${numMinutes}" >> \$scriptName
-    echo "#COBALT -n ${numNodes}" >> \$scriptName
+    echo "#COBALT -n \${curNumNodes}" >> \$scriptName
     echo "#COBALT --attrs mcdram=cache:numa=quad" >> \$scriptName
     echo "#COBALT -A QMCat" >> \${scriptName}
-    echo "export n_nodes=${numNodes}" >> \$scriptName
+    echo "export n_nodes=\${curNumNodes}" >> \$scriptName
     echo "export n_mpi_ranks_per_node=${ppn}" >> \$scriptName
-    echo "export n_mpi_ranks=\$((${numNodes} * ${ppn}))" >> \$scriptName
+    echo "export n_mpi_ranks=\$((\${curNumNodes} * ${ppn}))" >> \$scriptName
     read -p "Enter number of OpenMP threads per rank: " numOMPthreadsPerRank
     read -p "Enter number of hyperthreads per core: " numHyperThreadsPerCore
     read -p "Enter number of hyperthreads skipped per rank: " numHyperThreadsSkippedPerRank
     echo "export n_openmp_threads_per_rank=\${numOMPthreadsPerRank}" >> \$scriptName
     echo "export n_hyperthreads_per_core=\${numHyperThreadsPerCore}" >> \$scriptName
     echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \$scriptName
-  elif [ "${machineName}" == "STAMPEDE22" ]
+  elif [ "${machineName}" == "STAMPEDE2" ]
   then
     echo "dog" > \$scriptName
   fi
@@ -458,7 +462,7 @@ then
 
   # Submit all scripts
   curNumNodes=${minNumNodes}
-  while [ \${curNumNodes} -le ${maxNumNodes} ];
+  while [ ${curNumNodes} -le ${maxNumNodes} ];
   do
     chmod +x ${fileName}/script${curNumNodes}.sh
     qsub ${fileName}/script${curNumNodes}.sh
