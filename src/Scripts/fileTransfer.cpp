@@ -63,7 +63,21 @@ int main(int argc, char** argv)
   }
   else if (binaryTag == "bench_scala_qr")
   {
-    // need to check what im writing to FormQ and NoFormQ first, then changes these.
+    if ((order == "1") || (order == "2"))
+    {
+      vector<double> medianVec;
+      int data1,data2;
+      int data4,data5;		// Note: these are global matrix sizes, which might be int64_t. For now i will use int, but be careful
+      double data3;
+      while (!inputFile.eof())
+      {
+	inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
+	outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
+	medianVec.push_back(data3);
+      }
+      sort(medianVec.begin(), medianVec.end());
+      outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+    }
   }
 /*
   string dataLine;
