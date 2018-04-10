@@ -2,6 +2,7 @@
   Author: Edward Hutter
 */
 
+#include <iostream>
 #include <fstream>
 #include <string>
 #include <algorithm>
@@ -21,6 +22,7 @@ int main(int argc, char** argv)
   ofstream outputFile,outputFileMedian;
   ifstream inputFile;
   inputFile.open(inputFileStr.c_str());
+  cout << "Check this string - " << inputFileStr.c_str() << endl;
   outputFile.open(outputFileStr.c_str(), ofstream::app);
   outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
 

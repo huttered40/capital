@@ -250,8 +250,16 @@ writePlotFileName() {
   elif [ "${profType}" == "P" ]
   then
     echo "echo \"\${1}_perf.txt\"" >> \${2}
+    if [ "\${3}" == "1" ]
+    then
+      echo "echo \"\${1}_perf_median.txt\"" >> \${2}
+    fi
   fi
   echo "echo \"\${1}_numerics.txt\"" >> \${2}
+  if [ "\${3}" == "1" ]
+  then
+    echo "echo \"\${1}_numerics_median.txt\"" >> \${2}
+  fi
 }
 
 # Functions that write the actual script, depending on machine
@@ -280,7 +288,7 @@ launchJobs () {
       ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:3:\$#}
     fi
   fi
-  writePlotFileName \${@:1:1} collectInstructions.sh
+  writePlotFileName \${@:1:1} collectInstructions.sh 0
 }
 
 launch$tag1 () {
@@ -407,7 +415,7 @@ do
       echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC} $SCRATCH/${fileName}/plotInstructions.sh
+      writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC} $SCRATCH/${fileName}/plotInstructions.sh 1
   
       launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult}
     elif [ \${binaryTag} == 'bench_scala_qr' ]
@@ -428,6 +436,7 @@ do
       echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> collectInstructions.sh
       #.. write arguments to plot. what about blockSize?
+      writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC} $SCRATCH/${fileName}/plotInstructions.sh 1
       launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${numProws}
     fi
   done
