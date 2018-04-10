@@ -60,5 +60,6 @@ tar -cvf ${resultsDir}.tar ${resultsDir}/*
 cd -
 rm fileTransfer
 # Push the changes, which should just a single file - collectInstructions.sh
-git add -A && git commit -m "Commiting updated collectInstructions.sh, which contains useful info for plotting on local machine."
-git push origin
+# Nah after rethinking this, Its too dangerous to put this in there. Need to do it manually and give good commit messages
+#git add -A && git commit -m "Commiting updated collectInstructions.sh, which contains useful info for plotting on local machine."
+#git push origin
