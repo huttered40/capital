@@ -103,7 +103,7 @@ int main(int argc, char** argv)
     double iterTimeGlobal = 0;
     MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) {
-      fptrTotal << size << "\t" << i << "\t" << iterTimeGlobal << endl;
+      fptrTotal << size << "\t" << i << "\t" << globalMatrixDimensionM << "\t" << globalMatrixDimensionN << "\t" << iterTimeGlobal << endl;
       totalTime += iterTimeGlobal;
     }
     #endif

@@ -32,15 +32,16 @@ int main(int argc, char** argv)
     {
       vector<double> medianVec;
       int data1,data2;
+      int data4,data5;		// Note: these are global matrix sizes, which might be int64_t. For now i will use int, but be careful
       double data3;
       while (!inputFile.eof())
       {
-	inputFile >> data1 >> data2 >> data3;
-	outputFile << data1 << "\t" << data2 << "\t" << data3 << endl;
+	inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
+	outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
 	medianVec.push_back(data3);
       }
       sort(medianVec.begin(), medianVec.end());
-      outputFileMedian << data1 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+      outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
     }
     else if (order == "2")
     {
