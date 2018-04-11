@@ -386,18 +386,24 @@ do
   echo "echo \"\${scale}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
   echo "echo \"\${numBinaries}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
-  read -p "Enter number of distinct nodes across all binaries of this test. Afterward, list them in increasing order: " nodeCount
-  echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
-  for ((j=0; j<\${nodeCount}; j++))
-  do
-    read -p "Enter number of nodes (\${j} of \${nodeCount}): " nodeNumber
-    echo "echo \"\${nodeNumber}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-  done
-
   read -p "Enter starting number of nodes for this test: " startNumNodes
   read -p "Enter ending number of nodes for this test: " endNumNodes
-  read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
-  read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
+  
+  # Assume for now that we always jump up by a power of 2
+  #read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
+  #read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
+  jumpNumNodes=2
+  jumpNumNodesoperator=3
+
+  nodeCount=\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})
+  echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
+
+  curNumNodes=\${startNumNodes}
+  for ((j=0; j<\${nodeCount}; j++))
+  do
+    echo "echo \"\${curNumNodes}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+    curNumNodes=\$(( \${curNumNodes} * 2 ))
+  done
 
   j=1
   while [ \${j} -le \${numBinaries} ];
@@ -405,7 +411,16 @@ do
     echo -e "\nStage #\${j}"
 
     # Echo for SCAPLOT makefile generator
-    read -p "Enter binary tag [cqr2,bench_scala_qr]: " binaryTag
+    read -p "Enter binary tag [0 for cqr2,1 for bench_scala_qr]: " binaryTagChoice
+
+    binaryTag=""
+    if [ \${binaryTagChoice} == 0 ]
+    then
+      binaryTag=cqr2
+    else
+      binaryTag=bench_scala_qr
+    fi
+
     binaryPath=${BINPATH}\${binaryTag}_${machineName}
     if [ "${machineName}" == "PORTER" ]
     then
