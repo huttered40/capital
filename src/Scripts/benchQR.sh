@@ -243,7 +243,7 @@ log2 () {
     echo \${x}
 }
 
-# Will need to figure out how to get this to work with CANDMC (only when Porter runs fully work)
+# Only for cqr2
 writePlotFileName() {
   if [ "${profType}" == "T" ]
   then
@@ -263,6 +263,19 @@ writePlotFileName() {
   if [ "\${3}" == "1" ]
   then
     echo "echo \"\${1}_numerics_median.txt\"" >> \${2}
+  fi
+}
+
+# Only for bench_scala_qr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
+writePlotFileNameScalapack() {
+  elif [ "${profType}" == "P" ]
+  then
+    echo "echo \"\${1}_perf.txt\"" >> \${2}
+    if [ "\${3}" == "1" ]
+    then
+      echo "echo \"\${1}_NoFormQ.txt\"" >> \${2}
+      echo "echo \"\${1}_FormQ.txt\"" >> \${2}
+    fi
   fi
 }
 
@@ -372,6 +385,7 @@ do
   # Echo for SCAPLOT makefile generator
   echo "echo \"\${scale}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
   echo "echo \"\${numBinaries}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
   read -p "Enter number of distinct nodes across all binaries of this test. Afterward, list them in increasing order: " nodeCount
   echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
   for ((j=0; j<\${nodeCount}; j++))
@@ -385,7 +399,8 @@ do
   read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
   read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
 
-  for ((j=1; j<=\${numBinaries}; j++))
+  j=1
+  while [ \${j} -le \${numBinaries} ];
   do
     echo -e "\nStage #\${j}"
 
@@ -422,26 +437,32 @@ do
       writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC} $SCRATCH/${fileName}/plotInstructions.sh 1
   
       launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult}
+      j=\$(( \${j} + 1 ))
     elif [ \${binaryTag} == 'bench_scala_qr' ]
     then
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension m: " matrixDimM
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension n: " matrixDimN
       read -p "In this strong scaling test for Scalapack QR, enter the starting number of processor rows: " numProws
-      
-      # Write to plotInstructions file
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${binaryTag}\"" >> collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_NoFormQ\"" >> collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_FormQ\"" >> collectInstructions.sh
-      # This is where the last tricky part is: how many files do we need, because blockSize must be precomputed basically, and then multiplied by findCountLength
-      # Write to plotInstructions file
-      echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> collectInstructions.sh
-      #.. write arguments to plot. what about blockSize?
-      writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC} $SCRATCH/${fileName}/plotInstructions.sh 1
-      launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${numProws}
+      read -p "Enter the maximum valid block size: " maxBlockSize
+
+      for ((k=1; k<=\${maxBlockSize}; k*=2))
+      do
+        # Write to plotInstructions file
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        echo "echo \"\${binaryTag}\"" >> collectInstructions.sh
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_NoFormQ\"" >> collectInstructions.sh
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_FormQ\"" >> collectInstructions.sh
+        # This is where the last tricky part is: how many files do we need, because blockSize must be precomputed basically, and then multiplied by findCountLength
+        # Write to plotInstructions file
+        echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> collectInstructions.sh
+        writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k} $SCRATCH/${fileName}/plotInstructions.sh 1
+        launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${numProws} \${k}
+        j=\$(( \${j} + 1 ))
+      done
     fi
   done
 done
