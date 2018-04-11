@@ -268,44 +268,54 @@ writePlotFileName() {
 
 # Only for bench_scala_qr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
 writePlotFileNameScalapack() {
-  elif [ "${profType}" == "P" ]
+  if [ "${profType}" == "P" ]
   then
-    echo "echo \"\${1}_perf.txt\"" >> \${2}
+    echo "echo \"\${1}_NoFormQ.txt\"" >> \${2}
     if [ "\${3}" == "1" ]
     then
-      echo "echo \"\${1}_NoFormQ.txt\"" >> \${2}
-      echo "echo \"\${1}_FormQ.txt\"" >> \${2}
+      echo "echo \"\${1}_NoFormQ_median.txt\"" >> \${2}
+    fi
+    echo "echo \"\${1}_FormQ.txt\"" >> \${2}
+    if [ "\${3}" == "1" ]
+    then
+      echo "echo \"\${1}_FormQ_median.txt\"" >> \${2}
     fi
   fi
 }
 
 # Functions that write the actual script, depending on machine
 launchJobs () {
-  local numProcesses=\$((\${2} * $ppn))
+  local numProcesses=\$((\${3} * $ppn))
   if [ "$machineName" == "BGQ" ]
   then
-    echo "runjob --np \$numProcesses -p $ppn --block \$COBALT_PARTNAME --verbose=INFO : \${@:3:\$#}" >> $SCRATCH/${fileName}/script\${2}.sh
+    echo "runjob --np \${numProcesses} -p ${ppn} --block \$COBALT_PARTNAME --verbose=INFO : \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
   elif [ "$machineName" == "BW" ]
   then
     echo "Note: this is probably wrong, and I need to check this once I get BW access"
     echo "aprun -n \$numProcesses \$@" >> $SCRATCH/${fileName}/script\${2}.sh
   elif [ "$machineName" == "THETA" ]
   then
-    echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:3:\$#}" >> $SCRATCH/${fileName}/script\${2}.sh
+    echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
   elif [ "$machineName" == "STAMPEDE2" ]
   then
-    echo "dog" >> $SCRATCH/${fileName}/script\${2}.sh
+    echo "dog" >> $SCRATCH/${fileName}/script\${3}.sh
   elif [ "$machineName" == "PORTER" ]
   then
     if [ "${mpiType}" == "mpi" ]
     then
-      mpiexec -n \$numProcesses \${@:3:\$#}
+      mpiexec -n \$numProcesses \${@:4:\$#}
     elif [ "${mpiType}" == "ampi" ]
     then
-      ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:3:\$#}
+      ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:4:\$#}
     fi
   fi
-  writePlotFileName \${@:1:1} collectInstructions.sh 0
+  if [ "\${1}" == "cqr2" ]
+  then
+    writePlotFileName \${@:2:1} collectInstructions.sh 0
+  elif [ "\${1}" == "bench_scala_qr" ]
+  then
+    writePlotFileNameScalapack \${@:2:1} collectInstructions.sh 0
+  fi
 }
 
 launch$tag1 () {
@@ -317,7 +327,7 @@ launch$tag1 () {
   while [ \$startNumNodes -le \$endNumNodes ];
   do
     local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${9}dimN_\${12}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC"
-    launchJobs \${fileString} \$startNumNodes \${2} \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
+    launchJobs ${tag1} \${fileString} \$startNumNodes \${2} \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
     startNumNodes=\$(updateCounter \${startNumNodes} \${7} \${6})
     startPdimD=\$(updateCounter \${startPdimD} \${7} \${6})
     if [ "\${1}" == "WS" ];
@@ -329,30 +339,20 @@ launch$tag1 () {
 
 launch$tag2 () {
   # launch scaLAPACK_QR
-  local startNumNodes=\$4
-  local endNumNodes=\$5
+  local startNumNodes=\${4}
+  local endNumNodes=\${5}
   local matrixDimM=\${8}
   local matrixDimN=\${9}
   local numProws=\${10}
   while [ \${startNumNodes} -le \${endNumNodes} ];
   do
-    startBlockSize=1
-    div1=\$(( \${matrixDimM} / \${numProws} ))
-    curNumProcesses=\$(( \${startNumNodes}*${ppn} ))
-    numPcols=\$(( \${curNumProcesses} / \${numProws} ))
-    div2=\$(( \${matrixDimN} / \${numPcols} ))
-    endBlockSize=\$(( \${div1}>\${div2}?\${div1}:\${div2} ))
-    while [ \${startBlockSize} -le \${endBlockSize} ];
-    do
-      local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws"
-      launchJobs \${fileString} \$startNumNodes \${2} \${matrixDimM} \${matrixDimN} \${startBlockSize} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
-      startBlockSize=\$(( \$startBlockSize * 2 ))
-    done
+    local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${11}bSize"
+    launchJobs ${tag2} \${fileString} \$startNumNodes \${2} \${matrixDimM} \${matrixDimN} \${11} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
     startNumNodes=\$(updateCounter \${startNumNodes} \$7 \$6)
     numProws=\$(updateCounter \${numProws} \$7 \$6)
     if [ "\${1}" == "WS" ];
     then
-      matrixDimM=\$(updateCounter \${marixDimM} \${7} \${6})
+      matrixDimM=\$(updateCounter \${matrixDimM} \${7} \${6})
     fi
   done
 }
@@ -411,11 +411,12 @@ do
     then
       binaryPath=\${binaryPath}_${mpiType}
     fi
-    echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
     read -p "Enter number of iterations: " numIterations
     if [ \${binaryTag} == 'cqr2' ]
     then
+      echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      
       read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
       read -p "In this strong scaling test for CQR2, enter matrix dimension m: " matrixDimM
       read -p "In this strong scaling test for CQR2, enter matrix dimension n: " matrixDimN
@@ -434,12 +435,13 @@ do
       echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC} $SCRATCH/${fileName}/plotInstructions.sh 1
-  
+      writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC} $SCRATCH/${fileName}/plotInstructions.sh 1  
       launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult}
       j=\$(( \${j} + 1 ))
     elif [ \${binaryTag} == 'bench_scala_qr' ]
     then
+      echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension m: " matrixDimM
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension n: " matrixDimN
       read -p "In this strong scaling test for Scalapack QR, enter the starting number of processor rows: " numProws
