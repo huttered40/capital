@@ -440,8 +440,6 @@ do
       j=\$(( \${j} + 1 ))
     elif [ \${binaryTag} == 'bench_scala_qr' ]
     then
-      echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension m: " matrixDimM
       read -p "In this strong scaling test for Scalapack QR, enter matrix dimension n: " matrixDimN
       read -p "In this strong scaling test for Scalapack QR, enter the starting number of processor rows: " numProws
@@ -450,6 +448,7 @@ do
       for ((k=1; k<=\${maxBlockSize}; k*=2))
       do
         # Write to plotInstructions file
+        echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${binaryTag}\"" >> collectInstructions.sh
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_NoFormQ\"" >> collectInstructions.sh
