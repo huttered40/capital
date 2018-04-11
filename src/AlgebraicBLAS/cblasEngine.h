@@ -15,6 +15,10 @@
 #include "mkl.h"
 #endif
 
+#ifdef STAMPEDE2
+#include "mkl.h"
+#endif
+
 #ifdef BGQ
 #include "/soft/libraries/alcf/current/xl/CBLAS/include/cblas.h"
 #endif

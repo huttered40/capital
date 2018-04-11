@@ -44,9 +44,9 @@ then
 elif [ "$(hostname |grep "stampede2")" != "" ]
 then
   machineName=STAMPEDE2
-  scalaDir=""                # Fill in soon
-  mpiType=mpi
+  scalaDir=~/CANDMC
   export MPITYPE=MPI_TYPE
+  mpiType=mpi
 fi
 
 read -p "Do you want Profiling/Timer[T] output, Critter[C] output, or absolute performance[P] output? Note that AMPI only allows [P]: " profType
@@ -77,7 +77,10 @@ read -p "Enter maximum number of nodes requested: " maxNumNodes
 read -p "Enter ppn: " ppn
 read -p "Enter number of tests (equal to number of strong scaling or weak scaling tests that will be run): " numTests
 
-if [ "${machineName}" == "BW" ]
+numHours=""
+numMinutes=""
+numSeconds=""
+if [ "${machineName}" == "BW" ] || [ "${machineName}" == "STAMPEDE2" ]
 then
   read -p "Enter number of hours of job: " numHours
   read -p "Enter number of minutes of job: " numMinutes
@@ -114,11 +117,16 @@ then
 fi
 
 # Build PAA code
+if [ "${machineName}" == "STAMPEDE2" ]
+then
+  echo "Loading Intel MPI module"
+  module load impi
+fi
 make -C./.. clean
 make -C./.. cqr2_${mpiType}
 
 # Build CANDMC code
-if [ "${machineName}" == "THETA" ]
+if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ]
 then
   cd ${scalaDir}
   ./configure
@@ -141,7 +149,7 @@ then
   export BINPATH=${SCRATCH}/${fileName}/bin/
 elif [ "${machineName}" == "STAMPEDE2" ]
 then
-  echo "dog"
+  export BINPATH=${SCRATCH}/${fileName}/bin/
 elif [ "${machineName}" == "PORTER" ]
 then
   export SCRATCH=../../../PAA_data
@@ -194,7 +202,19 @@ do
     echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \$scriptName
   elif [ "${machineName}" == "STAMPEDE2" ]
   then
-    echo "dog" > \$scriptName
+    echo "#!/bin/bash" > \${scriptName}
+    echo "#SBATCH -J myjob_\${curNumNodes}" >> \${scriptName}
+    echo "#SBATCH -o myjob_\${curNumNodes}.o%j" >> \${scriptName}
+    echo "#SBATCH -e myjob_\${curNumNodes}.e%j" >> \${scriptName}
+    if [ \${curNumNodes} -le 256 ]
+    then
+      echo "#SBATCH -p normal" >> \$scriptName
+    else
+      echo "#SBATCH -p large" >> \$scriptName
+    fi
+    echo "#SBATCH -N \${curNumNodes}" >> \${scriptName}
+    echo "#SBATCH -n \$((\${curNumNodes} * ${ppn}))" >> \$scriptName
+    echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \$scriptName
   fi
   curNumNodes=\$(( \${curNumNodes} * 2 ))   # Its always going to be 2 for test. Don't overcomplicate and generalize this
 done
@@ -298,7 +318,7 @@ launchJobs () {
     echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
   elif [ "$machineName" == "STAMPEDE2" ]
   then
-    echo "dog" >> $SCRATCH/${fileName}/script\${3}.sh
+    echo "ibrun \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
   elif [ "$machineName" == "PORTER" ]
   then
     if [ "${mpiType}" == "mpi" ]
@@ -475,7 +495,7 @@ bash $SCRATCH/${fileName}.sh
 #rm $SCRATCH/${fileName}.sh
 
 # Note that for Porter, no need to do this, since we are submitting to a queue
-if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
+if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ]
 then
   mkdir $SCRATCH/${fileName}/bin
   mv ../bin/* $SCRATCH/${fileName}/bin
@@ -487,7 +507,12 @@ then
   while [ ${curNumNodes} -le ${maxNumNodes} ];
   do
     chmod +x ${fileName}/script${curNumNodes}.sh
-    qsub ${fileName}/script${curNumNodes}.sh
+    if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
+    then
+      qsub ${fileName}/script${curNumNodes}.sh
+    else
+      sbatch ${fileName}/script${curNumNodes}.sh
+    fi
     curNumNodes=$(( ${curNumNodes} * 2 ))
   done
 fi

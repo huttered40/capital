@@ -2,6 +2,7 @@ HOST=$(shell hostname)
 PORTER_machine=$(shell echo $(HOST) |grep 'porter')
 BGQ_machine=$(shell echo $(HOST) |grep 'mira\|cetus')
 THETA_machine=$(shell echo $(HOST) |grep 'theta')
+STAMPEDE2_machine=$(shell echo $(HOST) |grep 'stampede2')
 BIN=./../../../bin/
 
 # If make is called outside of the batch script generator, a few environment variables need to be set by default (double,int)
@@ -74,6 +75,26 @@ ifneq ($(THETA_machine),)
   MACHINE=THETA
   CCMPI = CC
   CFLAGS = -g -Wall -fast -std=c++11 -mkl=parallel -xMIC-AVX512
+
+  OBJS1 = cqr2_$(MACHINE)
+
+  MPI: $(OBJS1)
+	rm *.o
+
+  $(OBJS1): $(OBJS1).o
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L../../../../../CritterXC40/critter/lib -lcritter
+
+  $(OBJS1).o: test.cpp CholeskyQR2.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+
+  clean:
+	-rm -f *.o *.gch $(BIN)$(OBJS1)
+endif
+
+ifneq ($(STAMPEDE2_machine),)
+  MACHINE=STAMPEDE2
+  CCMPI = mpicxx
+  CFLAGS = -g -Wall -O3 -std=c++11 -mkl=parallel -xMIC-AVX512
 
   OBJS1 = cqr2_$(MACHINE)
 
