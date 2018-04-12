@@ -102,7 +102,7 @@ ifneq ($(STAMPEDE2_machine),)
 	rm *.o
 
   $(OBJS1): $(OBJS1).o
-	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L../../../../../CritterXC40/critter/lib -lcritter
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L../../../../../critter/lib -lcritter
 
   $(OBJS1).o: test.cpp CholeskyQR2.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp

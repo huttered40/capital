@@ -14,7 +14,7 @@ then
   export RESULTSPATH=../../../PAA_data
 elif [ "$(hostname |grep "stampede2")" != "" ]
 then
-  echo "dog"
+  export RESULTSPATH=../../../PAA_data
 fi
 
 read -p "Enter the directory name within ${SCRATCH} where the results are hidden: " resultsDir
@@ -44,6 +44,7 @@ do
     read -p "Enter performance/profiling/critter/NoFormQ file to write to: " configFile1
     read -p "Enter numerics/FormQ file to write to: " configFile2
     read -p "Enter number of files to read from: " numInputFiles
+    echo "tell me these 4 things - ${binaryTag} ${configFile1} ${configFile2} ${numInputFiles}"
     for ((k=0; k<${numInputFiles}; k++))
     do
       echo "iter ${k}"
