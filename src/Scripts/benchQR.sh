@@ -366,7 +366,7 @@ launch$tag2 () {
   local numProws=\${10}
   while [ \${startNumNodes} -le \${endNumNodes} ];
   do
-    local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${startBlockSize}blockSize_\${numProws}numProws_\${11}bSize"
+    local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${11}bSize"
     launchJobs ${tag2} \${fileString} \$startNumNodes \${2} \${matrixDimM} \${matrixDimN} \${11} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
     startNumNodes=\$(updateCounter \${startNumNodes} \$7 \$6)
     numProws=\$(updateCounter \${numProws} \$7 \$6)
@@ -475,12 +475,13 @@ do
       j=\$(( \${j} + 1 ))
     elif [ \${binaryTag} == 'bench_scala_qr' ]
     then
-      read -p "In this strong scaling test for Scalapack QR, enter matrix dimension m: " matrixDimM
-      read -p "In this strong scaling test for Scalapack QR, enter matrix dimension n: " matrixDimN
-      read -p "In this strong scaling test for Scalapack QR, enter the starting number of processor rows: " numProws
-      read -p "Enter the maximum valid block size: " maxBlockSize
+      read -p "Enter matrix dimension m: " matrixDimM
+      read -p "Enter matrix dimension n: " matrixDimN
+      read -p "Enter the starting number of processor rows: " numProws
+      read -p "Enter the minimum block size: " minBlockSize
+      read -p "Enter the maximum block size: " maxBlockSize
 
-      for ((k=1; k<=\${maxBlockSize}; k*=2))
+      for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
       do
         # Write to plotInstructions file
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -526,6 +527,7 @@ then
     then
       qsub ${fileName}/script${curNumNodes}.sh
     else
+      echo "Dog"
       sbatch ${fileName}/script${curNumNodes}.sh
     fi
     curNumNodes=$(( ${curNumNodes} * 2 ))
