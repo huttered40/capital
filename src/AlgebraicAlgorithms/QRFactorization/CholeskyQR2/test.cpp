@@ -69,8 +69,11 @@ int main(int argc, char** argv)
   fileStrTotal += "_perf.txt";
   #endif
   ofstream fptrTotal,fptrNumericsTotal;
-  fptrTotal.open(fileStrTotal.c_str());
-  fptrNumericsTotal.open(fileStrNumericsTotal.c_str());
+  if (rank == 0)
+  {
+    fptrTotal.open(fileStrTotal.c_str());
+    fptrNumericsTotal.open(fileStrNumericsTotal.c_str());
+  }
 
   // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
   MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
@@ -89,6 +92,7 @@ int main(int argc, char** argv)
     #ifdef CRITTER
     Critter_Clear();
     #endif
+    MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
     TAU_FSTART(Total);
     #ifdef PERFORMANCE
     double startTime=MPI_Wtime();

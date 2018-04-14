@@ -37,6 +37,7 @@ static pair<T,double> runTestCF(
   #ifdef CRITTER
   Critter_Clear();
   #endif
+  MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
   double startTime=MPI_Wtime();
@@ -124,8 +125,11 @@ int main(int argc, char** argv)
   fileStrTotal += "_perf.txt";
   #endif
   ofstream fptrTotal,fptrNumericsTotal;
-  fptrTotal.open(fileStrTotal.c_str());
-  fptrNumericsTotal.open(fileStrNumericsTotal.c_str());
+  if (rank == 0)
+  {
+    fptrTotal.open(fileStrTotal.c_str());
+    fptrNumericsTotal.open(fileStrNumericsTotal.c_str());
+  }
 
   MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
   MatrixTypeA matT(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
