@@ -148,7 +148,10 @@ int main(int argc, char** argv)
       totalTime += info.second;
     }
   }
-  fptrTotal.close();
+  if (rank == 0)
+  {
+    fptrTotal.close();
+  }
   MPI_Finalize();
   return 0;
 }

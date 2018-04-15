@@ -133,7 +133,10 @@ int main(int argc, char** argv)
       totalError2 += orthogonalityErrorGlobal;
     }
   }
-  fptrTotal.close();
+  if (rank == 0)
+  {
+    fptrTotal.close();
+  }
   MPI_Finalize();
   return 0;
 }

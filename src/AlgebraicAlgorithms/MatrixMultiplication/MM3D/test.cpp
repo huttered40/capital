@@ -180,7 +180,10 @@ int main(int argc, char** argv)
       double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
       totalTime += iterTime;
     }
-    fptrTotal.close();
+    if (rank == 0)
+    {
+      fptrTotal.close();
+    }
   }
   else if (methodKey1 == 1)
   {
@@ -273,7 +276,10 @@ int main(int argc, char** argv)
         totalTime += iterTime;
       }
     }
-    fptrTotal.close();
+    if (rank == 0)
+    {
+      fptrTotal.close();
+    }
   }
 
   MPI_Finalize();

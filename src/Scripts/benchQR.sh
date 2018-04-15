@@ -75,6 +75,11 @@ read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
 read -p "Enter ppn: " ppn
+numThreadsPerRank=""
+if [ "${machineName}" == "STAMPEDE2" ]
+then
+  read -p "Enter number of MKL threads per MPI rank: " numThreadsPerRank
+fi
 read -p "Enter number of tests (equal to number of strong scaling or weak scaling tests that will be run): " numTests
 
 numHours=""
@@ -171,35 +176,35 @@ do
     echo "#!/bin/sh" > \${scriptName}
   elif [ "${machineName}" == "BW" ]
   then
-    echo "#!/bin/bash" > \$scriptName
-    echo "#PBS -l nodes=$numNodes:ppn=${ppn}:xe" >> \$scriptName
-    echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \$scriptName
-    echo "#PBS -N ${numNodes}" >> \$scriptName
-    echo "#PBS -e \$PBS_JOBID.err" >> \$scriptName
-    echo "#PBS -o \$PBS_JOBID.out" >> \$scriptName
-    echo "##PBS -m Ed" >> \$scriptName
-    echo "##PBS -M hutter2@illinois.edu" >> \$scriptName
-    echo "##PBS -A xyz" >> \$scriptName
-    echo "#PBS -W umask=0027" >> \$scriptName
-    echo "cd \$PBS_O_WORKDIR" >> \$scriptName
-    echo "#module load craype-hugepages2M  perftools" >> \$scriptName
-    echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \$scriptName
+    echo "#!/bin/bash" > \${scriptName}
+    echo "#PBS -l nodes=$numNodes:ppn=${ppn}:xe" >> \${scriptName}
+    echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
+    echo "#PBS -N ${numNodes}" >> \${scriptName}
+    echo "#PBS -e \$PBS_JOBID.err" >> \${scriptName}
+    echo "#PBS -o \$PBS_JOBID.out" >> \${scriptName}
+    echo "##PBS -m Ed" >> \${scriptName}
+    echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
+    echo "##PBS -A xyz" >> \${scriptName}
+    echo "#PBS -W umask=0027" >> \${scriptName}
+    echo "cd \$PBS_O_WORKDIR" >> \${scriptName}
+    echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
+    echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
   elif [ "${machineName}" == "THETA" ]
   then
     echo "#!/bin/bash" > \${scriptName}
-    echo "#COBALT -t ${numMinutes}" >> \$scriptName
-    echo "#COBALT -n \${curNumNodes}" >> \$scriptName
-    echo "#COBALT --attrs mcdram=cache:numa=quad" >> \$scriptName
+    echo "#COBALT -t ${numMinutes}" >> \${scriptName}
+    echo "#COBALT -n \${curNumNodes}" >> \${scriptName}
+    echo "#COBALT --attrs mcdram=cache:numa=quad" >> \${scriptName}
     echo "#COBALT -A QMCat" >> \${scriptName}
-    echo "export n_nodes=\${curNumNodes}" >> \$scriptName
-    echo "export n_mpi_ranks_per_node=${ppn}" >> \$scriptName
-    echo "export n_mpi_ranks=\$((\${curNumNodes} * ${ppn}))" >> \$scriptName
+    echo "export n_nodes=\${curNumNodes}" >> \${scriptName}
+    echo "export n_mpi_ranks_per_node=${ppn}" >> \${scriptName}
+    echo "export n_mpi_ranks=\$((\${curNumNodes} * ${ppn}))" >> \${scriptName}
     read -p "Enter number of OpenMP threads per rank: " numOMPthreadsPerRank
     read -p "Enter number of hyperthreads per core: " numHyperThreadsPerCore
     read -p "Enter number of hyperthreads skipped per rank: " numHyperThreadsSkippedPerRank
-    echo "export n_openmp_threads_per_rank=\${numOMPthreadsPerRank}" >> \$scriptName
-    echo "export n_hyperthreads_per_core=\${numHyperThreadsPerCore}" >> \$scriptName
-    echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \$scriptName
+    echo "export n_openmp_threads_per_rank=\${numOMPthreadsPerRank}" >> \${scriptName}
+    echo "export n_hyperthreads_per_core=\${numHyperThreadsPerCore}" >> \${scriptName}
+    echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \${scriptName}
   elif [ "${machineName}" == "STAMPEDE2" ]
   then
     echo "#!/bin/bash" > \${scriptName}
@@ -208,13 +213,14 @@ do
     echo "#SBATCH -e myjob_\${curNumNodes}.e%j" >> \${scriptName}
     if [ \${curNumNodes} -le 256 ]
     then
-      echo "#SBATCH -p normal" >> \$scriptName
+      echo "#SBATCH -p normal" >> \${scriptName}
     else
-      echo "#SBATCH -p large" >> \$scriptName
+      echo "#SBATCH -p large" >> \${scriptName}
     fi
     echo "#SBATCH -N \${curNumNodes}" >> \${scriptName}
-    echo "#SBATCH -n \$((\${curNumNodes} * ${ppn}))" >> \$scriptName
-    echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \$scriptName
+    echo "#SBATCH -n \$((\${curNumNodes} * ${ppn}))" >> \${scriptName}
+    echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
+    echo "export MKL_NUM_THREADS=${numThreadsPerRank}" >> \${scriptName}
   fi
   curNumNodes=\$(( \${curNumNodes} * 2 ))   # Its always going to be 2 for test. Don't overcomplicate and generalize this
 done
