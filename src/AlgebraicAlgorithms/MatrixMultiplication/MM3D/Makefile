@@ -24,8 +24,9 @@ ifneq ($(PORTER_machine),)
   CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
   CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
   CFLAGS = -g -Wall -O3 -std=c++11
-  OBJS1 = mm3d_$(MACHINE)_mpi
-  OBJS2 = mm3d_$(MACHINE)_ampi
+
+  OBJS1 = mm3d_$(MACHINE)_$(PROFTYPE)_mpi
+  OBJS2 = mm3d_$(MACHINE)_$(PROFTYPE)_ampi
 
   MPI: $(OBJS1)
 	rm *.o
@@ -55,7 +56,7 @@ ifneq ($(BGQ_machine),)
   CFLAGS = -std=c++11 -g -fopenmp
   #-qlanglvl=rvaluereferences
 
-  OBJS1 = mm3d_$(MACHINE)
+  OBJS1 = mm3d_$(MACHINE)_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -75,7 +76,7 @@ ifneq ($(THETA_machine),)
   CCMPI = CC
   CFLAGS = -g -Wall -fast -std=c++11 -mkl=parallel -xMIC-AVX512
 
-  OBJS1 = mm3d_$(MACHINE)
+  OBJS1 = mm3d_$(MACHINE)_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -96,7 +97,7 @@ ifneq ($(STAMPEDE2_machine),)
   CCMPI = mpicxx
   CFLAGS = -g -Wall -O3 -std=c++11 -mkl=parallel -xMIC-AVX512
 
-  OBJS1 = mm3d_$(MACHINE)
+  OBJS1 = mm3d_$(MACHINE)_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o

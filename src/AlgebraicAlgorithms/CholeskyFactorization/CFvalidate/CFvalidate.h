@@ -17,7 +17,7 @@
 #include "./../../../Util/shared.h"
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../Timer/Timer.h"
+#include "./../../../Timer/CTFtimer.h"
 #include "./../../../Util/util.h"
 #include "./../../../Util/validation.h"
 

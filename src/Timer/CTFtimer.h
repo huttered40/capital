@@ -8,6 +8,8 @@
 #include <fstream>
 #include <cstring>
 #include <stdio.h>
+#include <vector>
+#include <algorithm>
 
 // Local includes
 #include "../Util/shared.h"
@@ -157,5 +159,7 @@ namespace CTF {
 #define TAU_PROFILE_SET_CONTEXT(ARG)                              \
   if (ARG==0) CTF::set_context(MPI_COMM_WORLD);                    \
   else CTF::set_context((MPI_Comm)ARG);
+
+#include "CTFtimer.cxx"
 
 #endif /*CTF_TIMER_H_*/

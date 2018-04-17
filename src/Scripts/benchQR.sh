@@ -11,7 +11,6 @@ fi
 
 # Lets remove the old instructions
 rm -f fileTransfer
-rm -f collectInstructions.sh
 
 scalaDir=""
 machineName=""
@@ -49,36 +48,17 @@ then
   mpiType=mpi
 fi
 
-read -p "Do you want Profiling/Timer[T] output, Critter[C] output, or absolute performance[P] output? Note that AMPI only allows [P]: " profType
-if [ "${profType}" == "T" ]
-then
-  export PROFTYPE=TIMER_TYPE
-elif [ "${profType}" == "C" ]
-then
-  export PROFTYPE=CRITTER_TYPE
-elif [ "${profType}" == "P" ]
-then
-  export PROFTYPE=PERF_TYPE
-fi
-
-# Note: leaving this code inactive for now. I can always manually remove data files once it gets too large
-#read -p "Should we delete the items in Results directory? Yes[1], No[0] " delDecision1
-#if [ "${delDecision1}" == "1" ]
-#then
-#  rm -rf ../Results/*
-#fi
-
-#read -p "Enter machine name [BGQ (cetus,mira), THETA, BW, STAMPEDE2, PORTER]: " machineName
-#read -p "Enter the Date (MM_DD_YYYY): " dateStr
 dateStr=$(date +%Y-%m-%d-%H_%M_%S)
 read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
 read -p "Enter ppn: " ppn
-numThreadsPerRank=""
+numThreadsPerRankMin=""
+numThreadsPerRankMax=""
 if [ "${machineName}" == "STAMPEDE2" ]
 then
-  read -p "Enter number of MKL threads per MPI rank: " numThreadsPerRank
+  read -p "Enter minimum number of MKL threads per MPI rank: " numThreadsPerRankMin
+  read -p "Enter maximum number of MKL threads per MPI rank: " numThreadsPerRankMax
 fi
 read -p "Enter number of tests (equal to number of strong scaling or weak scaling tests that will be run): " numTests
 
@@ -97,6 +77,10 @@ fi
 
 numPEs=$((ppn*numNodes))
 fileName=benchQR${fileID}_${dateStr}_${machineName}_${profType}
+if [ "${machineName}" == "STAMPEDE2" ]   # Will allow me to run multiple jobs with different numThreadsPerRank without the fileName aliasing.
+then
+  fileName=${fileName}_${numThreadsPerRankMin}_${numThreadsPerRankMax}
+fi
 
 read -p "What datatype? float[0], double[1], complex<float>[2], complex<double>[3]: " dataType
 read -p "What integer type? int[0], int64_t[1]: " intType
@@ -122,13 +106,23 @@ then
 fi
 
 # Build PAA code
+# Build separately for performance runs, critter runs, and profiling runs. To properly analyze, all 3 are necessary.
+# Any one without the other two renders it meaningless.
 if [ "${machineName}" == "STAMPEDE2" ]
 then
   echo "Loading Intel MPI module"
   module load impi
 fi
 make -C./.. clean
+export PROFTYPE=PERFORMANCE
 make -C./.. cqr2_${mpiType}
+if [ "${machineName}" != "PORTER" ]
+then
+  export PROFTYPE=PROFILE
+  make -C./.. cqr2_${mpiType}
+  export PROFTYPE=CRITTER
+  make -C./.. cqr2_${mpiType}
+fi
 
 # Build CANDMC code
 if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ]
@@ -160,6 +154,11 @@ then
   export SCRATCH=../../../PAA_data
   export BINPATH=./../bin/
 fi
+
+# collectData.sh will always be a single line, just a necessary intermediate step.
+echo "bash $SCRATCH/${fileName}/collectInstructions.sh | bash packageData.sh" > collectData.sh
+# plotData.sh will always be a single line, just a necessary intermediate step.
+echo "bash ../../../../myData/${fileName}/collectInstructions.sh | bash plotScript.sh" > plotData.sh
 
 cat <<-EOF > $SCRATCH/${fileName}.sh
 scriptName=$SCRATCH/${fileName}/script.sh
@@ -337,10 +336,10 @@ launchJobs () {
   fi
   if [ "\${1}" == "cqr2" ]
   then
-    writePlotFileName \${@:2:1} collectInstructions.sh 0
+    writePlotFileName \${@:2:1} $SCRATCH/${fileName}/collectInstructions.sh 0
   elif [ "\${1}" == "bench_scala_qr" ]
   then
-    writePlotFileNameScalapack \${@:2:1} collectInstructions.sh 0
+    writePlotFileNameScalapack \${@:2:1} $SCRATCH/${fileName}/collectInstructions.sh 0
   fi
 }
 
@@ -395,10 +394,10 @@ echo "echo \"${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
 # Echo for data collection from remote machine (not porter) to PAA/src/Results
 # This temporary file will be deleted while collectScript.sh is called.
-echo "echo \"${fileName}\"" > collectInstructions.sh
-echo "echo \"${machineName}\"" >> collectInstructions.sh
+echo "echo \"${fileName}\"" > $SCRATCH/${fileName}/collectInstructions.sh
+echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
-echo "echo \"${numTests}\"" >> collectInstructions.sh
+echo "echo \"${numTests}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
 for ((i=1; i<=${numTests}; i++))
 do
@@ -406,7 +405,7 @@ do
   read -p "Enter scaling type [SS,WS]: " scale
   read -p "Enter number of different configurations/binaries which will be used for this test: " numBinaries
 
-  echo "echo \"\${numBinaries}\"" >> collectInstructions.sh
+  echo "echo \"\${numBinaries}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
   # Echo for SCAPLOT makefile generator
   echo "echo \"\${scale}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -466,10 +465,10 @@ do
       
       # Write to plotInstructions file
       echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${binaryTag}\"" >> collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_perf\"" >> collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_numerics\"" >> collectInstructions.sh
-      echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >>collectInstructions.sh
+      echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+      echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
       # Write to plotInstructions file
       echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -492,16 +491,16 @@ do
         # Write to plotInstructions file
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${binaryTag}\"" >> collectInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_NoFormQ\"" >> collectInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_FormQ\"" >> collectInstructions.sh
+        echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
         # This is where the last tricky part is: how many files do we need, because blockSize must be precomputed basically, and then multiplied by findCountLength
         # Write to plotInstructions file
         echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> collectInstructions.sh
+        echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
         writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k} $SCRATCH/${fileName}/plotInstructions.sh 1
         launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${numProws} \${k}
         j=\$(( \${j} + 1 ))
@@ -534,7 +533,7 @@ then
       qsub ${fileName}/script${curNumNodes}.sh
     else
       echo "Dog"
-      sbatch ${fileName}/script${curNumNodes}.sh
+#      sbatch ${fileName}/script${curNumNodes}.sh
     fi
     curNumNodes=$(( ${curNumNodes} * 2 ))
   done

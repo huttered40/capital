@@ -25,7 +25,7 @@
 
 // Local includes
 #include "./../Util/shared.h"
-#include "./../Timer/Timer.h"
+#include "./../Timer/CTFtimer.h"
 
 // Goal: Have a BLAS Policy with the particular BLAS implementation as one of the Policy classes
 //       This will allow for easier switching when needing alternate BLAS implementations
@@ -78,8 +78,6 @@ public:
   cblasEngine<float,U>& operator=(cblasEngine&& rhs) = delete;
   ~cblasEngine() = delete;
 
-  static pTimer timer;
-
   // Engine methods
   static void _gemm(float* matrixA, float* matrixB, float* matrixC, U m, U n, U k,
                       U lda, U ldb, U ldc, const blasEngineArgumentPackage_gemm<float>& srcPackage);
@@ -99,8 +97,6 @@ public:
   cblasEngine<double,U>& operator=(cblasEngine&& rhs) = delete;
   ~cblasEngine() = delete;
 
-  static pTimer timer;
-
   // Engine methods
   static void _gemm(double* matrixA, double* matrixB, double* matrixC, U m, U n, U k,
                       U lda, U ldb, U ldc, const blasEngineArgumentPackage_gemm<double>& srcPackage);
@@ -119,8 +115,6 @@ public:
   cblasEngine<std::complex<float>,U>& operator=(const cblasEngine& rhs) = delete;
   cblasEngine<std::complex<float>,U>& operator=(cblasEngine&& rhs) = delete;
   ~cblasEngine() = delete;
-
-  static pTimer timer;
 
   // Engine methods
   static void _gemm(std::complex<float>* matrixA, std::complex<float>* matrixB, std::complex<float>* matrixC, U m, U n, U k, U lda, U ldb, U ldc,
@@ -142,8 +136,6 @@ public:
   cblasEngine<std::complex<double>,U>& operator=(const cblasEngine& rhs) = delete;
   cblasEngine<std::complex<double>,U>& operator=(cblasEngine&& rhs) = delete;
   ~cblasEngine() = delete;
-
-  static pTimer timer;
 
   // Engine methods
   static void _gemm(std::complex<double>* matrixA, std::complex<double>* matrixB, std::complex<double>* matrixC, U m, U n, U k, U lda, U ldb, U ldc,

@@ -8,7 +8,7 @@
 
 #include "shared.h"
 #include "util.h"
-#include "./../Timer/Timer.h"
+#include "./../Timer/CTFtimer.h"
 #include "../Matrix/Matrix.h"
 #include "../AlgebraicAlgorithms/MatrixMultiplication/MM3D/MM3D.h"
 

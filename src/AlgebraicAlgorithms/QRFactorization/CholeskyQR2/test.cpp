@@ -11,7 +11,7 @@
 #include "./../../../Util/shared.h"
 #include "CholeskyQR2.h"
 #include "./../QRvalidate/QRvalidate.h"
-#include "../../../Timer/Timer.h"
+#include "../../../Timer/CTFtimer.h"
 
 using namespace std;
 
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
     #endif
     TAU_FSTOP_FILE(Total, fptrTotal, i, numFuncs);
     #ifdef CRITTER
-    Critter_Print(fptrTotal, i, fptrAvg, numIterations);
+    Critter_Print(fptrTotal, i, numIterations);
     #endif
 
     MatrixTypeR saveA = matA;

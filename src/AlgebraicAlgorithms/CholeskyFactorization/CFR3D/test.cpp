@@ -13,7 +13,7 @@
 #include "./../../../Util/shared.h"
 #include "CFR3D.h"
 #include "../CFvalidate/CFvalidate.h"
-#include "../../../Timer/Timer.h"
+#include "../../../Timer/CTFtimer.h"
 
 using namespace std;
 

@@ -12,7 +12,7 @@
 
 // Local includes
 #include "./../Util/shared.h"
-#include "./../Timer/Timer.h"
+#include "./../Timer/CTFtimer.h"
 #include "MatrixDistributer.h"
 
 // Create the many Structure classes that I want to experiment with.

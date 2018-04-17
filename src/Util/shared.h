@@ -3,16 +3,6 @@
 #ifndef SHARED
 #define SHARED
 
-#ifdef TIMER_TYPE
-  #define PROFILE
-#endif
-#ifdef CRITTER_TYPE
-  #define CRITTER
-#endif
-#ifdef PERF_TYPE
-  #define PERFORMANCE
-#endif
-
 #ifdef FLOAT_TYPE
   #define DATATYPE float
   #define MPI_DATATYPE MPI_FLOAT

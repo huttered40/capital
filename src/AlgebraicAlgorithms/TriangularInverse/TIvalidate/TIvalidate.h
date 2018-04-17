@@ -12,10 +12,9 @@
 
 // Local includes
 #include "./../../../Util/shared.h"
-#include "./../../../Timer/Timer.h"
+#include "./../../../Timer/CTFtimer.h"
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../Timer/Timer.h"
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.

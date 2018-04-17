@@ -7,15 +7,21 @@
 #include <iostream>
 
 #ifdef CRITTER
+#ifdef PORTER
 #include "../../../../../ExternalLibraries/CRITTER/critter/critter.h"
+#endif /*PORTER*/
+#ifdef STAMPEDE2
+#include "../../../../../critter/critter.h"
+#endif /*STAMPEDE2*/
 #endif /*CRITTER*/
+
 #ifndef CRITTER
 #include <mpi.h>
 #endif /*CRITTER*/
 
 // Local includes
 #include "./../../../Util/shared.h"
-#include "./../../../Timer/Timer.h"
+#include "./../../../Timer/CTFtimer.h"
 #include "../../../Matrix/Matrix.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"

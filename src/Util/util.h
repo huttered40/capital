@@ -8,7 +8,7 @@
 #include <tuple>
 
 #include "shared.h"
-#include "./../Timer/Timer.h"
+#include "./../Timer/CTFtimer.h"
 #include "../Matrix/Matrix.h"
 #include "../Matrix/MatrixSerializer.h"
 

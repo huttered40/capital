@@ -14,7 +14,7 @@
 // Local includes
 #include "./../../../Util/shared.h"
 #include "./../../../Matrix/Matrix.h"
-#include "./../../../Timer/Timer.h"
+#include "./../../../Timer/CTFtimer.h"
 #include "./../../../Matrix/MatrixSerializer.h"
 #include "./../../../AlgebraicBLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"

@@ -52,10 +52,10 @@ do
       read -p "Enter file to read from: " InputFile
       ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFile1} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 1
       echo "iter ${k}"
-      #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
+      rm ${RESULTSPATH}/${resultsDir}/${InputFile}
       read -p "Enter file to read from: " InputFile
       ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFile2} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 2
-      #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
+      rm ${RESULTSPATH}/${resultsDir}/${InputFile}
     done
   done
 done

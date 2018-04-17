@@ -1,22 +1,8 @@
 /* Author: Edgar Solomonik */
 
-//#include <mpi.h>
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <algorithm>
-//#include <time.h>
-//#include "string.h"
 #include <assert.h>
-//#include <iostream>
-//#include <vector>
 
-// Comment out the local includes for now, to see what is missing when I compile
-//#include "util.h"
-#include "CTFtimer.h"
-//#include "model.h"
-
-// Comment out this guy, will help me see where the actual shit that uses this is
-//using namespace CTF_int;
+//#include "CTFtimer.h"
 
 namespace CTF{
   #define MAX_TOT_SYMBOLS_LEN 1000000
@@ -210,7 +196,7 @@ namespace CTF{
         // Only increment calls when we have a start ^ stop match
         (*function_timers)[index].calls++;
       }
-      numFuncs = exitTimerFunction();
+      exitTimerFunction();
       exited = 1;
     }
   #endif
@@ -369,7 +355,7 @@ namespace CTF{
     int numFuncs;
     if (set_contxt && original && !exited) {
       if (comm != MPI_COMM_WORLD){
-        return 0;
+        return;
       }
       if (printBool)
       {
@@ -421,7 +407,7 @@ namespace CTF{
 
   void Timer_epoch::end(){
   #ifdef PROFILE
-    tmr_inner->stop();
+    tmr_inner->stopFunction();
     if (function_timers != NULL){
       function_timers->clear();
       delete function_timers;
@@ -429,7 +415,7 @@ namespace CTF{
     function_timers = new std::vector<Function_timer>();
     *function_timers = saved_function_timers;
     excl_time = save_excl_time;
-    tmr_outer->stop();
+    tmr_outer->stopFunction();
     //delete tmr_inner;
     delete tmr_outer;
   #endif

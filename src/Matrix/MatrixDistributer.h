@@ -12,7 +12,7 @@
 
 // Local includes -> Note that this class should need to know nothing about the Matrix class.
 #include "./../Util/shared.h"
-#include "./../Timer/Timer.h"
+#include "./../Timer/CTFtimer.h"
 
 // In order to use a partial specialization of a fully templated class, we must first
 //   define a partial specialized class, and in order to do that, we must declare/define a

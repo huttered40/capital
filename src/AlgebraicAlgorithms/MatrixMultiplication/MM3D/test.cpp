@@ -10,7 +10,7 @@
 // Local includes
 #include "./../../../Util/shared.h"
 #include "MM3D.h"
-#include "../../../Timer/Timer.h"
+#include "../../../Timer/CTFtimer.h"
 #include "../MMvalidate/MMvalidate.h"
 
 using namespace std;
