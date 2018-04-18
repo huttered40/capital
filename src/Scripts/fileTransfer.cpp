@@ -38,6 +38,7 @@ int main(int argc, char** argv)
       {
 	inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
 	outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
+	std::cout << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
 	medianVec.push_back(data3);
       }
       sort(medianVec.begin(), medianVec.end());

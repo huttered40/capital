@@ -53,6 +53,7 @@ read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
 read -p "Enter ppn: " ppn
+
 numThreadsPerRankMin=""
 numThreadsPerRankMax=""
 if [ "${machineName}" == "STAMPEDE2" ]
@@ -60,6 +61,7 @@ then
   read -p "Enter minimum number of MKL threads per MPI rank: " numThreadsPerRankMin
   read -p "Enter maximum number of MKL threads per MPI rank: " numThreadsPerRankMax
 fi
+
 read -p "Enter number of tests (equal to number of strong scaling or weak scaling tests that will be run): " numTests
 
 numHours=""
@@ -76,7 +78,7 @@ then
 fi
 
 numPEs=$((ppn*numNodes))
-fileName=benchQR${fileID}_${dateStr}_${machineName}_${profType}
+fileName=benchQR${fileID}_${dateStr}_${machineName}
 if [ "${machineName}" == "STAMPEDE2" ]   # Will allow me to run multiple jobs with different numThreadsPerRank without the fileName aliasing.
 then
   fileName=${fileName}_${numThreadsPerRankMin}_${numThreadsPerRankMax}
@@ -123,6 +125,9 @@ then
   export PROFTYPE=CRITTER
   make -C./.. cqr2_${mpiType}
 fi
+# For now, set profType=P, but tomorrow, note that it will be gone, as will anything that depends on it
+profType=P
+
 
 # Build CANDMC code
 if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ]
@@ -219,7 +224,7 @@ do
     echo "#SBATCH -N \${curNumNodes}" >> \${scriptName}
     echo "#SBATCH -n \$((\${curNumNodes} * ${ppn}))" >> \${scriptName}
     echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
-    echo "export MKL_NUM_THREADS=${numThreadsPerRank}" >> \${scriptName}
+    echo "export MKL_NUM_THREADS=${numThreadsPerRankMin}" >> \${scriptName}
   fi
   curNumNodes=\$(( \${curNumNodes} * 2 ))   # Its always going to be 2 for test. Don't overcomplicate and generalize this
 done
@@ -476,7 +481,7 @@ do
       echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC} $SCRATCH/${fileName}/plotInstructions.sh 1  
-      launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult}
+      launch\${binaryTag} \${scale} \${binaryPath}_PERFORMANCE \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult}
       j=\$(( \${j} + 1 ))
     elif [ \${binaryTag} == 'bench_scala_qr' ]
     then
@@ -533,7 +538,7 @@ then
       qsub ${fileName}/script${curNumNodes}.sh
     else
       echo "Dog"
-#      sbatch ${fileName}/script${curNumNodes}.sh
+      sbatch ${fileName}/script${curNumNodes}.sh
     fi
     curNumNodes=$(( ${curNumNodes} * 2 ))
   done
