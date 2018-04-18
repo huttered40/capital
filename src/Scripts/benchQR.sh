@@ -163,7 +163,7 @@ fi
 # collectData.sh will always be a single line, just a necessary intermediate step.
 echo "bash $SCRATCH/${fileName}/collectInstructions.sh | bash packageData.sh" > collectData.sh
 # plotData.sh will always be a single line, just a necessary intermediate step.
-echo "bash ../../../../myData/${fileName}/collectInstructions.sh | bash plotScript.sh" > plotData.sh
+echo "bash collectInstructions.sh | bash plotScript.sh" > plotData.sh
 
 cat <<-EOF > $SCRATCH/${fileName}.sh
 scriptName=$SCRATCH/${fileName}/script.sh
