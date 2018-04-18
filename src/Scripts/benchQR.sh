@@ -520,6 +520,10 @@ EOF
 bash $SCRATCH/${fileName}.sh
 #rm $SCRATCH/${fileName}.sh
 
+# Copy a local version to Scripts directory so that it can be used on the local side to generate plots.
+# But its important that we keep a backup in SCRATCH/fileName in case we overwrite collectInstructions.sh, we can always write it back.
+cp $SCRATCH/${fileName}/collectInstructions.sh collectInstructions.sh
+
 # Note that for Porter, no need to do this, since we are submitting to a queue
 if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ]
 then

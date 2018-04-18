@@ -26,13 +26,6 @@ then
   cp -r ${SCRATCH}/${resultsDir}/* ${RESULTSPATH}/${resultsDir}/
 fi
 
-cd ${RESULTSPATH}/${resultsDir}/
-ls -l | wc -l
-cd -
-cd ${RESULTSPATH}/${resultsDir}/
-ls -l | wc -l
-cd -
-
 g++ fileTransfer.cpp -o fileTransfer
 read -p "Enter number of tests: " numTests
 for ((i=0; i<${numTests}; i++))
