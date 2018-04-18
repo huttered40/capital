@@ -136,6 +136,7 @@ int main(int argc, char** argv)
   if (rank == 0)
   {
     fptrTotal.close();
+    fptrNumericsTotal.close();
   }
   MPI_Finalize();
   return 0;

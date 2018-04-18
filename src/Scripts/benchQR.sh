@@ -435,6 +435,11 @@ do
     curNumNodes=\$(( \${curNumNodes} * 2 ))
   done
 
+  read -p "Enter matrix dimension m: " matrixDimM
+  read -p "Enter matrix dimension n: " matrixDimN
+  echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
   j=1
   while [ \${j} -le \${numBinaries} ];
   do
@@ -463,8 +468,6 @@ do
       echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       
       read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
-      read -p "In this strong scaling test for CQR2, enter matrix dimension m: " matrixDimM
-      read -p "In this strong scaling test for CQR2, enter matrix dimension n: " matrixDimN
       read -p "In this strong scaling test for CQR2, enter starting tunable processor grid dimension d: " pDimD
       read -p "In this strong scaling test for CQR2, enter static tunable processor grid dimension c: " pDimC
       
@@ -475,8 +478,6 @@ do
       echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
       echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
       # Write to plotInstructions file
-      echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -485,8 +486,6 @@ do
       j=\$(( \${j} + 1 ))
     elif [ \${binaryTag} == 'bench_scala_qr' ]
     then
-      read -p "Enter matrix dimension m: " matrixDimM
-      read -p "Enter matrix dimension n: " matrixDimN
       read -p "Enter the starting number of processor rows: " numProws
       read -p "Enter the minimum block size: " minBlockSize
       read -p "Enter the maximum block size: " maxBlockSize
@@ -501,8 +500,6 @@ do
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
         # This is where the last tricky part is: how many files do we need, because blockSize must be precomputed basically, and then multiplied by findCountLength
         # Write to plotInstructions file
-        echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
