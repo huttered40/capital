@@ -174,12 +174,13 @@ mkdir $SCRATCH/${fileName}/results
 curNumNodes=${minNumNodes}
 while [ \${curNumNodes} -le ${maxNumNodes} ];
 do
-  scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
   if [ "${machineName}" == "BGQ" ]
   then
+    scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
     echo "#!/bin/sh" > \${scriptName}
   elif [ "${machineName}" == "BW" ]
   then
+    scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
     echo "#!/bin/bash" > \${scriptName}
     echo "#PBS -l nodes=$numNodes:ppn=${ppn}:xe" >> \${scriptName}
     echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
@@ -195,6 +196,7 @@ do
     echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
   elif [ "${machineName}" == "THETA" ]
   then
+    scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
     echo "#!/bin/bash" > \${scriptName}
     echo "#COBALT -t ${numMinutes}" >> \${scriptName}
     echo "#COBALT -n \${curNumNodes}" >> \${scriptName}
@@ -211,20 +213,27 @@ do
     echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \${scriptName}
   elif [ "${machineName}" == "STAMPEDE2" ]
   then
-    echo "#!/bin/bash" > \${scriptName}
-    echo "#SBATCH -J myjob_\${curNumNodes}" >> \${scriptName}
-    echo "#SBATCH -o myjob_\${curNumNodes}.o%j" >> \${scriptName}
-    echo "#SBATCH -e myjob_\${curNumNodes}.e%j" >> \${scriptName}
-    if [ \${curNumNodes} -le 256 ]
-    then
-      echo "#SBATCH -p normal" >> \${scriptName}
-    else
-      echo "#SBATCH -p large" >> \${scriptName}
-    fi
-    echo "#SBATCH -N \${curNumNodes}" >> \${scriptName}
-    echo "#SBATCH -n \$((\${curNumNodes} * ${ppn}))" >> \${scriptName}
-    echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
-    echo "export MKL_NUM_THREADS=${numThreadsPerRankMin}" >> \${scriptName}
+    curNumThreadsPerRank=${numThreadsPerRankMin}
+    while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+    do
+      scriptName=$SCRATCH/${fileName}/script\${curNumNodes}_\${curNumThreadsPerRank}.sh
+      echo "bash script name: \${scriptName}"
+      echo "#!/bin/bash" > \${scriptName}
+      echo "#SBATCH -J myjob_\${curNumNodes}" >> \${scriptName}
+      echo "#SBATCH -o myjob_\${curNumNodes}.o%j" >> \${scriptName}
+      echo "#SBATCH -e myjob_\${curNumNodes}.e%j" >> \${scriptName}
+      if [ \${curNumNodes} -le 256 ]
+      then
+        echo "#SBATCH -p normal" >> \${scriptName}
+      else
+        echo "#SBATCH -p large" >> \${scriptName}
+      fi
+      echo "#SBATCH -N \${curNumNodes}" >> \${scriptName}
+      echo "#SBATCH -n \$((\${curNumNodes} * ${ppn}))" >> \${scriptName}
+      echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
+      echo "export MKL_NUM_THREADS=\${curNumThreadsPerRank}" >> \${scriptName}
+      curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+    done 
   fi
   curNumNodes=\$(( \${curNumNodes} * 2 ))   # Its always going to be 2 for test. Don't overcomplicate and generalize this
 done
@@ -328,7 +337,7 @@ launchJobs () {
     echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
   elif [ "$machineName" == "STAMPEDE2" ]
   then
-    echo "ibrun \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
+    echo "ibrun \${@:5:\$#}" >> $SCRATCH/${fileName}/script\${3}_\${4}.sh
   elif [ "$machineName" == "PORTER" ]
   then
     if [ "${mpiType}" == "mpi" ]
@@ -356,8 +365,8 @@ launch$tag1 () {
   local startPdimD=\${10}
   while [ \$startNumNodes -le \$endNumNodes ];
   do
-    local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${9}dimN_\${12}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC"
-    launchJobs ${tag1} \${fileString} \$startNumNodes \${2} \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
+    local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${9}dimN_\${12}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC_\${13}tpk"
+    launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2} \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
     startNumNodes=\$(updateCounter \${startNumNodes} \${7} \${6})
     startPdimD=\$(updateCounter \${startPdimD} \${7} \${6})
     if [ "\${1}" == "WS" ];
@@ -416,9 +425,9 @@ do
   echo "echo \"\${scale}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
   echo "echo \"\${numBinaries}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
+  # Nodes
   read -p "Enter starting number of nodes for this test: " startNumNodes
   read -p "Enter ending number of nodes for this test: " endNumNodes
-  
   # Assume for now that we always jump up by a power of 2
   #read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
   #read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
@@ -434,6 +443,16 @@ do
     echo "echo \"\${curNumNodes}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
     curNumNodes=\$(( \${curNumNodes} * 2 ))
   done
+
+  # Threads
+  read -p "Enter starting number of threads-per-rank for this test: " startNumTPR
+  read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
+  # Assume for now that we always jump up by a power of 2
+  TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} \${jumpNumNodesoperator} \${jumpNumNodes})
+  echo "echo \"\${TPRcount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
+
+  totalNumConfigs=$((\${TPRcount} * \${numBinaries} ))
+  echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
   read -p "Enter matrix dimension m: " matrixDimM
   read -p "Enter matrix dimension n: " matrixDimN
@@ -470,19 +489,26 @@ do
       read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
       read -p "In this strong scaling test for CQR2, enter starting tunable processor grid dimension d: " pDimD
       read -p "In this strong scaling test for CQR2, enter static tunable processor grid dimension c: " pDimC
-      
-      # Write to plotInstructions file
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      # Write to plotInstructions file
-      echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC} $SCRATCH/${fileName}/plotInstructions.sh 1  
-      launch\${binaryTag} \${scale} \${binaryPath}_PERFORMANCE \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult}
+
+      curNumThreadsPerRank=${numThreadsPerRankMin}
+      while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+      do
+        # Write to plotInstructions file
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        # Write to collectInstructions file
+        echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+        echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+        # Write to plotInstructions file
+        echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
+        launch\${binaryTag} \${scale} \${binaryPath}_PERFORMANCE \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult} \${curNumThreadsPerRank}
+        curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+      done
       j=\$(( \${j} + 1 ))
     elif [ \${binaryTag} == 'bench_scala_qr' ]
     then
@@ -533,14 +559,18 @@ then
   curNumNodes=${minNumNodes}
   while [ ${curNumNodes} -le ${maxNumNodes} ];
   do
-    chmod +x ${fileName}/script${curNumNodes}.sh
-    if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
-    then
-      qsub ${fileName}/script${curNumNodes}.sh
-    else
-      echo "Dog"
-      sbatch ${fileName}/script${curNumNodes}.sh
-    fi
+    curNumThreadsPerRank=${numThreadsPerRankMin}
+    while [ ${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+    do
+      chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
+      then
+        qsub ${fileName}/script${curNumNodes}.sh
+      else
+        sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+      fi
+      curNumThreadsPerRank=$(( ${curNumThreadsPerRank} * 2 ))
+    done
     curNumNodes=$(( ${curNumNodes} * 2 ))
   done
 fi
