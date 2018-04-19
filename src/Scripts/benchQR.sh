@@ -419,11 +419,8 @@ do
   read -p "Enter scaling type [SS,WS]: " scale
   read -p "Enter number of different configurations/binaries which will be used for this test: " numBinaries
 
-  echo "echo \"\${numBinaries}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-
   # Echo for SCAPLOT makefile generator
   echo "echo \"\${scale}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-  echo "echo \"\${numBinaries}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
   # Nodes
   read -p "Enter starting number of nodes for this test: " startNumNodes
@@ -449,10 +446,10 @@ do
   read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
   # Assume for now that we always jump up by a power of 2
   TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} \${jumpNumNodesoperator} \${jumpNumNodes})
-  echo "echo \"\${TPRcount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
 
-  totalNumConfigs=$((\${TPRcount} * \${numBinaries} ))
+  totalNumConfigs=\$((\${TPRcount} * \${numBinaries} ))
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+  echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
   read -p "Enter matrix dimension m: " matrixDimM
   read -p "Enter matrix dimension n: " matrixDimN
