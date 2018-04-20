@@ -481,8 +481,6 @@ do
     read -p "Enter number of iterations: " numIterations
     if [ \${binaryTag} == 'cqr2' ]
     then
-      echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      
       read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
       read -p "In this strong scaling test for CQR2, enter starting tunable processor grid dimension d: " pDimD
       read -p "In this strong scaling test for CQR2, enter static tunable processor grid dimension c: " pDimC
@@ -491,6 +489,7 @@ do
       while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
       do
         # Write to plotInstructions file
+        echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         # Write to collectInstructions file
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
