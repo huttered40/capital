@@ -54,8 +54,9 @@ read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
 read -p "Enter ppn: " ppn
 
-numThreadsPerRankMin=""
-numThreadsPerRankMax=""
+# Default setting is 1
+numThreadsPerRankMin=1
+numThreadsPerRankMax=1
 if [ "${machineName}" == "STAMPEDE2" ]
 then
   read -p "Enter minimum number of MKL threads per MPI rank: " numThreadsPerRankMin
@@ -342,10 +343,10 @@ launchJobs () {
   then
     if [ "${mpiType}" == "mpi" ]
     then
-      mpiexec -n \$numProcesses \${@:4:\$#}
+      mpiexec -n \${numProcesses} \${@:5:\$#}
     elif [ "${mpiType}" == "ampi" ]
     then
-      ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:4:\$#}
+      ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:5:\$#}
     fi
   fi
   if [ "\${1}" == "cqr2" ]
@@ -442,8 +443,13 @@ do
   done
 
   # Threads
-  read -p "Enter starting number of threads-per-rank for this test: " startNumTPR
-  read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
+  startNumTPR=1
+  endNumTPR=1
+  if [ "${machineName}" == "STAMPEDE2" ]
+  then
+    read -p "Enter starting number of threads-per-rank for this test: " startNumTPR
+    read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
+  fi
   # Assume for now that we always jump up by a power of 2
   TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} \${jumpNumNodesoperator} \${jumpNumNodes})
 
