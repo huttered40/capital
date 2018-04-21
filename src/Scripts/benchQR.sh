@@ -119,7 +119,8 @@ fi
 make -C./.. clean
 export PROFTYPE=PERFORMANCE
 make -C./.. cqr2_${mpiType}
-if [ "${machineName}" != "PORTER" ]
+read -p "Do you want to analyze these tests? Yes[1], No[0]: " analyzeDecision
+if [ ${analyzeDecision} == 1 ]
 then
   export PROFTYPE=PROFILE
   make -C./.. cqr2_${mpiType}
