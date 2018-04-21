@@ -25,8 +25,8 @@ ifneq ($(PORTER_machine),)
   CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/multicore-linux-x86_64/bin/ampicxx
   CFLAGS = -g -Wall -O3 -std=c++11
 
-  OBJS1 = cfr3d_$(MACHINE)_$(PROFTYPE)_mpi
-  OBJS2 = cfr3d_$(MACHINE)_$(PROFTYPE)_ampi
+  OBJS1 = cfr3d_$(MACHINE)_mpi_$(PROFTYPE)
+  OBJS2 = cfr3d_$(MACHINE)_ampi_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
