@@ -89,10 +89,10 @@ int main(int argc, char** argv)
     double saveTime;
     // reset the matrix before timer starts
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+    MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
     #ifdef CRITTER
     Critter_Clear();
     #endif
-    MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
     TAU_FSTART(Total);
     #ifdef PERFORMANCE
     double startTime=MPI_Wtime();

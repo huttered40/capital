@@ -37,10 +37,10 @@ static double runTestGemm(
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+  MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   #ifdef CRITTER
   Critter_Clear();
   #endif
-  MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
   double startTime=MPI_Wtime();
@@ -78,10 +78,10 @@ static double runTestTrmm(
   double iterTimeLocal,iterTimeGlobal;
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
+  MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   #ifdef CRITTER
   Critter_Clear();
   #endif
-  MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
   double startTime=MPI_Wtime();

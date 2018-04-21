@@ -34,10 +34,10 @@ static pair<T,double> runTestCF(
   double iterTimeLocal,iterTimeGlobal;
   // Reset matrixA
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
+  MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   #ifdef CRITTER
   Critter_Clear();
   #endif
-  MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
   double startTime=MPI_Wtime();

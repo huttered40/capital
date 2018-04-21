@@ -119,16 +119,16 @@ fi
 make -C./.. clean
 export PROFTYPE=PERFORMANCE
 make -C./.. cqr2_${mpiType}
+profType=P
 read -p "Do you want to analyze these tests? Yes[1], No[0]: " analyzeDecision
 if [ ${analyzeDecision} == 1 ]
 then
+  profType=A					#  A for all 3 (performance, profiling, critical path analysis)
   export PROFTYPE=PROFILE
   make -C./.. cqr2_${mpiType}
   export PROFTYPE=CRITTER
   make -C./.. cqr2_${mpiType}
 fi
-# For now, set profType=P, but tomorrow, note that it will be gone, as will anything that depends on it
-profType=P
 
 
 # Build CANDMC code
@@ -286,41 +286,37 @@ log2 () {
 
 # Only for cqr2
 writePlotFileName() {
-  if [ "${profType}" == "T" ]
+  # Performance runs will always run, so no reason for an if-statement here
+  echo "echo \"\${1}_perf.txt\"" >> \${2}
+  if [ "\${3}" == "1" ]
   then
-    echo "echo \"\${1}_timer.txt\"" >> \${2}
-  elif [ "${profType}" == "C" ]
-  then
-    echo "echo \"\${1}_critter.txt\"" >> \${2}
-  elif [ "${profType}" == "P" ]
-  then
-    echo "echo \"\${1}_perf.txt\"" >> \${2}
-    if [ "\${3}" == "1" ]
-    then
-      echo "echo \"\${1}_perf_median.txt\"" >> \${2}
-    fi
+    echo "echo \"\${1}_perf_median.txt\"" >> \${2}
   fi
+  
   echo "echo \"\${1}_numerics.txt\"" >> \${2}
   if [ "\${3}" == "1" ]
   then
     echo "echo \"\${1}_numerics_median.txt\"" >> \${2}
   fi
+
+  if [ "${profType}" == "A" ]
+  then
+    echo "echo \"\${1}_critter.txt\"" >> \${2}
+    echo "echo \"\${1}_timer.txt\"" >> \${2}
+  fi
 }
 
 # Only for bench_scala_qr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
 writePlotFileNameScalapack() {
-  if [ "${profType}" == "P" ]
+  echo "echo \"\${1}_NoFormQ.txt\"" >> \${2}
+  if [ "\${3}" == "1" ]
   then
-    echo "echo \"\${1}_NoFormQ.txt\"" >> \${2}
-    if [ "\${3}" == "1" ]
-    then
-      echo "echo \"\${1}_NoFormQ_median.txt\"" >> \${2}
-    fi
-    echo "echo \"\${1}_FormQ.txt\"" >> \${2}
-    if [ "\${3}" == "1" ]
-    then
-      echo "echo \"\${1}_FormQ_median.txt\"" >> \${2}
-    fi
+    echo "echo \"\${1}_NoFormQ_median.txt\"" >> \${2}
+  fi
+  echo "echo \"\${1}_FormQ.txt\"" >> \${2}
+  if [ "\${3}" == "1" ]
+  then
+    echo "echo \"\${1}_FormQ_median.txt\"" >> \${2}
   fi
 }
 
@@ -368,7 +364,16 @@ launch$tag1 () {
   while [ \$startNumNodes -le \$endNumNodes ];
   do
     local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${9}dimN_\${12}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC_\${13}tpk"
-    launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2} \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
+    # Launch performance job always.
+    launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_PERFORMANCE \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
+
+    # If analysis is turned on, launch Profiling job and Critter job.
+    if [ "${profType}" == "A" ]
+    then
+      launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_PROFILE \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_CRITTER \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
+    fi
+
     startNumNodes=\$(updateCounter \${startNumNodes} \${7} \${6})
     startPdimD=\$(updateCounter \${startPdimD} \${7} \${6})
     if [ "\${1}" == "WS" ];
@@ -509,7 +514,7 @@ do
         echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
-        launch\${binaryTag} \${scale} \${binaryPath}_PERFORMANCE \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult} \${curNumThreadsPerRank}
+        launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult} \${curNumThreadsPerRank}
         curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
       done
       j=\$(( \${j} + 1 ))
