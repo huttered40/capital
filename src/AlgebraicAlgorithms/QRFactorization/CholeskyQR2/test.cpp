@@ -58,7 +58,6 @@ int main(int argc, char** argv)
   int numIterations=atoi(argv[8]);
   string fileStr = argv[9];
   string fileStrTotal=fileStr;
-  string fileStrNumericsTotal=fileStr + "_numerics.txt";
   #ifdef PROFILE
   fileStrTotal += "_timer.txt";
   #endif
@@ -66,23 +65,30 @@ int main(int argc, char** argv)
   fileStrTotal += "_critter.txt";
   #endif
   #ifdef PERFORMANCE
+  string fileStrNumericsTotal=fileStr;
   fileStrTotal += "_perf.txt";
+  fileStrNumericsTotal += "_numerics.txt";
+  ofstream fptrNumericsTotal;
   #endif
-  ofstream fptrTotal,fptrNumericsTotal;
+  ofstream fptrTotal;
   if (rank == 0)
   {
     fptrTotal.open(fileStrTotal.c_str());
+    #ifdef PERFORMANCE
     fptrNumericsTotal.open(fileStrNumericsTotal.c_str());
+    #endif
   }
 
   // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
   MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, dimensionC, dimensionD);
   MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, dimensionC, dimensionC);
 
-  // Loop for getting a good range of results.
+  #ifdef PERFORMANCE
   DATATYPE totalError1 = 0;
   DATATYPE totalError2 = 0;
   double totalTime = 0;
+  #endif
+
   int numFuncs = 0;				// For figuring out how many functions are being profiled (smart way to find average over all iterations)
   for (int i=0; i<numIterations; i++)
   {
@@ -113,9 +119,10 @@ int main(int argc, char** argv)
     #endif
     TAU_FSTOP_FILE(Total, fptrTotal, i, numFuncs);
     #ifdef CRITTER
-    Critter_Print(fptrTotal, i, numIterations);
+    Critter_Print(fptrTotal, i, size);
     #endif
 
+    #ifdef PERFORMANCE
     MatrixTypeR saveA = matA;
     saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
     commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
@@ -132,11 +139,14 @@ int main(int argc, char** argv)
       totalError1 += residualErrorGlobal;
       totalError2 += orthogonalityErrorGlobal;
     }
+    #endif
   }
   if (rank == 0)
   {
     fptrTotal.close();
+    #ifdef PERFORMANCE
     fptrNumericsTotal.close();
+    #endif
   }
   MPI_Finalize();
   return 0;

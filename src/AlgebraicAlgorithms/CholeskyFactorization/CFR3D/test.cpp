@@ -27,11 +27,15 @@ static pair<T,double> runTestCF(
                         Matrix<T,U,StructureA,Distribution>& matA,
                         Matrix<T,U,StructureB,Distribution>& matT,
 			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
-			int pCoordX, int pCoordY, int pGridDimensionSize, ofstream& fptrTotal, ofstream& fptrNumericsTotal,
+			int pCoordX, int pCoordY, int pGridDimensionSize, ofstream& fptrTotal,
+			#ifdef PERFORMANCE
+			ofstream& fptrNumericsTotal,
+			#endif
 			int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
-  double iterTimeLocal,iterTimeGlobal;
+  double iterTimeLocal=-1;
+  double iterTimeGlobal=-1;
   // Reset matrixA
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
@@ -55,6 +59,8 @@ static pair<T,double> runTestCF(
   #ifdef CRITTER
   Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
   #endif
+
+  #ifdef PERFORMANCE
 /* Sequential validation is no longer in the codepath. For use, create a new branch and comment in this code.
   if (methodKey2 == 0)
   {
@@ -72,6 +78,7 @@ static pair<T,double> runTestCF(
     saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
   MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   util<T,U>::destroy3DTopology(commInfo3D);
+  #endif 
   return make_pair(iterErrorGlobal, iterTimeGlobal);
 }
 
@@ -114,7 +121,6 @@ int main(int argc, char** argv)
 
   string fileStr = argv[7];
   string fileStrTotal=fileStr;
-  string fileStrNumericsTotal=fileStr + "_numerics.txt";
   #ifdef PROFILE
   fileStrTotal += "_timer.txt";
   #endif
@@ -122,35 +128,52 @@ int main(int argc, char** argv)
   fileStrTotal += "_critter.txt";
   #endif
   #ifdef PERFORMANCE
+  string fileStrNumericsTotal=fileStr;
   fileStrTotal += "_perf.txt";
+  fileStrNumericsTotal += "_numerics.txt";
+  ofstream fptrNumericsTotal;
   #endif
-  ofstream fptrTotal,fptrNumericsTotal;
+  ofstream fptrTotal;
   if (rank == 0)
   {
     fptrTotal.open(fileStrTotal.c_str());
+    #ifdef PERFORMANCE
     fptrNumericsTotal.open(fileStrNumericsTotal.c_str());
+    #endif
   }
 
   MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
   MatrixTypeA matT(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
 
+  #ifdef PERFORMANCE
   DATATYPE totalError = 0;
   double totalTime = 0;
+  #endif
   int numFuncs=0;
   for (int i=0; i<numIterations; i++)
   {
     pair<DATATYPE,double> info = runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize,
-      fptrTotal, fptrNumericsTotal, i, numIterations, rank, size, numFuncs);
+      fptrTotal,
+      #ifdef PERFORMANCE
+      fptrNumericsTotal,
+      #endif
+      i, numIterations, rank, size, numFuncs);
+    
+    #ifdef PERFORMANCE
     if (rank == 0)
     {
       fptrNumericsTotal << size << "\t" << i << "\t" << info.first << endl;
       totalError += info.first;
       totalTime += info.second;
     }
+    #endif
   }
   if (rank == 0)
   {
     fptrTotal.close();
+    #ifdef PERFORMANCE
+    fptrNumericsTotal.close();
+    #endif
   }
   MPI_Finalize();
   return 0;

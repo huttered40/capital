@@ -346,13 +346,6 @@ launchJobs () {
       ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:5:\$#}
     fi
   fi
-  if [ "\${1}" == "cqr2" ]
-  then
-    writePlotFileName \${@:2:1} $SCRATCH/${fileName}/collectInstructions.sh 0
-  elif [ "\${1}" == "bench_scala_qr" ]
-  then
-    writePlotFileNameScalapack \${@:2:1} $SCRATCH/${fileName}/collectInstructions.sh 0
-  fi
 }
 
 launch$tag1 () {
@@ -370,9 +363,11 @@ launch$tag1 () {
     # If analysis is turned on, launch Profiling job and Critter job.
     if [ "${profType}" == "A" ]
     then
-      launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_PROFILE \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
       launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_CRITTER \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_PROFILE \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
     fi
+
+    writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
 
     startNumNodes=\$(updateCounter \${startNumNodes} \${7} \${6})
     startPdimD=\$(updateCounter \${startPdimD} \${7} \${6})
@@ -394,6 +389,9 @@ launch$tag2 () {
   do
     local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${11}bSize"
     launchJobs ${tag2} \${fileString} \$startNumNodes \${2} \${matrixDimM} \${matrixDimN} \${11} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+
+    writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
+
     startNumNodes=\$(updateCounter \${startNumNodes} \$7 \$6)
     numProws=\$(updateCounter \${numProws} \$7 \$6)
     if [ "\${1}" == "WS" ];
@@ -417,6 +415,7 @@ echo "echo \"${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 # This temporary file will be deleted while collectScript.sh is called.
 echo "echo \"${fileName}\"" > $SCRATCH/${fileName}/collectInstructions.sh
 echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+echo "echo \"${profType}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
 echo "echo \"${numTests}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
@@ -507,7 +506,14 @@ do
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+
+        if [ "${profType}" == "A" ]
+	then
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+	fi
+        
+	echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
         # Write to plotInstructions file
         echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh

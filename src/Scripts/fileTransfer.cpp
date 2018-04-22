@@ -12,6 +12,7 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+  // Strings
   string outputFileStr = argv[1];
   string inputFileStr = argv[2];
   string outputFileStrMedian = outputFileStr + "_median.txt";
@@ -19,10 +20,12 @@ int main(int argc, char** argv)
   string binaryTag = argv[3];
   string order = argv[4];
 
+  .. I need a way to figure out whether or not to print the first line of the file to the new file, because I only need the header once, and I have it as the first line for each input file.
+
+  // Files
   ofstream outputFile,outputFileMedian;
   ifstream inputFile;
   inputFile.open(inputFileStr.c_str());
-  cout << "Check this string - " << inputFileStr.c_str() << endl;
   outputFile.open(outputFileStr.c_str(), ofstream::app);
   outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
 
@@ -38,7 +41,7 @@ int main(int argc, char** argv)
       {
 	inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
 	outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
-	std::cout << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
+	//std::cout << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
 	medianVec.push_back(data3);
       }
       sort(medianVec.begin(), medianVec.end());

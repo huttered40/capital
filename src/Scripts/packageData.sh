@@ -19,6 +19,7 @@ fi
 
 read -p "Enter the directory name within ${SCRATCH} where the results are hidden: " resultsDir
 read -p "Enter machine name: " machineName 
+read -p "Enter run type: " profType
 
 if [ "${machineName}" != "PORTER" ]
 then
@@ -34,21 +35,45 @@ do
   for ((j=0; j<${numConfigFiles}; j++))
   do
     read -p "Enter binary tag: " binaryTag
-    read -p "Enter performance/profiling/critter/NoFormQ file to write to: " configFile1
-    read -p "Enter numerics/FormQ file to write to: " configFile2
+    read -p "Enter performance/NoFormQ file to write to: " configFilePerf
+    read -p "Enter numerics/FormQ file to write to: " configFileNumerics
+    
+    configFileCritter="" 
+    configFileTimer=""
+    if [ "${profType}" == "A"  ]
+    then
+      read -p "Enter critter file to write to: " configFileCritter
+      read -p "Enter profiling file to write to: " configFileTimer
+    fi
+
     read -p "Enter number of files to read from: " numInputFiles
-    echo "tell me these 4 things - ${binaryTag} ${configFile1} ${configFile2} ${numInputFiles}"
+    echo "tell me these 4 things - ${binaryTag} ${configFilePerf} ${configFileNumerics} ${numInputFiles}"
     for ((k=0; k<${numInputFiles}; k++))
     do
-      echo "iter ${k}"
-      # Currently, every other input file will be performance, so that is how this inner-loop code will be structured
+      # First, performance
+      # Currently, every other input file will be performance (if profType=="P", if =="A", then every 4 is performance), so that is how this inner-loop code will be structured
       read -p "Enter file to read from: " InputFile
-      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFile1} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 1
-      echo "iter ${k}"
+      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFilePerf} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 1
       #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
+      
+      # Second, numerics
       read -p "Enter file to read from: " InputFile
-      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFile2} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 2
+      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileNumerics} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 2
       #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
+
+      if [ "${profType}" == "A"  ]
+      then
+        # Third, critter
+	read -p "Enter file to read from: " InputFile
+        ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileCritter} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 1
+        #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
+        
+	# Fourth, timer
+        read -p "Enter file to read from: " InputFile
+        ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileTimer} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 2
+        #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
+      fi
+
     done
   done
 done
@@ -61,7 +86,3 @@ tar -cvf ${resultsDir}.tar ${resultsDir}/*
 
 cd -
 rm fileTransfer
-# Push the changes, which should just a single file - collectInstructions.sh
-# Nah after rethinking this, Its too dangerous to put this in there. Need to do it manually and give good commit messages
-#git add -A && git commit -m "Commiting updated collectInstructions.sh, which contains useful info for plotting on local machine."
-#git push origin
