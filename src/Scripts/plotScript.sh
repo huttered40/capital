@@ -13,7 +13,7 @@ then
   export SCRATCH=/projects/QMCat/huttered
 elif [ "$(hostname |grep "stampede2")" != "" ]
 then
-  echo "dog"
+  export SCRATCH=/scratch/05608/tg849075
 fi
 
 read -p "Enter the directory name within ${SCRATCH} where the results are hidden: " resultsDir
@@ -35,7 +35,7 @@ then
   scp -r huttered@thetadtn.alcf.anl.gov:~/hutter2/PAA_data/${resultsDir}.tar .
 elif [ "${machineName}" == "STAMPEDE2" ]
 then
-  echo "dog"
+  scp -r tg849075@stampede2.tacc.utexas.edu:~/PAA_data/${resultsDir}.tar .
 fi
 
 tar -xvf ${resultsDir}.tar
@@ -46,4 +46,4 @@ scriptDir=$(pwd)
 
 # Generate the Makefile for Scaplot
 cd ${scaplotDir}
-bash ../../myData/${resultsDir}/plotInstructions.sh | bash MakePlotScript.sh
+#bash ../../myData/${resultsDir}/plotInstructions.sh | bash MakePlotScript.sh
