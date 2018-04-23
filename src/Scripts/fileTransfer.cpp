@@ -138,10 +138,28 @@ int main(int argc, char** argv)
     outputFile.close();
     inputFile.close();
     return 0;
-
   }
   else if (order == 4)
   {
+    // Files
+    ofstream outputFile;
+    ifstream inputFile;
+    inputFile.open(inputFileStr.c_str());
+    outputFile.open(outputFileStr.c_str(), ofstream::app);
 
+    string inputLine;
+    int counter=0;
+    while (!inputFile.eof())
+    {
+      getline(inputFile,inputLine);
+      if ((counter > 0) || (curIter > 0))
+      {
+        outputFile << inputLine << endl;
+      }
+      counter++;
+    }
+    outputFile.close();
+    inputFile.close();
+    return 0;
   }
 }

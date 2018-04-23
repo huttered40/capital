@@ -85,7 +85,7 @@ namespace CTF{
               (int)(100.*(total_excl_time)/complete_time),
               ((int)(10000.*(total_excl_time)/complete_time))%100);
       fptr << "\t" << name.c_str();
-      fptr << "\t" << total_calls/np << "\t" << (int)(total_time/np) << ((int)(1000.*(total_time)/np))%1000 << "\t" << (int)(100.*(total_time)/complete_time) << ((int)(10000.*(total_time)/complete_time))%100 << "\t" << (int)(total_excl_time/np) << ((int)(1000.*(total_excl_time)/np))%1000 << "\t" << (int)(100.*(total_excl_time)/complete_time) << ((int)(10000.*(total_excl_time)/complete_time))%100;
+      fptr << "\t" << total_calls/np << "\t" << (int)(total_time/np) << "." << ((int)(1000.*(total_time)/np))%1000 << "\t" << (int)(100.*(total_time)/complete_time) << "." << ((int)(10000.*(total_time)/complete_time))%100 << "\t" << (int)(total_excl_time/np) << "." << ((int)(1000.*(total_excl_time)/np))%1000 << "\t" << (int)(100.*(total_excl_time)/complete_time) << "." << ((int)(10000.*(total_excl_time)/complete_time))%100;
     } 
   }
 
