@@ -1,6 +1,8 @@
 /* Author: Edgar Solomonik */
 
 #include <assert.h>
+#include <map>
+#include <tuple>
 
 //#include "CTFtimer.h"
 
@@ -14,7 +16,8 @@ namespace CTF{
   double complete_time;
   int set_contxt = 0;
   int output_file_counter = 0;
-  
+  std::map<std::string,std::tuple<int,int,int,int,int,int,int,int,int> > saveFunctionInfo;
+
   Function_timer::Function_timer(const std::string& name_, 
                                  double start_time_,
                                  double start_excl_time_)
@@ -84,8 +87,8 @@ namespace CTF{
               ((int)(1000.*(total_excl_time)/np))%1000,
               (int)(100.*(total_excl_time)/complete_time),
               ((int)(10000.*(total_excl_time)/complete_time))%100);
-      fptr << "\t" << name.c_str();
-      fptr << "\t" << total_calls/np << "\t" << (int)(total_time/np) << "." << ((int)(1000.*(total_time)/np))%1000 << "\t" << (int)(100.*(total_time)/complete_time) << "." << ((int)(10000.*(total_time)/complete_time))%100 << "\t" << (int)(total_excl_time/np) << "." << ((int)(1000.*(total_excl_time)/np))%1000 << "\t" << (int)(100.*(total_excl_time)/complete_time) << "." << ((int)(10000.*(total_excl_time)/complete_time))%100;
+      
+      saveFunctionInfo[name.c_str()] = std::make_tuple(total_calls/np, (int)(total_time/np), ((int)(1000.*(total_time)/np))%1000, (int)(100.*(total_time)/complete_time), ((int)(10000.*(total_time)/complete_time))%100, (int)(total_excl_time/np), ((int)(1000.*(total_excl_time)/np))%1000, (int)(100.*(total_excl_time)/complete_time), ((int)(10000.*(total_excl_time)/complete_time))%100);
     } 
   }
 
@@ -314,13 +317,51 @@ namespace CTF{
     std::sort(function_timers->begin(), function_timers->end());
     complete_time = (*function_timers)[0].total_time;
     if (rank == 0){
-      fptr << iterNum;
       for (i=0; i<(int)function_timers->size(); i++){
         (*function_timers)[i].print(output,fptr,comm,rank,np);
 	numFuncs++;
       }
-      fptr << "\n";
+      if (iterNum == 0)
+      {
+        fptr << "Input";
+	for (auto& funcName : saveFunctionInfo)
+	{
+	  fptr << "\t" << funcName.first;
+	}
+      }
+      
+      // For each iteration, we have 5 lines to print out.
+      fptr << "\n" << iterNum;
+      for (auto& funcName : saveFunctionInfo)
+      {
+        fptr << "\t" << std::get<0>(funcName.second);
+      }
+      
+      fptr << "\n" << iterNum;
+      for (auto& funcName : saveFunctionInfo)
+      {
+        fptr << "\t" << std::get<1>(funcName.second) << "." << std::get<2>(funcName.second);
+      }
+      
+      fptr << "\n" << iterNum;
+      for (auto& funcName : saveFunctionInfo)
+      {
+        fptr << "\t" << std::get<3>(funcName.second) << "." << std::get<4>(funcName.second);
+      }
+      
+      fptr << "\n" << iterNum;
+      for (auto& funcName : saveFunctionInfo)
+      {
+        fptr << "\t" << std::get<5>(funcName.second) << "." << std::get<6>(funcName.second);
+      }
+      
+      fptr << "\n" << iterNum;
+      for (auto& funcName : saveFunctionInfo)
+      {
+        fptr << "\t" << std::get<7>(funcName.second) << "." << std::get<8>(funcName.second);
+      }
     }
+    saveFunctionInfo.clear();		// clear after each iteration
     return numFuncs;
   }
 
