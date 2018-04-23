@@ -57,7 +57,7 @@ static pair<T,double> runTestCF(
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter_Print(fptrTotal, iterNum, fptrAvg, numIter);
+  Critter_Print(fptrTotal, iterNum);
   #endif
 
   #ifdef PERFORMANCE

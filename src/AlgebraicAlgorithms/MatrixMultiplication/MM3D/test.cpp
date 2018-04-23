@@ -56,7 +56,7 @@ static double runTestGemm(
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter_Print(fptrTotal, iterNum, numIter);
+  Critter_Print(fptrTotal, iterNum);
   #endif
   return iterTimeGlobal;
 }
@@ -98,7 +98,7 @@ static double runTestTrmm(
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter_Print(fptrTotal, iterNum, numIter);
+  Critter_Print(fptrTotal, iterNum);
   #endif
   return iterTimeGlobal;
 }

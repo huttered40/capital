@@ -12,86 +12,136 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-  // Strings
+// Strings
   string outputFileStr = argv[1];
   string inputFileStr = argv[2];
-  string outputFileStrMedian = outputFileStr + "_median.txt";
-  outputFileStr += ".txt";
   string binaryTag = argv[3];
-  string order = argv[4];
+  int order = atoi(argv[4]);
+  int curIter = atoi(argv[5]);
 
-  .. I need a way to figure out whether or not to print the first line of the file to the new file, because I only need the header once, and I have it as the first line for each input file.
+  // debugging
+  std::cout << "input file - " << inputFileStr << endl;
 
-  // Files
-  ofstream outputFile,outputFileMedian;
-  ifstream inputFile;
-  inputFile.open(inputFileStr.c_str());
-  outputFile.open(outputFileStr.c_str(), ofstream::app);
-  outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
+  outputFileStr += ".txt";
 
-  if (binaryTag == "cqr2")
+  // Handle Scalapack QR separately (same with Scalapack Cholesky when I add it)
+  if (binaryTag == "bench_scala_qr")
   {
-    if (order == "1")
+    // Streams
+    string outputFileStrMedian = outputFileStr + "_median.txt";
+    ofstream outputFile,outputFileMedian;
+    ifstream inputFile;
+    inputFile.open(inputFileStr.c_str());
+    outputFile.open(outputFileStr.c_str(), ofstream::app);
+    outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
+    
+    vector<double> medianVec;
+    int data1,data2;
+    int data4,data5;		// Note: these are global matrix sizes, which might be int64_t. For now i will use int, but be careful
+    double data3;
+    while (!inputFile.eof())
     {
-      vector<double> medianVec;
-      int data1,data2;
-      int data4,data5;		// Note: these are global matrix sizes, which might be int64_t. For now i will use int, but be careful
-      double data3;
-      while (!inputFile.eof())
-      {
-	inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
-	outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
-	//std::cout << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
-	medianVec.push_back(data3);
-      }
-      sort(medianVec.begin(), medianVec.end());
-      outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+      inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
+      outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
+      medianVec.push_back(data3);
     }
-    else if (order == "2")
-    {
-      vector<double> medianVec1;
-      vector<double> medianVec2;
-      int data1,data2;
-      double data3,data4;
-      while (!inputFile.eof())
-      {
-	inputFile >> data1 >> data2 >> data3 >> data4;
-	outputFile << data1 << "\t" << data2 << "\t" << data3 << "\t" << data4 << endl;
-	medianVec1.push_back(data3);
-	medianVec2.push_back(data4);
-      }
-      sort(medianVec1.begin(), medianVec1.end());
-      sort(medianVec2.begin(), medianVec2.end());
-      outputFileMedian << data1 << "\t" << medianVec1[medianVec1.size()/2] << "\t" << medianVec2[medianVec2.size()/2] << std::endl;
-    }
+    sort(medianVec.begin(), medianVec.end());
+    outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+  
+    outputFile.close();
+    outputFileMedian.close();
+    inputFile.close();
+    return 0;
   }
-  else if (binaryTag == "bench_scala_qr")
+
+
+  if (order == 1)
   {
-    if ((order == "1") || (order == "2"))
+    string outputFileStrMedian = outputFileStr + "_median.txt";
+  
+    // Streams
+    ofstream outputFile,outputFileMedian;
+    ifstream inputFile;
+    inputFile.open(inputFileStr.c_str());
+    outputFile.open(outputFileStr.c_str(), ofstream::app);
+    outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
+
+    vector<double> medianVec;
+    int data1,data2;
+    int data4,data5;		// Note: these are global matrix sizes, which might be int64_t. For now i will use int, but be careful
+    double data3;
+    while (!inputFile.eof())
     {
-      vector<double> medianVec;
-      int data1,data2;
-      int data4,data5;		// Note: these are global matrix sizes, which might be int64_t. For now i will use int, but be careful
-      double data3;
-      while (!inputFile.eof())
-      {
-	inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
-	outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
-	medianVec.push_back(data3);
-      }
-      sort(medianVec.begin(), medianVec.end());
-      outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+      inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
+      outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
+      //std::cout << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
+      medianVec.push_back(data3);
     }
+    sort(medianVec.begin(), medianVec.end());
+    outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+  
+    outputFile.close();
+    outputFileMedian.close();
+    inputFile.close();
+    return 0;
   }
-/*
-  string dataLine;
-  while (getline(inputFile,dataLine))
+  else if (order == 2)
   {
-    outputFile << dataLine << endl;
+    string outputFileStrMedian = outputFileStr + "_median.txt";
+    
+    // Streams
+    ofstream outputFile,outputFileMedian;
+    ifstream inputFile;
+    inputFile.open(inputFileStr.c_str());
+    outputFile.open(outputFileStr.c_str(), ofstream::app);
+    outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
+
+    vector<double> medianVec1;
+    vector<double> medianVec2;
+    int data1,data2;
+    double data3,data4;
+    while (!inputFile.eof())
+    {
+      inputFile >> data1 >> data2 >> data3 >> data4;
+      outputFile << data1 << "\t" << data2 << "\t" << data3 << "\t" << data4 << endl;
+      medianVec1.push_back(data3);
+      medianVec2.push_back(data4);
+    }
+    sort(medianVec1.begin(), medianVec1.end());
+    sort(medianVec2.begin(), medianVec2.end());
+    
+    outputFileMedian << data1 << "\t" << medianVec1[medianVec1.size()/2] << "\t" << medianVec2[medianVec2.size()/2] << std::endl;
+    outputFile.close();
+    outputFileMedian.close();
+    inputFile.close();
+    return 0;
   }
-*/
-  outputFile.close();
-  outputFileMedian.close();
-  inputFile.close();
-  return 0;
+  else if (order == 3)
+  {
+    // Files
+    ofstream outputFile;
+    ifstream inputFile;
+    inputFile.open(inputFileStr.c_str());
+    outputFile.open(outputFileStr.c_str(), ofstream::app);
+
+    string inputLine;
+    int counter=0;
+    while (!inputFile.eof())
+    {
+      getline(inputFile,inputLine);
+      if ((counter > 0) || (curIter > 0))
+      {
+        outputFile << inputLine << endl;
+      }
+      counter++;
+    }
+    outputFile.close();
+    inputFile.close();
+    return 0;
+
+  }
+  else if (order == 4)
+  {
+
+  }
 }
