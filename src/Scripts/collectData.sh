@@ -1,1 +1,1 @@
-bash ../../../PAA_data/benchQR1_2018-04-22-23_18_40_PORTER/collectInstructions.sh | bash packageData.sh
+bash /scratch/05608/tg849075/benchQR1_2018-04-23-00_39_18_STAMPEDE2_1_1/collectInstructions.sh | bash packageData.sh
