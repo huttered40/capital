@@ -19,9 +19,6 @@ int main(int argc, char** argv)
   int order = atoi(argv[4]);
   int curIter = atoi(argv[5]);
 
-  // debugging
-  std::cout << "input file - " << inputFileStr << endl;
-
   outputFileStr += ".txt";
 
   // Handle Scalapack QR separately (same with Scalapack Cholesky when I add it)
@@ -129,7 +126,7 @@ int main(int argc, char** argv)
     while (!inputFile.eof())
     {
       getline(inputFile,inputLine);
-      if ((counter > 0) || (curIter > 0))
+      if ((counter > 0) || (curIter == 0))
       {
         outputFile << inputLine << endl;
       }
@@ -152,7 +149,7 @@ int main(int argc, char** argv)
     while (!inputFile.eof())
     {
       getline(inputFile,inputLine);
-      if ((counter > 0) || (curIter > 0))
+      if ((counter > 0) || (curIter == 0))
       {
         outputFile << inputLine << endl;
       }

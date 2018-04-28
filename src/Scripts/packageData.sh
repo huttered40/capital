@@ -53,24 +53,25 @@ do
       # First, performance
       # Currently, every other input file will be performance (if profType=="P", if =="A", then every 4 is performance), so that is how this inner-loop code will be structured
       read -p "Enter file to read from: " InputFile
-      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFilePerf} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 1 k
+      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFilePerf} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 1 ${k}
       #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
       
       # Second, numerics
       read -p "Enter file to read from: " InputFile
-      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileNumerics} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 2 k
+      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileNumerics} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 2 ${k}
       #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
 
       if [ "${profType}" == "A"  ]
       then
+        echo "Tell me k - ${k}"
         # Third, critter
 	read -p "Enter file to read from: " InputFile
-        ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileCritter} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 3 k
+        ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileCritter} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 3 ${k}
         #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
         
 	# Fourth, timer
         read -p "Enter file to read from: " InputFile
-        ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileTimer} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 4 k
+        ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileTimer} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 4 ${k}
         #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
       fi
 
