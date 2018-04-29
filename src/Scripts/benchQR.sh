@@ -15,32 +15,32 @@ rm -f fileTransfer
 scalaDir=""
 machineName=""
 mpiType=""
-if [ "$(hostname |grep "porter")" != "" ]
+if [ "$(hostname |grep "porter")" != "" ];
 then
   machineName=PORTER
   scalaDir=~/hutter2/ExternalLibraries/CANDMC/CANDMC
   scaplotDir=~/hutter2/ExternalLibraries/SCAPLOT/scaplot
   read -p "Do you want to use MPI[mpi] or AMPI[ampi]? " mpiType
-  if [ "${mpiType}" == "mpi" ]
+  if [ "${mpiType}" == "mpi" ];
   then
     export MPITYPE=MPI_TYPE
-  elif [ "${mpiType}" == "ampi" ]
+  elif [ "${mpiType}" == "ampi" ];
   then
     export MPITYPE=AMPI_TYPE
   fi
-elif [ "$(hostname |grep "mira")" != "" ] || [ "$(hostname |grep "cetus")" != "" ]
+elif [ "$(hostname |grep "mira")" != "" ] || [ "$(hostname |grep "cetus")" != "" ];
 then
   machineName=BGQ
   scalaDir=~/scratch/CANDMC
   export MPITYPE=MPI_TYPE
   mpiType=mpi
-elif [ "$(hostname |grep "theta")" != "" ]
+elif [ "$(hostname |grep "theta")" != "" ];
 then
   machineName=THETA
   scalaDir=~/scratch/CANDMC
   export MPITYPE=MPI_TYPE
   mpiType=mpi
-elif [ "$(hostname |grep "stampede2")" != "" ]
+elif [ "$(hostname |grep "stampede2")" != "" ];
 then
   machineName=STAMPEDE2
   scalaDir=~/CANDMC
@@ -57,7 +57,7 @@ read -p "Enter ppn: " ppn
 # Default setting is 1
 numThreadsPerRankMin=1
 numThreadsPerRankMax=1
-if [ "${machineName}" == "STAMPEDE2" ]
+if [ "${machineName}" == "STAMPEDE2" ];
 then
   read -p "Enter minimum number of MKL threads per MPI rank: " numThreadsPerRankMin
   read -p "Enter maximum number of MKL threads per MPI rank: " numThreadsPerRankMax
@@ -68,42 +68,42 @@ read -p "Enter number of tests (equal to number of strong scaling or weak scalin
 numHours=""
 numMinutes=""
 numSeconds=""
-if [ "${machineName}" == "BW" ] || [ "${machineName}" == "STAMPEDE2" ]
+if [ "${machineName}" == "BW" ] || [ "${machineName}" == "STAMPEDE2" ];
 then
   read -p "Enter number of hours of job: " numHours
   read -p "Enter number of minutes of job: " numMinutes
   read -p "Enter number of seconds of job: " numSeconds
-elif [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
+elif [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ];
 then
   read -p "Enter number of minutes of job: " numMinutes
 fi
 
 numPEs=$((ppn*numNodes))
 fileName=benchQR${fileID}_${dateStr}_${machineName}
-if [ "${machineName}" == "STAMPEDE2" ]   # Will allow me to run multiple jobs with different numThreadsPerRank without the fileName aliasing.
+if [ "${machineName}" == "STAMPEDE2" ];   # Will allow me to run multiple jobs with different numThreadsPerRank without the fileName aliasing.
 then
   fileName=${fileName}_${numThreadsPerRankMin}_${numThreadsPerRankMax}
 fi
 
 read -p "What datatype? float[0], double[1], complex<float>[2], complex<double>[3]: " dataType
 read -p "What integer type? int[0], int64_t[1]: " intType
-if [ ${dataType} == 0 ]
+if [ ${dataType} == 0 ];
 then
   export DATATYPE=FLOAT_TYPE
-elif [ ${dataType} == 1 ]
+elif [ ${dataType} == 1 ];
 then
   export DATATYPE=DOUBLE_TYPE
-elif [ ${dataType} == 2 ]
+elif [ ${dataType} == 2 ];
 then
   export DATATYPE=COMPLEX_FLOAT_TYPE
-elif [ ${dataType} == 3 ]
+elif [ ${dataType} == 3 ];
 then
   export DATATYPE=COMPLEX_DOUBLE_TYPE
 fi
-if [ ${intType} == 0 ]
+if [ ${intType} == 0 ];
 then
   export INTTYPE=INT_TYPE
-elif [ ${intType} == 1 ]
+elif [ ${intType} == 1 ];
 then
   export INTTYPE=INT64_T_TYPE
 fi
@@ -111,7 +111,7 @@ fi
 # Build PAA code
 # Build separately for performance runs, critter runs, and profiling runs. To properly analyze, all 3 are necessary.
 # Any one without the other two renders it meaningless.
-if [ "${machineName}" == "STAMPEDE2" ]
+if [ "${machineName}" == "STAMPEDE2" ];
 then
   echo "Loading Intel MPI module"
   module load impi
@@ -121,7 +121,7 @@ export PROFTYPE=PERFORMANCE
 make -C./.. cqr2_${mpiType}
 profType=P
 read -p "Do you want to analyze these tests? Yes[1], No[0]: " analyzeDecision
-if [ ${analyzeDecision} == 1 ]
+if [ ${analyzeDecision} == 1 ];
 then
   profType=A					#  A for all 3 (performance, profiling, critical path analysis)
   export PROFTYPE=PROFILE
@@ -132,7 +132,7 @@ fi
 
 
 # Build CANDMC code
-if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ]
+if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ];
 then
   cd ${scalaDir}
   ./configure
@@ -143,20 +143,20 @@ then
   mv ${scalaDir}/bin/benchmarks/* ../bin/
 fi
 
-if [ "${machineName}" == "BGQ" ]
+if [ "${machineName}" == "BGQ" ];
 then
   export SCRATCH=/projects/QMCat/huttered
-elif [ "${machineName}" == "BW" ]
+elif [ "${machineName}" == "BW" ];
 then
   echo "dog"
-elif [ "${machineName}" == "THETA" ]
+elif [ "${machineName}" == "THETA" ];
 then
   export SCRATCH=/projects/QMCat/huttered
   export BINPATH=${SCRATCH}/${fileName}/bin/
-elif [ "${machineName}" == "STAMPEDE2" ]
+elif [ "${machineName}" == "STAMPEDE2" ];
 then
   export BINPATH=${SCRATCH}/${fileName}/bin/
-elif [ "${machineName}" == "PORTER" ]
+elif [ "${machineName}" == "PORTER" ];
 then
   export SCRATCH=../../../PAA_data
   export BINPATH=./../bin/
@@ -176,11 +176,11 @@ mkdir $SCRATCH/${fileName}/results
 curNumNodes=${minNumNodes}
 while [ \${curNumNodes} -le ${maxNumNodes} ];
 do
-  if [ "${machineName}" == "BGQ" ]
+  if [ "${machineName}" == "BGQ" ];
   then
     scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
     echo "#!/bin/sh" > \${scriptName}
-  elif [ "${machineName}" == "BW" ]
+  elif [ "${machineName}" == "BW" ];
   then
     scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
     echo "#!/bin/bash" > \${scriptName}
@@ -196,7 +196,7 @@ do
     echo "cd \$PBS_O_WORKDIR" >> \${scriptName}
     echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
     echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
-  elif [ "${machineName}" == "THETA" ]
+  elif [ "${machineName}" == "THETA" ];
   then
     scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
     echo "#!/bin/bash" > \${scriptName}
@@ -213,7 +213,7 @@ do
     echo "export n_openmp_threads_per_rank=\${numOMPthreadsPerRank}" >> \${scriptName}
     echo "export n_hyperthreads_per_core=\${numHyperThreadsPerCore}" >> \${scriptName}
     echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \${scriptName}
-  elif [ "${machineName}" == "STAMPEDE2" ]
+  elif [ "${machineName}" == "STAMPEDE2" ];
   then
     curNumThreadsPerRank=${numThreadsPerRankMin}
     while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
@@ -224,7 +224,7 @@ do
       echo "#SBATCH -J myjob_\${curNumNodes}" >> \${scriptName}
       echo "#SBATCH -o myjob_\${curNumNodes}.o%j" >> \${scriptName}
       echo "#SBATCH -e myjob_\${curNumNodes}.e%j" >> \${scriptName}
-      if [ \${curNumNodes} -le 256 ]
+      if [ \${curNumNodes} -le 256 ];
       then
         echo "#SBATCH -p normal" >> \${scriptName}
       else
@@ -246,16 +246,16 @@ done
 
 updateCounter () {
   local counter=\${1}
-  if [ \${2} -eq 1 ]
+  if [ \${2} -eq 1 ];
   then
     counter=\$((\${counter} + \${3})) 
-  elif [ \${2} -eq 2 ]
+  elif [ \${2} -eq 2 ];
   then
    counter=\$((\${counter} - \${3})) 
-  elif [ \${2} -eq 3 ]
+  elif [ \${2} -eq 3 ];
   then
     counter=\$((\${counter} * \${3})) 
-  elif [ \${2} -eq 4 ]
+  elif [ \${2} -eq 4 ];
   then
     counter=\$((\${counter} / \${3})) 
   fi
@@ -288,18 +288,18 @@ log2 () {
 writePlotFileName() {
   # Performance runs will always run, so no reason for an if-statement here
   echo "echo \"\${1}_perf.txt\"" >> \${2}
-  if [ "\${3}" == "1" ]
+  if [ "\${3}" == "1" ];
   then
     echo "echo \"\${1}_perf_median.txt\"" >> \${2}
   fi
   
   echo "echo \"\${1}_numerics.txt\"" >> \${2}
-  if [ "\${3}" == "1" ]
+  if [ "\${3}" == "1" ];
   then
     echo "echo \"\${1}_numerics_median.txt\"" >> \${2}
   fi
 
-  if [ "${profType}" == "A" ]
+  if [ "${profType}" == "A" ];
   then
     echo "echo \"\${1}_critter.txt\"" >> \${2}
     echo "echo \"\${1}_timer.txt\"" >> \${2}
@@ -309,12 +309,12 @@ writePlotFileName() {
 # Only for bench_scala_qr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
 writePlotFileNameScalapack() {
   echo "echo \"\${1}_NoFormQ.txt\"" >> \${2}
-  if [ "\${3}" == "1" ]
+  if [ "\${3}" == "1" ];
   then
     echo "echo \"\${1}_NoFormQ_median.txt\"" >> \${2}
   fi
   echo "echo \"\${1}_FormQ.txt\"" >> \${2}
-  if [ "\${3}" == "1" ]
+  if [ "\${3}" == "1" ];
   then
     echo "echo \"\${1}_FormQ_median.txt\"" >> \${2}
   fi
@@ -323,25 +323,25 @@ writePlotFileNameScalapack() {
 # Functions that write the actual script, depending on machine
 launchJobs () {
   local numProcesses=\$((\${3} * $ppn))
-  if [ "$machineName" == "BGQ" ]
+  if [ "$machineName" == "BGQ" ];
   then
     echo "runjob --np \${numProcesses} -p ${ppn} --block \$COBALT_PARTNAME --verbose=INFO : \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
-  elif [ "$machineName" == "BW" ]
+  elif [ "$machineName" == "BW" ];
   then
     echo "Note: this is probably wrong, and I need to check this once I get BW access"
     echo "aprun -n \$numProcesses \$@" >> $SCRATCH/${fileName}/script\${2}.sh
-  elif [ "$machineName" == "THETA" ]
+  elif [ "$machineName" == "THETA" ];
   then
     echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
-  elif [ "$machineName" == "STAMPEDE2" ]
+  elif [ "$machineName" == "STAMPEDE2" ];
   then
     echo "ibrun \${@:5:\$#}" >> $SCRATCH/${fileName}/script\${3}_\${4}.sh
-  elif [ "$machineName" == "PORTER" ]
+  elif [ "$machineName" == "PORTER" ];
   then
-    if [ "${mpiType}" == "mpi" ]
+    if [ "${mpiType}" == "mpi" ];
     then
       mpiexec -n \${numProcesses} \${@:5:\$#}
-    elif [ "${mpiType}" == "ampi" ]
+    elif [ "${mpiType}" == "ampi" ];
     then
       ${BINPATH}charmrun +p1 +vp\${numProcesses} \${@:5:\$#}
     fi
@@ -361,7 +361,7 @@ launch$tag1 () {
     launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_PERFORMANCE \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
 
     # If analysis is turned on, launch Profiling job and Critter job.
-    if [ "${profType}" == "A" ]
+    if [ "${profType}" == "A" ];
     then
       launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_CRITTER \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
       launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_PROFILE \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
@@ -387,8 +387,8 @@ launch$tag2 () {
   local numProws=\${10}
   while [ \${startNumNodes} -le \${endNumNodes} ];
   do
-    local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${11}bSize"
-    launchJobs ${tag2} \${fileString} \$startNumNodes \${2} \${matrixDimM} \${matrixDimN} \${11} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+    local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${11}bSize_\${12}tpk"
+    launchJobs ${tag2} \${fileString} \$startNumNodes \${12} \${2} \${matrixDimM} \${matrixDimN} \${11} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
 
     writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
 
@@ -450,7 +450,7 @@ do
   # Threads
   startNumTPR=1
   endNumTPR=1
-  if [ "${machineName}" == "STAMPEDE2" ]
+  if [ "${machineName}" == "STAMPEDE2" ];
   then
     read -p "Enter starting number of threads-per-rank for this test: " startNumTPR
     read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
@@ -476,7 +476,7 @@ do
     read -p "Enter binary tag [0 for cqr2,1 for bench_scala_qr]: " binaryTagChoice
 
     binaryTag=""
-    if [ \${binaryTagChoice} == 0 ]
+    if [ \${binaryTagChoice} == 0 ];
     then
       binaryTag=cqr2
     else
@@ -484,13 +484,13 @@ do
     fi
 
     binaryPath=${BINPATH}\${binaryTag}_${machineName}
-    if [ "${machineName}" == "PORTER" ]
+    if [ "${machineName}" == "PORTER" ];
     then
       binaryPath=\${binaryPath}_${mpiType}
     fi
 
     read -p "Enter number of iterations: " numIterations
-    if [ \${binaryTag} == 'cqr2' ]
+    if [ \${binaryTag} == 'cqr2' ];
     then
       read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
       read -p "In this strong scaling test for CQR2, enter starting tunable processor grid dimension d: " pDimD
@@ -507,7 +507,7 @@ do
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
-        if [ "${profType}" == "A" ]
+        if [ "${profType}" == "A" ];
 	then
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
@@ -524,7 +524,7 @@ do
         curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
       done
       j=\$(( \${j} + 1 ))
-    elif [ \${binaryTag} == 'bench_scala_qr' ]
+    elif [ \${binaryTag} == 'bench_scala_qr' ];
     then
       read -p "Enter the starting number of processor rows: " numProws
       read -p "Enter the minimum block size: " minBlockSize
@@ -532,19 +532,24 @@ do
 
       for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
       do
-        # Write to plotInstructions file
-        echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        # This is where the last tricky part is: how many files do we need, because blockSize must be precomputed basically, and then multiplied by findCountLength
-        # Write to plotInstructions file
-        echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k} $SCRATCH/${fileName}/plotInstructions.sh 1
-        launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${numProws} \${k}
+        curNumThreadsPerRank=${numThreadsPerRankMin}
+        while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+        do
+          # Write to plotInstructions file
+          echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          # This is where the last tricky part is: how many files do we need, because blockSize must be precomputed basically, and then multiplied by findCountLength
+          # Write to plotInstructions file
+          echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1
+          launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${numProws} \${k} \${curNumThreadsPerRank}
+          curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+        done
         j=\$(( \${j} + 1 ))
       done
     fi
@@ -562,7 +567,7 @@ bash $SCRATCH/${fileName}.sh
 cp $SCRATCH/${fileName}/collectInstructions.sh collectInstructions.sh
 
 # Note that for Porter, no need to do this, since we are submitting to a queue
-if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ]
+if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ];
 then
   mkdir $SCRATCH/${fileName}/bin
   mv ../bin/* $SCRATCH/${fileName}/bin
@@ -577,7 +582,7 @@ then
     while [ ${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
     do
       chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
-      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ]
+      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ];
       then
         qsub ${fileName}/script${curNumNodes}.sh
       else

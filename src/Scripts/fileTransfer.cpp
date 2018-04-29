@@ -25,7 +25,7 @@ int main(int argc, char** argv)
   if (binaryTag == "bench_scala_qr")
   {
     // Streams
-    string outputFileStrMedian = outputFileStr + "_median.txt";
+    string outputFileStrMedian = string(argv[1]) + "_median.txt";
     ofstream outputFile,outputFileMedian;
     ifstream inputFile;
     inputFile.open(inputFileStr.c_str());
@@ -54,7 +54,7 @@ int main(int argc, char** argv)
 
   if (order == 1)
   {
-    string outputFileStrMedian = outputFileStr + "_median.txt";
+    string outputFileStrMedian = string(argv[1]) + "_median.txt";
   
     // Streams
     ofstream outputFile,outputFileMedian;
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
   }
   else if (order == 2)
   {
-    string outputFileStrMedian = outputFileStr + "_median.txt";
+    string outputFileStrMedian = string(argv[1]) + "_median.txt";
     
     // Streams
     ofstream outputFile,outputFileMedian;
