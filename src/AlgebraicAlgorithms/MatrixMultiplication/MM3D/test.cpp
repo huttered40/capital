@@ -33,7 +33,7 @@ static double runTestGemm(
 			ofstream& fptrTotal, int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
-  double iterTimeLocal,iterTimeGlobal;
+  double iterTimeGlobal;
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
@@ -43,14 +43,15 @@ static double runTestGemm(
   #endif
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
-  double startTime=MPI_Wtime();
+  volatile double startTime=MPI_Wtime();
   #endif
   auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
   MM3D<T,U,cblasEngine>::Multiply(
     matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
-  iterTimeLocal=MPI_Wtime() - startTime;
+  volatile double iterTimeLocal=MPI_Wtime();
+  iterTimeLocal -= startTime;
   MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   if (rank == 0) { fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
   #endif
@@ -75,7 +76,7 @@ static double runTestTrmm(
 			ofstream& fptrTotal, int iterNum, int numIter, int rank, int size, int& numFuncs
 )
 {
-  double iterTimeLocal,iterTimeGlobal;
+  double iterTimeGlobal;
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
@@ -92,7 +93,8 @@ static double runTestTrmm(
     matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
-  iterTimeLocal=MPI_Wtime() - startTime;
+  volatile double iterTimeLocal=MPI_Wtime();
+  iterTimeLocal -= startTime;
   MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   if (rank == 0) { fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
   #endif

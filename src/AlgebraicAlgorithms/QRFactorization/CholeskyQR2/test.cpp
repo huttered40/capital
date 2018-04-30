@@ -101,7 +101,7 @@ int main(int argc, char** argv)
     #endif
     TAU_FSTART(Total);
     #ifdef PERFORMANCE
-    double startTime=MPI_Wtime();
+    volatile double startTime=MPI_Wtime();
     #endif
     auto commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
       MPI_COMM_WORLD, dimensionD, dimensionC);
@@ -109,7 +109,8 @@ int main(int argc, char** argv)
       matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
     #ifdef PERFORMANCE
-    double iterTimeLocal=MPI_Wtime() - startTime;
+    volatile double iterTimeLocal=MPI_Wtime();
+    iterTimeLocal -= startTime;
     double iterTimeGlobal = 0;
     MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) {
