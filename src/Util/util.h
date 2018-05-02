@@ -11,6 +11,7 @@
 #include "./../Timer/CTFtimer.h"
 #include "../Matrix/Matrix.h"
 #include "../Matrix/MatrixSerializer.h"
+#include "../AlgebraicBLAS/blasEngine.h"
 
 template<typename T, typename U>
 class util
@@ -63,6 +64,8 @@ public:
   static void removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, int pGridCoordX, int pGridCoordY, int pGridDimensionSize, char dir);
   
   static void processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, int numFuncs, int numIterations, int rank);
+
+  static void InitialGEMM();
 };
 
 #include "util.hpp"

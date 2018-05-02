@@ -100,6 +100,9 @@ int main(int argc, char** argv)
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   // size -- total number of processors in the 3D grid
   MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  util<DATATYPE,INTTYPE>::InitialGEMM();
+
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   int helper = pGridDimensionSize;
   helper *= helper;

@@ -36,6 +36,8 @@ int main(int argc, char** argv)
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+  util<DATATYPE,INTTYPE>::InitialGEMM();
+
   // size -- total number of processors in the tunable grid
   INTTYPE globalMatrixDimensionM = atoi(argv[1]);
   INTTYPE globalMatrixDimensionN = atoi(argv[2]);
@@ -89,8 +91,16 @@ int main(int argc, char** argv)
   double totalTime = 0;
   #endif
 
+  // Critter debugging
+//  #ifdef CRITTER
+//  cout << "I am rank " << rank << " of " << size << endl;
+//  MPI_Finalize();
+//  return 0;
+//  #endif
+
   int numFuncs = 0;				// For figuring out how many functions are being profiled (smart way to find average over all iterations)
-  for (int i=0; i<numIterations; i++)
+  int i;
+  for (i=0; i<numIterations; i++)
   {
     double saveTime;
     // reset the matrix before timer starts
@@ -109,8 +119,7 @@ int main(int argc, char** argv)
       matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
     #ifdef PERFORMANCE
-    volatile double iterTimeLocal=MPI_Wtime();
-    iterTimeLocal -= startTime;
+    double iterTimeLocal = MPI_Wtime() - startTime;
     double iterTimeGlobal = 0;
     MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (rank == 0) {

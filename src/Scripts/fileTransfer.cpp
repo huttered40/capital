@@ -116,23 +116,48 @@ int main(int argc, char** argv)
   else if (order == 3)
   {
     // Files
-    ofstream outputFile;
+    ofstream outputFile1;		// true critter
+    ofstream outputFile2;		// critter breakdown
     ifstream inputFile;
     inputFile.open(inputFileStr.c_str());
-    outputFile.open(outputFileStr.c_str(), ofstream::app);
+    outputFile1.open(outputFileStr.c_str(), ofstream::app);
+    string outputFileStr2 = argv[1];
+    outputFileStr2 += "_breakdown.txt";
+    outputFile2.open(outputFileStr2.c_str(), ofstream::app);
 
     string inputLine;
-    int counter=0;
+    int counter=1;
+
+    // Treat the first three input lines separately
+    getline(inputFile,inputLine);			// Input Computation Communication column headers. Only the smallest node count and the 1st iteration needs it
+    if (curIter == 0)
+    {
+      outputFile2 << inputLine << endl;
+    }
+    getline(inputFile, inputLine);			// First breakdown of iteration #, computation time, communication time
+    outputFile2 << inputLine << endl;
+    getline(inputFile, inputLine);			// Critter routine column headers. Again, only first iteration of smallest node count needs to write it.
+    if (curIter == 0)
+    {
+      outputFile1 << inputLine << endl;
+    }
+
     while (!inputFile.eof())
     {
+      // 5 critter lines followed by a breakdown line
       getline(inputFile,inputLine);
-      if ((counter > 0) || (curIter == 0))
+      if (counter % 6 == 0)
       {
-        outputFile << inputLine << endl;
+        outputFile2 << inputLine << endl;
+      }
+      else
+      {
+        outputFile1 << inputLine << endl;
       }
       counter++;
     }
-    outputFile.close();
+    outputFile1.close();
+    outputFile2.close();
     inputFile.close();
     return 0;
   }

@@ -123,6 +123,8 @@ int main(int argc, char** argv)
   // size -- total number of processors in the 3D grid
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+  util<DATATYPE,INTTYPE>::InitialGEMM();
+
   /*
     Choices for methodKey1: 0) Gemm
 			    1) TRMM

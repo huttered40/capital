@@ -221,9 +221,9 @@ do
       scriptName=$SCRATCH/${fileName}/script\${curNumNodes}_\${curNumThreadsPerRank}.sh
       echo "bash script name: \${scriptName}"
       echo "#!/bin/bash" > \${scriptName}
-      echo "#SBATCH -J myjob_\${curNumNodes}" >> \${scriptName}
-      echo "#SBATCH -o myjob_\${curNumNodes}.o%j" >> \${scriptName}
-      echo "#SBATCH -e myjob_\${curNumNodes}.e%j" >> \${scriptName}
+      echo "#SBATCH -J myjob_\${curNumNodes}_\${curNumThreadsPerRank}" >> \${scriptName}
+      echo "#SBATCH -o myjob_\${curNumNodes}_\${curNumThreadsPerRank}.o%j" >> \${scriptName}
+      echo "#SBATCH -e myjob_\${curNumNodes}_\${curNumThreadsPerRank}.e%j" >> \${scriptName}
       if [ \${curNumNodes} -le 256 ];
       then
         echo "#SBATCH -p normal" >> \${scriptName}
@@ -302,6 +302,7 @@ writePlotFileName() {
   if [ "${profType}" == "A" ];
   then
     echo "echo \"\${1}_critter.txt\"" >> \${2}
+    echo "echo \"\${1}_critter_breakdown.txt\"" >> \${2}
     echo "echo \"\${1}_timer.txt\"" >> \${2}
   fi
 }
