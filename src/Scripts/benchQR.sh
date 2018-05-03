@@ -302,7 +302,10 @@ writePlotFileName() {
   if [ "${profType}" == "A" ];
   then
     echo "echo \"\${1}_critter.txt\"" >> \${2}
-    echo "echo \"\${1}_critter_breakdown.txt\"" >> \${2}
+    if [ "\${3}" == "1" ];
+    then
+      echo "echo \"\${1}_critter_breakdown.txt\"" >> \${2}
+    fi
     echo "echo \"\${1}_timer.txt\"" >> \${2}
   fi
 }

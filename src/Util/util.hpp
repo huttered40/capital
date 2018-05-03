@@ -284,8 +284,8 @@ void util<T,U>::transposeSwap(
 										     )
 {
   TAU_FSTART(Util::transposeSwap);
-  if (myRank != transposeRank)
-  {
+  //if (myRank != transposeRank)
+  //{
     // Transfer with transpose rank
     MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), MPI_DATATYPE, transposeRank, 0, transposeRank, 0, commWorld, MPI_STATUS_IGNORE);
 
@@ -293,7 +293,7 @@ void util<T,U>::transposeSwap(
     //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
     //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
 
-  }
+  //}
   TAU_FSTOP(Util::transposeSwap);
 }
 
