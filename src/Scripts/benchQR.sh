@@ -549,6 +549,7 @@ do
           # Write to plotInstructions file
           echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
           writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1
           launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${numProws} \${k} \${curNumThreadsPerRank}
