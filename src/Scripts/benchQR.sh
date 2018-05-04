@@ -468,8 +468,6 @@ do
 
   read -p "Enter matrix dimension m: " matrixDimM
   read -p "Enter matrix dimension n: " matrixDimN
-  echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-  echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
   j=1
   while [ \${j} -le \${numBinaries} ];
@@ -505,6 +503,14 @@ do
       do
         # Write to plotInstructions file
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        
+        # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
+        if [ \${j} == 1 ];
+        then
+          echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        fi
+
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         # Write to collectInstructions file
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
@@ -541,6 +547,14 @@ do
         do
           # Write to plotInstructions file
           echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        
+          # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
+          if [ \${j} == 1 ];
+          then
+            echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          fi
+
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh

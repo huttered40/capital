@@ -376,7 +376,6 @@ launch$tag1 () {
   done
 }
 
-.. below function needs to be updated heavily. Its shit!
 launch$tag2 () {
   # launch scaLAPACK_CHOLESKY
   local startNumNodes=\${4}
@@ -455,14 +454,14 @@ do
     read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
   fi
   # Assume for now that we always jump up by a power of 2
-  TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} \${jumpNumNodesoperator} \${jumpNumNodes})
+  TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} \${jumpNumNodesoperator} 2)
 
   totalNumConfigs=\$((\${TPRcount} * \${numBinaries} ))
+  
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
   read -p "Enter matrix dimension: " matrixDim
-  echo "echo \"\${matrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
   j=1
   while [ \${j} -le \${numBinaries} ];
@@ -496,6 +495,13 @@ do
       do
         # Write to plotInstructions file
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        
+        # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
+        if [ \${j} == 1 ];
+        then
+          echo "echo \"\${matrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        fi
+
         echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         # Write to collectInstructions file
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
