@@ -36,8 +36,12 @@ do
   do
     read -p "Enter binary tag: " binaryTag
     read -p "Enter performance/NoFormQ file to write to: " configFilePerf
-    read -p "Enter numerics/FormQ file to write to: " configFileNumerics
-    
+    configFileNumerics=""
+    if [ "${binaryTag}" != "bench_scala_cholesky" ];
+    then
+      read -p "Enter numerics/FormQ file to write to: " configFileNumerics
+    fi    
+
     configFileCritter="" 
     configFileTimer=""
     if [ "${profType}" == "A"  ]
@@ -47,7 +51,6 @@ do
     fi
 
     read -p "Enter number of files to read from: " numInputFiles
-    echo "tell me these 4 things - ${binaryTag} ${configFilePerf} ${configFileNumerics} ${numInputFiles}"
     for ((k=0; k<${numInputFiles}; k++))
     do
       # First, performance
@@ -55,15 +58,17 @@ do
       read -p "Enter file to read from: " InputFile
       ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFilePerf} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 1 ${k}
       #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
-      
-      # Second, numerics
-      read -p "Enter file to read from: " InputFile
-      ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileNumerics} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 2 ${k}
-      #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
+
+      if [ "${binaryTag}" != "bench_scala_cholesky" ];
+      then 
+        # Second, numerics
+        read -p "Enter file to read from: " InputFile
+        ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileNumerics} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 2 ${k}
+        #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
+      fi
 
       if [ "${profType}" == "A"  ]
       then
-        echo "Tell me k - ${k}"
         # Third, critter
 	read -p "Enter file to read from: " InputFile
         ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileCritter} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 3 ${k}

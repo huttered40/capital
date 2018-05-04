@@ -1,7 +1,7 @@
 #!/bin/bash
 
-tag1='cqr2'
-tag2='bench_scala_qr'
+tag1='cfr3d'
+tag2='bench_scala_cholesky'
 
 # Make sure that the src/bin directory is created, or else compilation won't work
 if [ ! -d "../bin" ];
@@ -79,7 +79,7 @@ then
 fi
 
 numPEs=$((ppn*numNodes))
-fileName=benchQR${fileID}_${dateStr}_${machineName}
+fileName=benchCF${fileID}_${dateStr}_${machineName}
 if [ "${machineName}" == "STAMPEDE2" ];   # Will allow me to run multiple jobs with different numThreadsPerRank without the fileName aliasing.
 then
   fileName=${fileName}_${numThreadsPerRankMin}_${numThreadsPerRankMax}
@@ -118,16 +118,16 @@ then
 fi
 make -C./.. clean
 export PROFTYPE=PERFORMANCE
-make -C./.. cqr2_${mpiType}
+make -C./.. cfr3d_${mpiType}
 profType=P
 read -p "Do you want to analyze these tests? Yes[1], No[0]: " analyzeDecision
 if [ ${analyzeDecision} == 1 ];
 then
   profType=A					#  A for all 3 (performance, profiling, critical path analysis)
   export PROFTYPE=PROFILE
-  make -C./.. cqr2_${mpiType}
+  make -C./.. cfr3d_${mpiType}
   export PROFTYPE=CRITTER
-  make -C./.. cqr2_${mpiType}
+  make -C./.. cfr3d_${mpiType}
 fi
 
 
@@ -137,9 +137,9 @@ then
   cd ${scalaDir}
   ./configure
   make clean
-  make bench_scala_qr
+  make bench_scala_cholesky
   cd -
-  mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}
+  mv ${scalaDir}/bin/benchmarks/bench_scala_cholesky ${scalaDir}/bin/benchmarks/bench_scala_cholesky_${machineName}
   mv ${scalaDir}/bin/benchmarks/* ../bin/
 fi
 
@@ -237,7 +237,7 @@ do
       curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
     done 
   fi
-  curNumNodes=\$(( \${curNumNodes} * 2 ))   # Its always going to be 2 for test. Don't overcomplicate and generalize this
+  curNumNodes=\$(( \${curNumNodes} * 8 ))   # Its always going to be 8 for Cholesky factorization testing. Don't overcomplicate and generalize this
 done
 
 # Now I need to use a variable for the command-line prompt, since it will change based on the binary executable,
@@ -310,17 +310,12 @@ writePlotFileName() {
   fi
 }
 
-# Only for bench_scala_qr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
+# Only for bench_scala_cholesky -- only necessary for Performance now. Might want to use Critter later, but not Profiler
 writePlotFileNameScalapack() {
-  echo "echo \"\${1}_NoFormQ.txt\"" >> \${2}
+  echo "echo \"\${1}.txt\"" >> \${2}
   if [ "\${3}" == "1" ];
   then
-    echo "echo \"\${1}_NoFormQ_median.txt\"" >> \${2}
-  fi
-  echo "echo \"\${1}_FormQ.txt\"" >> \${2}
-  if [ "\${3}" == "1" ];
-  then
-    echo "echo \"\${1}_FormQ_median.txt\"" >> \${2}
+    echo "echo \"\${1}_median.txt\"" >> \${2}
   fi
 }
 
@@ -353,37 +348,37 @@ launchJobs () {
 }
 
 launch$tag1 () {
-  # launch CQR2
+  # launch CFR3D
+
   local startNumNodes=\${4}
   local endNumNodes=\${5}
-  local matrixDimM=\${8}
-  local startPdimD=\${10}
-  while [ \$startNumNodes -le \$endNumNodes ];
+  local matrixDim=\${9}
+  while [ \${startNumNodes} -le \${endNumNodes} ];
   do
-    local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${9}dimN_\${12}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC_\${13}tpk"
+    local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${8}side_\${matrixDim}dim_\${10}inverseCutOffMult_0bcMult_0panelDimMult_\${11}tpk"
     # Launch performance job always.
-    launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_PERFORMANCE \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
-
+    launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_PERFORMANCE \${8} \${matrixDim} 0 \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
+    
     # If analysis is turned on, launch Profiling job and Critter job.
     if [ "${profType}" == "A" ];
     then
-      launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_CRITTER \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
-      launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_PROFILE \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_CRITTER \${matrixDim} 0 \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_PROFILE \${matrixDim} 0 \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
     fi
 
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
 
-    startNumNodes=\$(updateCounter \${startNumNodes} \${7} \${6})
-    startPdimD=\$(updateCounter \${startPdimD} \${7} \${6})
+    startNumNodes=\$(updateCounter \${startNumNodes} \${7} \${6})	# Until necessary to change, matrix dimension wil always go up by a factor of 8
     if [ "\${1}" == "WS" ];
     then
-      matrixDimM=\$(updateCounter \${matrixDimM} \${7} \${6})
+      matrixDim=\$(updateCounter \${matrixDim} \${7} 2)			# Until necessary to change, matrix dimension will always go up by a factor of 2
     fi
   done
 }
 
+.. below function needs to be updated heavily. Its shit!
 launch$tag2 () {
-  # launch scaLAPACK_QR
+  # launch scaLAPACK_CHOLESKY
   local startNumNodes=\${4}
   local endNumNodes=\${5}
   local matrixDimM=\${8}
@@ -392,7 +387,7 @@ launch$tag2 () {
   while [ \${startNumNodes} -le \${endNumNodes} ];
   do
     local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${11}bSize_\${12}tpk"
-    launchJobs ${tag2} \${fileString} \$startNumNodes \${12} \${2} \${matrixDimM} \${matrixDimN} \${11} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+    launchJobs ${tag2} \${fileString} \${startNumNodes} \${12} \${2} \${matrixDimM} \${matrixDimN} \${11} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
 
     writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
 
@@ -435,10 +430,10 @@ do
   # Nodes
   read -p "Enter starting number of nodes for this test: " startNumNodes
   read -p "Enter ending number of nodes for this test: " endNumNodes
-  # Assume for now that we always jump up by a power of 2
+  # Assume for now that we always jump up by a factor of 8
   #read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
   #read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
-  jumpNumNodes=2
+  jumpNumNodes=8
   jumpNumNodesoperator=3
 
   nodeCount=\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})
@@ -448,7 +443,7 @@ do
   for ((j=0; j<\${nodeCount}; j++))
   do
     echo "echo \"\${curNumNodes}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-    curNumNodes=\$(( \${curNumNodes} * 2 ))
+    curNumNodes=\$(( \${curNumNodes} * 8 ))
   done
 
   # Threads
@@ -466,10 +461,8 @@ do
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
-  read -p "Enter matrix dimension m: " matrixDimM
-  read -p "Enter matrix dimension n: " matrixDimN
-  echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-  echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  read -p "Enter matrix dimension: " matrixDim
+  echo "echo \"\${matrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
   j=1
   while [ \${j} -le \${numBinaries} ];
@@ -477,14 +470,14 @@ do
     echo -e "\nStage #\${j}"
 
     # Echo for SCAPLOT makefile generator
-    read -p "Enter binary tag [0 for cqr2,1 for bench_scala_qr]: " binaryTagChoice
+    read -p "Enter binary tag [0 for cfr3d,1 for bench_scala_cholesky]: " binaryTagChoice
 
     binaryTag=""
     if [ \${binaryTagChoice} == 0 ];
     then
-      binaryTag=cqr2
+      binaryTag=cfr3d
     else
-      binaryTag=bench_scala_qr
+      binaryTag=bench_scala_cholesky
     fi
 
     binaryPath=${BINPATH}\${binaryTag}_${machineName}
@@ -494,41 +487,37 @@ do
     fi
 
     read -p "Enter number of iterations: " numIterations
-    if [ \${binaryTag} == 'cqr2' ];
+    if [ \${binaryTag} == 'cfr3d' ];
     then
       read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
-      read -p "Enter starting tunable processor grid dimension d: " pDimD
-      read -p "Enter static tunable processor grid dimension c: " pDimC
 
       curNumThreadsPerRank=${numThreadsPerRankMin}
       while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
       do
         # Write to plotInstructions file
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         # Write to collectInstructions file
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
         if [ "${profType}" == "A" ];
 	then
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 	fi
         
 	echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
         # Write to plotInstructions file
-        echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
-        launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult} \${curNumThreadsPerRank}
+        writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
+        launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} 1 \${matrixDim} \${inverseCutOffMult} \${curNumThreadsPerRank}
         curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
       done
       j=\$(( \${j} + 1 ))
-    elif [ \${binaryTag} == 'bench_scala_qr' ];
+    elif [ \${binaryTag} == 'bench_scala_cholesky' ];
     then
       read -p "Enter the starting number of processor rows: " numProws
       read -p "Enter the minimum block size: " minBlockSize
@@ -595,6 +584,6 @@ then
       fi
       curNumThreadsPerRank=$(( ${curNumThreadsPerRank} * 2 ))
     done
-    curNumNodes=$(( ${curNumNodes} * 2 ))
+    curNumNodes=$(( ${curNumNodes} * 8 ))
   done
 fi

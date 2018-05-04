@@ -39,6 +39,7 @@ int main(int argc, char** argv)
     while (!inputFile.eof())
     {
       inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
+      if (inputFile.eof()) {break;}
       outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
       medianVec.push_back(data3);
     }
@@ -50,7 +51,10 @@ int main(int argc, char** argv)
     inputFile.close();
     return 0;
   }
-
+  if (binaryTag == "bench_scala_cholesky")
+  {
+    // fill in, similar to above, but some differences
+  }
 
   if (order == 1)
   {
@@ -69,14 +73,33 @@ int main(int argc, char** argv)
     double data3;
     while (!inputFile.eof())
     {
-      inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
-      outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
-      //std::cout << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
-      medianVec.push_back(data3);
+      if (binaryTag == "cqr2")
+      {
+        inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
+        if (inputFile.eof()) {break;}
+        outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
+        //std::cout << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
+        medianVec.push_back(data3);
+      }
+      else if (binaryTag == "cfr3d")
+      {
+        inputFile >> data1 >> data2 >> data4 >> data3;
+        if (inputFile.eof()) {break;}
+        cout << "tell me args: " << data1 << " " << data2 << " " << data4 << " " << data3 << endl;
+        outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data3 << endl;
+        medianVec.push_back(data3);
+      }
     }
     sort(medianVec.begin(), medianVec.end());
-    outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
-  
+    if (binaryTag == "cqr2")
+    {
+      outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+    }
+    else if (binaryTag == "cfr3d")
+    {
+      outputFileMedian << data1 << "\t" << data4 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+    }
+ 
     outputFile.close();
     outputFileMedian.close();
     inputFile.close();
@@ -99,15 +122,32 @@ int main(int argc, char** argv)
     double data3,data4;
     while (!inputFile.eof())
     {
-      inputFile >> data1 >> data2 >> data3 >> data4;
-      outputFile << data1 << "\t" << data2 << "\t" << data3 << "\t" << data4 << endl;
-      medianVec1.push_back(data3);
-      medianVec2.push_back(data4);
+      if (binaryTag == "cqr2")
+      {
+        inputFile >> data1 >> data2 >> data3 >> data4;
+        if (inputFile.eof()) {break;}
+        outputFile << data1 << "\t" << data2 << "\t" << data3 << "\t" << data4 << endl;
+        medianVec1.push_back(data3);
+        medianVec2.push_back(data4);
+      }
+      else if (binaryTag == "cfr3d")
+      {
+        inputFile >> data1 >> data2 >> data3;
+        if (inputFile.eof()) {break;}
+        outputFile << data1 << "\t" << data2 << "\t" << data3 << endl;
+        medianVec1.push_back(data3);
+      }
     }
     sort(medianVec1.begin(), medianVec1.end());
-    sort(medianVec2.begin(), medianVec2.end());
-    
-    outputFileMedian << data1 << "\t" << medianVec1[medianVec1.size()/2] << "\t" << medianVec2[medianVec2.size()/2] << std::endl;
+    if (binaryTag == "cqr2")
+    {
+      sort(medianVec2.begin(), medianVec2.end());
+      outputFileMedian << data1 << "\t" << medianVec1[medianVec1.size()/2] << "\t" << medianVec2[medianVec2.size()/2] << std::endl;
+    }
+    if (binaryTag == "cfr3d")
+    {
+      outputFileMedian << data1 << "\t" << medianVec1[medianVec1.size()/2] << std::endl;
+    } 
     outputFile.close();
     outputFileMedian.close();
     inputFile.close();

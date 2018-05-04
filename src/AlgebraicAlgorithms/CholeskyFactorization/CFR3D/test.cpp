@@ -50,10 +50,10 @@ static pair<T,double> runTestCF(
     matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, MPI_COMM_WORLD, commInfo3D);
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
-  volatile double iterTimeLocal=MPI_Wtime();
+  double iterTimeLocal=MPI_Wtime();
   iterTimeLocal -= startTime;
   MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  if (rank == 0) { fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
+  if (rank == 0) { fptrTotal << size << "\t" << iterNum << "\t" << matA.getNumRowsGlobal() << "\t" << iterTimeGlobal << endl; }
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
