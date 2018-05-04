@@ -362,8 +362,8 @@ launch$tag1 () {
     # If analysis is turned on, launch Profiling job and Critter job.
     if [ "${profType}" == "A" ];
     then
-      launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_CRITTER \${matrixDim} 0 \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
-      launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_PROFILE \${matrixDim} 0 \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_CRITTER \${8} \${matrixDim} 0 \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_PROFILE \${8} \${matrixDim} 0 \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
     fi
 
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
@@ -497,7 +497,7 @@ do
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         
         # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
-        if [ \${j} == 1 ];
+        if [ \${j} == 1 ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
         then
           echo "echo \"\${matrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         fi

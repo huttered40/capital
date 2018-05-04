@@ -505,7 +505,7 @@ do
         echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         
         # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
-        if [ \${j} == 1 ];
+        if [ \${j} == 1 ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
         then
           echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -549,7 +549,7 @@ do
           echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         
           # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
-          if [ \${j} == 1 ];
+          if [ \${j} == 1 ] && [ \${k} == \${minBlockSize} ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
           then
             echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
             echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh

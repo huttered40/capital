@@ -35,6 +35,7 @@ static pair<T,double> runTestCF(
 )
 {
   double iterTimeGlobal=-1;
+  T iterErrorGlobal;		// define this out here so that compilation doesn't fail with Critter/Analysis runs
   // Reset matrixA
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
@@ -73,7 +74,7 @@ static pair<T,double> runTestCF(
   Matrix<T,U,StructureA,Distribution> saveA = matA;
   saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
-  T iterErrorLocal,iterErrorGlobal;
+  T iterErrorLocal;
   iterErrorLocal = CFvalidate<T,U>::validateParallel(
     saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
   MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
