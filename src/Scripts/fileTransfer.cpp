@@ -53,7 +53,32 @@ int main(int argc, char** argv)
   }
   if (binaryTag == "bench_scala_cholesky")
   {
-    // fill in, similar to above, but some differences
+    // Streams
+    string outputFileStrMedian = string(argv[1]) + "_median.txt";
+    ofstream outputFile,outputFileMedian;
+    ifstream inputFile;
+    inputFile.open(inputFileStr.c_str());
+    outputFile.open(outputFileStr.c_str(), ofstream::app);
+    outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
+    
+    vector<double> medianVec;
+    int data1,data2;
+    int data4;		// Note: this is global matrix size, which might be int64_t. For now i will use int, but be careful
+    double data3;
+    while (!inputFile.eof())
+    {
+      inputFile >> data1 >> data2 >> data4 >> data3;
+      if (inputFile.eof()) {break;}
+      outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data3 << endl;
+      medianVec.push_back(data3);
+    }
+    sort(medianVec.begin(), medianVec.end());
+    outputFileMedian << data1 << "\t" << data4 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+  
+    outputFile.close();
+    outputFileMedian.close();
+    inputFile.close();
+    return 0;
   }
 
   if (order == 1)
