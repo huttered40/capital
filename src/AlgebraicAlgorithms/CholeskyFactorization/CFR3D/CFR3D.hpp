@@ -106,7 +106,7 @@ void CFR3D<T,U,blasEngine>::rFactorLower(
   )
 {
   TAU_FSTART(CFR3D::rFactorLower);
-  if (localDimension <= bcDimension)
+  if (globalDimension <= bcDimension)
   {
     baseCase(
       matrixA, matrixLI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
@@ -272,7 +272,7 @@ void CFR3D<T,U,blasEngine>::rFactorUpper(
                      )
 {
   TAU_FSTART(CFR3D::rFactorUpper);
-  if (localDimension <= bcDimension)
+  if (globalDimension <= bcDimension)
   {
     baseCase(
       matrixA, matrixRI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
