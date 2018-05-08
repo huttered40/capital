@@ -52,6 +52,8 @@ dateStr=$(date +%Y-%m-%d-%H_%M_%S)
 read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
+read -p "Enter Scaling regime (empty for now for CFR3D. Not needed right now." scaleRegime
+read -p "Also enter factor to scale number of nodes: " nodeScaleFactor
 read -p "Enter ppn: " ppn
 
 # Default setting is 1
@@ -463,6 +465,8 @@ echo "echo \"${fileName}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${numTests}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${profType}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+echo "echo \"${scaleRegime}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+echo "echo \"${nodeScaleFactor}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
 # Echo for data collection from remote machine (not porter) to PAA/src/Results
@@ -470,6 +474,8 @@ echo "echo \"${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${fileName}\"" > $SCRATCH/${fileName}/collectInstructions.sh
 echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 echo "echo \"${profType}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+echo "echo \"${scaleRegime}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+echo "echo \"${nodeScaleFactor}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
 echo "echo \"${numTests}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 

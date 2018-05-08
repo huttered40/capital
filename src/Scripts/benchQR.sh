@@ -52,6 +52,11 @@ dateStr=$(date +%Y-%m-%d-%H_%M_%S)
 read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
+read -p "Enter Scaling regime:\
+	[0 -> Weak scaling && scale nodes by 2, m by 2, n by 1, d by 2, c by 1
+	 1 -> Weak scaling && scale nodes by 16, m by 4, n by 2, d by 4, c by 2
+	 2 -> Strong scaling && scale nodes by 2, m by 1, n by 1, d by 2, c by 1]: " scaleRegime
+read -p "Also enter factor to scale number of nodes: " nodeScaleFactor
 read -p "Enter ppn: " ppn
 
 # Default setting is 1
@@ -111,6 +116,7 @@ fi
 # Build PAA code
 # Build separately for performance runs, critter runs, and profiling runs. To properly analyze, all 3 are necessary.
 # Any one without the other two renders it meaningless.
+read -p "Do you want to analyze these tests? Yes[1], No[0]: " analyzeDecision
 if [ "${machineName}" == "STAMPEDE2" ];
 then
   echo "Loading Intel MPI module"
@@ -120,7 +126,6 @@ make -C./.. clean
 export PROFTYPE=PERFORMANCE
 make -C./.. cqr2_${mpiType}
 profType=P
-read -p "Do you want to analyze these tests? Yes[1], No[0]: " analyzeDecision
 if [ ${analyzeDecision} == 1 ];
 then
   profType=A					#  A for all 3 (performance, profiling, critical path analysis)
@@ -134,13 +139,16 @@ fi
 # Build CANDMC code
 if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ];
 then
-  cd ${scalaDir}
-  ./configure
-  make clean
-  make bench_scala_qr
-  cd -
-  mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}
-  mv ${scalaDir}/bin/benchmarks/* ../bin/
+  if [ ${profType} == "P" ];
+  then
+    cd ${scalaDir}
+    ./configure
+    make clean
+    make bench_scala_qr
+    cd -
+    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}
+    mv ${scalaDir}/bin/benchmarks/* ../bin/
+  fi
 fi
 
 if [ "${machineName}" == "BGQ" ];
@@ -237,7 +245,7 @@ do
       curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
     done 
   fi
-  curNumNodes=\$(( \${curNumNodes} * 2 ))   # Its always going to be 2 for test. Don't overcomplicate and generalize this
+  curNumNodes=\$(( \${curNumNodes} * ${nodeScaleFactor} ))   # So far, only use cases for nodeScaleFactor are 2 and 16.
 done
 
 # Now I need to use a variable for the command-line prompt, since it will change based on the binary executable,
@@ -356,29 +364,41 @@ launch$tag1 () {
   # launch CQR2
   local startNumNodes=\${4}
   local endNumNodes=\${5}
-  local matrixDimM=\${8}
-  local startPdimD=\${10}
+  local matrixDimM=\${6}
+  local matrixDimN=\${7}
+  local startPdimD=\${8}
+  local startPdimC=\${9}
   while [ \$startNumNodes -le \$endNumNodes ];
   do
-    local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${9}dimN_\${12}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${11}pDimC_\${13}tpk"
+    local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${10}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${startPdimC}pDimC_\${11}tpk"
     # Launch performance job always.
-    launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_PERFORMANCE \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
+    launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} 0 \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
 
     # If analysis is turned on, launch Profiling job and Critter job.
     if [ "${profType}" == "A" ];
     then
-      launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_CRITTER \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
-      launchJobs ${tag1} \${fileString} \$startNumNodes \${13} \${2}_PROFILE \${matrixDimM} \${9} 0 \${12} 0 \${startPdimD} \${11} \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_CRITTER \${matrixDimM} \${matrixDimN} 0 \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_PROFILE \${matrixDimM} \${matrixDimN} 0 \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
     fi
 
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
 
-    startNumNodes=\$(updateCounter \${startNumNodes} \${7} \${6})
-    startPdimD=\$(updateCounter \${startPdimD} \${7} \${6})
-    if [ "\${1}" == "WS" ];
+    # Rest of scaling decisions are made based on scaleRegime
+    if [ ${scaleRegime} == 0 ];
     then
-      matrixDimM=\$(updateCounter \${matrixDimM} \${7} \${6})
+      startPdimD=\$(( \${startPdimD} * 2 ))
+      matrixDimM=\$(( \${matrixDimM} * 2 ))
+    elif [ ${scaleRegime} == 1 ];
+    then
+      startPdimD=\$(( \${startPdimD} * 4 ))
+      startPdimC=\$(( \${startPdimC} * 2 ))
+      matrixDimM=\$(( \${matrixDimM} * 4 ))
+      matrixDimN=\$(( \${matrixDimN} * 2 ))
+    elif [ ${scaleRegime} == 2 ];
+    then
+      startPdimD=\$(( \${startPdimD} * 2 ))
     fi
+    startNumNodes=\$((\${startNumNodes} * ${nodeScaleFactor} ))
   done
 }
 
@@ -386,22 +406,43 @@ launch$tag2 () {
   # launch scaLAPACK_QR
   local startNumNodes=\${4}
   local endNumNodes=\${5}
-  local matrixDimM=\${8}
-  local matrixDimN=\${9}
-  local numProws=\${10}
+  local matrixDimM=\${6}
+  local matrixDimN=\${7}
+  local numProws=\${8}
   while [ \${startNumNodes} -le \${endNumNodes} ];
   do
-    local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${11}bSize_\${12}tpk"
-    launchJobs ${tag2} \${fileString} \$startNumNodes \${12} \${2} \${matrixDimM} \${matrixDimN} \${11} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+    local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${9}bSize_\${10}tpk"
+    launchJobs ${tag2} \${fileString} \$startNumNodes \${10} \${2} \${matrixDimM} \${matrixDimN} \${9} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
 
     writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
 
-    startNumNodes=\$(updateCounter \${startNumNodes} \$7 \$6)
-    numProws=\$(updateCounter \${numProws} \$7 \$6)
-    if [ "\${1}" == "WS" ];
+    # Rest of scaling decisions are made based on scaleRegime
+    if [ ${scaleRegime} == 0 ];
     then
-      matrixDimM=\$(updateCounter \${matrixDimM} \${7} \${6})
+      numProws=\$(( \${numProws} * 2 ))
+      matrixDimM=\$(( \${matrixDimM} * 2 ))
+    elif [ ${scaleRegime} == 1 ];
+    then
+      numPEs=\$(( \${startNumNodes} * ${ppn} ))
+      numPcols=\$(( \${numPEs} / \${numProws} ))
+      num=\$(( \${matrixDimM} / \${numProws} ))
+      denom=\$(( \${matrixDimN} / \${numPcols} ))
+
+      if [ \${num} -gt \${denom} ];
+      then
+        numProws=\$(( \${numProws} * 8 ))
+        matrixDimM=\$(( \${matrixDimM} * 4 ))
+        matrixDimN=\$(( \${matrixDimN} * 2 ))
+      else
+        numProws=\$(( \${numProws} * 4 ))
+        matrixDimM=\$(( \${matrixDimM} * 4 ))
+        matrixDimN=\$(( \${matrixDimN} * 2 ))
+      fi
+    elif [ ${scaleRegime} == 2 ];
+    then
+      numProws=\$(( \${numProws} * 2 ))
     fi
+    startNumNodes=\$(( \${startNumNodes} * ${nodeScaleFactor} ))
   done
 }
 
@@ -413,6 +454,8 @@ echo "echo \"${fileName}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${numTests}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${profType}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+echo "echo \"${scaleRegime}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+echo "echo \"${nodeScaleFactor}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
 # Echo for data collection from remote machine (not porter) to PAA/src/Results
@@ -420,6 +463,8 @@ echo "echo \"${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${fileName}\"" > $SCRATCH/${fileName}/collectInstructions.sh
 echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 echo "echo \"${profType}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+echo "echo \"${scaleRegime}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+echo "echo \"${nodeScaleFactor}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
 echo "echo \"${numTests}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
@@ -435,20 +480,15 @@ do
   # Nodes
   read -p "Enter starting number of nodes for this test: " startNumNodes
   read -p "Enter ending number of nodes for this test: " endNumNodes
-  # Assume for now that we always jump up by a power of 2
-  #read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
-  #read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
-  jumpNumNodes=2
-  jumpNumNodesoperator=3
 
-  nodeCount=\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})
+  nodeCount=\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})
   echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
 
   curNumNodes=\${startNumNodes}
   for ((j=0; j<\${nodeCount}; j++))
   do
     echo "echo \"\${curNumNodes}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-    curNumNodes=\$(( \${curNumNodes} * 2 ))
+    curNumNodes=\$(( \${curNumNodes} * ${nodeScaleFactor} ))
   done
 
   # Threads
@@ -460,7 +500,7 @@ do
     read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
   fi
   # Assume for now that we always jump up by a power of 2
-  TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} \${jumpNumNodesoperator} \${jumpNumNodes})
+  TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} 3 2)
 
   totalNumConfigs=\$((\${TPRcount} * \${numBinaries} ))
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
@@ -523,14 +563,14 @@ do
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 	fi
         
-	echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+	echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
         # Write to plotInstructions file
         echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
-        launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult} \${curNumThreadsPerRank}
+        launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult} \${curNumThreadsPerRank}
         curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
       done
       j=\$(( \${j} + 1 ))
@@ -564,9 +604,9 @@ do
           echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-          echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
           writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1
-          launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} \${matrixDimM} \${matrixDimN} \${numProws} \${k} \${curNumThreadsPerRank}
+          launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${matrixDimM} \${matrixDimN} \${numProws} \${k} \${curNumThreadsPerRank}
           curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
         done
         j=\$(( \${j} + 1 ))
@@ -609,6 +649,6 @@ then
       fi
       curNumThreadsPerRank=$(( ${curNumThreadsPerRank} * 2 ))
     done
-    curNumNodes=$(( ${curNumNodes} * 2 ))
+    curNumNodes=$(( ${curNumNodes} * ${nodeScaleFactor} ))
   done
 fi

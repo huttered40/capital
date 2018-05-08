@@ -20,6 +20,8 @@ fi
 read -p "Enter the directory name within ${SCRATCH} where the results are hidden: " resultsDir
 read -p "Enter machine name: " machineName 
 read -p "Enter run type: " profType
+read -p "Enter scaling regime: " scaleRegime
+read -p "Enter node scaling factor: " nodeScaleFactor
 
 if [ "${machineName}" != "PORTER" ]
 then
