@@ -52,7 +52,7 @@ dateStr=$(date +%Y-%m-%d-%H_%M_%S)
 read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
-read -p "Enter Scaling regime (empty for now for CFR3D. Not needed right now." scaleRegime
+read -p "Enter Scaling regime (empty for now for CFR3D. Enter 0 for now" scaleRegime
 read -p "Also enter factor to scale number of nodes: " nodeScaleFactor
 read -p "Enter ppn: " ppn
 
@@ -411,17 +411,18 @@ launch$tag1 () {
   local startNumNodes=\${4}
   local endNumNodes=\${5}
   local matrixDim=\${9}
+  local bcDim=0
   while [ \${startNumNodes} -le \${endNumNodes} ];
   do
     local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${8}side_\${matrixDim}dim_\${10}inverseCutOffMult_0bcMult_0panelDimMult_\${11}tpk"
     # Launch performance job always.
-    launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_PERFORMANCE \${8} \${matrixDim} 0 \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
+    launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_PERFORMANCE \${8} \${matrixDim} \${bcDim} \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
     
     # If analysis is turned on, launch Profiling job and Critter job.
     if [ "${profType}" == "A" ];
     then
-      launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_CRITTER \${8} \${matrixDim} 0 \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
-      launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_PROFILE \${8} \${matrixDim} 0 \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_CRITTER \${8} \${matrixDim} \${bcDim} \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_PROFILE \${8} \${matrixDim} \${bcDim} \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
     fi
 
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
@@ -430,6 +431,8 @@ launch$tag1 () {
     if [ "\${1}" == "WS" ];
     then
       matrixDim=\$(updateCounter \${matrixDim} \${7} 2)			# Until necessary to change, matrix dimension will always go up by a factor of 2
+    else
+      bcDim=\$(( \${bcDim} + 2 ))			# For Strong scaling, could be very advantageous to increase bcDim. Not needed for Weak Scaling
     fi
   done
 }

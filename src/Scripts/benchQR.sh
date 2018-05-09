@@ -368,17 +368,18 @@ launch$tag1 () {
   local matrixDimN=\${7}
   local startPdimD=\${8}
   local startPdimC=\${9}
+  local bcDim=0
   while [ \$startNumNodes -le \$endNumNodes ];
   do
     local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${10}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${startPdimC}pDimC_\${11}tpk"
     # Launch performance job always.
-    launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} 0 \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
+    launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
 
     # If analysis is turned on, launch Profiling job and Critter job.
     if [ "${profType}" == "A" ];
     then
-      launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_CRITTER \${matrixDimM} \${matrixDimN} 0 \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
-      launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_PROFILE \${matrixDimM} \${matrixDimN} 0 \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_CRITTER \${matrixDimM} \${matrixDimN} \${bcDim} \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
+      launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_PROFILE \${matrixDimM} \${matrixDimN} \${bcDim} \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
     fi
 
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0

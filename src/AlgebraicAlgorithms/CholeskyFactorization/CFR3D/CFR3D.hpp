@@ -36,7 +36,6 @@ std::pair<bool,std::vector<U>> CFR3D<T,U,blasEngine>::Factor(
   {
     bcDimension *= 2;
   }
-  bcDimension = std::min(bcDimension, globalDimension/pGridDimensionSize);
 
   int save = inverseCutOffGlobalDimension;
   inverseCutOffGlobalDimension = globalDimension;
