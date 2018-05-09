@@ -636,7 +636,6 @@ do
           # Write to plotInstructions file
           echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-          echo "Tell me what these are: \${startNumNodes} \${endNumNodes}"
           echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} 4)\"" >> $SCRATCH/${fileName}/collectInstructions.sh
           writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${k}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1
           launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} 4 \${jumpNumNodesoperator} \${matrixDim} \${k} \${curNumThreadsPerRank}
