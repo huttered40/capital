@@ -432,7 +432,7 @@ launch$tag1 () {
     then
       matrixDim=\$(updateCounter \${matrixDim} \${7} 2)			# Until necessary to change, matrix dimension will always go up by a factor of 2
     else
-      bcDim=\$(( \${bcDim} + 2 ))			# For Strong scaling, could be very advantageous to increase bcDim. Not needed for Weak Scaling
+      bcDim=\$(( \${bcDim} + 1 ))			# For Strong scaling, could be very advantageous to increase bcDim. Not needed for Weak Scaling
     fi
   done
 }
