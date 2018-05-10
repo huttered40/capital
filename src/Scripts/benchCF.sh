@@ -52,7 +52,7 @@ dateStr=$(date +%Y-%m-%d-%H_%M_%S)
 read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
-read -p "Enter Scaling regime (empty for now for CFR3D. Enter 0 for now" scaleRegime
+read -p "Enter Scaling regime (empty for now for CFR3D. [0] -> normal, [1] -> new for showing replication (jump by 64 PEs)" scaleRegime
 read -p "Also enter factor to scale number of nodes: " nodeScaleFactor
 read -p "Enter ppn: " ppn
 
@@ -251,26 +251,33 @@ do
   fi
 
   # Find the nodeCount that was just used and increase it. If both are the same, then increase both.
-  if [ \${curNumNodesPAA} -lt \${curNumNodesScala} ];
+  if [ ${scaleRegime} == 0 ];
   then
-    curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
-  elif [ \${curNumNodesPAA} -gt \${curNumNodesScala} ];
+    if [ \${curNumNodesPAA} -lt \${curNumNodesScala} ];
+    then
+      curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
+    elif [ \${curNumNodesPAA} -gt \${curNumNodesScala} ];
+    then
+      # Need this if-statement to ensure that for Analyze runs, we submit the correct number of jobs.
+      if [ ${analyzeDecision} == 0 ];
+      then
+        curNumNodesScala=\$(( \${curNumNodesScala} * 4 ))
+      else
+        curNumNodesScala=\$(( \${curNumNodesScala} * 8 ))
+      fi
+    else
+      curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
+      if [ ${analyzeDecision} == 0 ];
+      then
+        curNumNodesScala=\$(( \${curNumNodesScala} * 4 ))
+      else
+        curNumNodesScala=\$(( \${curNumNodesScala} * 8 ))
+      fi
+    fi
+  elif [ ${scaleRegime} == 1 ];
   then
-    # Need this if-statement to ensure that for Analyze runs, we submit the correct number of jobs.
-    if [ ${analyzeDecision} == 0 ];
-    then
-      curNumNodesScala=\$(( \${curNumNodesScala} * 4 ))
-    else
-      curNumNodesScala=\$(( \${curNumNodesScala} * 8 ))
-    fi
-  else
-    curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
-    if [ ${analyzeDecision} == 0 ];
-    then
-      curNumNodesScala=\$(( \${curNumNodesScala} * 4 ))
-    else
-      curNumNodesScala=\$(( \${curNumNodesScala} * 8 ))
-    fi
+    curNumNodesPAA=\$(( \${curNumNodesPAA} * 64 ))
+    curNumNodesScala=\$(( \${curNumNodesScala} * 64 ))
   fi
 done
 
@@ -427,10 +434,15 @@ launch$tag1 () {
 
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
 
-    startNumNodes=\$(updateCounter \${startNumNodes} \${7} \${6})	# Until necessary to change, matrix dimension wil always go up by a factor of 8
+    startNumNodes=\$(updateCounter \${startNumNodes} \${7} \${6})
     if [ "\${1}" == "WS" ];
     then
-      matrixDim=\$(updateCounter \${matrixDim} \${7} 2)			# Until necessary to change, matrix dimension will always go up by a factor of 2
+      if [ ${scaleRegime} == 1 ];
+      then
+        matrixDim=\$(updateCounter \${matrixDim} \${7} 8)
+      else
+        matrixDim=\$(updateCounter \${matrixDim} \${7} 2)
+      fi
     else
       bcDim=\$(( \${bcDim} + 1 ))			# For Strong scaling, could be very advantageous to increase bcDim. Not needed for Weak Scaling
     fi
@@ -453,7 +465,12 @@ launch$tag2 () {
     startNumNodes=\$(updateCounter \${startNumNodes} \$7 \$6)
     if [ "\${1}" == "WS" ];
     then
-      matrixDim=\$(updateCounter \${matrixDim} \${7} 2)
+      if [ ${scaleRegime} == 1 ];
+      then
+        matrixDim=\$(updateCounter \${matrixDim} \${7} 8)
+      else
+        matrixDim=\$(updateCounter \${matrixDim} \${7} 2)
+      fi
     fi
   done
 }
@@ -497,7 +514,13 @@ do
   # Assume for now that we always jump up by a factor of 8 for CFR3D, and a factor of 4 for Scalapack Cholesky
   #read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
   #read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
-  jumpNumNodes=8
+  jumpNumNodes=""
+  if [ ${scaleRegime} == 1 ];
+  then
+    jumpNumNodes=64
+  else
+    jumpNumNodes=8
+  fi
   jumpNumNodesoperator=3
 
   # Special function is called because of that fact that CFR3D jumps up by a factor of 8, and ScaLAPACK Cholesky jumps up by a factor of 4
@@ -509,7 +532,14 @@ do
   else
     factor2=8
   fi
-  nodeCount=\$(findCountLengthSpecial \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes} \${factor2})
+
+  nodeCount=""
+  if [ ${scaleRegime} == 1 ];
+  then
+    nodeCount=\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})
+  else
+    nodeCount=\$(findCountLengthSpecial \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes} \${factor2})
+  fi
   echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
 
   # Print out the unique nodes in order. factor2 set above is very useful here
@@ -517,18 +547,24 @@ do
   curNumNodesScala=\${startNumNodes}
   for ((j=0; j<\${nodeCount}; j++))
   do
-    if [ \${curNumNodesPAA} -lt \${curNumNodesScala} ];
+    if [ ${scaleRegime} == 1 ];
     then
-      echo "echo \"\${curNumNodesPAA}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
-    elif [ \${curNumNodesPAA} -gt \${curNumNodesScala} ];
-    then
-      echo "echo \"\${curNumNodesScala}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      curNumNodesScala=\$(( \${curNumNodesScala} * \${factor2} ))
+      curNumNodesPAA=\$(( \${curNumNodesPAA} * ${nodeScaleFactor} ))
+      curNumNodesScala=\$(( \${curNumNodesScala} * ${nodeScaleFactor} ))
     else
-      echo "echo \"\${curNumNodesScala}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
-      curNumNodesScala=\$(( \${curNumNodesScala} * \${factor2} ))
+      if [ \${curNumNodesPAA} -lt \${curNumNodesScala} ];
+      then
+        echo "echo \"\${curNumNodesPAA}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
+      elif [ \${curNumNodesPAA} -gt \${curNumNodesScala} ];
+      then
+        echo "echo \"\${curNumNodesScala}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        curNumNodesScala=\$(( \${curNumNodesScala} * \${factor2} ))
+      else
+        echo "echo \"\${curNumNodesScala}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
+        curNumNodesScala=\$(( \${curNumNodesScala} * \${factor2} ))
+      fi
     fi
   done
 
@@ -636,9 +672,21 @@ do
           # Write to plotInstructions file
           echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-          echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} 4)\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          if [ ${scaleRegime} == 0 ]; 
+          then
+            echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} 4)\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          elif [ ${scaleRegime} == 1 ];
+          then
+            echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          fi
           writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${k}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1
-          launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} 4 \${jumpNumNodesoperator} \${matrixDim} \${k} \${curNumThreadsPerRank}
+          if [ ${scaleRegime} == 0 ];
+          then
+            launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} 4 \${jumpNumNodesoperator} \${matrixDim} \${k} \${curNumThreadsPerRank}
+          elif [ ${scaleRegime} == 1 ];
+          then
+            launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} ${nodeScaleFactor} \${jumpNumNodesoperator} \${matrixDim} \${k} \${curNumThreadsPerRank}
+          fi
           curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
         done
         j=\$(( \${j} + 1 ))
@@ -693,26 +741,33 @@ then
       curNumThreadsPerRank=$(( ${curNumThreadsPerRank} * 2 ))
     done
   
-    # Find the nodeCount that was just used and increase it. If both are the same, then increase both.
-    if [ ${curNumNodesPAA} -lt ${curNumNodesScala} ];
+    if [ ${scaleRegime} == 1 ];
     then
-      curNumNodesPAA=$(( ${curNumNodesPAA} * 8 ))
-    elif [ ${curNumNodesPAA} -gt ${curNumNodesScala} ];
+      curNumNodesPAA=$(( ${curNumNodesPAA} * ${nodeScaleFactor} ))
+      curNumNodesScala=$(( ${curNumNodesScala} * ${nodeScaleFactor} ))
+    elif [ ${scaleRegime} == 0 ];
     then
-      # Need this if-statement to ensure that for Analyze runs, we submit the correct number of jobs.
-      if [ ${analyzeDecision} == 0 ];
+      # Find the nodeCount that was just used and increase it. If both are the same, then increase both.
+      if [ ${curNumNodesPAA} -lt ${curNumNodesScala} ];
       then
-        curNumNodesScala=$(( ${curNumNodesScala} * 4 ))
-      else
-        curNumNodesScala=$(( ${curNumNodesScala} * 8 ))
-      fi
-    else
-      curNumNodesPAA=$(( ${curNumNodesPAA} * 8 ))
-      if [ ${analyzeDecision} == 0 ];
+        curNumNodesPAA=$(( ${curNumNodesPAA} * 8 ))
+      elif [ ${curNumNodesPAA} -gt ${curNumNodesScala} ];
       then
-        curNumNodesScala=$(( ${curNumNodesScala} * 4 ))
+        # Need this if-statement to ensure that for Analyze runs, we submit the correct number of jobs.
+        if [ ${analyzeDecision} == 0 ];
+        then
+          curNumNodesScala=$(( ${curNumNodesScala} * 4 ))
+        else
+          curNumNodesScala=$(( ${curNumNodesScala} * 8 ))
+        fi
       else
-        curNumNodesScala=$(( ${curNumNodesScala} * 8 ))
+        curNumNodesPAA=$(( ${curNumNodesPAA} * 8 ))
+        if [ ${analyzeDecision} == 0 ];
+        then
+          curNumNodesScala=$(( ${curNumNodesScala} * 4 ))
+        else
+          curNumNodesScala=$(( ${curNumNodesScala} * 8 ))
+        fi
       fi
     fi
   done
