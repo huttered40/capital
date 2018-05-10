@@ -549,6 +549,7 @@ do
   do
     if [ ${scaleRegime} == 1 ];
     then
+      echo "echo \"\${curNumNodesPAA}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       curNumNodesPAA=\$(( \${curNumNodesPAA} * ${nodeScaleFactor} ))
       curNumNodesScala=\$(( \${curNumNodesScala} * ${nodeScaleFactor} ))
     else
