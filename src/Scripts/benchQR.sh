@@ -46,6 +46,12 @@ then
   scalaDir=~/CANDMC
   export MPITYPE=MPI_TYPE
   mpiType=mpi
+elif [ "$(hostname |grep "h2o")" != "" ];
+then
+  machineName=BLUEWATERS
+  scalaDir=~/scratch/CANDMC
+  export MPITYPE=MPI_TYPE
+  mpiType=mpi
 fi
 
 dateStr=$(date +%Y-%m-%d-%H_%M_%S)
@@ -62,6 +68,7 @@ read -p "Enter ppn: " ppn
 # Default setting is 1
 numThreadsPerRankMin=1
 numThreadsPerRankMax=1
+# For now, do not allow Blue Waters to try to thread the BLAS calls
 if [ "${machineName}" == "STAMPEDE2" ];
 then
   read -p "Enter minimum number of MKL threads per MPI rank: " numThreadsPerRankMin
@@ -73,7 +80,7 @@ read -p "Enter number of tests (equal to number of strong scaling or weak scalin
 numHours=""
 numMinutes=""
 numSeconds=""
-if [ "${machineName}" == "BW" ] || [ "${machineName}" == "STAMPEDE2" ];
+if [ "${machineName}" == "BLUEWATERS" ] || [ "${machineName}" == "STAMPEDE2" ];
 then
   read -p "Enter number of hours of job: " numHours
   read -p "Enter number of minutes of job: " numMinutes
@@ -116,6 +123,26 @@ fi
 # Build PAA code
 # Build separately for performance runs, critter runs, and profiling runs. To properly analyze, all 3 are necessary.
 # Any one without the other two renders it meaningless.
+
+# Choice of compiler for Blue Waters (assumes Cray compiler is loaded by default)
+if [ "${machineName}" == "BLUEWATERS" ];
+then
+  read -p "Do you want the Intel Programming Environment (I) or the Cray Programming Environment (C): " bwPrgEnv
+  if [ "${bwPrgEnv}" == "I" ];
+  then
+    if [ "${PE_ENV}" == "CRAY" ];
+    then
+      module swap PrgEnv-cray PrgEnv-intel
+    fi
+  elif [ "${bwPrgEnv}" == "C" ];
+  then
+    if [ "${PE_ENV}" == "INTEL" ];
+    then
+      module swap PrgEnv-intel PrgEnv-cray
+    fi
+  fi
+fi
+
 read -p "Do you want to analyze these tests? Yes[1], No[0]: " analyzeDecision
 if [ "${machineName}" == "STAMPEDE2" ];
 then
@@ -139,7 +166,7 @@ fi
 
 
 # Build CANDMC code
-if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ];
+if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ] || [ "${machineName}" == "BLUEWATERS" ];
 then
   if [ ${profType} == "P" ];
   then
@@ -156,15 +183,16 @@ fi
 if [ "${machineName}" == "BGQ" ];
 then
   export SCRATCH=/projects/QMCat/huttered
-elif [ "${machineName}" == "BW" ];
-then
-  echo "dog"
 elif [ "${machineName}" == "THETA" ];
 then
   export SCRATCH=/projects/QMCat/huttered
   export BINPATH=${SCRATCH}/${fileName}/bin/
 elif [ "${machineName}" == "STAMPEDE2" ];
 then
+  export BINPATH=${SCRATCH}/${fileName}/bin/
+elif [ "${machineName}" == "BLUEWATERS" ];
+then
+  export SCRATCH=/scratch/sciteam/hutter
   export BINPATH=${SCRATCH}/${fileName}/bin/
 elif [ "${machineName}" == "PORTER" ];
 then
@@ -190,7 +218,7 @@ do
   then
     scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
     echo "#!/bin/sh" > \${scriptName}
-  elif [ "${machineName}" == "BW" ];
+  elif [ "${machineName}" == "BLUEWATERS" ];
   then
     scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
     echo "#!/bin/bash" > \${scriptName}
@@ -340,10 +368,10 @@ launchJobs () {
   if [ "$machineName" == "BGQ" ];
   then
     echo "runjob --np \${numProcesses} -p ${ppn} --block \$COBALT_PARTNAME --verbose=INFO : \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
-  elif [ "$machineName" == "BW" ];
+  elif [ "$machineName" == "BLUEWATERS" ];
   then
-    echo "Note: this is probably wrong, and I need to check this once I get BW access"
-    echo "aprun -n \$numProcesses \$@" >> $SCRATCH/${fileName}/script\${2}.sh
+    # Assume (for now) that we want a process mapped to each Bulldozer core (1 per 2 integer cores)
+    echo "aprun -n \${numProcesses} -d 2 \${@:5:\$#}" >> $SCRATCH/${fileName}/script\${2}.sh
   elif [ "$machineName" == "THETA" ];
   then
     echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
@@ -629,7 +657,7 @@ bash $SCRATCH/${fileName}.sh
 cp $SCRATCH/${fileName}/collectInstructions.sh collectInstructions.sh
 
 # Note that for Porter, no need to do this, since we are submitting to a queue
-if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ];
+if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ] || [ "${machineName}" == "BLUEWATERS" ];
 then
   mkdir $SCRATCH/${fileName}/bin
   mv ../bin/* $SCRATCH/${fileName}/bin
@@ -644,7 +672,7 @@ then
     while [ ${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
     do
       chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
-      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ];
+      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "BLUEWATERS" ];
       then
         qsub ${fileName}/script${curNumNodes}.sh
       else
