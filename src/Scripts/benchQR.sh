@@ -127,18 +127,34 @@ fi
 # Choice of compiler for Blue Waters (assumes Cray compiler is loaded by default)
 if [ "${machineName}" == "BLUEWATERS" ];
 then
-  read -p "Do you want the Intel Programming Environment (I) or the Cray Programming Environment (C): " bwPrgEnv
+  read -p "Do you want the Intel Programming Environment (I) or the GNU Programming Environment (G): " bwPrgEnv
   if [ "${bwPrgEnv}" == "I" ];
   then
-    if [ "${PE_ENV}" == "CRAY" ];
+    if [ "${PE_ENV}" == "GNU" ];
+    then
+      module swap PrgEnv-gnu PrgEnv-intel
+      module load cblas
+    elif [ "${PE_ENV}" == "CRAY" ];
     then
       module swap PrgEnv-cray PrgEnv-intel
+      module load cblas
+    elif [ "${PE_ENV}" == "INTEL" ];
+    then
+      module load cblas
     fi
-  elif [ "${bwPrgEnv}" == "C" ];
+  elif [ "${bwPrgEnv}" == "G" ];
   then
     if [ "${PE_ENV}" == "INTEL" ];
     then
-      module swap PrgEnv-intel PrgEnv-cray
+      module swap PrgEnv-intel PrgEnv-gnu
+      module load cblas
+    elif [ "${PE_ENV}" == "CRAY" ];
+    then
+      module swap PrgEnv-cray PrgEnv-gnu
+      module load cblas
+    elif [ "${PE_ENV}" == "GNU" ];
+    then
+      module load cblas
     fi
   fi
 fi

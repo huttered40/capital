@@ -23,6 +23,28 @@
 #include "/soft/libraries/alcf/current/xl/CBLAS/include/cblas.h"
 #endif
 
+// Note: Blue Waters does not include libraries that support the CBLAS interface. Must use the Fortran interface
+#ifdef BLUEWATERS
+#include "/sw/xe/cblas/2003.02.23/cnl5.2_gnu4.8.2/include/cblas.h"
+/*
+  #define CBLAS_ORDER char
+  #define CBLAS_SIDE char
+  #define CBLAS_TRANSPOSE char
+  #define CBLAS_UPLO char
+  #define CBLAS_DIAG char
+  #define CblasRowMajor 'R'
+  #define CblasColMajor 'c'
+  #define CblasLower 'L'
+  #define CblasUpper 'U'
+  #define CblasTrans 'T'
+  #define CblasNoTrans 'N'
+  #define CblasLeft 'L'
+  #define CblasRight 'R'
+  #define CblasUnit 'U'
+  #define CblasNonUnit 'N'
+*/
+#endif
+
 // Local includes
 #include "./../Util/shared.h"
 #include "./../Timer/CTFtimer.h"

@@ -39,7 +39,7 @@ void CFvalidate<T,U>::validateLocal(
     }
   }
 
-  #ifdef BGQ
+  #if defined(BGQ) || defined(BLUEWATERS)
   int info;
   #ifdef FLOAT_TYPE
   spotrf_(/*LAPACK_COL_MAJOR, */&dir, &globalDimension, &globalMatrixA[0], &globalDimension, &info);

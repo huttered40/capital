@@ -116,13 +116,13 @@ ifneq ($(BlueWaters_machine),)
   MACHINE=BLUEWATERS
   CCMPI = CC
   PRG_ENV_FLAG_INTEL=$(shell echo $(PE_ENV) |grep 'INTEL')
-  PRG_ENV_FLAG_CRAY=$(shell echo $(PE_ENV) |grep 'CRAY')
+  PRG_ENV_FLAG_GNU=$(shell echo $(PE_ENV) |grep 'GNU')
 
   ifneq ($(PRG_ENV_FLAG_INTEL),)
     CFLAGS = -fast -std=c++11
   endif
-  ifneq ($(PRG_ENV_FLAG_CRAY),)
-    CFLAGS = -hstd=c++11
+  ifneq ($(PRG_ENV_FLAG_GNU),)
+    CFLAGS = -O3 -ffast-math -funroll-loops -std=gnu++11
   endif
 
   OBJS1 = cqr2_$(MACHINE)_$(PROFTYPE)

@@ -23,7 +23,7 @@
 #include "./../../../Util/util.h"
 #include "./../../../Util/validation.h"
 
-#ifdef BGQ
+#if defined(BGQ) || defined(BLUEWATERS)
 #ifdef FLOAT_TYPE
 extern "C" void sgeqrf_(int*, int*, double*, int*, double*, int*);
 extern "C" void sorgqr_(int*, int*, int*, double*, int*, double*, int*);

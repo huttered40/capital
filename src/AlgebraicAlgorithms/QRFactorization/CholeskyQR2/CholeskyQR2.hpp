@@ -135,7 +135,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(
   MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, MPI_SUM, commWorld);
 
   // Now, localMMvec is replicated on every processor in commWorld
-  #ifdef BGQ
+  #if defined(BGQ) || defined(BLUEWATERS)
   char dir = 'U';
   int info;
   #ifdef FLOAT_TYPE

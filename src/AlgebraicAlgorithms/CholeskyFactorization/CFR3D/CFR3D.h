@@ -32,7 +32,7 @@
 #include "mkl.h"
 #endif
 
-#ifdef BGQ
+#if defined(BGQ) || defined(BLUEWATERS)
 // Note: LAPACK Fortran routines must be externed so that linker knows where to look
 #ifdef FLOAT_TYPE
 extern "C" void spotrf_(char*, int*, double*, int*, int*);
