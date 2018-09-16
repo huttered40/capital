@@ -121,6 +121,8 @@ if [ "${machineName}" == "STAMPEDE2" ];
 then
   echo "Loading Intel MPI module"
   module load impi
+  module unload gcc
+  module load intel
 fi
 make -C./.. clean
 export PROFTYPE=PERFORMANCE
