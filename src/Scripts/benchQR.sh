@@ -236,20 +236,25 @@ do
     echo "#!/bin/sh" > \${scriptName}
   elif [ "${machineName}" == "BLUEWATERS" ];
   then
-    scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
-    echo "#!/bin/bash" > \${scriptName}
-    echo "#PBS -l nodes=$numNodes:ppn=${ppn}:xe" >> \${scriptName}
-    echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
-    echo "#PBS -N ${numNodes}" >> \${scriptName}
-    echo "#PBS -e \$PBS_JOBID.err" >> \${scriptName}
-    echo "#PBS -o \$PBS_JOBID.out" >> \${scriptName}
-    echo "##PBS -m Ed" >> \${scriptName}
-    echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
-    echo "##PBS -A xyz" >> \${scriptName}
-    echo "#PBS -W umask=0027" >> \${scriptName}
-    echo "cd \$PBS_O_WORKDIR" >> \${scriptName}
-    echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
-    echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
+    curNumThreadsPerRank=${numThreadsPerRankMin}
+    while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+    do
+      scriptName=$SCRATCH/${fileName}/script\${curNumNodes}_\${curNumThreadsPerRank}.sh
+      echo "#!/bin/bash" > \${scriptName}
+      echo "#PBS -l nodes=\${curNumNodes}:ppn=${ppn}:xe" >> \${scriptName}
+      echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
+      echo "#PBS -N \${curNumNodes}" >> \${scriptName}
+      echo "#PBS -e \${PBS_JOBID}_\${curNumNodes}_\${curNumThreadsPerRank}.err" >> \${scriptName}
+      echo "#PBS -o \${PBS_JOBID}_\${curNumNodes}_\${curNumThreadsPerRank}.out" >> \${scriptName}
+      echo "##PBS -m Ed" >> \${scriptName}
+      echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
+      echo "##PBS -A xyz" >> \${scriptName}
+      echo "#PBS -W umask=0027" >> \${scriptName}
+#      echo "cd \${PBS_O_WORKDIR}" >> \${scriptName}
+      echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
+      echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
+      curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+    done
   elif [ "${machineName}" == "THETA" ];
   then
     scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
@@ -387,7 +392,7 @@ launchJobs () {
   elif [ "$machineName" == "BLUEWATERS" ];
   then
     # Assume (for now) that we want a process mapped to each Bulldozer core (1 per 2 integer cores)
-    echo "aprun -n \${numProcesses} -d 2 \${@:5:\$#}" >> $SCRATCH/${fileName}/script\${2}.sh
+    echo "aprun -n \${numProcesses} -d 2 \${@:5:\$#}" >> $SCRATCH/${fileName}/script\${3}_\${4}.sh
   elif [ "$machineName" == "THETA" ];
   then
     echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
@@ -664,7 +669,6 @@ done
 EOF
 
 
-
 bash $SCRATCH/${fileName}.sh
 #rm $SCRATCH/${fileName}.sh
 
@@ -690,7 +694,7 @@ then
       chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
       if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "BLUEWATERS" ];
       then
-        qsub ${fileName}/script${curNumNodes}.sh
+        qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
       else
         sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
       fi
