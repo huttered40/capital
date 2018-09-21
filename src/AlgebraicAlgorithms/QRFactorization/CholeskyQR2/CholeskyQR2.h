@@ -13,6 +13,9 @@
 #ifdef STAMPEDE2
 #include "../../../../../critter/critter.h"
 #endif /*STAMPEDE2*/
+#ifdef BLUEWATERS
+#include "../../../../../critter/critter.h"
+#endif /*BLUEWATERS*/
 #endif /*CRITTER*/
 
 #ifndef CRITTER
