@@ -190,24 +190,26 @@ then
   rm config.mk
   ./configure
   export PROFTYPE=PERFORMANCE
-  profType=P
+#  profType=P
   make bench_scala_qr
   cd -
-  mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${profType}
+  mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}
+  #_${profType}
   mv ${scalaDir}/bin/benchmarks/* ../bin/
-  if [ ${analyzeDecision} == 1 ];
-  then
-    make clean
-    rm config.mk
-    ./configure  			.. need a way for configure to recognize that we want a different configure build with critter. How to do that.
-    export PROFTYPE=CRITTER
-    profType=A
-    make bench_scala_qr
-    cd -
-    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${profType}
-    mv ${scalaDir}/bin/benchmarks/* ../bin/
-    # At the end, we should have two different binaries: one for performance, and one for critter analysis
-  fi
+#  Below: Not ready yet
+#  if [ ${analyzeDecision} == 1 ];
+#  then
+#    make clean
+#    rm config.mk
+#    ./configure  			.. need a way for configure to recognize that we want a different configure build with critter. How to do that.
+#    export PROFTYPE=CRITTER
+#    profType=A
+#    make bench_scala_qr
+#    cd -
+#    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${profType}
+#    mv ${scalaDir}/bin/benchmarks/* ../bin/
+#    # At the end, we should have two different binaries: one for performance, and one for critter analysis
+#  fi
 fi
 
 if [ "${machineName}" == "BGQ" ];
