@@ -184,15 +184,29 @@ fi
 # Build CANDMC code
 if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ] || [ "${machineName}" == "BLUEWATERS" ];
 then
-  if [ ${profType} == "P" ];
+  # ScaLAPACK should now work for both analyzing (critter only) and performance
+  cd ${scalaDir}
+  make clean
+  rm config.mk
+  ./configure
+  export PROFTYPE=PERFORMANCE
+  profType=P
+  make bench_scala_qr
+  cd -
+  mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${profType}
+  mv ${scalaDir}/bin/benchmarks/* ../bin/
+  if [ ${analyzeDecision} == 1 ];
   then
-    cd ${scalaDir}
-    ./configure
     make clean
+    rm config.mk
+    ./configure  			.. need a way for configure to recognize that we want a different configure build with critter. How to do that.
+    export PROFTYPE=CRITTER
+    profType=A
     make bench_scala_qr
     cd -
-    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}
+    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${profType}
     mv ${scalaDir}/bin/benchmarks/* ../bin/
+    # At the end, we should have two different binaries: one for performance, and one for critter analysis
   fi
 fi
 
@@ -239,11 +253,11 @@ do
     curNumThreadsPerRank=${numThreadsPerRankMin}
     while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
     do
-      scriptName=$SCRATCH/${fileName}/script\${curNumNodes}_\${curNumThreadsPerRank}.sh
+      scriptName=$SCRATCH/${fileName}/script\${curNumNodes}_\${curNumThreadsPerRank}.pbs
       echo "#!/bin/bash" > \${scriptName}
-      echo "#PBS -l nodes=\${curNumNodes}:ppn=${ppn}:xe" >> \${scriptName}
+      echo "#PBS -l nodes=\${curNumNodes}:ppn=32:xe" >> \${scriptName}
       echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
-      echo "#PBS -N \${curNumNodes}" >> \${scriptName}
+      echo "#PBS -N testjob" >> \${scriptName}
       echo "#PBS -e \${PBS_JOBID}_\${curNumNodes}_\${curNumThreadsPerRank}.err" >> \${scriptName}
       echo "#PBS -o \${PBS_JOBID}_\${curNumNodes}_\${curNumThreadsPerRank}.out" >> \${scriptName}
       echo "##PBS -m Ed" >> \${scriptName}
@@ -392,7 +406,7 @@ launchJobs () {
   elif [ "$machineName" == "BLUEWATERS" ];
   then
     # Assume (for now) that we want a process mapped to each Bulldozer core (1 per 2 integer cores)
-    echo "aprun -n \${numProcesses} -d 2 \${@:5:\$#}" >> $SCRATCH/${fileName}/script\${3}_\${4}.sh
+    echo "aprun -n \${numProcesses} -N ${ppn} -d 2 \${@:5:\$#}" >> $SCRATCH/${fileName}/script\${3}_\${4}.pbs
   elif [ "$machineName" == "THETA" ];
   then
     echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
@@ -480,16 +494,10 @@ launch$tag2 () {
       num=\$(( \${matrixDimM} / \${numProws} ))
       denom=\$(( \${matrixDimN} / \${numPcols} ))
 
-      if [ \${num} -gt \${denom} ];
-      then
-        numProws=\$(( \${numProws} * 8 ))
-        matrixDimM=\$(( \${matrixDimM} * 4 ))
-        matrixDimN=\$(( \${matrixDimN} * 2 ))
-      else
-        numProws=\$(( \${numProws} * 4 ))
-        matrixDimM=\$(( \${matrixDimM} * 4 ))
-        matrixDimN=\$(( \${matrixDimN} * 2 ))
-      fi
+      # Force this to always scale numProws by 8, instead of conditional. Its up to me to be careful about my run specifications
+      numProws=\$(( \${numProws} * 8 ))
+      matrixDimM=\$(( \${matrixDimM} * 4 ))
+      matrixDimN=\$(( \${matrixDimN} * 2 ))
     elif [ ${scaleRegime} == 2 ];
     then
       numProws=\$(( \${numProws} * 2 ))
@@ -691,11 +699,14 @@ then
     curNumThreadsPerRank=${numThreadsPerRankMin}
     while [ ${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
     do
-      chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
-      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "BLUEWATERS" ];
+      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ];
       then
         qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+      elif [ "${machineName}" == "BLUEWATERS" ];
+      then
+        qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.pbs
       else
+        chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
         sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
       fi
       curNumThreadsPerRank=$(( ${curNumThreadsPerRank} * 2 ))
