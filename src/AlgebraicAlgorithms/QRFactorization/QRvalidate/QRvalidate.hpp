@@ -27,7 +27,7 @@ void QRvalidate<T,U>::validateLocal1D(
   std::vector<T> tau(globalDimensionN);
   std::vector<T> matrixQ = globalMatrixA;		// true copy
 
-  #ifdef BGQ
+  #if defined(BGQ) || defined(BLUEWATERS)
   int info;
   #ifdef FLOAT_TYPE
   sgeqrf_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &matrixQ[0], &globalDimensionM, &tau[0], &info);

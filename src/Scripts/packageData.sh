@@ -12,6 +12,10 @@ elif [ "$(hostname |grep "theta")" != "" ]
 then
   export SCRATCH=/projects/QMCat/huttered
   export RESULTSPATH=../../../PAA_data
+elif [ "$(hostname |grep "h2o")" != "" ]
+then
+  export SCRATCH=/scratch/sciteam/hutter/
+  export RESULTSPATH=../../../PAA_data
 elif [ "$(hostname |grep "stampede2")" != "" ]
 then
   export RESULTSPATH=../../../PAA_data

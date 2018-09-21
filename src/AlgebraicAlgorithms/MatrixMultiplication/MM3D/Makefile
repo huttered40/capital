@@ -3,6 +3,7 @@ PORTER_machine=$(shell echo $(HOST) |grep 'porter')
 BGQ_machine=$(shell echo $(HOST) |grep 'mira\|cetus')
 THETA_machine=$(shell echo $(HOST) |grep 'theta')
 STAMPEDE2_machine=$(shell echo $(HOST) |grep 'stampede2')
+BlueWaters_machine=$(shell echo $(HOST) |grep 'h2o')
 BIN = ./../../../bin/
 
 # If make is called outside of the batch script generator, a few environment variables need to be set by default (double,int)
@@ -96,6 +97,35 @@ ifneq ($(STAMPEDE2_machine),)
   MACHINE=STAMPEDE2
   CCMPI = mpicxx
   CFLAGS = -g -Wall -O3 -std=c++11 -mkl=parallel -xMIC-AVX512
+
+  OBJS1 = mm3d_$(MACHINE)_$(PROFTYPE)
+
+  MPI: $(OBJS1)
+	rm *.o
+
+  $(OBJS1): $(OBJS1).o
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L../../../../../critter/lib -lcritter
+
+  $(OBJS1).o: MM3D.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+
+  clean:
+	-rm -f *.o *.gch $(BIN)$(OBJS1)
+
+endif
+
+ifneq ($(BlueWaters_machine),)
+  MACHINE=BLUEWATERS
+  CCMPI = CC
+  PRG_ENV_FLAG_INTEL=$(shell echo $(PE_ENV) |grep 'INTEL')
+  PRG_ENV_FLAG_GNU=$(shell echo $(PE_ENV) |grep 'GNU')
+
+  ifneq ($(PRG_ENV_FLAG_INTEL),)
+    CFLAGS = -fast -std=c++11
+  endif
+  ifneq ($(PRG_ENV_FLAG_GNU),)
+    CFLAGS = -O3 -ffast-math -funroll-loops -std=gnu++11
+  endif
 
   OBJS1 = mm3d_$(MACHINE)_$(PROFTYPE)
 

@@ -14,6 +14,9 @@ then
 elif [ "$(hostname |grep "stampede2")" != "" ]
 then
   export SCRATCH=/scratch/05608/tg849075
+elif [ "$(hostname |grep "h2o")" != "" ]
+then
+  export SCRATCH=/scratch/sciteam/hutter
 fi
 
 read -p "Enter the directory name within ${SCRATCH} where the results are hidden: " resultsDir
@@ -36,6 +39,9 @@ then
 elif [ "${machineName}" == "STAMPEDE2" ]
 then
   scp -r tg849075@stampede2.tacc.utexas.edu:~/PAA_data/${resultsDir}.tar .
+elif [ "${machineName}" == "BLUEWATERS" ]
+then
+  scp -r hutter@bw.ncsa.illinois.edu:~/scratch/PAA_data/${resultsDir}.tar .
 fi
 
 tar -xvf ${resultsDir}.tar

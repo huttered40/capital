@@ -473,7 +473,7 @@ void CFR3D<T,U,blasEngine>::baseCase(
       }
     }
 
-    #ifdef BGQ
+    #if defined(BGQ) || defined(BLUEWATERS)
     int info;
     char dir2 = 'N';
     #ifdef FLOAT_TYPE
@@ -562,7 +562,7 @@ void CFR3D<T,U,blasEngine>::baseCase(
   {
     std::vector<T>& storeMat = cyclicBaseCaseData;
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-    #ifdef BGQ
+    #if defined(BGQ) || defined(BLUEWATERS)
     int info;
     int fTranDim1 = localDimension*pGridDimensionSize;
     char dir2 = 'N';

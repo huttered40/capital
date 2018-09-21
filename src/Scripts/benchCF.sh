@@ -46,6 +46,12 @@ then
   scalaDir=~/CANDMC
   export MPITYPE=MPI_TYPE
   mpiType=mpi
+elif [ "$(hostname |grep "h2o")" != "" ];
+then
+  machineName=BLUEWATERS
+  scalaDir=~/scratch/CANDMC
+  export MPITYPE=MPI_TYPE
+  mpiType=mpi
 fi
 
 dateStr=$(date +%Y-%m-%d-%H_%M_%S)
@@ -70,7 +76,7 @@ read -p "Enter number of tests (equal to number of strong scaling or weak scalin
 numHours=""
 numMinutes=""
 numSeconds=""
-if [ "${machineName}" == "BW" ] || [ "${machineName}" == "STAMPEDE2" ];
+if [ "${machineName}" == "BLUEWATERS" ] || [ "${machineName}" == "STAMPEDE2" ];
 then
   read -p "Enter number of hours of job: " numHours
   read -p "Enter number of minutes of job: " numMinutes
@@ -113,6 +119,36 @@ fi
 # Build PAA code
 # Build separately for performance runs, critter runs, and profiling runs. To properly analyze, all 3 are necessary.
 # Any one without the other two renders it meaningless.
+
+# Choice of compiler for Blue Waters (assumes Cray compiler is loaded by default)
+if [ "${machineName}" == "BLUEWATERS" ];
+then
+  read -p "Do you want the Intel Programming Environment (I) or the GNU Programming Environment (G): " bwPrgEnv
+  if [ "${bwPrgEnv}" == "I" ];
+  then
+    if [ "${PE_ENV}" == "GNU" ];
+    then
+      module swap PrgEnv-gnu PrgEnv-intel
+      module load cblas
+    elif [ "${PE_ENV}" == "CRAY" ];
+    then
+      module swap PrgEnv-cray PrgEnv-intel
+      module load cblas
+    fi
+  elif [ "${bwPrgEnv}" == "G" ];
+  then
+    if [ "${PE_ENV}" == "INTEL" ];
+    then
+      module swap PrgEnv-intel PrgEnv-gnu
+      module load cblas
+    elif [ "${PE_ENV}" == "CRAY" ];
+    then
+      module swap PrgEnv-cray PrgEnv-gnu
+      module load cblas
+    fi
+  fi
+fi
+
 if [ "${machineName}" == "STAMPEDE2" ];
 then
   echo "Loading Intel MPI module"
@@ -148,15 +184,16 @@ fi
 if [ "${machineName}" == "BGQ" ];
 then
   export SCRATCH=/projects/QMCat/huttered
-elif [ "${machineName}" == "BW" ];
-then
-  echo "dog"
 elif [ "${machineName}" == "THETA" ];
 then
   export SCRATCH=/projects/QMCat/huttered
   export BINPATH=${SCRATCH}/${fileName}/bin/
 elif [ "${machineName}" == "STAMPEDE2" ];
 then
+  export BINPATH=${SCRATCH}/${fileName}/bin/
+elif [ "${machineName}" == "BLUEWATERS" ];
+then
+  export SCRATCH=/scratch/sciteam/hutter
   export BINPATH=${SCRATCH}/${fileName}/bin/
 elif [ "${machineName}" == "PORTER" ];
 then
@@ -192,22 +229,26 @@ do
   then
     scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
     echo "#!/bin/sh" > \${scriptName}
-  elif [ "${machineName}" == "BW" ];
+  elif [ "${machineName}" == "BLUEWATERS" ];
   then
-    scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
-    echo "#!/bin/bash" > \${scriptName}
-    echo "#PBS -l nodes=$numNodes:ppn=${ppn}:xe" >> \${scriptName}
-    echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
-    echo "#PBS -N ${numNodes}" >> \${scriptName}
-    echo "#PBS -e \$PBS_JOBID.err" >> \${scriptName}
-    echo "#PBS -o \$PBS_JOBID.out" >> \${scriptName}
-    echo "##PBS -m Ed" >> \${scriptName}
-    echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
-    echo "##PBS -A xyz" >> \${scriptName}
-    echo "#PBS -W umask=0027" >> \${scriptName}
-    echo "cd \$PBS_O_WORKDIR" >> \${scriptName}
-    echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
-    echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
+    curNumThreadsPerRank=${numThreadsPerRankMin}
+    while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+    do
+      scriptName=$SCRATCH/${fileName}/script\${curNumNodes}_\${curNumThreadsPerRank}.sh
+      echo "#!/bin/bash" > \${scriptName}
+      echo "#PBS -l nodes=\${curNumNodes}:ppn=${ppn}:xe" >> \${scriptName}
+      echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
+      echo "#PBS -N \${curNumNodes}" >> \${scriptName}
+      echo "#PBS -e \${PBS_JOBID}_\${curNumNodes}_\${curNumThreadsPerRank}.err" >> \${scriptName}
+      echo "#PBS -o \${PBS_JOBID}_\${curNumNodes}_\${curNumThreadsPerRank}.out" >> \${scriptName}
+      echo "##PBS -m Ed" >> \${scriptName}
+      echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
+      echo "##PBS -A xyz" >> \${scriptName}
+      echo "#PBS -W umask=0027" >> \${scriptName}
+#      echo "cd \$PBS_O_WORKDIR" >> \${scriptName}
+      echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
+      echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
+    done
   elif [ "${machineName}" == "THETA" ];
   then
     scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
@@ -390,10 +431,10 @@ launchJobs () {
   if [ "$machineName" == "BGQ" ];
   then
     echo "runjob --np \${numProcesses} -p ${ppn} --block \$COBALT_PARTNAME --verbose=INFO : \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
-  elif [ "$machineName" == "BW" ];
+  elif [ "$machineName" == "BLUEWATERS" ];
   then
-    echo "Note: this is probably wrong, and I need to check this once I get BW access"
-    echo "aprun -n \$numProcesses \$@" >> $SCRATCH/${fileName}/script\${2}.sh
+    # Assume (for now) that we want a process mapped to each Bulldozer core (1 per 2 integer cores)
+    echo "aprun -n \${numProcesses} -d 2 \${@:5:\$#}" >> $SCRATCH/${fileName}/script\${2}.sh
   elif [ "$machineName" == "THETA" ];
   then
     echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
@@ -549,6 +590,7 @@ do
   do
     if [ ${scaleRegime} == 1 ];
     then
+      echo "echo \"\${curNumNodesPAA}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       curNumNodesPAA=\$(( \${curNumNodesPAA} * ${nodeScaleFactor} ))
       curNumNodesScala=\$(( \${curNumNodesScala} * ${nodeScaleFactor} ))
     else
@@ -706,7 +748,7 @@ bash $SCRATCH/${fileName}.sh
 cp $SCRATCH/${fileName}/collectInstructions.sh collectInstructions.sh
 
 # Note that for Porter, no need to do this, since we are submitting to a queue
-if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ];
+if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ] || [ "${machineName}" == "BLUEWATERS" ];
 then
   mkdir $SCRATCH/${fileName}/bin
   mv ../bin/* $SCRATCH/${fileName}/bin
@@ -732,7 +774,7 @@ then
     while [ ${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
     do
       chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
-      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ];
+      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "BLUEWATERS" ];
       then
         qsub ${fileName}/script${curNumNodes}.sh
       else

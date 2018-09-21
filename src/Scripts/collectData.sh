@@ -1,1 +1,1 @@
-bash /scratch/05608/tg849075/benchCF1_2018-05-09-23_08_58_STAMPEDE2_1_2/collectInstructions.sh | bash packageData.sh
+bash /scratch/sciteam/hutter/benchQR2_2018-09-17-21_00_56_BLUEWATERS/collectInstructions.sh | bash packageData.sh

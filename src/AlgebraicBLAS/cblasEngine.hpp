@@ -66,7 +66,6 @@ void cblasEngine<float,U>::_gemm(
   CBLAS_TRANSPOSE arg2;
   CBLAS_TRANSPOSE arg3;
   setInfoParameters_gemm(srcPackage, arg1, arg2, arg3);
-
   cblas_sgemm(arg1, arg2, arg3, m, n, k, srcPackage.alpha,
     matrixA, lda, matrixB, ldb, srcPackage.beta, matrixC, ldc);
   TAU_FSTOP(gemm);
