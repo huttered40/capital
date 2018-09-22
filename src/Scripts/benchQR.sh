@@ -49,7 +49,7 @@ then
 elif [ "$(hostname |grep "h2o")" != "" ];
 then
   machineName=BLUEWATERS
-  scalaDir=~/scratch/CANDMC
+  scalaDir=~/CANDMC
   export MPITYPE=MPI_TYPE
   mpiType=mpi
 fi
@@ -260,8 +260,8 @@ do
       echo "#PBS -l nodes=\${curNumNodes}:ppn=32:xe" >> \${scriptName}
       echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
       echo "#PBS -N testjob" >> \${scriptName}
-      echo "#PBS -e \${PBS_JOBID}_\${curNumNodes}_\${curNumThreadsPerRank}.err" >> \${scriptName}
-      echo "#PBS -o \${PBS_JOBID}_\${curNumNodes}_\${curNumThreadsPerRank}.out" >> \${scriptName}
+      echo "#PBS -e ${fileName}_\${curNumNodes}_\${curNumThreadsPerRank}.err" >> \${scriptName}
+      echo "#PBS -o ${fileName}_\${curNumNodes}_\${curNumThreadsPerRank}.out" >> \${scriptName}
       echo "##PBS -m Ed" >> \${scriptName}
       echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
       echo "##PBS -A xyz" >> \${scriptName}
