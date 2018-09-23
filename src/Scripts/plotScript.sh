@@ -41,7 +41,7 @@ then
   scp -r tg849075@stampede2.tacc.utexas.edu:~/PAA_data/${resultsDir}.tar .
 elif [ "${machineName}" == "BLUEWATERS" ]
 then
-  scp -r hutter@bw.ncsa.illinois.edu:~/scratch/PAA_data/${resultsDir}.tar .
+  scp -r hutter@bw.ncsa.illinois.edu:~/PAA_data/${resultsDir}.tar .
 fi
 
 tar -xvf ${resultsDir}.tar
