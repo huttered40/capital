@@ -49,7 +49,7 @@ then
 elif [ "$(hostname |grep "h2o")" != "" ];
 then
   machineName=BLUEWATERS
-  scalaDir=~/scratch/CANDMC
+  scalaDir=~/CANDMC
   export MPITYPE=MPI_TYPE
   mpiType=mpi
 fi
