@@ -482,9 +482,10 @@ void CFR3D<T,U,blasEngine>::baseCase(
     strtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &finalDim/*bcDimension*/, &deepBaseCaseInv[0], &finalDim/*bcDimension*/, &info);
     #endif
     #ifdef DOUBLE_TYPE
-    dpotrf_(/*LAPACK_COL_MAJOR, */&dir, &finalDim/*bcDimension*/, &deepBaseCase[0], &finalDim/*bcDimension*/, &info);
+    int temp1 = static_cast<int>(finalDim);
+    dpotrf_(/*LAPACK_COL_MAJOR, */&dir, /*&finalDim*//*bcDimension*/&temp1, &deepBaseCase[0], /*&finalDim*//*bcDimension*/&temp1, &info);
     std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-    dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &finalDim/*bcDimension*/, &deepBaseCaseInv[0], &finalDim/*bcDimension*/, &info);
+    dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, /*&finalDim*//*bcDimension*/&temp1, &deepBaseCaseInv[0], /*&finalDim*//*bcDimension*/&temp1, &info);
     #endif
     #ifdef COMPLEX_FLOAT_TYPE
     cpotrf_(/*LAPACK_COL_MAJOR, */&dir, &finalDim/*bcDimension*/, &deepBaseCase[0], &finalDim/*bcDimension*/, &info);
