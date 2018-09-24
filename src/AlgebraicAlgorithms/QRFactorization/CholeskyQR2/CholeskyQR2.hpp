@@ -145,10 +145,11 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(
   strtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &localDimensionN, &RI[0], &localDimensionN, &info);
   #endif
   #ifdef DOUBLE_TYPE
-  dpotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
+  int temp1 = static_cast<int>(localDimensionN);
+  dpotrf_(/*LAPACK_COL_MAJOR, */&dir, /*&localDimensionN*/&temp1, matrixR.getRawData(), /*&localDimensionN*/&temp1, &info);
   std::vector<T> RI = matrixR.getVectorData();
   char dir2 = 'N';
-  dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &localDimensionN, &RI[0], &localDimensionN, &info);
+  dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, /*&localDimensionN*/&temp1, &RI[0], /*&localDimensionN*/&temp1, &info);
   #endif
   #ifdef COMPLEX_FLOAT_TYPE
   cpotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
