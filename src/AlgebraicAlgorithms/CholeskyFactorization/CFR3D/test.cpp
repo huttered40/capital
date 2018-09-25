@@ -37,6 +37,7 @@ static pair<T,double> runTestCF(
   double iterTimeGlobal=-1;
   T iterErrorGlobal;		// define this out here so that compilation doesn't fail with Critter/Analysis runs
   // Reset matrixA
+  // Note: I think this call below is still ok given the new topology mapping on Blue Waters/Stampede2
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   #ifdef CRITTER
@@ -72,6 +73,7 @@ static pair<T,double> runTestCF(
   }
 */
   Matrix<T,U,StructureA,Distribution> saveA = matA;
+  // Note: I think this call below is still ok given the new topology mapping on Blue Waters/Stampede2
   saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
   T iterErrorLocal;
