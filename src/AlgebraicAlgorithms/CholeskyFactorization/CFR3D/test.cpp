@@ -107,9 +107,15 @@ int main(int argc, char** argv)
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   int helper = pGridDimensionSize;
   helper *= helper;
+  #ifdef BLUEWATERS
+  int pCoordZ = rank%pGridDimensionSize;
+  int pCoordY = rank/helper;
+  int pCoordX = (rank%helper)/pGridDimensionSize;
+  #else
   int pCoordX = rank%pGridDimensionSize;
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
+  #endif
 
   /*
     methodKey1 -> 0) Lower

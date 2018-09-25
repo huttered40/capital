@@ -25,7 +25,11 @@ std::pair<bool,std::vector<U>> CFR3D<T,U,blasEngine>::Factor(
   int pGridCoordX = std::get<4>(commInfo3D);
   int pGridCoordY = std::get<5>(commInfo3D);
   int pGridCoordZ = std::get<6>(commInfo3D);
+  #ifdef BLUEWATERS
+  int transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
+  #else
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
+  #endif
 
   U localDimension = matrixA.getNumRowsLocal();
   U globalDimension = matrixA.getNumRowsGlobal();

@@ -50,9 +50,16 @@ int main(int argc, char** argv)
   int dimensionD = atoi(argv[6]);
   int dimensionC = atoi(argv[7]);
   int sliceSize = dimensionD*dimensionC;
+  #ifdef BLUEWATERS
+  int helper = dimensionC*dimensionC;
+  int pCoordZ = rank%dimensionC;
+  int pCoordY = rank/helper;
+  int pCoordX = (rank%helper)/dimensionC;
+  #else
   int pCoordX = rank%dimensionC;
   int pCoordY = (rank%sliceSize)/dimensionC;
   int pCoordZ = rank/sliceSize;
+  #endif
 
   INTTYPE localMatrixDimensionM = globalMatrixDimensionM/dimensionD;
   INTTYPE localMatrixDimensionN = globalMatrixDimensionN/dimensionC;
@@ -104,7 +111,11 @@ int main(int argc, char** argv)
   {
     double saveTime;
     // reset the matrix before timer starts
+    #ifdef BLUEWATERS
+    matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
+    #else
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+    #endif
     MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
     #ifdef CRITTER
     Critter_Clear();
@@ -134,7 +145,11 @@ int main(int argc, char** argv)
 
     #ifdef PERFORMANCE
     MatrixTypeR saveA = matA;
+    #ifdef BLUEWATERS
+    saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
+    #else
     saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
+    #endif
     commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
       MPI_COMM_WORLD, dimensionD, dimensionC);
     pair<DATATYPE,DATATYPE> error = QRvalidate<DATATYPE,INTTYPE>::validateParallelTunable(
