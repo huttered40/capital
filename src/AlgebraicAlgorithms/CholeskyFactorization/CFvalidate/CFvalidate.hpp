@@ -117,7 +117,11 @@ T CFvalidate<T,U>::validateParallel(
   int helper = pGridDimensionSize;
   helper *= helper;
 
+  #ifdef BLUEWATERS
+  int transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
+  #else
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
+  #endif
   util<T,U>::removeTriangle(matrixTri, pGridCoordX, pGridCoordY, pGridDimensionSize, dir);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixTriTrans = matrixTri;
   util<T,U>::transposeSwap(

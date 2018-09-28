@@ -34,6 +34,7 @@ static double runTestGemm(
 )
 {
   double iterTimeGlobal;
+  // Note: I think these calls below are still ok given the new topology mapping on Blue Waters/Stampede2
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
@@ -139,9 +140,15 @@ int main(int argc, char** argv)
   int pGridDimensionSize = std::nearbyint(pow(size,1./3.));
   int helper = pGridDimensionSize;
   helper *= helper;
+  #ifdef BLUEWATERS
+  int pCoordZ = rank%pGridDimensionSize;
+  int pCoordY = rank/helper;
+  int pCoordX = (rank%helper)/pGridDimensionSize;
+  #else
   int pCoordX = rank%pGridDimensionSize;
   int pCoordY = (rank%helper)/pGridDimensionSize;
   int pCoordZ = rank/helper;
+  #endif
 
   INTTYPE globalMatrixSizeM = atoi(argv[3]);
   INTTYPE localMatrixSizeM = globalMatrixSizeM/pGridDimensionSize;
