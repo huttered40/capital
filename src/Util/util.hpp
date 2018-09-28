@@ -13,7 +13,7 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> util<T,U>::build3DTo
   int pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
   int helper = pGridDimensionSize;
   helper *= helper;
-  #ifdef BLUEWATERS
+  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   int pGridCoordZ = rank%pGridDimensionSize;
   int pGridCoordY = rank/helper;
   int pGridCoordX = (rank%helper)/pGridDimensionSize;
@@ -55,7 +55,7 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util<T,U>::bui
   MPI_Comm_rank(commWorld, &worldRank);
   MPI_Comm_size(commWorld, &worldSize);
 
-  #ifdef BLUEWATERS
+  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   int SubCubeSize = pGridDimensionC*pGridDimensionC*pGridDimensionC;
   int SubCubeSliceSize = pGridDimensionC*pGridDimensionC;
   MPI_Comm sliceComm, rowComm, columnComm, columnContigComm, columnAltComm, depthComm, miniCubeComm;
@@ -344,7 +344,7 @@ std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(
   
   int helper = pGridDimensionSize;
   helper *= helper;
-  #ifdef BLUEWATERS
+  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   int pCoordZ = rank%pGridDimensionSize;
   int pCoordY = rank/helper;
   int pCoordX = (rank%helper)/pGridDimensionSize;

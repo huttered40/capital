@@ -117,7 +117,7 @@ T CFvalidate<T,U>::validateParallel(
   int helper = pGridDimensionSize;
   helper *= helper;
 
-  #ifdef BLUEWATERS
+  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   int transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
   #else
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
