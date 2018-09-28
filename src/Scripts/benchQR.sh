@@ -181,35 +181,37 @@ then
 fi
 
 
-# Build CANDMC code
-if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ] || [ "${machineName}" == "BLUEWATERS" ];
+# Build CANDMC code (only if testing performance, not for profiling)
+if [ "${profType}" == "P" ];
 then
-  # ScaLAPACK should now work for both analyzing (critter only) and performance
-  cd ${scalaDir}
-  make clean
-  rm config.mk
-  ./configure
-  export PROFTYPE=PERFORMANCE
-#  profType=P
-  make bench_scala_qr
-  cd -
-  mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}
-  #_${profType}
-  mv ${scalaDir}/bin/benchmarks/* ../bin/
-#  Below: Not ready yet
-#  if [ ${analyzeDecision} == 1 ];
-#  then
-#    make clean
-#    rm config.mk
-#    ./configure  			.. need a way for configure to recognize that we want a different configure build with critter. How to do that.
-#    export PROFTYPE=CRITTER
-#    profType=A
-#    make bench_scala_qr
-#    cd -
-#    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${profType}
-#    mv ${scalaDir}/bin/benchmarks/* ../bin/
-#    # At the end, we should have two different binaries: one for performance, and one for critter analysis
-#  fi
+  if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ] || [ "${machineName}" == "BLUEWATERS" ];
+  then
+    # ScaLAPACK should now work for both analyzing (critter only) and performance
+    cd ${scalaDir}
+    make clean
+    rm config.mk
+    export PROFTYPE=PERFORMANCE
+    profType=P
+    ./configure
+    make bench_scala_qr
+    cd -
+    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE}
+    mv ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE} ../bin/
+  #  Below: New for allowing Scalapack + Critter
+  #  if [ ${analyzeDecision} == 1 ];
+  #  then
+  #    make clean
+  #    rm config.mk
+  #    export PROFTYPE=CRITTER
+  #    profType=A
+  #    ./configure 
+  #    make bench_scala_qr
+  #    cd -
+  #    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE}
+  #    mv ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE} ../bin/
+  #    # At the end, we should have two different binaries: one for performance, and one for critter analysis, same as what CQR2 does
+  #  fi
+  fi
 fi
 
 if [ "${machineName}" == "BGQ" ];
@@ -479,8 +481,15 @@ launch$tag2 () {
   local numProws=\${8}
   while [ \${startNumNodes} -le \${endNumNodes} ];
   do
-    local fileString="results/results_${tag2}_\$1_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${9}bSize_\${10}tpk"
-    launchJobs ${tag2} \${fileString} \$startNumNodes \${10} \${2} \${matrixDimM} \${matrixDimN} \${9} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+    local fileString="results/results_${tag2}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${9}bSize_\${10}tpk"
+    # Launch performance job always.
+    launchJobs ${tag2} \${fileString} \$startNumNodes \${10} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${9} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+
+    # If analysis is turned on, launch Critter job.
+    if [ "${profType}" == "A" ];
+    then
+      launchJobs ${tag2} \${fileString} \$startNumNodes \${10} \${2}_CRITTER \${matrixDimM} \${matrixDimN} \${9} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+    fi
 
     writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
 
