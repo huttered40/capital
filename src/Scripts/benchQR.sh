@@ -605,46 +605,52 @@ do
     read -p "Enter number of iterations: " numIterations
     if [ \${binaryTag} == 'cqr2' ];
     then
-      read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
       read -p "Enter starting tunable processor grid dimension d: " pDimD
       read -p "Enter static tunable processor grid dimension c: " pDimC
+      read -p "Enter starting inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMultStart
+      read -p "Enter end inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMultEnd
 
-      curNumThreadsPerRank=${numThreadsPerRankMin}
-      while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+      curInverseCutOffMult=\${inverseCutOffMultStart}
+      while [ \${curInverseCutOffMult} -le \${inverseCutOffMultEnd} ];
       do
-        # Write to plotInstructions file
-        echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        
-        # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
-        if [ \${j} == 1 ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
-        then
-          echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-          echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        fi
+        curNumThreadsPerRank=${numThreadsPerRankMin}
+        while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+        do
+          # Write to plotInstructions file
+          echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        # Write to collectInstructions file
-        echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
+          if [ \${j} == 1 ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
+          then
+            echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          fi
 
-        if [ "${profType}" == "A" ];
-	then
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-	fi
-        
-	echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        # Write to plotInstructions file
-        echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${inverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
-        launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${inverseCutOffMult} \${curNumThreadsPerRank}
-        curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          # Write to collectInstructions file
+          echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+
+          if [ "${profType}" == "A" ];
+	  then
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+	  fi
+
+          echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          # Write to plotInstructions file
+          echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${curInverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
+          launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${curNumThreadsPerRank}
+          curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+          j=\$(( \${j} + 1 ))
+        done
+        curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
       done
-      j=\$(( \${j} + 1 ))
     elif [ \${binaryTag} == 'bench_scala_qr' ];
     then
       read -p "Enter the starting number of processor rows: " numProws

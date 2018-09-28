@@ -653,41 +653,47 @@ do
     read -p "Enter number of iterations: " numIterations
     if [ \${binaryTag} == 'cfr3d' ];
     then
-      read -p "Enter the inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMult
+      read -p "Enter starting inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMultStart
+      read -p "Enter end inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMultEnd
 
-      curNumThreadsPerRank=${numThreadsPerRankMin}
-      while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+      curInverseCutOffMult=\${inverseCutOffMultStart}
+      while [ \${curInverseCutOffMult} -le \${inverseCutOffMultEnd} ];
       do
-        # Write to plotInstructions file
-        echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        curNumThreadsPerRank=${numThreadsPerRankMin}
+        while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+        do
+          # Write to plotInstructions file
+          echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         
-        # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
-        if [ \${j} == 1 ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
-        then
-          echo "echo \"\${matrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        fi
+          # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
+          if [ \${j} == 1 ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
+          then
+            echo "echo \"\${matrixDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          fi
 
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        # Write to collectInstructions file
-        echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${curInverseCutOffMult}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          # Write to collectInstructions file
+          echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${curInverseCutOffMult}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${curInverseCutOffMult}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
-        if [ "${profType}" == "A" ];
-	then
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-	fi
-        
-	echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-        # Write to plotInstructions file
-        echo "echo \"\${inverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${inverseCutOffMult}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
-        launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} 1 \${matrixDim} \${inverseCutOffMult} \${curNumThreadsPerRank}
-        curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+          if [ "${profType}" == "A" ];
+	  then
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${curInverseCutOffMult}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${curInverseCutOffMult}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+	  fi
+
+	  echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          # Write to plotInstructions file
+          echo "echo \"\${curInverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${curInverseCutOffMult}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
+          launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${jumpNumNodes} \${jumpNumNodesoperator} 1 \${matrixDim} \${curInverseCutOffMult} \${curNumThreadsPerRank}
+          curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+          j=\$(( \${j} + 1 ))
+        done
+        curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
       done
-      j=\$(( \${j} + 1 ))
     elif [ \${binaryTag} == 'bench_scala_cholesky' ];
     then
       read -p "Enter the minimum block size: " minBlockSize
