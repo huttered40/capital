@@ -50,7 +50,7 @@ int main(int argc, char** argv)
   int dimensionD = atoi(argv[6]);
   int dimensionC = atoi(argv[7]);
   int sliceSize = dimensionD*dimensionC;
-  #ifdef BLUEWATERS
+  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   int helper = dimensionC*dimensionC;
   int pCoordZ = rank%dimensionC;
   int pCoordY = rank/helper;
@@ -111,7 +111,7 @@ int main(int argc, char** argv)
   {
     double saveTime;
     // reset the matrix before timer starts
-    #ifdef BLUEWATERS
+    #if defined(BLUEWATERS) || defined(STAMPEDE2)
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
     #else
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
@@ -145,7 +145,7 @@ int main(int argc, char** argv)
 
     #ifdef PERFORMANCE
     MatrixTypeR saveA = matA;
-    #ifdef BLUEWATERS
+    #if defined(BLUEWATERS) || defined(STAMPEDE2)
     saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
     #else
     saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
