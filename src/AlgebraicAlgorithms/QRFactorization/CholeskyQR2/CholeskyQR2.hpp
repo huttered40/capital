@@ -294,9 +294,16 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
   int worldRank;
   MPI_Comm_rank(commWorld, &worldRank);
   int sliceSize = gridDimensionD*gridDimensionC;
+  #if defined(BLUEWATERS) || defined(STAMPEDE2)
+  int helper = gridDimensionC*gridDimensionC;
+  int pCoordZ = worldRank%gridDimensionC;
+  int pCoordY = worldRank/helper;
+  int pCoordX = (worldRank%helper)/gridDimensionC;
+  #else
   int pCoordX = worldRank%gridDimensionC;
   int pCoordY = (worldRank%sliceSize)/gridDimensionC;
   int pCoordZ = worldRank/sliceSize;
+  #endif
 
   int columnContigRank;
   MPI_Comm_rank(columnContigComm, &columnContigRank);

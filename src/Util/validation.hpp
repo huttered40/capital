@@ -140,7 +140,11 @@ T validator<T,U>::validateOrthogonalityParallel(
   U pGridDimensionSize = std::get<4>(commInfo);
   int helper = pGridDimensionSize;
   helper *= helper;
+  #if defined(BLUEWATERS) || defined(STAMPEDE2)
+  int transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
+  #else
   int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
+  #endif
 
   Matrix<T,U,StructureArg,Distribution> matrixQtrans = matrixQ;
   util<T,U>::transposeSwap(
