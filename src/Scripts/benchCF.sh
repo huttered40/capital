@@ -159,26 +159,33 @@ export PROFTYPE=PERFORMANCE
 make -C./.. cfr3d_${mpiType}
 profType=P
 read -p "Do you want to analyze these tests? Yes[1], No[0]: " analyzeDecision
-if [ ${analyzeDecision} == 1 ];
+if [ ${analyzeDecision1} == 1 ];
 then
-  profType=A					#  A for all 3 (performance, profiling, critical path analysis)
-  export PROFTYPE=PROFILE
-  make -C./.. cfr3d_${mpiType}
+  profType=${profType}C
   export PROFTYPE=CRITTER
+  make -C./.. cfr3d_${mpiType}
+fi
+if [ ${analyzeDecision2} == 1 ];
+then
+  profType=${profType}T
+  export PROFTYPE=PROFILE
   make -C./.. cfr3d_${mpiType}
 fi
 
 
 # Build CANDMC code
-if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ];
+if [ "${profType}" == "P" ];
 then
-  cd ${scalaDir}
-  ./configure
-  make clean
-  make bench_scala_cholesky
-  cd -
-  mv ${scalaDir}/bin/benchmarks/bench_scala_cholesky ${scalaDir}/bin/benchmarks/bench_scala_cholesky_${machineName}
-  mv ${scalaDir}/bin/benchmarks/* ../bin/
+  if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ];
+  then
+    cd ${scalaDir}
+    ./configure
+    make clean
+    make bench_scala_cholesky
+    cd -
+    mv ${scalaDir}/bin/benchmarks/bench_scala_cholesky ${scalaDir}/bin/benchmarks/bench_scala_cholesky_${machineName}
+    mv ${scalaDir}/bin/benchmarks/* ../bin/
+  fi
 fi
 
 if [ "${machineName}" == "BGQ" ];
@@ -405,13 +412,16 @@ writePlotFileName() {
     echo "echo \"\${1}_numerics_median.txt\"" >> \${2}
   fi
 
-  if [ "${profType}" == "A" ];
+  if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
   then
     echo "echo \"\${1}_critter.txt\"" >> \${2}
     if [ "\${3}" == "1" ];
     then
       echo "echo \"\${1}_critter_breakdown.txt\"" >> \${2}
     fi
+  fi
+  if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+  then
     echo "echo \"\${1}_timer.txt\"" >> \${2}
   fi
 }
@@ -467,9 +477,12 @@ launch$tag1 () {
     launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_PERFORMANCE \${8} \${matrixDim} \${bcDim} \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
     
     # If analysis is turned on, launch Profiling job and Critter job.
-    if [ "${profType}" == "A" ];
+    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
     then
       launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_CRITTER \${8} \${matrixDim} \${bcDim} \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
+    fi
+    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+    then
       launchJobs ${tag1} \${fileString} \${startNumNodes} \${11} \${2}_PROFILE \${8} \${matrixDim} \${bcDim} \${10} 0 \${3} $SCRATCH/${fileName}/\${fileString}
     fi
 
@@ -677,9 +690,12 @@ do
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${curInverseCutOffMult}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${curInverseCutOffMult}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
-          if [ "${profType}" == "A" ];
+          if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
 	  then
             echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${curInverseCutOffMult}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          fi
+          if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+          then
             echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDim}_\${curInverseCutOffMult}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 	  fi
 
