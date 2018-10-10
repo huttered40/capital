@@ -709,11 +709,11 @@ then
       elif [ "${machineName}" == "BLUEWATERS" ];
       then
         echo "Launch job script${curNumNodes}_${curNumThreadsPerRank}.pbs yourself"
-        #qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.pbs
+        qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.pbs
       else
         echo "Launch job script${curNumNodes}_${curNumThreadsPerRank}.sh yourself"
-        #chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
-        #sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+        chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+        sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
       fi
       curNumThreadsPerRank=$(( ${curNumThreadsPerRank} * 2 ))
     done
