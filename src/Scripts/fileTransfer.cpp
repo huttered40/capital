@@ -118,11 +118,11 @@ int main(int argc, char** argv)
     sort(medianVec.begin(), medianVec.end());
     if (binaryTag == "cqr2")
     {
-      outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+      outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[(medianVec.size()-1)/2] << std::endl;
     }
     else if (binaryTag == "cfr3d")
     {
-      outputFileMedian << data1 << "\t" << data4 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+      outputFileMedian << data1 << "\t" << data4 << "\t" << medianVec[(medianVec.size()-1)/2] << std::endl;
     }
  
     outputFile.close();
@@ -167,11 +167,11 @@ int main(int argc, char** argv)
     if (binaryTag == "cqr2")
     {
       sort(medianVec2.begin(), medianVec2.end());
-      outputFileMedian << data1 << "\t" << medianVec1[medianVec1.size()/2] << "\t" << medianVec2[medianVec2.size()/2] << std::endl;
+      outputFileMedian << data1 << "\t" << medianVec1[(medianVec1.size()-1)/2] << "\t" << medianVec2[(medianVec2.size()-1)/2] << std::endl;
     }
     if (binaryTag == "cfr3d")
     {
-      outputFileMedian << data1 << "\t" << medianVec1[medianVec1.size()/2] << std::endl;
+      outputFileMedian << data1 << "\t" << medianVec1[(medianVec1.size()-1)/2] << std::endl;
     } 
     outputFile.close();
     outputFileMedian.close();
