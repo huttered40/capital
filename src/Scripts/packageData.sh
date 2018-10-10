@@ -50,9 +50,12 @@ do
 
     configFileCritter="" 
     configFileTimer=""
-    if [ "${profType}" == "A"  ]
+    if [ "${profType}" == "PC"  ] || [ "${profType}" == "PCT" ];
     then
       read -p "Enter critter file to write to: " configFileCritter
+    fi
+    if [ "${profType}" == "PT"  ] || [ "${profType}" == "PCT" ];
+    then
       read -p "Enter profiling file to write to: " configFileTimer
     fi
 
@@ -63,29 +66,26 @@ do
       # Currently, every other input file will be performance (if profType=="P", if =="A", then every 4 is performance), so that is how this inner-loop code will be structured
       read -p "Enter file to read from: " InputFile
       ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFilePerf} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 1 ${k}
-      #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
 
       if [ "${binaryTag}" != "bench_scala_cholesky" ];
       then 
         # Second, numerics
         read -p "Enter file to read from: " InputFile
         ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileNumerics} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 2 ${k}
-        #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
       fi
 
-      if [ "${profType}" == "A"  ]
+      if [ "${profType}" == "PC"  ] || [ "${profType}" == "PCT" ];
       then
         # Third, critter
 	read -p "Enter file to read from: " InputFile
         ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileCritter} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 3 ${k}
-        #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
-        
+      fi
+      if [ "${profType}" == "PT"  ] || [ "${profType}" == "PCT" ];
+      then
 	# Fourth, timer
         read -p "Enter file to read from: " InputFile
         ./fileTransfer ${RESULTSPATH}/${resultsDir}/${configFileTimer} ${RESULTSPATH}/${resultsDir}/${InputFile} ${binaryTag} 4 ${k}
-        #rm ${RESULTSPATH}/${resultsDir}/${InputFile}
       fi
-
     done
   done
 done

@@ -118,11 +118,11 @@ int main(int argc, char** argv)
     sort(medianVec.begin(), medianVec.end());
     if (binaryTag == "cqr2")
     {
-      outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+      outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[(medianVec.size()-1)/2] << std::endl;
     }
     else if (binaryTag == "cfr3d")
     {
-      outputFileMedian << data1 << "\t" << data4 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+      outputFileMedian << data1 << "\t" << data4 << "\t" << medianVec[(medianVec.size()-1)/2] << std::endl;
     }
  
     outputFile.close();
@@ -167,11 +167,11 @@ int main(int argc, char** argv)
     if (binaryTag == "cqr2")
     {
       sort(medianVec2.begin(), medianVec2.end());
-      outputFileMedian << data1 << "\t" << medianVec1[medianVec1.size()/2] << "\t" << medianVec2[medianVec2.size()/2] << std::endl;
+      outputFileMedian << data1 << "\t" << medianVec1[(medianVec1.size()-1)/2] << "\t" << medianVec2[(medianVec2.size()-1)/2] << std::endl;
     }
     if (binaryTag == "cfr3d")
     {
-      outputFileMedian << data1 << "\t" << medianVec1[medianVec1.size()/2] << std::endl;
+      outputFileMedian << data1 << "\t" << medianVec1[(medianVec1.size()-1)/2] << std::endl;
     } 
     outputFile.close();
     outputFileMedian.close();
@@ -189,7 +189,6 @@ int main(int argc, char** argv)
     string outputFileStr2 = argv[1];
     outputFileStr2 += "_breakdown.txt";
     outputFile2.open(outputFileStr2.c_str(), ofstream::app);
-
     string inputLine;
     int counter=1;
 
@@ -200,24 +199,29 @@ int main(int argc, char** argv)
       outputFile2 << inputLine << endl;
     }
     getline(inputFile, inputLine);			// First breakdown of iteration #, computation time, communication time
+    // Keep each iteration's breakdown data for now. I don't have averages for these anyways.
     outputFile2 << inputLine << endl;
     getline(inputFile, inputLine);			// Critter routine column headers. Again, only first iteration of smallest node count needs to write it.
     if (curIter == 0)
     {
-      outputFile1 << inputLine << endl;
+      outputFile1 << inputLine << endl;			// critter
     }
 
+    // iterationCount is the current count on what iteration's data we are reading in. Its not the same as the 'counter' variable above
+    //   which is related to node count
+    int iterationCount = 0;
     while (!inputFile.eof())
     {
-      // 5 critter lines followed by a breakdown line
+      // 5 critter lines followed 3 critter average lines followed by a breakdown line
       getline(inputFile,inputLine);
-      if (counter % 6 == 0)
+      iterationCount = (counter-1)%18;		// Tells me whether I should write this data down or not. We only want the 2nd iteration
+      if (counter % 9 == 0)
       {
         outputFile2 << inputLine << endl;
       }
-      else
+      else if (iterationCount >= 9)
       {
-        outputFile1 << inputLine << endl;
+        outputFile1 << inputLine << endl;		// lines 1-5 for every 9 are the critical path numbers
       }
       counter++;
     }

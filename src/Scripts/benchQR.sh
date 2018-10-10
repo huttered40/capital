@@ -159,24 +159,22 @@ then
   fi
 fi
 
-read -p "Do you want to analyze these tests? Yes[1], No[0]: " analyzeDecision
-if [ "${machineName}" == "STAMPEDE2" ];
-then
-  echo "Loading Intel MPI module"
-  module load impi
-  module unload gcc
-  module load intel
-fi
+read -p "Do you want to analyze these tests with Critter? Yes[1], No[0]: " analyzeDecision1
+read -p "Do you want to analyze these tests with TAU? Yes[1], No[0]: " analyzeDecision2
 make -C./.. clean
 export PROFTYPE=PERFORMANCE
 make -C./.. cqr2_${mpiType}
 profType=P
-if [ ${analyzeDecision} == 1 ];
+if [ ${analyzeDecision1} == 1 ];
 then
-  profType=A					#  A for all 3 (performance, profiling, critical path analysis)
-  export PROFTYPE=PROFILE
-  make -C./.. cqr2_${mpiType}
+  profType=${profType}C
   export PROFTYPE=CRITTER
+  make -C./.. cqr2_${mpiType}
+fi
+if [ ${analyzeDecision2} == 1 ];
+then
+  profType=${profType}T
+  export PROFTYPE=PROFILE
   make -C./.. cqr2_${mpiType}
 fi
 
@@ -197,20 +195,6 @@ then
     cd -
     mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE}
     mv ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE} ../bin/
-  #  Below: New for allowing Scalapack + Critter
-  #  if [ ${analyzeDecision} == 1 ];
-  #  then
-  #    make clean
-  #    rm config.mk
-  #    export PROFTYPE=CRITTER
-  #    profType=A
-  #    ./configure 
-  #    make bench_scala_qr
-  #    cd -
-  #    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE}
-  #    mv ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE} ../bin/
-  #    # At the end, we should have two different binaries: one for performance, and one for critter analysis, same as what CQR2 does
-  #  fi
   fi
 fi
 
@@ -376,13 +360,16 @@ writePlotFileName() {
     echo "echo \"\${1}_numerics_median.txt\"" >> \${2}
   fi
 
-  if [ "${profType}" == "A" ];
+  if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
   then
     echo "echo \"\${1}_critter.txt\"" >> \${2}
     if [ "\${3}" == "1" ];
     then
       echo "echo \"\${1}_critter_breakdown.txt\"" >> \${2}
     fi
+  fi
+  if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+  then
     echo "echo \"\${1}_timer.txt\"" >> \${2}
   fi
 }
@@ -445,9 +432,12 @@ launch$tag1 () {
     launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
 
     # If analysis is turned on, launch Profiling job and Critter job.
-    if [ "${profType}" == "A" ];
+    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
     then
       launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_CRITTER \${matrixDimM} \${matrixDimN} \${bcDim} \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
+    fi
+    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+    then
       launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_PROFILE \${matrixDimM} \${matrixDimN} \${bcDim} \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
     fi
 
@@ -484,12 +474,6 @@ launch$tag2 () {
     local fileString="results/results_${tag2}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${9}bSize_\${10}tpk"
     # Launch performance job always.
     launchJobs ${tag2} \${fileString} \$startNumNodes \${10} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${9} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
-
-    # If analysis is turned on, launch Critter job.
-    if [ "${profType}" == "A" ];
-    then
-      launchJobs ${tag2} \${fileString} \$startNumNodes \${10} \${2}_CRITTER \${matrixDimM} \${matrixDimN} \${9} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
-    fi
 
     writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
 
@@ -632,10 +616,13 @@ do
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
           echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
-          if [ "${profType}" == "A" ];
+          if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
 	  then
             echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          fi
+	  if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+          then
+	    echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 	  fi
 
           echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
@@ -721,10 +708,12 @@ then
         qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
       elif [ "${machineName}" == "BLUEWATERS" ];
       then
-        qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.pbs
+        echo "Launch job script${curNumNodes}_${curNumThreadsPerRank}.pbs yourself"
+        #qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.pbs
       else
-        chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
-        sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+        echo "Launch job script${curNumNodes}_${curNumThreadsPerRank}.sh yourself"
+        #chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+        #sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
       fi
       curNumThreadsPerRank=$(( ${curNumThreadsPerRank} * 2 ))
     done
