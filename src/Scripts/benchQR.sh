@@ -61,6 +61,7 @@ read -p "Enter maximum number of nodes requested: " maxNumNodes
 read -p "Enter Scaling regime:\
 	[0 -> Weak scaling && scale nodes by 2, m by 2, n by 1, d by 2, c by 1
 	 1 -> Weak scaling && scale nodes by 16, m by 4, n by 2, d by 4, c by 2
+	 3 -> Weak scaling && scale nodes by alternating scaling of d,c,m,n (best version for weak scaling)
 	 2 -> Strong scaling && scale nodes by 2, m by 1, n by 1, d by 2, c by 1]: " scaleRegime
 read -p "Also enter factor to scale number of nodes: " nodeScaleFactor
 read -p "Enter ppn: " ppn
@@ -425,6 +426,7 @@ launch$tag1 () {
   local startPdimD=\${8}
   local startPdimC=\${9}
   local bcDim=0
+  local WShelpcounter=\${12}		# arg 12 is the trick constant
   while [ \$startNumNodes -le \$endNumNodes ];
   do
     local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${10}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${startPdimC}pDimC_\${11}tpk"
@@ -457,8 +459,22 @@ launch$tag1 () {
     elif [ ${scaleRegime} == 2 ];
     then
       startPdimD=\$(( \${startPdimD} * 2 ))
+    elif [ ${scaleRegime} == 3 ];
+    then
+      immWS=\$(( \${WShelpcounter} % 4 ))
+      if [ \${immWS} == 0 ];
+      then
+        startPdimD=\$(( \${startPdimD} / 2 ))
+        startPdimC=\$(( \${startPdimC} * 2 ))
+        matrixDimM=\$(( \${matrixDimM} / 2 ))
+        matrixDimN=\$(( \${matrixDimN} * 2 ))
+      else
+        startPdimD=\$(( \${startPdimD} * 2 ))
+        matrixDimM=\$(( \${matrixDimM} * 2 ))
+      fi
     fi
-    startNumNodes=\$((\${startNumNodes} * ${nodeScaleFactor} ))
+    startNumNodes=\$(( \${startNumNodes} * ${nodeScaleFactor} ))
+    WShelpcounter=\$(( \${WShelpcounter} + 1 ))
   done
 }
 
@@ -469,6 +485,7 @@ launch$tag2 () {
   local matrixDimM=\${6}
   local matrixDimN=\${7}
   local numProws=\${8}
+  local WShelpcounter=0
   while [ \${startNumNodes} -le \${endNumNodes} ];
   do
     local fileString="results/results_${tag2}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${9}bSize_\${10}tpk"
@@ -496,8 +513,21 @@ launch$tag2 () {
     elif [ ${scaleRegime} == 2 ];
     then
       numProws=\$(( \${numProws} * 2 ))
+    elif [ ${scaleRegime} == 3 ];
+    then
+      immWS=\$(( \${WShelpcounter} % 4 ))
+      if [ ${immWS} == 0 ];
+      then
+        numProws=\$(( \${numProws} / 2 ))
+        matrixDimM=\$(( \${matrixDimM} / 2 ))
+        matrixDimN=\$(( \${matrixDimN} * 2 ))
+      else
+        numProws=\$(( \${numProws} * 2 ))
+        matrixDimM=\$(( \${matrixDimM} * 2 ))
+      fi
     fi
     startNumNodes=\$(( \${startNumNodes} * ${nodeScaleFactor} ))
+    WShelpcounter=\$(( \${WShelpcounter} + 1 ))
   done
 }
 
@@ -557,7 +587,9 @@ do
   # Assume for now that we always jump up by a power of 2
   TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} 3 2)
 
-  totalNumConfigs=\$((\${TPRcount} * \${numBinaries} ))
+  # Note: This must already include the thread-per-rank count in numBinaries
+  #totalNumConfigs=\$((\${TPRcount} * \${numBinaries} ))
+  totalNumConfigs=\${numBinaries}
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
@@ -589,6 +621,21 @@ do
     read -p "Enter number of iterations: " numIterations
     if [ \${binaryTag} == 'cqr2' ];
     then
+      # Need to redefine the numNodes variables here in case we want to perform the special weak scaling, which offers the opportunity to start a binary at a different node count.
+      startNumNodesBinary=\${startNumNodes}
+      endNumNodesBinary=\${endNumNodes}
+      matrixDimMBinary=\${matrixDimM}
+      matrixDimNBinary=\${matrixDimN}
+      # A trick variable for Weak Scaling plots in order to specify the change in processor-grid and matrix dimensions correctly
+      trickOffset=0
+      if [ ${scaleRegime} == 3 ];
+      then
+        read -p "Enter starting number of nodes for this test: " startNumNodesBinary
+        read -p "Enter ending number of nodes for this test: " endNumNodesBinary
+        read -p "Enter starting matrix dimension M for this test: " matrixDimMBinary
+        read -p "Enter starting matrix dimension N for this test: " matrixDimNBinary
+        read -p "Enter offset into grid/matrix -change cycle: " trickOffset
+      fi
       read -p "Enter starting tunable processor grid dimension d: " pDimD
       read -p "Enter static tunable processor grid dimension c: " pDimC
       read -p "Enter starting inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMultStart
@@ -603,36 +650,62 @@ do
           # Write to plotInstructions file
           echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
+          # New important addition: For special weak scaling, need to print out the number of (d,c) for the binary first, and then each of them in groups of {d,c,(d,c)}
+          if [ ${scaleRegime} == 3 ];
+          then
+            nodeGridCount=\$(findCountLength \${startNumNodesBinary} \${endNumNodesBinary} 3 ${nodeScaleFactor})
+            echo "echo \"\${nodeGridCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
+
+            curD=\${pDimD}
+            curC=\${pDimC}
+            trickOffsetTemp=\${trickOffset}
+            for ((z=0; z<\${nodeGridCount}; z++))
+            do
+              echo "echo \"\${curD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+              echo "echo \"\${curC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+              echo "echo \"(\${curD},\${curC})\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+              trickOffsetTempMod=\$(( trickOffsetTemp % 4 ))
+              if [ \${trickOffsetTempMod} == 0 ];
+              then
+                curD=\$(( \${curD} / 2))
+                curC=\$(( \${curC} * 2))
+              else
+                curD=\$(( \${curD} * 2))
+              fi
+              trickOffsetTemp=\$(( \${trickOffsetTemp} + 1 ))
+            done
+          fi
+
           # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
           if [ \${j} == 1 ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
           then
-            echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-            echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${matrixDimMBinary}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${matrixDimNBinary}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           fi
 
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           # Write to collectInstructions file
           echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
           if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
 	  then
-            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
           fi
 	  if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
           then
-	    echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+	    echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 	  fi
 
-          echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\$(findCountLength \${startNumNodesBinary} \${endNumNodesBinary} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
           # Write to plotInstructions file
           echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\${curInverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
           echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-          writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
-          launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${matrixDimM} \${matrixDimN} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${curNumThreadsPerRank}
+          writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
+          launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodesBinary} \${endNumNodesBinary} \${matrixDimMBinary} \${matrixDimNBinary} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${curNumThreadsPerRank} \${trickOffset}
           curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
           j=\$(( \${j} + 1 ))
         done
