@@ -1,1 +1,1 @@
-bash ${SCRATCH}/benchQRIPDPS19WeakScalingCritterTrue_2018-10-11-12_06_57_STAMPEDE2_1_2/collectInstructions.sh | bash packageData.sh
+bash /scratch/sciteam/hutter/benchQRInitial32nodeSStest_2018-10-11-19_12_08_BLUEWATERS/collectInstructions.sh | bash packageData.sh
