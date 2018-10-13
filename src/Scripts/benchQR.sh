@@ -518,7 +518,6 @@ launch$tag2 () {
       immWS=\$(( \${WShelpcounter} % 4 ))
       if [ \${immWS} == 0 ];
       then
-        numProws=\$(( \${numProws} / 2 ))
         matrixDimM=\$(( \${matrixDimM} / 2 ))
         matrixDimN=\$(( \${matrixDimN} * 2 ))
       else
