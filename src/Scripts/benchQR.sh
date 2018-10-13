@@ -516,7 +516,7 @@ launch$tag2 () {
     elif [ ${scaleRegime} == 3 ];
     then
       immWS=\$(( \${WShelpcounter} % 4 ))
-      if [ ${immWS} == 0 ];
+      if [ \${immWS} == 0 ];
       then
         numProws=\$(( \${numProws} / 2 ))
         matrixDimM=\$(( \${matrixDimM} / 2 ))
