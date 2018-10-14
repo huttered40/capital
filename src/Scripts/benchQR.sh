@@ -516,9 +516,8 @@ launch$tag2 () {
     elif [ ${scaleRegime} == 3 ];
     then
       immWS=\$(( \${WShelpcounter} % 4 ))
-      if [ ${immWS} == 0 ];
+      if [ \${immWS} == 0 ];
       then
-        numProws=\$(( \${numProws} / 2 ))
         matrixDimM=\$(( \${matrixDimM} / 2 ))
         matrixDimN=\$(( \${matrixDimN} * 2 ))
       else
@@ -576,19 +575,6 @@ do
     curNumNodes=\$(( \${curNumNodes} * ${nodeScaleFactor} ))
   done
 
-  # Threads
-  startNumTPR=1
-  endNumTPR=1
-  if [ "${machineName}" == "STAMPEDE2" ];
-  then
-    read -p "Enter starting number of threads-per-rank for this test: " startNumTPR
-    read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
-  fi
-  # Assume for now that we always jump up by a power of 2
-  TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} 3 2)
-
-  # Note: This must already include the thread-per-rank count in numBinaries
-  #totalNumConfigs=\$((\${TPRcount} * \${numBinaries} ))
   totalNumConfigs=\${numBinaries}
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -618,6 +604,17 @@ do
       binaryPath=\${binaryPath}_${mpiType}
     fi
 
+    # Threads, dependent on method
+    startNumTPR=1
+    endNumTPR=1
+    if [ "${machineName}" == "STAMPEDE2" ];
+    then
+      read -p "Enter starting number of threads-per-rank for this test: " startNumTPR
+      read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
+    fi
+    # Assume for now that we always jump up by a power of 2
+    TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} 3 2)
+
     read -p "Enter number of iterations: " numIterations
     if [ \${binaryTag} == 'cqr2' ];
     then
@@ -644,8 +641,8 @@ do
       curInverseCutOffMult=\${inverseCutOffMultStart}
       while [ \${curInverseCutOffMult} -le \${inverseCutOffMultEnd} ];
       do
-        curNumThreadsPerRank=${numThreadsPerRankMin}
-        while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+        curNumThreadsPerRank=\${startNumTPR} #${numThreadsPerRankMin}
+        while [ \${curNumThreadsPerRank} -le \${endNumTPR} ];
         do
           # Write to plotInstructions file
           echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -719,8 +716,8 @@ do
 
       for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
       do
-        curNumThreadsPerRank=${numThreadsPerRankMin}
-        while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
+        curNumThreadsPerRank=\${startNumTPR}  #${numThreadsPerRankMin}
+        while [ \${curNumThreadsPerRank} -le \${endNumTPR} ];
         do
           # Write to plotInstructions file
           echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -745,8 +742,8 @@ do
           writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1
           launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${matrixDimM} \${matrixDimN} \${numProws} \${k} \${curNumThreadsPerRank}
           curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+          j=\$(( \${j} + 1 ))
         done
-        j=\$(( \${j} + 1 ))
       done
     fi
   done
@@ -785,8 +782,8 @@ then
         qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.pbs
       else
         echo "Launch job script${curNumNodes}_${curNumThreadsPerRank}.sh yourself"
-        chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
-        sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+        #chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+        #sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
       fi
       curNumThreadsPerRank=$(( ${curNumThreadsPerRank} * 2 ))
     done
