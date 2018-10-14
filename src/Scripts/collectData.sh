@@ -1,1 +1,1 @@
-bash /scratch/sciteam/hutter/benchQRIPDPS19WeakScalingCritterBW_2018-10-11-21_38_59_BLUEWATERS/collectInstructions.sh | bash packageData.sh
+bash /scratch/05608/tg849075/benchQRIPDPS19StrongScalingPerformanceStampede2_2018-10-13-11_44_59_STAMPEDE2_1_2/collectInstructions.sh | bash packageData.sh
