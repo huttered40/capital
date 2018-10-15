@@ -1,1 +1,1 @@
-bash /scratch/sciteam/hutter/benchQRIPDPS19WeakScalingPerformanceBlueWatersFixAddMoreDataPoints_2018-10-15-00_06_48_BLUEWATERS/collectInstructions.sh | bash packageData.sh
+bash /scratch/sciteam/hutter/benchQRIPDPS19WeakScalingPerformanceBlueWatersFixTake2_2018-10-15-02_06_55_BLUEWATERS/collectInstructions.sh | bash packageData.sh
