@@ -674,7 +674,7 @@ do
           fi
 
           # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
-          if [ \${j} == 1 ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
+          if [ \${j} == 1 ];
           then
             echo "echo \"\${matrixDimMBinary}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
             echo "echo \"\${matrixDimNBinary}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
