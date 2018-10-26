@@ -1,7 +1,9 @@
 #!/bin/bash
 
-tag1='cfr3d'
-tag2='bench_scala_cholesky'
+tag1='cqr2'
+tag2='bench_scala_qr'
+tag3='cfr3d'
+tag4='bench_scala_cholesky'
 
 # Make sure that the src/bin directory is created, or else compilation won't work
 if [ ! -d "../bin" ];
@@ -58,13 +60,18 @@ dateStr=$(date +%Y-%m-%d-%H_%M_%S)
 read -p "Enter ID of auto-generated file this program will create: " fileID
 read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
-read -p "Enter Scaling regime (empty for now for CFR3D. [0] -> normal, [1] -> new for showing replication (jump by 64 PEs)" scaleRegime
+read -p "Enter Scaling regime:\
+	[0 -> Weak scaling && scale nodes by 2, m by 2, n by 1, d by 2, c by 1
+	 1 -> Weak scaling && scale nodes by 16, m by 4, n by 2, d by 4, c by 2
+	 3 -> Weak scaling && scale nodes by alternating scaling of d,c,m,n (best version for weak scaling)
+	 2 -> Strong scaling && scale nodes by 2, m by 1, n by 1, d by 2, c by 1]: " scaleRegime
 read -p "Also enter factor to scale number of nodes: " nodeScaleFactor
 read -p "Enter ppn: " ppn
 
 # Default setting is 1
 numThreadsPerRankMin=1
 numThreadsPerRankMax=1
+# For now, do not allow Blue Waters to try to thread the BLAS calls
 if [ "${machineName}" == "STAMPEDE2" ];
 then
   read -p "Enter minimum number of MKL threads per MPI rank: " numThreadsPerRankMin
@@ -87,7 +94,7 @@ then
 fi
 
 numPEs=$((ppn*numNodes))
-fileName=benchCF${fileID}_${dateStr}_${machineName}
+fileName=benchQR${fileID}_${dateStr}_${machineName}
 if [ "${machineName}" == "STAMPEDE2" ];   # Will allow me to run multiple jobs with different numThreadsPerRank without the fileName aliasing.
 then
   fileName=${fileName}_${numThreadsPerRankMin}_${numThreadsPerRankMax}
@@ -134,6 +141,9 @@ then
     then
       module swap PrgEnv-cray PrgEnv-intel
       module load cblas
+    elif [ "${PE_ENV}" == "INTEL" ];
+    then
+      module load cblas
     fi
   elif [ "${bwPrgEnv}" == "G" ];
   then
@@ -145,46 +155,49 @@ then
     then
       module swap PrgEnv-cray PrgEnv-gnu
       module load cblas
+    elif [ "${PE_ENV}" == "GNU" ];
+    then
+      module load cblas
     fi
   fi
 fi
 
-if [ "${machineName}" == "STAMPEDE2" ];
-then
-  echo "Loading Intel MPI module"
-  module load impi
-fi
+read -p "Do you want to analyze these tests with Critter? Yes[1], No[0]: " analyzeDecision1
+read -p "Do you want to analyze these tests with TAU? Yes[1], No[0]: " analyzeDecision2
 make -C./.. clean
 export PROFTYPE=PERFORMANCE
-make -C./.. cfr3d_${mpiType}
+make -C./.. cqr2_${mpiType}
 profType=P
-read -p "Do you want to analyze these tests? Yes[1], No[0]: " analyzeDecision
 if [ ${analyzeDecision1} == 1 ];
 then
   profType=${profType}C
   export PROFTYPE=CRITTER
-  make -C./.. cfr3d_${mpiType}
+  make -C./.. cqr2_${mpiType}
 fi
 if [ ${analyzeDecision2} == 1 ];
 then
   profType=${profType}T
   export PROFTYPE=PROFILE
-  make -C./.. cfr3d_${mpiType}
+  make -C./.. cqr2_${mpiType}
 fi
 
 
-# Build CANDMC code
+# Build CANDMC code (only if testing performance, not for profiling)
 if [ "${profType}" == "P" ];
 then
-  if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ];
+  if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ] || [ "${machineName}" == "BLUEWATERS" ];
   then
+    # ScaLAPACK should now work for both analyzing (critter only) and performance
     cd ${scalaDir}
-    ./configure
     make clean
-    make bench_scala_cholesky
+    rm config.mk
+    export PROFTYPE=PERFORMANCE
+    profType=P
+    ./configure
+    make bench_scala_qr
     cd -
-    mv ${scalaDir}/bin/benchmarks/bench_scala_cholesky ${scalaDir}/bin/benchmarks/bench_scala_cholesky_${machineName}
-    mv ${scalaDir}/bin/benchmarks/* ../bin/
+    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE}
+    mv ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE} ../bin/
   fi
 fi
 
@@ -219,19 +232,9 @@ mkdir $SCRATCH/${fileName}/
 mkdir $SCRATCH/${fileName}/results
 
 # Loop over all scripts - log(P) of them
-curNumNodesPAA=${minNumNodes}
-curNumNodesScala=${minNumNodes}
-while [ \${curNumNodesPAA} -le ${maxNumNodes} ] || [ \${curNumNodesScala} -le ${maxNumNodes} ];
+curNumNodes=${minNumNodes}
+while [ \${curNumNodes} -le ${maxNumNodes} ];
 do
-  # Find the next smallest node count. Ties are trivial and its arbitrary which node count gets chosen
-  curNumNodes=""
-  if [ \${curNumNodesPAA} -le \${curNumNodesScala} ];
-  then
-    curNumNodes=\${curNumNodesPAA}
-  else
-    curNumNodes=\${curNumNodesScala}
-  fi
-
   if [ "${machineName}" == "BGQ" ];
   then
     scriptName=$SCRATCH/${fileName}/script\${curNumNodes}.sh
@@ -241,20 +244,21 @@ do
     curNumThreadsPerRank=${numThreadsPerRankMin}
     while [ \${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
     do
-      scriptName=$SCRATCH/${fileName}/script\${curNumNodes}_\${curNumThreadsPerRank}.sh
+      scriptName=$SCRATCH/${fileName}/script\${curNumNodes}_\${curNumThreadsPerRank}.pbs
       echo "#!/bin/bash" > \${scriptName}
-      echo "#PBS -l nodes=\${curNumNodes}:ppn=${ppn}:xe" >> \${scriptName}
+      echo "#PBS -l nodes=\${curNumNodes}:ppn=32:xe" >> \${scriptName}
       echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
-      echo "#PBS -N \${curNumNodes}" >> \${scriptName}
-      echo "#PBS -e \${PBS_JOBID}_\${curNumNodes}_\${curNumThreadsPerRank}.err" >> \${scriptName}
-      echo "#PBS -o \${PBS_JOBID}_\${curNumNodes}_\${curNumThreadsPerRank}.out" >> \${scriptName}
+      echo "#PBS -N testjob" >> \${scriptName}
+      echo "#PBS -e ${fileName}_\${curNumNodes}_\${curNumThreadsPerRank}.err" >> \${scriptName}
+      echo "#PBS -o ${fileName}_\${curNumNodes}_\${curNumThreadsPerRank}.out" >> \${scriptName}
       echo "##PBS -m Ed" >> \${scriptName}
       echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
       echo "##PBS -A xyz" >> \${scriptName}
       echo "#PBS -W umask=0027" >> \${scriptName}
-#      echo "cd \$PBS_O_WORKDIR" >> \${scriptName}
+#      echo "cd \${PBS_O_WORKDIR}" >> \${scriptName}
       echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
       echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
+      curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
     done
   elif [ "${machineName}" == "THETA" ];
   then
@@ -295,38 +299,9 @@ do
       echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
       echo "export MKL_NUM_THREADS=\${curNumThreadsPerRank}" >> \${scriptName}
       curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
-    done
+    done 
   fi
-
-  # Find the nodeCount that was just used and increase it. If both are the same, then increase both.
-  if [ ${scaleRegime} == 0 ];
-  then
-    if [ \${curNumNodesPAA} -lt \${curNumNodesScala} ];
-    then
-      curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
-    elif [ \${curNumNodesPAA} -gt \${curNumNodesScala} ];
-    then
-      # Need this if-statement to ensure that for Analyze runs, we submit the correct number of jobs.
-      if [ ${analyzeDecision} == 0 ];
-      then
-        curNumNodesScala=\$(( \${curNumNodesScala} * 4 ))
-      else
-        curNumNodesScala=\$(( \${curNumNodesScala} * 8 ))
-      fi
-    else
-      curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
-      if [ ${analyzeDecision} == 0 ];
-      then
-        curNumNodesScala=\$(( \${curNumNodesScala} * 4 ))
-      else
-        curNumNodesScala=\$(( \${curNumNodesScala} * 8 ))
-      fi
-    fi
-  elif [ ${scaleRegime} == 1 ];
-  then
-    curNumNodesPAA=\$(( \${curNumNodesPAA} * 64 ))
-    curNumNodesScala=\$(( \${curNumNodesScala} * 64 ))
-  fi
+  curNumNodes=\$(( \${curNumNodes} * ${nodeScaleFactor} ))   # So far, only use cases for nodeScaleFactor are 2 and 16.
 done
 
 # Now I need to use a variable for the command-line prompt, since it will change based on the binary executable,
@@ -360,30 +335,6 @@ findCountLength () {
   while [ \${curr} -le \${2} ];
   do
     curr=\$(updateCounter \${curr} \${3} \${4})
-    counter=\$(( counter+1 ))
-  done
-  echo "\${counter}"
-}
-
-# Used for situations when we want to increase by 2 factors at once and not incur overlap
-findCountLengthSpecial () {
-  local curr1=\${1}
-  local curr2=\${1}
-  local factor1=\${4}
-  local factor2=\${5}
-  local counter=0
-  while [ \${curr1} -le \${2} ] || [ \${curr2} -le \${2} ]
-  do
-    if [ \${curr1} -lt \${curr2} ];
-    then
-      curr1=\$(updateCounter \${curr1} \${3} \${factor1})
-    elif [ \${curr1} -gt \${curr2} ];
-    then
-      curr2=\$(updateCounter \${curr2} \${3} \${factor2})
-    else
-      curr1=\$(updateCounter \${curr1} \${3} \${factor1})
-      curr2=\$(updateCounter \${curr2} \${3} \${factor2})
-    fi
     counter=\$(( counter+1 ))
   done
   echo "\${counter}"
@@ -426,12 +377,17 @@ writePlotFileName() {
   fi
 }
 
-# Only for bench_scala_cholesky -- only necessary for Performance now. Might want to use Critter later, but not Profiler
+# Only for bench_scala_qr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
 writePlotFileNameScalapack() {
-  echo "echo \"\${1}.txt\"" >> \${2}
+  echo "echo \"\${1}_NoFormQ.txt\"" >> \${2}
   if [ "\${3}" == "1" ];
   then
-    echo "echo \"\${1}_median.txt\"" >> \${2}
+    echo "echo \"\${1}_NoFormQ_median.txt\"" >> \${2}
+  fi
+  echo "echo \"\${1}_FormQ.txt\"" >> \${2}
+  if [ "\${3}" == "1" ];
+  then
+    echo "echo \"\${1}_FormQ_median.txt\"" >> \${2}
   fi
 }
 
@@ -444,7 +400,7 @@ launchJobs () {
   elif [ "$machineName" == "BLUEWATERS" ];
   then
     # Assume (for now) that we want a process mapped to each Bulldozer core (1 per 2 integer cores)
-    echo "aprun -n \${numProcesses} -d 2 \${@:5:\$#}" >> $SCRATCH/${fileName}/script\${2}.sh
+    echo "aprun -n \${numProcesses} -N ${ppn} -d 2 \${@:5:\$#}" >> $SCRATCH/${fileName}/script\${3}_\${4}.pbs
   elif [ "$machineName" == "THETA" ];
   then
     echo "aprun -n \${numProcesses} -N ${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:4:\$#}" >> $SCRATCH/${fileName}/script\${3}.sh
@@ -463,7 +419,123 @@ launchJobs () {
   fi
 }
 
+# For CA-CQR2
 launch$tag1 () {
+  # launch CQR2
+  local startNumNodes=\${4}
+  local endNumNodes=\${5}
+  local matrixDimM=\${6}
+  local matrixDimN=\${7}
+  local startPdimD=\${8}
+  local startPdimC=\${9}
+  local bcDim=0
+  local WShelpcounter=\${12}		# arg 12 is the trick constant
+  while [ \$startNumNodes -le \$endNumNodes ];
+  do
+    local fileString="results/results_${tag1}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${10}inverseCutOffMult_0bcMult_0panelDimMult_\${startPdimD}pDimD_\${startPdimC}pDimC_\${11}tpk"
+    # Launch performance job always.
+    launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
+
+    # If analysis is turned on, launch Profiling job and Critter job.
+    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
+    then
+      launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_CRITTER \${matrixDimM} \${matrixDimN} \${bcDim} \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
+    fi
+    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+    then
+      launchJobs ${tag1} \${fileString} \$startNumNodes \${11} \${2}_PROFILE \${matrixDimM} \${matrixDimN} \${bcDim} \${10} 0 \${startPdimD} \${startPdimC} \${3} $SCRATCH/${fileName}/\${fileString}
+    fi
+
+    writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
+
+    # Rest of scaling decisions are made based on scaleRegime
+    if [ ${scaleRegime} == 0 ];
+    then
+      startPdimD=\$(( \${startPdimD} * 2 ))
+      matrixDimM=\$(( \${matrixDimM} * 2 ))
+    elif [ ${scaleRegime} == 1 ];
+    then
+      startPdimD=\$(( \${startPdimD} * 4 ))
+      startPdimC=\$(( \${startPdimC} * 2 ))
+      matrixDimM=\$(( \${matrixDimM} * 4 ))
+      matrixDimN=\$(( \${matrixDimN} * 2 ))
+    elif [ ${scaleRegime} == 2 ];
+    then
+      startPdimD=\$(( \${startPdimD} * 2 ))
+    elif [ ${scaleRegime} == 3 ];
+    then
+      immWS=\$(( \${WShelpcounter} % 4 ))
+      if [ \${immWS} == 0 ];
+      then
+        startPdimD=\$(( \${startPdimD} / 2 ))
+        startPdimC=\$(( \${startPdimC} * 2 ))
+        matrixDimM=\$(( \${matrixDimM} / 2 ))
+        matrixDimN=\$(( \${matrixDimN} * 2 ))
+      else
+        startPdimD=\$(( \${startPdimD} * 2 ))
+        matrixDimM=\$(( \${matrixDimM} * 2 ))
+      fi
+    fi
+    startNumNodes=\$(( \${startNumNodes} * ${nodeScaleFactor} ))
+    WShelpcounter=\$(( \${WShelpcounter} + 1 ))
+  done
+}
+
+# For ScaLAPACK QR
+launch$tag2 () {
+  # launch scaLAPACK_QR
+  local startNumNodes=\${4}
+  local endNumNodes=\${5}
+  local matrixDimM=\${6}
+  local matrixDimN=\${7}
+  local numProws=\${8}
+  local WShelpcounter=0
+  while [ \${startNumNodes} -le \${endNumNodes} ];
+  do
+    local fileString="results/results_${tag2}_\${1}_\${startNumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${9}bSize_\${10}tpk"
+    # Launch performance job always.
+    launchJobs ${tag2} \${fileString} \$startNumNodes \${10} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${9} \${3} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+
+    writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
+
+    # Rest of scaling decisions are made based on scaleRegime
+    if [ ${scaleRegime} == 0 ];
+    then
+      numProws=\$(( \${numProws} * 2 ))
+      matrixDimM=\$(( \${matrixDimM} * 2 ))
+    elif [ ${scaleRegime} == 1 ];
+    then
+      numPEs=\$(( \${startNumNodes} * ${ppn} ))
+      numPcols=\$(( \${numPEs} / \${numProws} ))
+      num=\$(( \${matrixDimM} / \${numProws} ))
+      denom=\$(( \${matrixDimN} / \${numPcols} ))
+
+      # Force this to always scale numProws by 8, instead of conditional. Its up to me to be careful about my run specifications
+      numProws=\$(( \${numProws} * 8 ))
+      matrixDimM=\$(( \${matrixDimM} * 4 ))
+      matrixDimN=\$(( \${matrixDimN} * 2 ))
+    elif [ ${scaleRegime} == 2 ];
+    then
+      numProws=\$(( \${numProws} * 2 ))
+    elif [ ${scaleRegime} == 3 ];
+    then
+      immWS=\$(( \${WShelpcounter} % 4 ))
+      if [ \${immWS} == 0 ];
+      then
+        matrixDimM=\$(( \${matrixDimM} / 2 ))
+        matrixDimN=\$(( \${matrixDimN} * 2 ))
+      else
+        numProws=\$(( \${numProws} * 2 ))
+        matrixDimM=\$(( \${matrixDimM} * 2 ))
+      fi
+    fi
+    startNumNodes=\$(( \${startNumNodes} * ${nodeScaleFactor} ))
+    WShelpcounter=\$(( \${WShelpcounter} + 1 ))
+  done
+}
+
+# For CFR3D
+launch$tag3 () {
   # launch CFR3D
 
   local startNumNodes=\${4}
@@ -503,7 +575,7 @@ launch$tag1 () {
   done
 }
 
-# This will need some fixing
+# For ScaLAPACK Cholesky Factorization
 launch$tag2 () {
   # launch scaLAPACK_CF
   local startNumNodes=\${4}
@@ -528,8 +600,6 @@ launch$tag2 () {
     fi
   done
 }
-
-
 
 
 # Note: in future, I may want to decouple numBinaries and numPlotTargets, but only when I find it necessary
@@ -565,81 +635,23 @@ do
   # Nodes
   read -p "Enter starting number of nodes for this test: " startNumNodes
   read -p "Enter ending number of nodes for this test: " endNumNodes
-  # Assume for now that we always jump up by a factor of 8 for CFR3D, and a factor of 4 for Scalapack Cholesky
-  #read -p "Enter factor by which to increase the number of nodes: " jumpNumNodes
-  #read -p "Enter arithmetic operator by which to increase the number of nodes by the amount specified above: add[1], subtract[2], multiply[3], divide[4]: " jumpNumNodesoperator
-  jumpNumNodes=""
-  if [ ${scaleRegime} == 1 ];
-  then
-    jumpNumNodes=64
-  else
-    jumpNumNodes=8
-  fi
-  jumpNumNodesoperator=3
 
-  # Special function is called because of that fact that CFR3D jumps up by a factor of 8, and ScaLAPACK Cholesky jumps up by a factor of 4
-  # Also note: special consideration must be taken for analyze runs. Set factor2 same as norm (8) in this case
-  factor2=""
-  if [ ${analyzeDecision} == 0 ];
-  then
-    factor2=4
-  else
-    factor2=8
-  fi
-
-  nodeCount=""
-  if [ ${scaleRegime} == 1 ];
-  then
-    nodeCount=\$(findCountLength \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes})
-  else
-    nodeCount=\$(findCountLengthSpecial \${startNumNodes} \${endNumNodes} \${jumpNumNodesoperator} \${jumpNumNodes} \${factor2})
-  fi
+  nodeCount=\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})
   echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
 
-  # Print out the unique nodes in order. factor2 set above is very useful here
-  curNumNodesPAA=\${startNumNodes}
-  curNumNodesScala=\${startNumNodes}
+  curNumNodes=\${startNumNodes}
   for ((j=0; j<\${nodeCount}; j++))
   do
-    if [ ${scaleRegime} == 1 ];
-    then
-      echo "echo \"\${curNumNodesPAA}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      curNumNodesPAA=\$(( \${curNumNodesPAA} * ${nodeScaleFactor} ))
-      curNumNodesScala=\$(( \${curNumNodesScala} * ${nodeScaleFactor} ))
-    else
-      if [ \${curNumNodesPAA} -lt \${curNumNodesScala} ];
-      then
-        echo "echo \"\${curNumNodesPAA}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
-      elif [ \${curNumNodesPAA} -gt \${curNumNodesScala} ];
-      then
-        echo "echo \"\${curNumNodesScala}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        curNumNodesScala=\$(( \${curNumNodesScala} * \${factor2} ))
-      else
-        echo "echo \"\${curNumNodesScala}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-        curNumNodesPAA=\$(( \${curNumNodesPAA} * 8 ))
-        curNumNodesScala=\$(( \${curNumNodesScala} * \${factor2} ))
-      fi
-    fi
+    echo "echo \"\${curNumNodes}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+    curNumNodes=\$(( \${curNumNodes} * ${nodeScaleFactor} ))
   done
 
-  # Threads
-  startNumTPR=1
-  endNumTPR=1
-  if [ "${machineName}" == "STAMPEDE2" ];
-  then
-    read -p "Enter starting number of threads-per-rank for this test: " startNumTPR
-    read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
-  fi
-  # Assume for now that we always jump up by a power of 2
-  TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} \${jumpNumNodesoperator} 2)
-
-  totalNumConfigs=\$((\${TPRcount} * \${numBinaries} ))
-  
+  totalNumConfigs=\${numBinaries}
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
   echo "echo \"\${totalNumConfigs}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
-  read -p "Enter matrix dimension: " matrixDim
+  read -p "Enter matrix dimension m: " matrixDimM
+  read -p "Enter matrix dimension n: " matrixDimN
 
   j=1
   while [ \${j} -le \${numBinaries} ];
@@ -647,14 +659,18 @@ do
     echo -e "\nStage #\${j}"
 
     # Echo for SCAPLOT makefile generator
-    read -p "Enter binary tag [0 for cfr3d,1 for bench_scala_cholesky]: " binaryTagChoice
+    read -p "Enter binary tag [0 for CA-CQR2, 1 for bench_scala_qr, 2 for CFR3D, 3 for bench_scala_cf]: " binaryTagChoice
 
     binaryTag=""
     if [ \${binaryTagChoice} == 0 ];
     then
+      binaryTag=cqr2
+    elif [ \${binaryTagChoice} == 1 ]
+      binaryTag=bench_scala_qr
+    elif [ \${binaryTagChoice} == 2 ]
       binaryTag=cfr3d
-    else
-      binaryTag=bench_scala_cholesky
+    elif [ \${binaryTagChoice} == 3 ]
+      binaryTag=bench_scala_cf
     fi
 
     binaryPath=${BINPATH}\${binaryTag}_${machineName}
@@ -663,8 +679,156 @@ do
       binaryPath=\${binaryPath}_${mpiType}
     fi
 
+    # Threads, dependent on method
+    startNumTPR=1
+    endNumTPR=1
+    if [ "${machineName}" == "STAMPEDE2" ];
+    then
+      read -p "Enter starting number of threads-per-rank for this test: " startNumTPR
+      read -p "Enter ending number of threads-per-rank for this test: " endNumTPR
+    fi
+    # Assume for now that we always jump up by a power of 2
+    TPRcount=\$(findCountLength \${startNumTPR} \${endNumTPR} 3 2)
+
     read -p "Enter number of iterations: " numIterations
-    if [ \${binaryTag} == 'cfr3d' ];
+    if [ \${binaryTag} == 'cqr2' ];
+    then
+      # Need to redefine the numNodes variables here in case we want to perform the special weak scaling, which offers the opportunity to start a binary at a different node count.
+      startNumNodesBinary=\${startNumNodes}
+      endNumNodesBinary=\${endNumNodes}
+      matrixDimMBinary=\${matrixDimM}
+      matrixDimNBinary=\${matrixDimN}
+      # A trick variable for Weak Scaling plots in order to specify the change in processor-grid and matrix dimensions correctly
+      trickOffset=0
+      if [ ${scaleRegime} == 3 ];
+      then
+        read -p "Enter starting number of nodes for this test: " startNumNodesBinary
+        read -p "Enter ending number of nodes for this test: " endNumNodesBinary
+        read -p "Enter starting matrix dimension M for this test: " matrixDimMBinary
+        read -p "Enter starting matrix dimension N for this test: " matrixDimNBinary
+        read -p "Enter offset into grid/matrix -change cycle: " trickOffset
+      fi
+      read -p "Enter starting tunable processor grid dimension c: " startDimC
+      read -p "Enter ending tunable processor grid dimension c: " endDimC
+      read -p "Enter starting inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMultStart
+      read -p "Enter end inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMultEnd
+
+      pDimC=\${startDimC}
+      while [ \${pDimC} -le \${endDimC} ];
+      do
+        procCount=\$(( \${startNumNodes}*${ppn} ))
+        curCsquared=\$(( \${curC} * \${curC} ))
+        pDimD=\$(( \${procCount} / \${curCsquared} ))
+        curInverseCutOffMult=\${inverseCutOffMultStart}
+        while [ \${curInverseCutOffMult} -le \${inverseCutOffMultEnd} ];
+        do
+          curNumThreadsPerRank=\${startNumTPR} #${numThreadsPerRankMin}
+          while [ \${curNumThreadsPerRank} -le \${endNumTPR} ];
+          do
+            # Write to plotInstructions file
+            echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
+            # New important addition: For special weak scaling, need to print out the number of (d,c) for the binary first, and then each of them in groups of {d,c,(d,c)}
+            if [ ${scaleRegime} == 3 ];
+            then
+              nodeGridCount=\$(findCountLength \${startNumNodesBinary} \${endNumNodesBinary} 3 ${nodeScaleFactor})
+              echo "echo \"\${nodeGridCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
+
+              curD=\${pDimD}
+              curC=\${pDimC}
+              trickOffsetTemp=\${trickOffset}
+              for ((z=0; z<\${nodeGridCount}; z++))
+              do
+                echo "echo \"\${curD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+                echo "echo \"\${curC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+                echo "echo \"(\${curD},\${curC})\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+                trickOffsetTempMod=\$(( trickOffsetTemp % 4 ))
+                if [ \${trickOffsetTempMod} == 0 ];
+                then
+                  curD=\$(( \${curD} / 2))
+                  curC=\$(( \${curC} * 2))
+                else
+                  curD=\$(( \${curD} * 2))
+                fi
+                trickOffsetTemp=\$(( \${trickOffsetTemp} + 1 ))
+              done
+            fi
+
+            # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
+            if [ \${j} == 1 ];
+            then
+              echo "echo \"\${matrixDimMBinary}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+              echo "echo \"\${matrixDimNBinary}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            fi
+  
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            # Write to collectInstructions file
+            echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+  
+            if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
+            then
+              echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            fi
+	    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+            then
+	      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+	    fi
+  
+            echo "echo \"\$(findCountLength \${startNumNodesBinary} \${endNumNodesBinary} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            # Write to plotInstructions file
+            echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${curInverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            writePlotFileName \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodesBinary}_\${matrixDimMBinary}_\${matrixDimNBinary}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1  
+            launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodesBinary} \${endNumNodesBinary} \${matrixDimMBinary} \${matrixDimNBinary} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${curNumThreadsPerRank} \${trickOffset}
+            curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+            j=\$(( \${j} + 1 ))
+          done
+          curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
+        done
+        pDimC=\$(( \${pDimC} * 2 ))
+      done
+    elif [ \${binaryTag} == 'bench_scala_qr' ];
+    then
+      read -p "Enter the starting number of processor rows: " numProws
+      read -p "Enter the minimum block size: " minBlockSize
+      read -p "Enter the maximum block size: " maxBlockSize
+
+      for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
+      do
+        curNumThreadsPerRank=\${startNumTPR}  #${numThreadsPerRankMin}
+        while [ \${curNumThreadsPerRank} -le \${endNumTPR} ];
+        do
+          # Write to plotInstructions file
+          echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+        
+          # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
+          if [ \${j} == 1 ] && [ \${k} == \${minBlockSize} ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
+          then
+            echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          fi
+
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          # This is where the last tricky part is: how many files do we need, because blockSize must be precomputed basically, and then multiplied by findCountLength
+          # Write to plotInstructions file
+          echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+          writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1
+          launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${matrixDimM} \${matrixDimN} \${numProws} \${k} \${curNumThreadsPerRank}
+          curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
+          j=\$(( \${j} + 1 ))
+        done
+      done
+    elif [ \${binaryTag} == 'cfr3d' ];
     then
       read -p "Enter starting inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMultStart
       read -p "Enter end inverseCutOff multiplier, 0 indicates that CFR3D will use the explicit inverse, 1 indicates that top recursive level will avoid calculating inverse, etc.: " inverseCutOffMultEnd
@@ -761,7 +925,6 @@ done
 EOF
 
 
-
 bash $SCRATCH/${fileName}.sh
 #rm $SCRATCH/${fileName}.sh
 
@@ -778,61 +941,26 @@ then
   cd $SCRATCH
 
   # Submit all scripts
-  # Note: this should still work with CRITTER as long as I force an increase factor by 8, not 4. Then it doesnt matter.
-  curNumNodesPAA=${minNumNodes}
-  curNumNodesScala=${minNumNodes}
-  while [ ${curNumNodesPAA} -le ${maxNumNodes} ] || [ ${curNumNodesScala} -le ${maxNumNodes} ];
+  curNumNodes=${minNumNodes}
+  while [ ${curNumNodes} -le ${maxNumNodes} ];
   do
-    echo "I am here"
-    # Find the next smallest node count. Ties are trivial and its arbitrary which node count gets chosen
-    curNumNodes=""
-    if [ ${curNumNodesPAA} -le ${curNumNodesScala} ];
-    then
-      curNumNodes=${curNumNodesPAA}
-    else
-      curNumNodes=${curNumNodesScala}
-    fi
     curNumThreadsPerRank=${numThreadsPerRankMin}
     while [ ${curNumThreadsPerRank} -le ${numThreadsPerRankMax} ];
     do
-      chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
-      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "BLUEWATERS" ];
+      if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ];
       then
-        qsub ${fileName}/script${curNumNodes}.sh
+        qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+      elif [ "${machineName}" == "BLUEWATERS" ];
+      then
+        echo "Launch job script${curNumNodes}_${curNumThreadsPerRank}.pbs yourself"
+        qsub ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.pbs
       else
-        sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+        echo "Launch job script${curNumNodes}_${curNumThreadsPerRank}.sh yourself"
+        #chmod +x ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
+        #sbatch ${fileName}/script${curNumNodes}_${curNumThreadsPerRank}.sh
       fi
       curNumThreadsPerRank=$(( ${curNumThreadsPerRank} * 2 ))
     done
-  
-    if [ ${scaleRegime} == 1 ];
-    then
-      curNumNodesPAA=$(( ${curNumNodesPAA} * ${nodeScaleFactor} ))
-      curNumNodesScala=$(( ${curNumNodesScala} * ${nodeScaleFactor} ))
-    elif [ ${scaleRegime} == 0 ];
-    then
-      # Find the nodeCount that was just used and increase it. If both are the same, then increase both.
-      if [ ${curNumNodesPAA} -lt ${curNumNodesScala} ];
-      then
-        curNumNodesPAA=$(( ${curNumNodesPAA} * 8 ))
-      elif [ ${curNumNodesPAA} -gt ${curNumNodesScala} ];
-      then
-        # Need this if-statement to ensure that for Analyze runs, we submit the correct number of jobs.
-        if [ ${analyzeDecision} == 0 ];
-        then
-          curNumNodesScala=$(( ${curNumNodesScala} * 4 ))
-        else
-          curNumNodesScala=$(( ${curNumNodesScala} * 8 ))
-        fi
-      else
-        curNumNodesPAA=$(( ${curNumNodesPAA} * 8 ))
-        if [ ${analyzeDecision} == 0 ];
-        then
-          curNumNodesScala=$(( ${curNumNodesScala} * 4 ))
-        else
-          curNumNodesScala=$(( ${curNumNodesScala} * 8 ))
-        fi
-      fi
-    fi
+    curNumNodes=$(( ${curNumNodes} * ${nodeScaleFactor} ))
   done
 fi
