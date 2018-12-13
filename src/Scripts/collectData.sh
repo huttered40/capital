@@ -1,1 +1,1 @@
-bash /scratch/05608/tg849075/benchQRIPDPS19StrongScalingPerformanceStampede2Fix1_2018-10-15-12_23_31_STAMPEDE2_2_2/collectInstructions.sh | bash packageData.sh
+bash /scratch/05608/tg849075/benchQR19_2018-12-12-20_34_39_STAMPEDE2_1_4/collectInstructions.sh | bash packageData.sh
