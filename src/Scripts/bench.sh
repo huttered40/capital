@@ -576,7 +576,7 @@ launch$tag3 () {
 }
 
 # For ScaLAPACK Cholesky Factorization
-launch$tag2 () {
+launch$tag4 () {
   # launch scaLAPACK_CF
   local startNumNodes=\${4}
   local endNumNodes=\${5}
@@ -665,11 +665,14 @@ do
     if [ \${binaryTagChoice} == 0 ];
     then
       binaryTag=cqr2
-    elif [ \${binaryTagChoice} == 1 ]
+    elif [ \${binaryTagChoice} == 1 ];
+    then
       binaryTag=bench_scala_qr
-    elif [ \${binaryTagChoice} == 2 ]
+    elif [ \${binaryTagChoice} == 2 ];
+    then
       binaryTag=cfr3d
-    elif [ \${binaryTagChoice} == 3 ]
+    elif [ \${binaryTagChoice} == 3 ];
+    then
       binaryTag=bench_scala_cf
     fi
 
@@ -694,16 +697,14 @@ do
     if [ \${binaryTag} == 'cqr2' ];
     then
       # Need to redefine the numNodes variables here in case we want to perform the special weak scaling, which offers the opportunity to start a binary at a different node count.
-      startNumNodesBinary=\${startNumNodes}
-      endNumNodesBinary=\${endNumNodes}
+      read -p "Enter starting number of nodes for this test: " startNumNodesBinary
+      read -p "Enter ending number of nodes for this test: " endNumNodesBinary
       matrixDimMBinary=\${matrixDimM}
       matrixDimNBinary=\${matrixDimN}
       # A trick variable for Weak Scaling plots in order to specify the change in processor-grid and matrix dimensions correctly
       trickOffset=0
       if [ ${scaleRegime} == 3 ];
       then
-        read -p "Enter starting number of nodes for this test: " startNumNodesBinary
-        read -p "Enter ending number of nodes for this test: " endNumNodesBinary
         read -p "Enter starting matrix dimension M for this test: " matrixDimMBinary
         read -p "Enter starting matrix dimension N for this test: " matrixDimNBinary
         read -p "Enter offset into grid/matrix -change cycle: " trickOffset
@@ -717,7 +718,7 @@ do
       while [ \${pDimC} -le \${endDimC} ];
       do
         procCount=\$(( \${startNumNodes}*${ppn} ))
-        curCsquared=\$(( \${curC} * \${curC} ))
+        curCsquared=\$(( \${pDimC} * \${pDimC} ))
         pDimD=\$(( \${procCount} / \${curCsquared} ))
         curInverseCutOffMult=\${inverseCutOffMultStart}
         while [ \${curInverseCutOffMult} -le \${inverseCutOffMultEnd} ];
@@ -789,43 +790,49 @@ do
           done
           curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
         done
-        pDimC=\$(( \${pDimC} * 2 ))
+        pDimC=\$(( \${pDimC} * 2 ))		# By default, just scale up by a factor of 2
       done
     elif [ \${binaryTag} == 'bench_scala_qr' ];
     then
-      read -p "Enter the starting number of processor rows: " numProws
+      read -p "Enter the starting number of processor rows: " minNumProws
+      read -p "Enter the ending number of processor rows: " maxNumProws
       read -p "Enter the minimum block size: " minBlockSize
       read -p "Enter the maximum block size: " maxBlockSize
 
-      for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
+      for ((w=\${minNumProws}; w<=\${maxNumProws}; w*=2))
       do
-        curNumThreadsPerRank=\${startNumTPR}  #${numThreadsPerRankMin}
-        while [ \${curNumThreadsPerRank} -le \${endNumTPR} ];
+        numProws=\${w}
+        for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
         do
-          # Write to plotInstructions file
-          echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+          curNumThreadsPerRank=\${startNumTPR}  #${numThreadsPerRankMin}
+          while [ \${curNumThreadsPerRank} -le \${endNumTPR} ];
+          do
+            # Write to plotInstructions file
+            echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
         
-          # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
-          if [ \${j} == 1 ] && [ \${k} == \${minBlockSize} ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
-          then
-            echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-            echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-          fi
+            # Special thing in order to allow MakePlotScript.sh to work with both CQR2 and CFR3D. Only print on 1st iteration
+            if [ \${j} == 1 ] && [ \${k} == \${minBlockSize} ] && [ \${curNumThreadsPerRank} == ${numThreadsPerRankMin} ];
+            then
+              echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+              echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            fi
 
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-          echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-          echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-          # This is where the last tricky part is: how many files do we need, because blockSize must be precomputed basically, and then multiplied by findCountLength
-          # Write to plotInstructions file
-          echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-          echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-          echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-          echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-          writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1
-          launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${matrixDimM} \${matrixDimN} \${numProws} \${k} \${curNumThreadsPerRank}
-          curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))
-          j=\$(( \${j} + 1 ))
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${binaryTag}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            # This is where the last tricky part is: how many files do we need, because blockSize must be precomputed basically, and then multiplied by findCountLength
+            # Write to plotInstructions file
+            echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\${curNumThreadsPerRank}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+            echo "echo \"\$(findCountLength \${startNumNodes} \${endNumNodes} 3 ${nodeScaleFactor})\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+            writePlotFileNameScalapack \${binaryTag}_\${scale}_\${numIterations}_\${startNumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${curNumThreadsPerRank} $SCRATCH/${fileName}/plotInstructions.sh 1
+            launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${startNumNodes} \${endNumNodes} \${matrixDimM} \${matrixDimN} \${numProws} \${k} \${curNumThreadsPerRank}
+            curNumThreadsPerRank=\$(( \${curNumThreadsPerRank} * 2 ))		# By default, just scale up by a factor of 2
+            echo "WHAT IS THIS -- \${curNumThreadsPerRank}"
+            j=\$(( \${j} + 1 ))
+          done
         done
       done
     elif [ \${binaryTag} == 'cfr3d' ];
