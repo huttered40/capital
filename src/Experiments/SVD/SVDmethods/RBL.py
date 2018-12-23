@@ -5,7 +5,7 @@ import numpy.linalg as la
 import math as m
 
 # Assumes that the rank 'k' is known apriori
-def RandomizedKrylovMethod(A,epsilon,k,b,SingularValuesToTest,DumbColumnParam,Decisions):
+def RandomizedKrylovMethod(A,epsilon,k,b,SingularValuesToTest,Decisions):
     """
 	Decisions[0] :	0 -> Starting iterate is non-orthogonal random matrix
 		       	1 -> Starting iterate is orthogonal random matrix
@@ -20,11 +20,18 @@ def RandomizedKrylovMethod(A,epsilon,k,b,SingularValuesToTest,DumbColumnParam,De
 
 	Decisions[3] : 	0 -> Use the maximum amount of iterations as prescribed by tolerance epsilon
 			!=0 -> Used this number of iterations
+
+	Decisions[4] : 	0 -> Use metric that considers only arithmetic intensity
+			1 -> Use new cost metric that considers arithmetic intensity
     """
 
-    m = A.shape[0]
-    n = A.shape[1]
-    
+    # This transfer is just to simplify things
+    if (Decisions[1] == 0):
+    	m = A.shape[0]
+    	n = A.shape[1]
+    else:
+	m = A.shape[1]
+	n = A.shape[0]
     FrobResids = []
     SpectralResids = []
     FrobSV = []
@@ -52,35 +59,41 @@ def RandomizedKrylovMethod(A,epsilon,k,b,SingularValuesToTest,DumbColumnParam,De
 
     # Create starting iterate 'K' from a random matrix
     if (Decisions[0] == 0):
-	RandMat = np.random.normal(size=(m,k))
-	K = np.zeros((m,DumbColumnParam))                     # change number of columns from n to k
+	RandMat = np.random.normal(size=(m,b))
+	K = np.zeros((m,k))                     # change number of columns from n to k
 	K[:,0:b] = RandMat
-	NumMatVecs[0].append(0)
+	NumMatVecs.append(0)
 	NumColumnsOrthogonalized.append(0)
 	NumFlopsQR.append(0)
 	NumFlopsMM.append(0)
-    else if (Decisions[0] == 1):
-	RandMat = np.random.normal(size=(m,k))
+    elif (Decisions[0] == 1):
+	RandMat = np.random.normal(size=(m,b))
 	RandMatOrth,RandmatR = la.qr(RandMat)
-	K = np.zeros((m,DumbColumnParam))                     # change number of columns from n to k
+	K = np.zeros((m,k))                     # change number of columns from n to k
 	K[:,0:b] = RandMatOrth
-	NumMatVecs[0].append(0)
+	NumMatVecs.append(0)
 	NumColumnsOrthogonalized.append(k)
 	NumFlopsQR.append(2*m*k*k - 5./3*k**3)		# Householder estimate
 	NumFlopsMM.append(0)
-    else if (Decisions[0] == 2):
-	RandMat = np.random.normal(size=(n,k))
-	K = np.zeros((m,DumbColumnParam))                     # change number of columns from n to k
-	K[:,0:b] = A.dot(RandMat)
+    elif (Decisions[0] == 2):
+	RandMat = np.random.normal(size=(n,b))
+	K = np.zeros((m,k))                     # change number of columns from n to k
+	if (Decisions[1] == 1):
+		K[:,0:b] = A.dot(RandMat)
+	else:
+		K[:,0:b] = A.T.dot(RandMat)
 	NumMatVecs.append(k)
 	NumColumnsOrthogonalized.append(0)
 	NumFlopsQR.append(0)
 	NumFlopsMM.append(2*m*n*k)
-    else if (Decisions[0] == 3):
-	RandMat = np.random.normal(size=(n,k))
-	Temp = A.dot(RandMat)
+    elif (Decisions[0] == 3):
+	RandMat = np.random.normal(size=(n,b))
+	if (Decisions[1] == 1):
+		Temp = A.dot(RandMat)
+	else:
+		Temp = A.T.dot(RandMat)
 	RandMatOrth,RandmatR = la.qr(Temp)
-	K = np.zeros((m,DumbColumnParam))                     # change number of columns from n to k
+	K = np.zeros((m,k))                     # change number of columns from n to k
 	K[:,0:b] = RandMatOrth
 	NumMatVecs.append(k)
 	NumColumnsOrthogonalized.append(k)
@@ -90,7 +103,7 @@ def RandomizedKrylovMethod(A,epsilon,k,b,SingularValuesToTest,DumbColumnParam,De
     # 'G' is iterate matrix
     if (Decisions[1] == 0):
 	G = A.T.dot(A)
-    else if (Decisions[1] == 1):
+    elif (Decisions[1] == 1):
 	G = A.dot(A.T)
     
     # Start with the 1st iterate
@@ -103,7 +116,7 @@ def RandomizedKrylovMethod(A,epsilon,k,b,SingularValuesToTest,DumbColumnParam,De
         
         if (i>0):
          	K[:,i*b:maxCol] = G.dot(K[:,(i-1)*b:i*b])
-            	NumMatVecs.append(b + NumMatVecs[len(NumMatVecs)-1])
+            	NumMatVecs.append(b*(k//b) + NumMatVecs[len(NumMatVecs)-1])
 		NumFlopsMM.append(2*G.shape[0]*G.shape[1]*K.shape[1])
 		K[:,0:maxCol],R = la.qr(K[:,0:maxCol])
 		NumColumnsOrthogonalized.append(K.shape[1])
@@ -111,18 +124,16 @@ def RandomizedKrylovMethod(A,epsilon,k,b,SingularValuesToTest,DumbColumnParam,De
         
 	if (Decisions[2] == 0):
 		Z=K
-	else if (Decisions[2] == 1):
-		.. abort .. No reason to try this
+	elif (Decisions[2] == 1):
+		# Don't be suprised if it fails in here
       		M = K.T.dot(A.dot(A.T.dot(K[:,0:maxCol])))
         	U_k,s,v = la.svd(M,full_matrices=False)
         	Z = K.dot(U_k)
 
 	if (Decisions[1] == 1):
-		.. Is this right notion of a low-rank approximation when we have left singular vectors?
 		LowRankApprox = Z.dot(Z.T.dot(A))    # used dense, not sparse version?????
-	else if (Decisions[1] == 0):
-		..
-		LowRandApprox = A.dot(Z.T.dot(Z))
+	elif (Decisions[1] == 0):
+		LowRankApprox = A.dot(Z.dot(Z.T))
         
         # get low-rank approximation residual
         SpectralResids.append(la.norm(A-LowRankApprox,'fro')/la.norm(A,'fro'))
@@ -139,4 +150,4 @@ def RandomizedKrylovMethod(A,epsilon,k,b,SingularValuesToTest,DumbColumnParam,De
         j = j+b
         i = i+1
             
-    return FrobResids,SpectralResids,NumMatVecs,FrobSV,SpectralSV
+    return FrobResids,SpectralResids,NumMatVecs,NumFlopsMM,NumFlopsQR,NumColumnsOrthogonalized,FrobSV,SpectralSV

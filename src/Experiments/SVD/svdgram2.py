@@ -4,60 +4,65 @@ import matplotlib.pyplot as pt
 
 numRows = 200
 numColumns = 200
-Ad = np.asarray(np.random.rand(numRows, numColumns),dtype=np.float64)
-U,D,V = la.svd(Ad,full_matrices=0)
+A = np.asarray(np.random.rand(numRows, numColumns),dtype=np.float64)
+U,S,V = la.svd(A,full_matrices=0)
 
 # Try tests for all different condition numbers in the range
-D = np.logspace(1,10,base=2.,num=numColumns)
-D = D[::-1]
-#D = np.exp(np.arange(numColumns,0,-1))
-#for i in range(numColumns):
-#    D[i] = (numColumns-i-1)**(numColumns-i-1)
+S = np.logspace(1,10,base=2.,num=numColumns)
+S = S[::-1]
 
-A64 = U.dot(np.diag(D).dot(V.T))
-A32 = A64.astype(dtype=np.float32)
-u32,s32,v32 = la.svd(A32)
-print la.norm(A32 - u32.dot(np.diag(s32)).dot(v32))
-
-print la.norm(np.eye(numColumns) - u32.T.dot(u32))
-
-u,s,v = la.svd(A64)
-pt.semilogy(s, label='singular values')
+# Print singular values
+pt.semilogy(S, label='singular values')
 pt.legend()
 pt.show()
 
+A64 = U.dot(np.diag(S).dot(V))
+A32 = A64.astype(dtype=np.float32)
+u,s,v = la.svd(A32)
+print "SVD low-rank residual (best possible for double precision) - ", la.norm(A64 - U.dot(np.diag(S)).dot(V))
+print "SVD low-rank residual (best possible for float precision) - ", la.norm(A32 - u.dot(np.diag(s)).dot(v))
 
-B = A32.T.dot(A32)
-s2,v2 = la.eigh(B)
-u2 = A32.dot(v2).dot(la.inv(np.diag(np.sqrt(s2))))
-
-print la.norm(np.eye(numColumns) - u2.T.dot(u2))
-
-#la.norm(A64 - u2.dot(np.diag(s2**(.5))).dot(v2))
-#la.norm(u-u2)
+print "Deviation from orthogonality of SVD's left singular vectors - ", la.norm(np.eye(numColumns) - u.T.dot(u))
 
 
-B = A64.T.dot(A64)
-s3,v3 = la.eigh(B)
-u3 = A64.dot(v3).dot(la.inv(np.diag(np.sqrt(s3))))
+# Start of SVD Gram
+B32 = A32.T.dot(A32)			# Left singular vectors dissapear. Now, eigenvaluedecomposition will give (orthogonal) right singular vectors
+s32,v32 = la.eigh(B32)
+u32 = A32.dot(v32).dot(la.inv(np.diag(np.sqrt(s32))))
 
-#print la.norm(A64 - u2.dot(np.diag(s2**(.5))).dot(v2))
-la.norm(u2-u3)
+print "Condition number of A - ", la.cond(A32)
+print "Condition number of B - ", la.cond(B32)
+print "Deviation from orthogonality of (uncovered) left singular vectors (of A32) - ", la.norm(np.eye(numColumns) - u32.T.dot(u32))
+print "Deviation from orthogonality of right singular vectors (of A32) - ", la.norm(np.eye(numColumns) - v32.dot(v32.T))
+print "Singular value approximant residual error (single precision) - ", la.norm(s32**.5-S[::-1])
+print "Gram algorthm's low-rank residual (single precision) - ", la.norm(A64 - u32.dot(np.diag(s32[::-1]**(.5))).dot(v32))
+print "Approximate singular values - ", s32**.5
+print "Approximate singular values - ", S[::-1]
 
-print la.norm(np.eye(numColumns) - u3.T.dot(u3))
+
+B64 = A64.T.dot(A64)
+s64,v64 = la.eigh(B64)
+u64 = A64.dot(v64).dot(la.inv(np.diag(np.sqrt(s64))))
+
+print "Condition number of A - ", la.cond(A64)
+print "Condition number of B - ", la.cond(B64)
+print "Deviation from orthogonality of (uncovered) left singular vectors (of A64) - ", la.norm(np.eye(numColumns) - u64.T.dot(u64))
+print "Deviation from orthogonality of right singular vectors (of A64) - ", la.norm(np.eye(numColumns) - v64.dot(v64.T))
+print "Singular value approximant residual error (double precision) - ", la.norm(s64**.5-S[::-1])
+print "Gram algorthm's low-rank residual (double precision) - ", la.norm(A64 - u64.dot(np.diag(s64[::-1]**(.5))).dot(v64))
+print "Approximate singular values - ", s64**.5
+print "Approximate singular values - ", S[::-1]
 
 
-ts = np.diag(np.sqrt(s2))
+ts = np.diag(np.sqrt(s32))
 
 #F = u2.dot(np.diag(s2))
-FB = ts.dot(u2.T.dot(u2)).dot(ts)
-sf2,vf = la.eigh(FB)
-ut2 = A32.dot(v2).dot(vf).dot(la.inv(np.diag(np.sqrt(sf2))))
+FB = ts.dot(u32.T.dot(u32)).dot(ts)
+sf32,vf32 = la.eigh(FB)
+ut32 = A32.dot(v32).dot(vf32).dot(la.inv(np.diag(np.sqrt(sf32))))
 
-print la.norm(np.eye(numColumns) - ut2.T.dot(ut2))
+print la.norm(np.eye(numColumns) - ut32.T.dot(ut32))
 
-Aapprox = ut2.dot(np.diag(np.sqrt(sf2))).dot(vf.T).dot(v2.T)
+Aapprox = ut32.dot(np.diag(np.sqrt(sf32))).dot(vf32.T).dot(v32.T)
 
 print la.norm(Aapprox - A64)
-
-#AF = 

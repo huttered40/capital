@@ -36,8 +36,13 @@ def RandomizedSubspaceIteration(A,epsilon,k,SingularValuesToTest,Decisions):
         SpectralSV.append([])
         FrobSV.append([])
 
-    m = A.shape[0]
-    n = A.shape[1]
+    # This transfer is just to simplify things
+    if (Decisions[1] == 0):
+    	m = A.shape[0]
+    	n = A.shape[1]
+    else:
+	m = A.shape[1]
+	n = A.shape[0]
 
     if (Decisions[3] != 0):
 	q = Decisions[3]
@@ -58,24 +63,32 @@ def RandomizedSubspaceIteration(A,epsilon,k,SingularValuesToTest,Decisions):
 	NumColumnsOrthogonalized.append(0)
 	NumFlopsQR.append(0)
 	NumFlopsMM.append(0)
-    else if (Decisions[0] == 1):
+    elif (Decisions[0] == 1):
 	RandMat = np.random.normal(size=(m,k))
 	RandMatOrth,RandmatR = la.qr(RandMat)
 	K = RandMatOrth
-	NumMatVecs[0].append(0)
+	NumMatVecs.append(0)
 	NumColumnsOrthogonalized.append(k)
 	NumFlopsQR.append(2*m*k*k - 5./3*k**3)		# Householder estimate
 	NumFlopsMM.append(0)
-    else if (Decisions[0] == 2):
+    elif (Decisions[0] == 2):
+	# Special case, where if we want to converge to the right/left singular vectors, we want to use A.T/A as the starting transformation
 	RandMat = np.random.normal(size=(n,k))
-	K = A.dot(RandMat)
+	if (Decisions[1] == 1):
+		K = A.dot(RandMat)
+	else:
+		K = A.T.dot(RandMat)
 	NumMatVecs.append(k)
 	NumColumnsOrthogonalized.append(0)
 	NumFlopsQR.append(0)
 	NumFlopsMM.append(2*m*n*k)
-    else if (Decisions[0] == 3):
+    elif (Decisions[0] == 3):
+	# Special case, where if we want to converge to the right/left singular vectors, we want to use A.T/A as the starting transformation
 	RandMat = np.random.normal(size=(n,k))
-	Temp = A.dot(RandMat)
+	if (Decisions[1] == 1):
+		Temp = A.dot(RandMat)
+	else:
+		Temp = A.T.dot(RandMat)
 	RandMatOrth,RandmatR = la.qr(Temp)
 	K = RandMatOrth
 	NumMatVecs.append(k)
@@ -86,7 +99,7 @@ def RandomizedSubspaceIteration(A,epsilon,k,SingularValuesToTest,Decisions):
     # 'G' is iterate matrix
     if (Decisions[1] == 0):
 	G = A.T.dot(A)
-    else if (Decisions[1] == 1):
+    elif (Decisions[1] == 1):
 	G = A.dot(A.T)
 
     for i in range(q):
@@ -101,18 +114,16 @@ def RandomizedSubspaceIteration(A,epsilon,k,SingularValuesToTest,Decisions):
 
 	if (Decisions[2] == 0):
 		Z=K
-	else if (Decisions[2] == 1):
-		.. abort .. No reason to try this
+	elif (Decisions[2] == 1):
+		# Don't be suprised if it fails in here
 		M = K.T.dot(A.dot(A.T.dot(K)))
 		U_k,s,v = la.svd(M,full_matrices=False)
 		Z = K.dot(U_k)
 
 	if (Decisions[1] == 1):
-		.. Is this right notion of a low-rank approximation when we have left singular vectors?
 		LowRankApprox = Z.dot(Z.T.dot(A))    # used dense, not sparse version?????
-	else if (Decisions[1] == 0):
-		..
-		LowRandApprox = A.dot(Z.T.dot(Z))
+	elif (Decisions[1] == 0):
+		LowRankApprox = A.dot(Z.dot(Z.T))
 
         # get low-rank approximation residual
         SpectralResids.append(la.norm(A-LowRankApprox,'fro')/la.norm(A,'fro'))
@@ -126,4 +137,4 @@ def RandomizedSubspaceIteration(A,epsilon,k,SingularValuesToTest,Decisions):
             SpectralSV[y].append(np.abs(A_SV-LowRankApprox_SV)/np.abs(A_SV))
             FrobSV[y].append(np.abs(A_SV-LowRankApprox_SV)/np.abs(A_SV))
             
-    return FrobResids,SpectralResids,NumMatVecs,NumColumnsOrthogonalized,FrobSV,SpectralSV
+    return FrobResids,SpectralResids,NumMatVecs,NumFlopsMM,NumFlopsQR,NumColumnsOrthogonalized,FrobSV,SpectralSV

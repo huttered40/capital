@@ -9,7 +9,7 @@ sys.path.append('./SVDmethods/')
 from RSI import RandomizedSubspaceIteration
 from RBL import RandomizedKrylovMethod
 
-isDense = input("Low rank dense (1) or low rank sparse (0)")
+isDense = input("Low rank dense (1) or low rank sparse (0): ")
 
 if (isDense):
 	# Create matrix with exponentially decaying singular values
@@ -28,13 +28,14 @@ if (isDense):
 	#    D[i] = (numColumns-i-1)**(numColumns-i-1)
 
 	A = U.dot(np.diag(D).dot(V.T))
+	u,s,v = la.svd(A)
 else:
 	A = scio.mmread("fs_760_2/fs_760_2")
 	print "Matrix shape - ", A.shape
 	numRows = A.shape[0]
 	numColumns = A.shape[1]
+	u,s,v = la.svd(A.todense())
 
-u,s,v = la.svd(A.todense())
 pt.semilogy(s, label='singular values')
 pt.legend()
 pt.show()
@@ -76,25 +77,64 @@ while (1):
             
     BlockSizes.append(bs)
 
+# Fill in decisions
+DecisionsRSI = []
+DecisionsRBL = []
+"""
+	Decisions[0] :	0 -> Starting iterate is non-orthogonal random matrix
+		       	1 -> Starting iterate is orthogonal random matrix
+		       	2 -> Starting iterate is A multiplied by random matrix
+		       	3 -> Starting iterate is the orthogonalization of A multiplied by random matrix
+	
+	Decisions[1] :	0 -> Multiply by A^T*A to find the right singular vectors
+			1 -> Multiply by A*A^T to find the left singular vectors
+
+	Decisions[2] : 	0 -> Do not perform SVD to correct singular vector approximants
+			1 -> Perform SVD to correct singular vector approximants
+
+	Decisions[3] : 	0 -> Use the maximum amount of iterations as prescribed by tolerance epsilon
+			!=0 -> Used this number of iterations
+
+	Decisions[4] : 	0 -> Use metric that considers only arithmetic intensity
+			1 -> Use new cost metric that considers arithmetic intensity
+"""
+DecisionsRSI.append(1)
+DecisionsRSI.append(0)
+DecisionsRSI.append(0)
+DecisionsRSI.append(5)
+
+DecisionsRBL.append(1)
+DecisionsRBL.append(0)
+DecisionsRBL.append(0)
+DecisionsRBL.append(5)
+DecisionsRBL.append(1)
+
+
+
 for i in Ranks:
     # Lists for Randomized Subspace iteration
     FrobResidsListRSI = []
     SpectralResidsListRSI = []
     NumMatVecsListRSI = []
+    NumFlopsMMRSI = []
+    NumFlopsQRRSI = []
+    NumColumnsOrthogonalizedRSI = []
     FrobSVListRSI = []
     SpectralSVListRSI = []
 
     # Lists for Randomized block-lanczos method
     FrobResidsListRBL = []
     SpectralResidsListRBL = []
-    NumMatVecsListRBLRes = []      # One for finding low-rank approximation residuals
-    NumMatVecsListRBLSV = []      # One for finding singular values
+    NumMatVecsListRBL = []
+    NumFlopsMMRBL = []
+    NumFlopsQRRBL = []
+    NumColumnsOrthogonalizedRBL = []
     FrobSVListRBL = []
     SpectralSVListRBL = []
     
     for j in BlockSizes:
 
-        frobResidualsRSI,SpectralResidualsRSI,NumMatVecsRSI,FrobSV,SpectralSV = RandomizedSubspaceIteration(A,epsilon,i,SingularValuesToTest)
+        frobResidualsRSI,SpectralResidualsRSI,NumMatVecsRSI,NumFlopsMMRSI,NumFlopsQRRSI,NumColumnsOrthogonalizedRSI,FrobSV,SpectralSV = RandomizedSubspaceIteration(A,epsilon,i,SingularValuesToTest,DecisionsRSI)
         # Add to lists
         FrobResidsListRSI.append(frobResidualsRSI)
         SpectralResidsListRSI.append(SpectralResidualsRSI)
@@ -102,32 +142,31 @@ for i in Ranks:
         FrobSVListRSI.append(FrobSV)
         SpectralSVListRSI.append(SpectralSV)
 
-        frobResidualsRBL,SpectralResidualsRBL,NumMatVecsRBLRes,blah1,blah2 = RandomizedKrylovMethod(A,epsilon,i,j,SingularValuesToTest,i)
-        blah1,blah2,NumMatVecsRBLSV,FrobSV,SpectralSV = RandomizedKrylovMethod(A,epsilon,i,j,SingularValuesToTest,A.shape[1])
+        frobResidualsRBL,SpectralResidualsRBL,NumMatVecsRBL,NumFlopsMMRBL,NumFlopsQRRBL,NumColumnsOrthogonalizedRBL,FrobSV,SpectralSV = RandomizedKrylovMethod(A,epsilon,i,j,SingularValuesToTest,DecisionsRBL)
         # Add to lists
         FrobResidsListRBL.append(frobResidualsRBL)
         SpectralResidsListRBL.append(SpectralResidualsRBL)
-        NumMatVecsListRBLRes.append(NumMatVecsRBLRes)
-        NumMatVecsListRBLSV.append(NumMatVecsRBLSV)
+        NumMatVecsListRBL.append(NumMatVecsRBL)
         FrobSVListRBL.append(FrobSV)
         SpectralSVListRBL.append(SpectralSV)
     
     # Plot the low-rank approximation residual norm convergence
-    print len(NumMatVecsListRSI[0]),len(SpectralResidsListRSI[0])
-    print "check RSI - ",NumMatVecsListRSI[0],SpectralResidsListRSI[0]
     pt.semilogy(NumMatVecsListRSI[0],SpectralResidsListRSI[0], label='RSI')
     pt.legend()
 
     y=0
     for z in BlockSizes:
-        #print len(NumMatVecsListRBL[i]),len(SpectralResidsListRBL[i])
-        print "check RBL - ",NumMatVecsListRBLRes[y],SpectralResidsListRBL[y]
-        pt.semilogy(NumMatVecsListRBLRes[y],SpectralResidsListRBL[y], label='RBL block size %d'%(z))
+        pt.semilogy(NumMatVecsListRBL[y],SpectralResidsListRBL[y], label='RBL block size %d'%(z))
         pt.legend()
         y = y+1
     
     # show the spectral norm results
-    pt.xlabel("Number of matvecs")
+    if (DecisionsRBL[4] == 0):
+    	pt.xlabel("Number of matvecs")
+    else:
+    	pt.xlabel("Cost metric")
+	
+	
     pt.ylabel("Spectral norm residual")
     pt.title("Quality of Low-rank (%d) approximation vs. number of Mat vecs"%(i))
     pt.show()
@@ -138,12 +177,15 @@ for i in Ranks:
 
     y=0
     for z in BlockSizes:
-        pt.semilogy(NumMatVecsListRBLRes[y],FrobResidsListRBL[y], label='RBL block size %d'%(z))
+        pt.semilogy(NumMatVecsListRBL[y],FrobResidsListRBL[y], label='RBL block size %d'%(z))
         pt.legend()
         y = y+1
     
     # show the spectral norm results
-    pt.xlabel("Number of matvecs")
+    if (DecisionsRBL[4] == 0):
+    	pt.xlabel("Number of matvecs")
+    else:
+    	pt.xlabel("Cost metric")
     pt.ylabel("Frobenius norm residual")
     pt.title("Quality of Low-rank (%d) approximation vs. number of Mat vecs"%(i))
     pt.show()
@@ -157,12 +199,15 @@ for i in Ranks:
 
         y=0
         for z in BlockSizes:
-            pt.semilogy(NumMatVecsListRBLSV[y],SpectralSVListRBL[y][k], label='RBL block size %d'%(z))
+            pt.semilogy(NumMatVecsListRBL[y],SpectralSVListRBL[y][k], label='RBL block size %d'%(z))
             pt.legend()
             y = y+1
     
         # show the spectral norm results
-        pt.xlabel("Number of matvecs")
+    	if (DecisionsRBL[4] == 0):
+    		pt.xlabel("Number of matvecs")
+	else:
+    		pt.xlabel("Cost metric")
         pt.ylabel("Spectral norm residual")
         pt.title("Quality of %d'th singular value (rank %d approximation) vs. number of Mat vecs"%(j,i))
         pt.show()
@@ -178,12 +223,15 @@ for i in Ranks:
 
         y=0
         for z in BlockSizes:
-            pt.semilogy(NumMatVecsListRBLSV[y],FrobSVListRBL[y][k], label='RBL block size %d'%(z))
+            pt.semilogy(NumMatVecsListRBL[y],FrobSVListRBL[y][k], label='RBL block size %d'%(z))
             pt.legend()
             y = y+1
         
         # show the spectral norm results
-        pt.xlabel("Number of matvecs")
+    	if (DecisionsRBL[4] == 0):
+    		pt.xlabel("Number of matvecs")
+	else:
+    		pt.xlabel("Cost metric")
         pt.ylabel("Frobenius norm residual")
         pt.title("Quality of %d'th singular value (rank %d approximation) vs. number of Mat vecs"%(j,i))
         pt.show()
