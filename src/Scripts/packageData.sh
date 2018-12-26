@@ -35,6 +35,7 @@ fi
 
 g++ fileTransfer.cpp -o fileTransfer
 read -p "Enter number of tests: " numTests
+read -p "Enter number of launches per binary (per test): " numLaunchesPerBinary
 for ((i=0; i<${numTests}; i++))
 do
   read -p "Enter number of configurations (files to write to): " numConfigFiles
