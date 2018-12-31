@@ -468,6 +468,18 @@ launchJobs () {
   fi
 }
 
+
+WriteMethodDataForPlotting () {
+  for arg in "\${@}"
+  do
+    echo "echo \"\${arg}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  done
+}
+
+#WriteMethodDataForCollecting () {
+#
+#}
+
 ###################################################### Method Launches ######################################################
 
 # For CA-CQR2
@@ -512,8 +524,6 @@ launch$tag1 () {
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      # Write to plotInstructions file
-      echo "echo \"${tag1}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       # New important addition: For special weak scaling, need to print out the number of (d,c) for the binary first, and then each of them in groups of {d,c,(d,c)}
       # Note: still not 100% convinced this is necessary. Need to study scaplot first to make a decision on it.
       # Write to plotInstructions file
@@ -541,12 +551,8 @@ launch$tag1 () {
 	done
       fi
 
-      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${curInverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      # Write to plotInstructions file
+      WriteMethodDataForPlotting ${tag1} \${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
       writePlotFileName \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1  
     fi
 
@@ -618,12 +624,7 @@ launch$tag2 () {
     if [ \${nodeIndex} == 0 ];
     then
       # Write to plotInstructions file
-      echo "echo \"${tag2}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      WriteMethodDataForPlotting ${tag2} \${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr} \${numProws} \${k} \${ppn} \${tpr}
       writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
@@ -684,12 +685,7 @@ launch$tag3 () {
     if [ \${nodeIndex} == 0 ];
     then
       # Write to plotInstructions file
-      echo "echo \"${tag3}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${cubeDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${curInverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      WriteMethodDataForPlotting ${tag3} ${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr} \${cubeDim} \${curInverseCutOffMult} \${ppn} \${tpr}
       writePlotFileName \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
@@ -756,11 +752,7 @@ launch$tag4 () {
     if [ \${nodeIndex} == 0 ];
     then
       # Write to plotInstructions file
-      echo "echo \"${tag2}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      WriteMethodDataForPlotting ${tag4} \${binaryTag}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr} \${k} \${ppn} \${tpr}
       writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
@@ -1078,7 +1070,6 @@ do
     j=\$(( \${j} + 1 ))
     echo "echo \"1\"" >> $SCRATCH/${fileName}/collectInstructions.sh	# Signals end of the data files for this specific methodID
   done
-  echo ""eddie
 done
 EOF
 
