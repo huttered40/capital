@@ -476,9 +476,29 @@ WriteMethodDataForPlotting () {
   done
 }
 
-#WriteMethodDataForCollecting () {
-#
-#}
+WriteMethodDataForCollectingStage1 () {
+    local MethodTag=\${1}
+    local FileNameBase=\${2}
+    local FileName1=\${3}
+    local FileName2=\${4}
+    local WriteFile=\${5}
+
+    echo "echo \"0\"" >> \${WriteFile}
+    echo "echo \"\${MethodTag}\"" >> \${WriteFile}
+    echo "echo \"\${FileName1}\"" >> \${WriteFile}
+    if [ \${MethodTag} -ne "bench_scala_cholesky" ];
+    then
+      echo "echo \"\${FileName2}\"" >> \${WriteFile}
+    fi
+    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
+    then
+      echo "echo \"\${FileNameBase}_critter\"" >> \${WriteFile}
+    fi
+    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+    then
+      echo "echo \"\${FileNameBase}_timer\"" >> \${WriteFile}
+    fi
+}
 
 ###################################################### Method Launches ######################################################
 
@@ -520,6 +540,9 @@ launch$tag1 () {
   do
     # Set up the file string that will store the local benchmarking results
     local fileString="DataFiles/results_${tag1}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${pDimD}pDimD_\${pDimC}pDimC_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
+    local PreFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes"
+    local PostFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
@@ -551,30 +574,12 @@ launch$tag1 () {
 	done
       fi
 
-      # Write to plotInstructions file
-      WriteMethodDataForPlotting ${tag1} \${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
+      WriteMethodDataForPlotting ${tag1} \${PostFile} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
       writePlotFileName \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1  
     fi
 
-    # Write to collectInstructions file
-    echo "echo \"0\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    echo "echo \"${tag1}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-#    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-#    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    # These latter two require NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
-    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
-    then
-#      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    fi
-    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
-    then
-#      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    fi
-#    echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    WriteMethodDataForCollectingStage1 ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructions.sh
+#    WriteMethodDataForCollectingStage2 ${tag1} \${PostFile} \${PostFile}_perf \${PostFile}_numerics \${nodeCount} ..CI2?..
 
     # Launch performance job always.
     launchJobs ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
@@ -619,24 +624,19 @@ launch$tag2 () {
   do
     # Set up the file string that will store the local benchmarking results
     local fileString="DataFiles/results_${tag2}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
+    local PreFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
+    local PostFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      # Write to plotInstructions file
-      WriteMethodDataForPlotting ${tag2} \${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr} \${numProws} \${k} \${ppn} \${tpr}
+      WriteMethodDataForPlotting ${tag2} \${PostFile} \${numProws} \${k} \${ppn} \${tpr}
       writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
-    # Write to collectInstructions file
-    echo "echo \"0\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    echo "echo \"${tag2}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-#    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-#    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    # These latter two require NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
-    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-#    echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    WriteMethodDataForCollectingStage1 ${tag2} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ $SCRATCH/${fileName}/collectInstructions.sh
+#    WriteMethodDataForCollectingStage2 ${tag2} \${PostFile} \${PostFile}_NoFormQ \${PostFile}_FormQ \${nodeCount} ..CI2?..
 
     # Launch performance job always.
     launchJobs ${tag2} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
@@ -680,34 +680,19 @@ launch$tag3 () {
   do
     # Set up the file string that will store the local benchmarking results
     local fileString="DataFiles/results_${tag3}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${cubeDim}cubeDim_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
+    local PreFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes"
+    local PostFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      # Write to plotInstructions file
-      WriteMethodDataForPlotting ${tag3} ${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr} \${cubeDim} \${curInverseCutOffMult} \${ppn} \${tpr}
+      WriteMethodDataForPlotting ${tag3} \${PostFile} \${cubeDim} \${curInverseCutOffMult} \${ppn} \${tpr}
       writePlotFileName \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
-    # Write to collectInstructions file
-    echo "echo \"0\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    echo "echo \"${tag3}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-#    echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-#    echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    # These latter two require NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
-    echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
-    then
-#      echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    fi
-    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
-    then
-#      echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    fi
-#    echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    WriteMethodDataForCollectingStage1 ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructions.sh
+#    WriteMethodDataForCollectingStage2 ${tag3} \${PostFile} \${PostFile}_perf \${PostFile}_numerics \${nodeCount} ..CI2?..
 
     # Launch performance job always.
     launchJobs ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
@@ -748,21 +733,19 @@ launch$tag4 () {
   do
     # Set up the file string that will store the local benchmarking results
     local fileString="DataFiles/results_${tag4}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
+    local PreFile="${tag4}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
+    local PostFile="${tag4}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}"
 
     if [ \${nodeIndex} == 0 ];
     then
       # Write to plotInstructions file
-      WriteMethodDataForPlotting ${tag4} \${binaryTag}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr} \${k} \${ppn} \${tpr}
+      WriteMethodDataForPlotting ${tag4} \${PostFile} \${k} \${ppn} \${tpr}
       writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
-    # Write to collectInstructions file
-    echo "echo \"0\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    echo "echo \"${tag2}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-#    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-    # Thus latter one requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
-    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-#    echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    WriteMethodDataForCollectingStage1 ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah $SCRATCH/${fileName}/collectInstructions.sh
+#    WriteMethodDataForCollectingStage2 ${tag4} \${PostFile} \${PostFile} \${PostFile}_blah \${nodeCount} ..CI2?..
 
     # Launch performance job always.
     launchJobs ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
