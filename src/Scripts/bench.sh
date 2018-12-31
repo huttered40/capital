@@ -239,8 +239,7 @@ echo "bash collectInstructions.sh | bash plotScript.sh" > plotData.sh
 cat <<-EOF > $SCRATCH/${fileName}.sh
 scriptName=$SCRATCH/${fileName}/script.sh
 mkdir $SCRATCH/${fileName}/
-mkdir $SCRATCH/${fileName}/results
-
+mkdir $SCRATCH/${fileName}/DataFiles
 
 # Need to re-build ppn/tpr lists (for each node count) because I cannot access the pre-time list with run-time indices
 ppnMinListRunTime=()
@@ -508,14 +507,16 @@ launch$tag1 () {
   while [ \${curInverseCutOffMult} -le \${invCutOffLoopMax} ];
   do
     # Set up the file string that will store the local benchmarking results
-    local fileString="results/results_${tag1}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${pDimD}pDimD_\${pDimC}pDimC_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    local fileString="DataFiles/results_${tag1}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${pDimD}pDimD_\${pDimC}pDimC_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
 
+    # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
+      # Write to plotInstructions file
       echo "echo \"${tag1}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"${tag1}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
       # New important addition: For special weak scaling, need to print out the number of (d,c) for the binary first, and then each of them in groups of {d,c,(d,c)}
       # Note: still not 100% convinced this is necessary. Need to study scaplot first to make a decision on it.
+      # Write to plotInstructions file
       if [ \${scaleRegime} == 2 ];
       then
 	echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -540,22 +541,7 @@ launch$tag1 () {
 	done
       fi
 
-      # Writing to files
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-
-      if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
-      then
-	echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      fi
-      if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
-      then
-	echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      fi
-
-      echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      # Write to plotInstructions file
+      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${pDimD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${pDimC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${curInverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -563,6 +549,26 @@ launch$tag1 () {
       echo "echo \"\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       writePlotFileName \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1  
     fi
+
+    # Write to collectInstructions file
+    echo "echo \"0\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    echo "echo \"${tag1}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+#    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+#    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    # These latter two require NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
+    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
+    then
+#      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    fi
+    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+    then
+#      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    fi
+#    echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
     # Launch performance job always.
     launchJobs ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
@@ -606,25 +612,30 @@ launch$tag2 () {
   for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
   do
     # Set up the file string that will store the local benchmarking results
-    local fileString="results/results_${tag2}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    local fileString="DataFiles/results_${tag2}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
 
+    # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
+      # Write to plotInstructions file
       echo "echo \"${tag2}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"${tag2}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-
-      # Writing to files
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-
-      echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${numProws}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
+
+    # Write to collectInstructions file
+    echo "echo \"0\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    echo "echo \"${tag2}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+#    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+#    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    # These latter two require NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
+    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+#    echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
     # Launch performance job always.
     launchJobs ${tag2} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
@@ -667,35 +678,40 @@ launch$tag3 () {
   while [ \${curInverseCutOffMult} -le \${invCutOffLoopMax} ];
   do
     # Set up the file string that will store the local benchmarking results
-    local fileString="results/results_${tag3}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${cubeDim}cubeDim_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    local fileString="DataFiles/results_${tag3}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${cubeDim}cubeDim_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
 
+    # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      echo "echo \"${tag3}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"${tag3}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-
-      # Writing to files
-      echo "echo \"${tag3}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"${tag3}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"${tag3}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-
-      if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
-      then
-	echo "echo \"${tag3}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      fi
-      if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
-      then
-	echo "echo \"${tag3}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      fi
-
-      echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
       # Write to plotInstructions file
+      echo "echo \"${tag3}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${cubeDim}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${curInverseCutOffMult}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       writePlotFileName \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
+
+    # Write to collectInstructions file
+    echo "echo \"0\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    echo "echo \"${tag3}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+#    echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+#    echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    # These latter two require NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
+    echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes_perf\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes_numerics\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
+    then
+#      echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+      echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes_critter\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    fi
+    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+    then
+#      echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+      echo "echo \"${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes_timer\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    fi
+#    echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
     # Launch performance job always.
     launchJobs ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
@@ -735,24 +751,26 @@ launch$tag4 () {
   for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
   do
     # Set up the file string that will store the local benchmarking results
-    local fileString="results/results_${tag4}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    local fileString="DataFiles/results_${tag4}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
 
     if [ \${nodeIndex} == 0 ];
     then
+      # Write to plotInstructions file
       echo "echo \"${tag2}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"${tag2}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-
-      # Writing to files
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}_NoFormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-      echo "echo \"\${binaryTag}_\${scale}_\${numIterations}_\${NumNodes}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}_FormQ\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-
-      echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+      echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${k}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${ppn}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${tpr}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
+
+    # Write to collectInstructions file
+    echo "echo \"0\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    echo "echo \"${tag2}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+#    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    # Thus latter one requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
+    echo "echo \"\${binaryTag}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+#    echo "echo \"\${nodeCount}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
     # Launch performance job always.
     launchJobs ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
@@ -772,11 +790,11 @@ echo "echo \"${nodeScaleFactor}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
 # Echo for data collection from remote machine (not porter) to PAA/src/Results
 # This temporary file will be deleted while collectScript.sh is called.
-echo "echo \"${fileNameToProcess}\"" > $SCRATCH/${fileName}/collectInstructions.sh
+echo "echo \"${fileName}\"" > $SCRATCH/${fileName}/collectInstructions.sh
+echo "echo \"${fileNameToProcess}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 echo "echo \"${profType}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 echo "echo \"${nodeScaleFactor}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-
 echo "echo \"${numTests}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 echo "echo \"${NumLaunchesPerBinary}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
 
@@ -1058,7 +1076,9 @@ do
       done
     done
     j=\$(( \${j} + 1 ))
+    echo "echo \"1\"" >> $SCRATCH/${fileName}/collectInstructions.sh	# Signals end of the data files for this specific methodID
   done
+  echo ""eddie
 done
 EOF
 
@@ -1105,7 +1125,7 @@ then
             qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
           else
             chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
-#            sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+            #sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
           fi
           curTPR=$(( ${curTPR} * 2 ))
         done
