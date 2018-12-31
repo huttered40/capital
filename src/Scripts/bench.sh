@@ -231,10 +231,9 @@ then
 fi
 
 # collectData.sh will always be a single line, just a necessary intermediate step.
-echo "bash $SCRATCH/${fileName}/collectInstructions.sh | bash packageData.sh" > collectData.sh
+echo "bash $SCRATCH/${fileName}/collectInstructionsStage1.sh | bash packageDataStage1.sh" > collectDataStage1.sh
 # plotData.sh will always be a single line, just a necessary intermediate step.
-echo "bash collectInstructions.sh | bash plotScript.sh" > plotData.sh
-
+echo "bash collectInstructionsStage1.sh | bash plotScript.sh" > plotData.sh	# plotScript only needs the 2nd and 3rd items in collectInstructionsStage1.sh, so overwritting it doesn't matter.
 
 cat <<-EOF > $SCRATCH/${fileName}.sh
 scriptName=$SCRATCH/${fileName}/script.sh
@@ -335,7 +334,6 @@ do
           echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
           echo "export MKL_NUM_THREADS=\${curTPR}" >> \${scriptName}
         fi
-        echo "what is this ? \${curTPR}"
         curTPR=\$(( \${curTPR} * 2 ))
       done
       curPPN=\$(( \${curPPN} * 2 ))
@@ -390,6 +388,18 @@ log2 () {
     done
     echo \${x}
 }
+
+
+# Writes the beginning of collectInstructionsStage1 and collectInstructionsStage2
+WriteHeaderForCollection () {
+  echo "echo \"${fileName}\"" > \${1}
+  echo "echo \"${fileNameToProcess}\"" >> \${1}
+  echo "echo \"${machineName}\"" >> \${1}
+  echo "echo \"${profType}\"" >> \${1}
+  echo "echo \"${nodeScaleFactor}\"" >> \${1}
+  echo "echo \"${numTests}\"" >> \${1}
+}
+
 
 # Only for cqr2
 writePlotFileName() {
@@ -477,28 +487,90 @@ WriteMethodDataForPlotting () {
 }
 
 WriteMethodDataForCollectingStage1 () {
-    local MethodTag=\${1}
-    local FileNameBase=\${2}
-    local FileName1=\${3}
-    local FileName2=\${4}
-    local WriteFile=\${5}
+  local MethodTag=\${1}
+  local FileNameBase=\${2}
+  local FileName1=\${3}
+  local FileName2=\${4}
+  local WriteFile=\${5}
+
+  echo "echo \"0\"" >> \${WriteFile}
+  echo "echo \"\${MethodTag}\"" >> \${WriteFile}
+  echo "echo \"\${FileName1}\"" >> \${WriteFile}
+  if [ "\${MethodTag}" != "bench_scala_cholesky" ];
+  then
+    echo "echo \"\${FileName2}\"" >> \${WriteFile}
+  fi
+  if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
+  then
+    echo "echo \"\${FileNameBase}_critter\"" >> \${WriteFile}
+  fi
+  if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+  then
+    echo "echo \"\${FileNameBase}_timer\"" >> \${WriteFile}
+  fi
+}
+
+WriteMethodDataForCollectingStage2 () {
+  # Because 'Pre' (Stage1) collapses the NumLaunchesPerBinary, we do not want to overcount.
+  local launchID=\${1}
+  if [ \${launchID} -eq 1 ];
+  then
+    local MethodTag=\${2}
+    local PreFileNameBase=\${3}
+    local PreFileName1=\${4}
+    local PreFileName2=\${5}
+    local PostFileNameBase=\${6}
+    local PostFileName1=\${7}
+    local PostFileName2=\${8}
+    local WriteFile=\${9}
 
     echo "echo \"0\"" >> \${WriteFile}
     echo "echo \"\${MethodTag}\"" >> \${WriteFile}
-    echo "echo \"\${FileName1}\"" >> \${WriteFile}
-    if [ \${MethodTag} -ne "bench_scala_cholesky" ];
+    echo "echo \"\${PostFileName1}\"" >> \${WriteFile}
+    if [ "\${MethodTag}" != "bench_scala_cholesky" ];
     then
-      echo "echo \"\${FileName2}\"" >> \${WriteFile}
+      echo "echo \"\${PostFileName2}\"" >> \${WriteFile}
     fi
     if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
     then
-      echo "echo \"\${FileNameBase}_critter\"" >> \${WriteFile}
+      echo "echo \"\${PostFileNameBase}_critter\"" >> \${WriteFile}
     fi
     if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
     then
-      echo "echo \"\${FileNameBase}_timer\"" >> \${WriteFile}
+      echo "echo \"\${PostFileNameBase}_timer\"" >> \${WriteFile}
     fi
+    echo "echo \"\${PreFileName1}\"" >> \${WriteFile}
+    if [ "\${MethodTag}" != "bench_scala_cholesky" ];
+    then
+      echo "echo \"\${PreFileName2}\"" >> \${WriteFile}
+    fi
+    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
+    then
+      echo "echo \"\${PreFileNameBase}_critter\"" >> \${WriteFile}
+    fi
+    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+    then
+      echo "echo \"\${PreFileNameBase}_timer\"" >> \${WriteFile}
+    fi
+  fi
 }
+
+
+launchJobsPortal () {
+  # Launch performance job always.
+  launchJobs \${@:2:\${#}}
+
+  # If analysis is turned on, launch Profiling job and Critter job.
+  if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
+  then
+    launchJobs \${@:2:\${7}} \${1}_CRITTER \${@:9:\${#}}
+  fi
+  if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+  then
+    launchJobs \${@:2:\${7}} \${1}_TIMER \${@:9:\${#}}
+  fi
+}
+
 
 ###################################################### Method Launches ######################################################
 
@@ -514,11 +586,13 @@ launch$tag1 () {
   local tpr=\${7}
   local matrixDimM=\${8}
   local matrixDimN=\${9}
-  local pDimD=\${10}
-  local pDimC=\${11}
-  local nodeIndex=\${12}
-  local scaleRegime=\${13}
-  local nodeCount=\${14}
+  local pDimDorig=\${10}
+  local pDimCorig=\${11}
+  local pDimD=\${12}
+  local pDimC=\${13}
+  local nodeIndex=\${14}
+  local scaleRegime=\${15}
+  local nodeCount=\${16}
   local bcDim=0
 
   # Next: Based on pDimC, decide on invCutOff parameter, which will range from 0 to a max of 2 for now
@@ -539,10 +613,10 @@ launch$tag1 () {
   while [ \${curInverseCutOffMult} -le \${invCutOffLoopMax} ];
   do
     # Set up the file string that will store the local benchmarking results
-    local fileString="DataFiles/results_${tag1}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${pDimD}pDimD_\${pDimC}pDimC_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    local fileString="DataFiles/results_${tag1}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${pDimD}pDimD_\${pDimC}pDimC_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes"
-    local PostFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}"
+    local PostFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimDorig}_\${pDimCorig}_\${ppn}_\${tpr}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
@@ -578,23 +652,10 @@ launch$tag1 () {
       writePlotFileName \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1  
     fi
 
-    WriteMethodDataForCollectingStage1 ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructions.sh
-#    WriteMethodDataForCollectingStage2 ${tag1} \${PostFile} \${PostFile}_perf \${PostFile}_numerics \${nodeCount} ..CI2?..
-
-    # Launch performance job always.
-    launchJobs ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-
-    # If analysis is turned on, launch Profiling job and Critter job.
-    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
-    then
-      launchJobs ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_CRITTER \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-    fi
-    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
-    then
-      launchJobs ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PROFILE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-    fi
-
-    writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
+    WriteMethodDataForCollectingStage1 ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
+    WriteMethodDataForCollectingStage2 \${launchID} ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics \${PostFile} \${PostFile}_perf \${PostFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage2.sh
+    launchJobsPortal \${2} ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done
 }
@@ -614,19 +675,20 @@ launch$tag2 () {
   local tpr=\${7}
   local matrixDimM=\${8}
   local matrixDimN=\${9}
-  local numProws=\${10}
-  local minBlockSize=\${11}
-  local maxBlockSize=\${12}
-  local nodeIndex=\${13}
-  local scaleRegime=\${14}
-  local nodeCount=\${15}
+  local numProwsorig=\${10}
+  local numProws=\${11}
+  local minBlockSize=\${12}
+  local maxBlockSize=\${13}
+  local nodeIndex=\${14}
+  local scaleRegime=\${15}
+  local nodeCount=\${16}
   for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
   do
     # Set up the file string that will store the local benchmarking results
     local fileString="DataFiles/results_${tag2}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
-    local PostFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}"
+    local PostFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProwsorig}_\${k}_\${ppn}_\${tpr}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
@@ -635,12 +697,10 @@ launch$tag2 () {
       writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
-    WriteMethodDataForCollectingStage1 ${tag2} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ $SCRATCH/${fileName}/collectInstructions.sh
-#    WriteMethodDataForCollectingStage2 ${tag2} \${PostFile} \${PostFile}_NoFormQ \${PostFile}_FormQ \${nodeCount} ..CI2?..
-
-    # Launch performance job always.
-    launchJobs ${tag2} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
-    writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
+    WriteMethodDataForCollectingStage1 ${tag2} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ $SCRATCH/${fileName}/collectInstructionsStage1.sh
+    WriteMethodDataForCollectingStage2 \${launchID} ${tag2} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ \${PostFile} \${PostFile}_NoFormQ \${PostFile}_FormQ $SCRATCH/${fileName}/collectInstructionsStage2.sh
+    launchJobsPortal \${2} ${tag2} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+    writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
   done
 }
 
@@ -655,10 +715,11 @@ launch$tag3 () {
   local ppn=\${6}
   local tpr=\${7}
   local matrixDimM=\${8}
-  local cubeDim=\${9}
-  local nodeIndex=\${10}
-  local scaleRegime=\${11}
-  local nodeCount=\${12}
+  local cubeDimorig=\${9}
+  local cubeDim=\${10}
+  local nodeIndex=\${11}
+  local scaleRegime=\${12}
+  local nodeCount=\${13}
   local bcDim=0
 
   # Next: Based on pDimC, decide on invCutOff parameter, which will range from 0 to a max of 2 for now
@@ -682,7 +743,7 @@ launch$tag3 () {
     local fileString="DataFiles/results_${tag3}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${cubeDim}cubeDim_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes"
-    local PostFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}"
+    local PostFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDimorig}_\${ppn}_\${tpr}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
@@ -691,23 +752,10 @@ launch$tag3 () {
       writePlotFileName \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
-    WriteMethodDataForCollectingStage1 ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructions.sh
-#    WriteMethodDataForCollectingStage2 ${tag3} \${PostFile} \${PostFile}_perf \${PostFile}_numerics \${nodeCount} ..CI2?..
-
-    # Launch performance job always.
-    launchJobs ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-
-    # If analysis is turned on, launch Profiling job and Critter job.
-    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
-    then
-      launchJobs ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_CRITTER \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-    fi
-    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
-    then
-      launchJobs ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PROFILE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-    fi
-
-    writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
+    WriteMethodDataForCollectingStage1 ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
+    WriteMethodDataForCollectingStage2 \${launchID} ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics \${PostFile} \${PostFile}_perf \${PostFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage2.sh
+    launchJobsPortal \${2} ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done
 
@@ -744,12 +792,10 @@ launch$tag4 () {
       writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
-    WriteMethodDataForCollectingStage1 ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah $SCRATCH/${fileName}/collectInstructions.sh
-#    WriteMethodDataForCollectingStage2 ${tag4} \${PostFile} \${PostFile} \${PostFile}_blah \${nodeCount} ..CI2?..
-
-    # Launch performance job always.
-    launchJobs ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-    writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
+    WriteMethodDataForCollectingStage1 ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah $SCRATCH/${fileName}/collectInstructionsStage1.sh
+    WriteMethodDataForCollectingStage2 \${launchID} ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah \${PostFile} \${PostFile} \${PostFile} $SCRATCH/${fileName}/collectInstructionsStage2.sh
+    launchJobsPortal \${2} ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
   done
 }
 
@@ -765,13 +811,8 @@ echo "echo \"${nodeScaleFactor}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
 # Echo for data collection from remote machine (not porter) to PAA/src/Results
 # This temporary file will be deleted while collectScript.sh is called.
-echo "echo \"${fileName}\"" > $SCRATCH/${fileName}/collectInstructions.sh
-echo "echo \"${fileNameToProcess}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-echo "echo \"${profType}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-echo "echo \"${nodeScaleFactor}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-echo "echo \"${numTests}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
-echo "echo \"${NumLaunchesPerBinary}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+WriteHeaderForCollection $SCRATCH/${fileName}/collectInstructionsStage1.sh
+WriteHeaderForCollection $SCRATCH/${fileName}/collectInstructionsStage2.sh
 
 for ((i=1; i<=${numTests}; i++))
 do
@@ -816,7 +857,8 @@ do
 
     # Echo for SCAPLOT makefile generator
     read -p "Enter binary tag [0 for CA-CQR2, 1 for bench_scala_qr, 2 for CFR3D, 3 for bench_scala_cf, 4 for quit]: " binaryTagChoice
-    echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/collectInstructions.sh
+    echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/collectInstructionsStage1.sh
+    echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/collectInstructionsStage2.sh
     echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
     # break case
     if [ \${binaryTagChoice} -eq "4" ];
@@ -885,29 +927,32 @@ do
       WShelpcounter=0
       # cqr2
       pDimCArray=()
+      pDimCArrayOrig=()
       rangePdimClen=0
       if [ \${binaryTag} == 'cqr2' ];
       then
         for ((w=\${startStartPdimC}; w<=\${endStartPdimC}; w*=2));
         do
           pDimCArray+=(\${w})
+          pDimCArrayOrig+=(\${w})
           rangePdimClen=\$(( \${rangePdimClen} + 1 ))
         done
       fi
       # bench_scala_qr
       numPcolsArray=()
+      numPcolsArrayOrig=()
       rangeNumPcolslen=0
       if [ \${binaryTag} == 'bench_scala_qr' ];
       then
         for ((w=\${startStartNumPcols}; w<=\${endStartNumPcols}; w*=2));
         do
           numPcolsArray+=(\${w})
+          numPcolsArrayOrig+=(\${w})
           rangeNumPcolslen=\$(( \${rangeNumPcolslen} + 1 ))
         done
       fi
       # cfr3d
       curCubeDim=\${cubeDim}
-
       for ((curNumNodes=\${startNumNodes}; curNumNodes<=\${endNumNodes}; curNumNodes*=${nodeScaleFactor}));
       do
         minPPN=\${ppnMinListRunTime[\${nodeIndex}]}
@@ -915,6 +960,7 @@ do
         for ((curPPN=\${minPPN}; curPPN<=\${maxPPN}; curPPN*=2));
         do
           numProcesses=\$(( \${curNumNodes} * \${curPPN} ))
+          StartingNumProcesses=\$(( \${startNumNodes} * \${curPPN} ))
 
           minTPR=\${tprMinListRunTime[\${nodeIndex}]}
           maxTPR=\${tprMaxListRunTime[\${nodeIndex}]}
@@ -934,7 +980,10 @@ do
 	        # Check if pDimC is too big. If so, pDimD will be 0
 	        if [ \${pDimD} -ge \${pDimC} ];
 	        then
-		  launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount}
+                  originalPdimC=\${pDimCArrayOrig[\${w}]}
+                  originalPdimCsquared=\$(( \${originalPdimC} * \${originalPdimC} ))
+                  originalPdDimD=\$(( \${StartingNumProcesses} / \${originalPdimCsquared} ))
+		  launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount}
 	        fi
               done
 	    elif [ \${binaryTag} == 'bench_scala_qr' ];
@@ -943,15 +992,16 @@ do
 	      do
 	        numPcols=\${numPcolsArray[\${w}]}
                 numProws=\$(( \${numProcesses} / \${numPcols} ))
-                echo "Check these - \${numProcesses} \${numProws} \${numPcols}"
 	        if [ \${numPcols} -le \${numProws} ];
 	        then
-		  launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
+                  originalNumPcols=\${numPcolsArrayOrig[\${w}]}
+                  originalNumProws=\$(( \${StartingNumProcesses} / \${originalNumPcols} ))
+		  launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalNumProws} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
                 fi
               done
 	    elif [ \${binaryTag} == 'cfr3d' ];
 	    then
-              launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curCubeDim} \${nodeIndex} \${scaleRegime} \${nodeCount}
+              launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${cubeDim} \${curCubeDim} \${nodeIndex} \${scaleRegime} \${nodeCount}
 	    elif [ \${binaryTag} == 'bench_scala_cholesky' ];
 	    then
               launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
@@ -1051,7 +1101,8 @@ do
       done
     done
     j=\$(( \${j} + 1 ))
-    echo "echo \"1\"" >> $SCRATCH/${fileName}/collectInstructions.sh	# Signals end of the data files for this specific methodID
+    echo "echo \"1\"" >> $SCRATCH/${fileName}/collectInstructionsStage1.sh	# Signals end of the data files for this specific methodID
+    echo "echo \"1\"" >> $SCRATCH/${fileName}/collectInstructionsStage2.sh	# Signals end of the data files for this specific methodID
   done
 done
 EOF
@@ -1061,8 +1112,9 @@ bash $SCRATCH/${fileName}.sh
 #rm $SCRATCH/${fileName}.sh
 
 # Copy a local version to Scripts directory so that it can be used on the local side to generate plots.
-# But its important that we keep a backup in SCRATCH/fileName in case we overwrite collectInstructions.sh, we can always write it back.
-cp $SCRATCH/${fileName}/collectInstructions.sh collectInstructions.sh
+# But its important that we keep a backup in SCRATCH/fileName in case we overwrite collectInstructionsStage1.sh, we can always write it back.
+cp $SCRATCH/${fileName}/collectInstructionsStage1.sh collectInstructionsStage1.sh
+# Do not copy collectInstructionsStage2 to local directory.
 
 # Note that for Porter, no need to do this, since we are submitting to a queue
 if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ] || [ "${machineName}" == "BLUEWATERS" ];
@@ -1099,7 +1151,7 @@ then
             qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
           else
             chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
-            #sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+            sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
           fi
           curTPR=$(( ${curTPR} * 2 ))
         done

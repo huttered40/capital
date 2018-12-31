@@ -13,26 +13,30 @@ using namespace std;
 int main(int argc, char** argv)
 {
 // Strings
-  string outputFileStr = argv[1];
-  string inputFileStr = argv[2];
-  string binaryTag = argv[3];
-  int order = atoi(argv[4]);
-  int curIter = atoi(argv[5]);
+  string outputFileDirStr = argv[1];
+  string outputFileStr = argv[2];
+  string inputFileStr = argv[3];
+  string binaryTag = argv[4];
+  int order = atoi(argv[5]);
+  int curIter = atoi(argv[6]);
 
-  outputFileStr += ".txt";
+  string outputFileStrStats = outputFileDirStr + "Stats/" + outputFileStr + "_stats.txt";
+  outputFileStr = outputFileDirStr + "Raw/" + outputFileStr + ".txt";
+  inputFileStr += ".txt";
+
+  cout << "Reading in " << inputFileStr << " and writing to " << outputFileStr << " and " << outputFileStrStats << endl;
 
   // Handle Scalapack QR separately (same with Scalapack Cholesky when I add it)
   if (binaryTag == "bench_scala_qr")
   {
     // Streams
-    string outputFileStrMedian = string(argv[1]) + "_median.txt";
-    ofstream outputFile,outputFileMedian;
+    ofstream outputFile,outputFileStats;
     ifstream inputFile;
     inputFile.open(inputFileStr.c_str());
     outputFile.open(outputFileStr.c_str(), ofstream::app);
-    outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
+    outputFileStats.open(outputFileStrStats.c_str(), ofstream::app);
     
-    vector<double> medianVec;
+    vector<double> sortedVec;
     int data1,data2;
     int data4,data5;		// Note: these are global matrix sizes, which might be int64_t. For now i will use int, but be careful
     double data3;
@@ -41,27 +45,31 @@ int main(int argc, char** argv)
       inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
       if (inputFile.eof()) {break;}
       outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
-      medianVec.push_back(data3);
+      sortedVec.push_back(data3);
     }
-    sort(medianVec.begin(), medianVec.end());
-    outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+    sort(sortedVec.begin(), sortedVec.end());
+    outputFileStats << data1 << "\t" << data4 << "\t" << data5 << "\t";
+    outputFileStats << sortedVec[0] << "\t";				// min
+    outputFileStats << sortedVec[(sortedVec.size()-1)/4] << "\t";	// 1st quartile
+    outputFileStats << sortedVec[(sortedVec.size()-1)/2] << "\t";	// median
+    outputFileStats << sortedVec[3*(sortedVec.size()-1)/4] << "\t";	// 3rd quartile
+    outputFileStats << sortedVec[sortedVec.size()-1] << endl;		// max
   
     outputFile.close();
-    outputFileMedian.close();
+    outputFileStats.close();
     inputFile.close();
     return 0;
   }
   if (binaryTag == "bench_scala_cholesky")
   {
     // Streams
-    string outputFileStrMedian = string(argv[1]) + "_median.txt";
-    ofstream outputFile,outputFileMedian;
+    ofstream outputFile,outputFileStats;
     ifstream inputFile;
     inputFile.open(inputFileStr.c_str());
     outputFile.open(outputFileStr.c_str(), ofstream::app);
-    outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
+    outputFileStats.open(outputFileStrStats.c_str(), ofstream::app);
     
-    vector<double> medianVec;
+    vector<double> sortedVec;
     int data1,data2;
     int data4;		// Note: this is global matrix size, which might be int64_t. For now i will use int, but be careful
     double data3;
@@ -70,29 +78,32 @@ int main(int argc, char** argv)
       inputFile >> data1 >> data2 >> data4 >> data3;
       if (inputFile.eof()) {break;}
       outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data3 << endl;
-      medianVec.push_back(data3);
+      sortedVec.push_back(data3);
     }
-    sort(medianVec.begin(), medianVec.end());
-    outputFileMedian << data1 << "\t" << data4 << "\t" << medianVec[medianVec.size()/2] << std::endl;
+    sort(sortedVec.begin(), sortedVec.end());
+    outputFileStats << data1 << "\t" << data4 << "\t";
+    outputFileStats << sortedVec[0] << "\t";				// min
+    outputFileStats << sortedVec[(sortedVec.size()-1)/4] << "\t";	// 1st quartile
+    outputFileStats << sortedVec[(sortedVec.size()-1)/2] << "\t";	// median
+    outputFileStats << sortedVec[3*(sortedVec.size()-1)/4] << "\t";	// 3rd quartile
+    outputFileStats << sortedVec[sortedVec.size()-1] << endl;		// max
   
     outputFile.close();
-    outputFileMedian.close();
+    outputFileStats.close();
     inputFile.close();
     return 0;
   }
 
   if (order == 1)
   {
-    string outputFileStrMedian = string(argv[1]) + "_median.txt";
-  
     // Streams
-    ofstream outputFile,outputFileMedian;
+    ofstream outputFile,outputFileStats;
     ifstream inputFile;
     inputFile.open(inputFileStr.c_str());
     outputFile.open(outputFileStr.c_str(), ofstream::app);
-    outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
+    outputFileStats.open(outputFileStrStats.c_str(), ofstream::app);
 
-    vector<double> medianVec;
+    vector<double> sortedVec;
     int data1,data2;
     int data4,data5;		// Note: these are global matrix sizes, which might be int64_t. For now i will use int, but be careful
     double data3;
@@ -103,8 +114,8 @@ int main(int argc, char** argv)
         inputFile >> data1 >> data2 >> data4 >> data5 >> data3;
         if (inputFile.eof()) {break;}
         outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
-        //std::cout << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
-        medianVec.push_back(data3);
+        std::cout << data1 << "\t" << data2 << "\t" << data4 << "\t" << data5 << "\t" << data3 << endl;
+        sortedVec.push_back(data3);
       }
       else if (binaryTag == "cfr3d")
       {
@@ -112,37 +123,40 @@ int main(int argc, char** argv)
         if (inputFile.eof()) {break;}
         cout << "tell me args: " << data1 << " " << data2 << " " << data4 << " " << data3 << endl;
         outputFile << data1 << "\t" << data2 << "\t" << data4 << "\t" << data3 << endl;
-        medianVec.push_back(data3);
+        sortedVec.push_back(data3);
       }
     }
-    sort(medianVec.begin(), medianVec.end());
+    sort(sortedVec.begin(), sortedVec.end());
     if (binaryTag == "cqr2")
     {
-      outputFileMedian << data1 << "\t" << data4 << "\t" << data5 << "\t" << medianVec[(medianVec.size()-1)/2] << std::endl;
+      outputFileStats << data1 << "\t" << data4 << "\t" << data5 << "\t";
     }
     else if (binaryTag == "cfr3d")
     {
-      outputFileMedian << data1 << "\t" << data4 << "\t" << medianVec[(medianVec.size()-1)/2] << std::endl;
+      outputFileStats << data1 << "\t" << data4 << "\t";
     }
+    outputFileStats << sortedVec[0] << "\t";				// min
+    outputFileStats << sortedVec[(sortedVec.size()-1)/4] << "\t";	// 1st quartile
+    outputFileStats << sortedVec[(sortedVec.size()-1)/2] << "\t";	// median
+    outputFileStats << sortedVec[3*(sortedVec.size()-1)/4] << "\t";	// 3rd quartile
+    outputFileStats << sortedVec[sortedVec.size()-1] << endl;		// max
  
     outputFile.close();
-    outputFileMedian.close();
+    outputFileStats.close();
     inputFile.close();
     return 0;
   }
   else if (order == 2)
   {
-    string outputFileStrMedian = string(argv[1]) + "_median.txt";
-    
     // Streams
-    ofstream outputFile,outputFileMedian;
+    ofstream outputFile,outputFileStats;
     ifstream inputFile;
     inputFile.open(inputFileStr.c_str());
     outputFile.open(outputFileStr.c_str(), ofstream::app);
-    outputFileMedian.open(outputFileStrMedian.c_str(), ofstream::app);
+    outputFileStats.open(outputFileStrStats.c_str(), ofstream::app);
 
-    vector<double> medianVec1;
-    vector<double> medianVec2;
+    vector<double> sortedVec1;
+    vector<double> sortedVec2;
     int data1,data2;
     double data3,data4;
     while (!inputFile.eof())
@@ -152,29 +166,44 @@ int main(int argc, char** argv)
         inputFile >> data1 >> data2 >> data3 >> data4;
         if (inputFile.eof()) {break;}
         outputFile << data1 << "\t" << data2 << "\t" << data3 << "\t" << data4 << endl;
-        medianVec1.push_back(data3);
-        medianVec2.push_back(data4);
+        sortedVec1.push_back(data3);
+        sortedVec2.push_back(data4);
       }
       else if (binaryTag == "cfr3d")
       {
         inputFile >> data1 >> data2 >> data3;
         if (inputFile.eof()) {break;}
         outputFile << data1 << "\t" << data2 << "\t" << data3 << endl;
-        medianVec1.push_back(data3);
+        sortedVec1.push_back(data3);
       }
     }
-    sort(medianVec1.begin(), medianVec1.end());
+    sort(sortedVec1.begin(), sortedVec1.end());
     if (binaryTag == "cqr2")
     {
-      sort(medianVec2.begin(), medianVec2.end());
-      outputFileMedian << data1 << "\t" << medianVec1[(medianVec1.size()-1)/2] << "\t" << medianVec2[(medianVec2.size()-1)/2] << std::endl;
+      sort(sortedVec2.begin(), sortedVec2.end());
+      outputFileStats << data1 << "\t";
+      outputFileStats << sortedVec1[0] << "\t";				// min
+      outputFileStats << sortedVec1[(sortedVec1.size()-1)/4] << "\t";	// 1st quartile
+      outputFileStats << sortedVec1[(sortedVec1.size()-1)/2] << "\t";	// median
+      outputFileStats << sortedVec1[3*(sortedVec1.size()-1)/4] << "\t";	// 3rd quartile
+      outputFileStats << sortedVec1[sortedVec1.size()-1] << "\t";	// max
+      outputFileStats << sortedVec2[0] << "\t";				// min
+      outputFileStats << sortedVec2[(sortedVec2.size()-1)/4] << "\t";	// 1st quartile
+      outputFileStats << sortedVec2[(sortedVec2.size()-1)/2] << "\t";	// median
+      outputFileStats << sortedVec2[3*(sortedVec2.size()-1)/4] << "\t";	// 3rd quartile
+      outputFileStats << sortedVec2[sortedVec2.size()-1] << endl;	// max
     }
     if (binaryTag == "cfr3d")
     {
-      outputFileMedian << data1 << "\t" << medianVec1[(medianVec1.size()-1)/2] << std::endl;
+      outputFileStats << data1 << "\t";
+      outputFileStats << sortedVec1[0] << "\t";				// min
+      outputFileStats << sortedVec1[(sortedVec1.size()-1)/4] << "\t";	// 1st quartile
+      outputFileStats << sortedVec1[(sortedVec1.size()-1)/2] << "\t";	// median
+      outputFileStats << sortedVec1[3*(sortedVec1.size()-1)/4] << "\t";	// 3rd quartile
+      outputFileStats << sortedVec1[sortedVec1.size()-1] << endl;	// max
     } 
     outputFile.close();
-    outputFileMedian.close();
+    outputFileStats.close();
     inputFile.close();
     return 0;
   }

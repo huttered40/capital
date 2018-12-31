@@ -1,16 +1,5 @@
 #!/bin/bash
 
-# Function that simply appends each line in the data files to the 'Pre' files that collect all the data over all rounds
-WriteToPre() {
-  srcFile=${1}
-  destFile=${2}
-
-  while read -r line
-  do
-    echo "${line}" >> ${destFile}
-  done < "${srcFile}"
-}
-
 if [ "$(hostname |grep "porter")" != "" ]
 then
   export SCRATCH=../../../PAA_data
@@ -40,20 +29,13 @@ read -p "Enter node scaling factor: " nodeScaleFactor
 
 if [ "${machineName}" != "PORTER" ]
 then
-  # Check if the directory already exists, which will be the case when running this for rounds 2+
-  if [ ! -d "${RESULTSPATH}/${destDir}" ];
-  then
-    mkdir ${RESULTSPATH}/${destDir}/
-    mkdir ${RESULTSPATH}/${destDir}/Pre		# Pre is where we are appending these datafiles to, regardless of round ID.
-    mkdir ${RESULTSPATH}/${destDir}/Post	# Post is where the analyzed datafiles are written to. This does not happen in this file
-  fi
-  mkdir ${RESULTSPATH}/${destDir}/${srcDir}/
-  cp -r ${SCRATCH}/${srcDir}/* ${RESULTSPATH}/${destDir}/${srcDir}/
+  # Clear Post/ each time
+  rm ${RESULTSPATH}/${destDir}/Post/Raw/*
+  rm ${RESULTSPATH}/${destDir}/Post/Stats/*
 fi
 
-#g++ fileTransfer.cpp -o fileTransfer
+g++ fileTransfer.cpp -o fileTransfer
 read -p "Enter number of tests: " numTests
-read -p "Enter number of launches per binary per test: " numLaunchesPerBinary
 
 for ((i=0; i<${numTests}; i++))
 do
@@ -70,52 +52,47 @@ do
         if [ ${binaryID} -eq 0 ];
         then
           read -p "Enter binary tag: " binaryTag
-
-          read -p "Enter performance/NoFormQ file to write to: " preFilePerf
+          read -p "Enter performance/NoFormQ file to write to: " postFilePerf
           preFileNumerics=""
           if [ "${binaryTag}" != "bench_scala_cholesky" ];
           then
-	    read -p "Enter numerics/FormQ file to write to: " preFileNumerics
+	    read -p "Enter numerics/FormQ file to write to: " postFileNumerics
           fi    
 
 	  preFileCritter="" 
 	  preFileTimer=""
 	  if [ "${profType}" == "PC"  ] || [ "${profType}" == "PCT" ];
 	  then
-	    read -p "Enter critter file to write to: " preFileCritter
+	    read -p "Enter critter file to write to: " postFileCritter
 	  fi
 	  if [ "${profType}" == "PT"  ] || [ "${profType}" == "PCT" ];
 	  then
-	    read -p "Enter profiling file to write to: " preFileTimer
+	    read -p "Enter profiling file to write to: " postFileTimer
 	  fi
 
 	  # First, performance
 	  # Currently, every other input file will be performance (if profType=="P", if =="A", then every 4 is performance), so that is how this inner-loop code will be structured
 	  read -p "Enter file to read from: " InputFile
-#	  ./fileTransfer ${RESULTSPATH}/${srcDir}/${configFilePerf} ${RESULTSPATH}/${srcDir}/${InputFile} ${binaryTag} 1 ${k}
-          WriteToPre ${SCRATCH}/${srcDir}/${InputFile} ${RESULTSPATH}/${destDir}/Pre/${preFilePerf}.txt
+	  ./fileTransfer ${RESULTSPATH}/${destDir}/Post/ ${postFilePerf} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 1 0
 
 	  if [ "${binaryTag}" != "bench_scala_cholesky" ];
 	  then 
 	    # Second, numerics
 	    read -p "Enter file to read from: " InputFile
-#	    ./fileTransfer ${RESULTSPATH}/${srcDir}/${configFileNumerics} ${RESULTSPATH}/${srcDir}/${InputFile} ${binaryTag} 2 ${k}
-            WriteToPre ${SCRATCH}/${srcDir}/${InputFile} ${RESULTSPATH}/${destDir}/Pre/${preFileNumerics}.txt
+	    ./fileTransfer ${RESULTSPATH}/${destDir}/Post/ ${postFileNumerics} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 2 0
 	  fi
 
 	  if [ "${profType}" == "PC"  ] || [ "${profType}" == "PCT" ];
 	  then
 	    # Third, critter
 	    read -p "Enter file to read from: " InputFile
-#	    ./fileTransfer ${RESULTSPATH}/${srcDir}/${configFileCritter} ${RESULTSPATH}/${srcDir}/${InputFile} ${binaryTag} 3 ${k}
-            WriteToPre ${SCRATCH}/${srcDir}/${InputFile} ${RESULTSPATH}/${destDir}/Pre/${preFileCritter}.txt
+	    ./fileTransfer ${RESULTSPATH}/${destDir}/Post/ ${postFileCritter} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 3 0
 	  fi
 	  if [ "${profType}" == "PT"  ] || [ "${profType}" == "PCT" ];
 	  then
 	    # Fourth, timer
 	    read -p "Enter file to read from: " InputFile
-#	    ./fileTransfer ${RESULTSPATH}/${srcDir}/${configFileTimer} ${RESULTSPATH}/${srcDir}/${InputFile} ${binaryTag} 4 ${k}
-            WriteToPre ${SCRATCH}/${srcDir}/${InputFile} ${RESULTSPATH}/${destDir}/Pre/${preFileTimer}.txt
+	    ./fileTransfer ${RESULTSPATH}/${destDir}/Post/ ${postFileTimer} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 4 0
 	  fi
         else
           break
@@ -128,9 +105,6 @@ do
 done
 
 cd ${RESULTSPATH}
-
-# Get rid of the binaries before making the tarball
-#rm -rf ${srcDir}/bin
-#tar -cvf ${srcDir}.tar ${srcDir}/*
-
-cd - #rm fileTransfer
+#tar -cvf ${destDir}.tar ${destDir}/*
+cd -
+rm fileTransfer

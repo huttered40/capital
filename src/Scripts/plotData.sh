@@ -1,1 +1,1 @@
-bash collectInstructions.sh | bash plotScript.sh
+bash collectInstructionsStage1.sh | bash plotScript.sh

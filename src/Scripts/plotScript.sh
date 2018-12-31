@@ -19,6 +19,7 @@ then
   export SCRATCH=/scratch/sciteam/hutter
 fi
 
+read -p "Enter specific directory that will never be used: " garbageDirectory
 read -p "Enter the directory name within ${SCRATCH} where the results are hidden: " resultsDir
 cd ../../../../myData/
 
