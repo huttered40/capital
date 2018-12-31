@@ -335,7 +335,6 @@ do
           echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
           echo "export MKL_NUM_THREADS=\${curTPR}" >> \${scriptName}
         fi
-        echo "what is this ? \${curTPR}"
         curTPR=\$(( \${curTPR} * 2 ))
       done
       curPPN=\$(( \${curPPN} * 2 ))
@@ -486,7 +485,7 @@ WriteMethodDataForCollectingStage1 () {
     echo "echo \"0\"" >> \${WriteFile}
     echo "echo \"\${MethodTag}\"" >> \${WriteFile}
     echo "echo \"\${FileName1}\"" >> \${WriteFile}
-    if [ \${MethodTag} -ne "bench_scala_cholesky" ];
+    if [ "\${MethodTag}" != "bench_scala_cholesky" ];
     then
       echo "echo \"\${FileName2}\"" >> \${WriteFile}
     fi
@@ -499,6 +498,23 @@ WriteMethodDataForCollectingStage1 () {
       echo "echo \"\${FileNameBase}_timer\"" >> \${WriteFile}
     fi
 }
+
+
+launchJobsPortal () {
+  # Launch performance job always.
+  launchJobs \${@:2:\${#}}
+
+  # If analysis is turned on, launch Profiling job and Critter job.
+  if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
+  then
+    launchJobs \${@:2:\${7}} \${1}_CRITTER \${@:9:\${#}}
+  fi
+  if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+  then
+    launchJobs \${@:2:\${7}} \${1}_TIMER \${@:9:\${#}}
+  fi
+}
+
 
 ###################################################### Method Launches ######################################################
 
@@ -580,20 +596,7 @@ launch$tag1 () {
 
     WriteMethodDataForCollectingStage1 ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructions.sh
 #    WriteMethodDataForCollectingStage2 ${tag1} \${PostFile} \${PostFile}_perf \${PostFile}_numerics \${nodeCount} ..CI2?..
-
-    # Launch performance job always.
-    launchJobs ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-
-    # If analysis is turned on, launch Profiling job and Critter job.
-    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
-    then
-      launchJobs ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_CRITTER \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-    fi
-    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
-    then
-      launchJobs ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PROFILE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-    fi
-
+    launchJobsPortal \${2} ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done
@@ -637,9 +640,7 @@ launch$tag2 () {
 
     WriteMethodDataForCollectingStage1 ${tag2} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ $SCRATCH/${fileName}/collectInstructions.sh
 #    WriteMethodDataForCollectingStage2 ${tag2} \${PostFile} \${PostFile}_NoFormQ \${PostFile}_FormQ \${nodeCount} ..CI2?..
-
-    # Launch performance job always.
-    launchJobs ${tag2} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+    launchJobsPortal \${2} ${tag2} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
     writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
   done
 }
@@ -693,20 +694,7 @@ launch$tag3 () {
 
     WriteMethodDataForCollectingStage1 ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructions.sh
 #    WriteMethodDataForCollectingStage2 ${tag3} \${PostFile} \${PostFile}_perf \${PostFile}_numerics \${nodeCount} ..CI2?..
-
-    # Launch performance job always.
-    launchJobs ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-
-    # If analysis is turned on, launch Profiling job and Critter job.
-    if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
-    then
-      launchJobs ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_CRITTER \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-    fi
-    if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
-    then
-      launchJobs ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PROFILE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-    fi
-
+    launchJobsPortal \${2} ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done
@@ -746,9 +734,7 @@ launch$tag4 () {
 
     WriteMethodDataForCollectingStage1 ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah $SCRATCH/${fileName}/collectInstructions.sh
 #    WriteMethodDataForCollectingStage2 ${tag4} \${PostFile} \${PostFile} \${PostFile}_blah \${nodeCount} ..CI2?..
-
-    # Launch performance job always.
-    launchJobs ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    launchJobsPortal \${2} ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructions.sh 0
   done
 }
