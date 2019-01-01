@@ -1,7 +1,7 @@
 #!/bin/bash
 
 tag1='cqr2'
-tag2='bench_scala_qr'
+tag2='bsqr'
 tag3='cfr3d'
 tag4='bench_scala_cholesky'
 
@@ -203,10 +203,10 @@ then
     export PROFTYPE=PERFORMANCE
     profType=P
     ./configure
-    make bench_scala_qr
+    make bsqr
     cd -
-    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE}
-    mv ${scalaDir}/bin/benchmarks/bench_scala_qr_${machineName}_${PROFTYPE} ../bin/
+    mv ${scalaDir}/bin/benchmarks/bsqr ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE}
+    mv ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE} ../bin/
   fi
 fi
 
@@ -437,7 +437,7 @@ writePlotFileName() {
   fi
 }
 
-# Only for bench_scala_qr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
+# Only for bsqr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
 writePlotFileNameScalapackQR() {
   Prefix1=""
   Prefix2=""
@@ -912,7 +912,7 @@ do
     echo -e "\nStage #\${j}"
 
     # Echo for SCAPLOT makefile generator
-    read -p "Enter binary tag [0 for CA-CQR2, 1 for bench_scala_qr, 2 for CFR3D, 3 for bench_scala_cf, 4 for quit]: " binaryTagChoice
+    read -p "Enter binary tag [0 for CA-CQR2, 1 for bsqr, 2 for CFR3D, 3 for bscf, 4 for quit]: " binaryTagChoice
     echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/collectInstructionsStage1.sh
     echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/collectInstructionsStage2.sh
     echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -928,13 +928,13 @@ do
       binaryTag=cqr2
     elif [ \${binaryTagChoice} == 1 ];
     then
-      binaryTag=bench_scala_qr
+      binaryTag=bsqr
     elif [ \${binaryTagChoice} == 2 ];
     then
       binaryTag=cfr3d
     elif [ \${binaryTagChoice} == 3 ];
     then
-      binaryTag=bench_scala_cf
+      binaryTag=bscf
     fi
 
     binaryPath=${BINPATH}\${binaryTag}_${machineName}
@@ -949,7 +949,7 @@ do
       read -p "Enter start range of starting tunable processor grid dimension c: " startStartPdimC
       read -p "Enter end range of starting tunable processor grid dimension c (for any node count * ppn pairing): " endStartPdimC
       # invCutOff shouldn't be asked for. It should, for now, range up to 2 from 0, unless I am seeing a pattern in performance.
-    elif [ \${binaryTag} == 'bench_scala_qr' ];
+    elif [ \${binaryTag} == 'bsqr' ];
     then
       read -p "Enter the starting number of processor grid columns: " startStartNumPcols
       read -p "Enter the ending number of processor grid columns: " endStartNumPcols
@@ -987,11 +987,11 @@ do
           rangePdimClen=\$(( \${rangePdimClen} + 1 ))
         done
       fi
-      # bench_scala_qr
+      # bsqr
       numPcolsArray=()
       numPcolsArrayOrig=()
       rangeNumPcolslen=0
-      if [ \${binaryTag} == 'bench_scala_qr' ];
+      if [ \${binaryTag} == 'bsqr' ];
       then
         for ((w=\${startStartNumPcols}; w<=\${endStartNumPcols}; w*=2));
         do
@@ -1035,7 +1035,7 @@ do
 		  launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount}
 	        fi
               done
-	    elif [ \${binaryTag} == 'bench_scala_qr' ];
+	    elif [ \${binaryTag} == 'bsqr' ];
 	    then
 	      for ((w=0; w<\${rangeNumPcolslen}; w+=1));
 	      do
@@ -1070,7 +1070,7 @@ do
 	    echo "Do nothing"
           fi
           # below: bench scala qr
-	  if [ \${binaryTag} == 'bench_scala_qr' ];
+	  if [ \${binaryTag} == 'bsqr' ];
           then
 	    echo "Do nothing"
 	  fi
@@ -1088,7 +1088,7 @@ do
 	    echo "Do nothing"
 	  fi
 	  # below: bench scala qr
-	  if [ \${binaryTag} == 'bench_scala_qr' ];
+	  if [ \${binaryTag} == 'bsqr' ];
           then
 	    echo "Do nothing"
 	  fi
@@ -1116,7 +1116,7 @@ do
 	      done
             fi
             # below: bench scala qr
-	    if [ \${binaryTag} == 'bench_scala_qr' ];
+	    if [ \${binaryTag} == 'bsqr' ];
             then
               for ((w=0; w<\${rangeNumPcolslen}; w+=1));
               do
@@ -1134,7 +1134,7 @@ do
 	      echo "Do nothing"
 	    fi
             # below: bench scala qr
-	    if [ \${binaryTag} == 'bench_scala_qr' ];
+	    if [ \${binaryTag} == 'bsqr' ];
             then
 	      echo "Do nothing"
 	    fi

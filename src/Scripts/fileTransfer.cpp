@@ -27,7 +27,7 @@ int main(int argc, char** argv)
   cout << "Reading in " << inputFileStr << " and writing to " << outputFileStr << " and " << outputFileStrStats << endl;
 
   // Handle Scalapack QR separately (same with Scalapack Cholesky when I add it)
-  if (binaryTag == "bench_scala_qr")
+  if (binaryTag == "bsqr")
   {
     // Streams
     ofstream outputFile,outputFileStats;
@@ -60,7 +60,7 @@ int main(int argc, char** argv)
     inputFile.close();
     return 0;
   }
-  if (binaryTag == "bench_scala_cholesky")
+  if (binaryTag == "bscf")
   {
     // Streams
     ofstream outputFile,outputFileStats;
