@@ -404,16 +404,23 @@ WriteHeaderForCollection () {
 # Only for cqr2
 writePlotFileName() {
   # Performance runs will always run, so no reason for an if-statement here
-  echo "echo \"\${1}_perf.txt\"" >> \${2}
+  Prefix1=""
+  Prefix2=""
   if [ "\${3}" == "1" ];
   then
-    echo "echo \"\${1}_perf_median.txt\"" >> \${2}
+    Prefix1="Raw/"
+    Prefix2="Stats/"
+  fi
+  echo "echo \"\${Prefix1}\${1}_perf.txt\"" >> \${2}
+  if [ "\${3}" == "1" ];
+  then
+    echo "echo \"\${Prefix2}\${1}_perf_stats.txt\"" >> \${2}
   fi
   
-  echo "echo \"\${1}_numerics.txt\"" >> \${2}
+  echo "echo \"\${Prefix1}\${1}_numerics.txt\"" >> \${2}
   if [ "\${3}" == "1" ];
   then
-    echo "echo \"\${1}_numerics_median.txt\"" >> \${2}
+    echo "echo \"\${Prefix2}\${1}_numerics_stats.txt\"" >> \${2}
   fi
 
   if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
@@ -431,16 +438,39 @@ writePlotFileName() {
 }
 
 # Only for bench_scala_qr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
-writePlotFileNameScalapack() {
-  echo "echo \"\${1}_NoFormQ.txt\"" >> \${2}
+writePlotFileNameScalapackQR() {
+  Prefix1=""
+  Prefix2=""
   if [ "\${3}" == "1" ];
   then
-    echo "echo \"\${1}_NoFormQ_median.txt\"" >> \${2}
+    Prefix1="Raw/"
+    Prefix2="Stats/"
   fi
-  echo "echo \"\${1}_FormQ.txt\"" >> \${2}
+  echo "echo \"\${Prefix1}\${1}_NoFormQ.txt\"" >> \${2}
   if [ "\${3}" == "1" ];
   then
-    echo "echo \"\${1}_FormQ_median.txt\"" >> \${2}
+    echo "echo \"\${Prefix2}\${1}_NoFormQ_stats.txt\"" >> \${2}
+  fi
+  echo "echo \"\${Prefix1}\${1}_FormQ.txt\"" >> \${2}
+  if [ "\${3}" == "1" ];
+  then
+    echo "echo \"\${Prefix2}\${1}_FormQ_stats.txt\"" >> \${2}
+  fi
+}
+
+# Only for bench_scala_cholesky -- only necessary for Performance now. Might want to use Critter later, but not Profiler
+writePlotFileNameScalapackCholesky() {
+  Prefix1=""
+  Prefix2=""
+  if [ "\${3}" == "1" ];
+  then
+    Prefix1="Raw/"
+    Prefix2="Stats/"
+  fi
+  echo "echo \"\${Prefix1}\${1}.txt\"" >> \${2}
+  if [ "\${3}" == "1" ];
+  then
+    echo "echo \"\${Prefix2}\${1}_stats.txt\"" >> \${2}
   fi
 }
 
@@ -484,6 +514,39 @@ WriteMethodDataForPlotting () {
   do
     echo "echo \"\${arg}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
   done
+}
+
+TemporaryDCplotInfo () {
+  local scaleRegime=\${1}
+  local nodeCount=\${2}
+  local pDimD=\${3}
+  local pDimC=\${4}
+  local trickOffset=0
+  # New important addition: For special weak scaling, need to print out the number of (d,c) for the binary first, and then each of them in groups of {d,c,(d,c)}
+  # Note: still not 100% convinced this is necessary. Need to study scaplot first to make a decision on it.
+  # Write to plotInstructions file
+  if [ \${scaleRegime} == 2 ];
+  then
+    echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
+    curD=\${pDimD}
+    curC=\${pDimC}
+    trickOffsetTemp=\${trickOffset}
+    for ((z=0; z<\${nodeCount}; z++))
+    do
+      echo "echo \"\${curD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"\${curC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      echo "echo \"(\${curD},\${curC})\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+      trickOffsetTempMod=\$(( trickOffsetTemp % 4 ))
+      if [ \${trickOffsetTempMod} == 0 ];
+      then
+	curD=\$(( \${curD} / 2))
+	curC=\$(( \${curC} * 2))
+      else
+	curD=\$(( \${curD} * 2))
+      fi
+      trickOffsetTemp=\$(( \${trickOffsetTemp} + 1 ))
+    done
+  fi
 }
 
 WriteMethodDataForCollectingStage1 () {
@@ -637,35 +700,9 @@ launch$tag1 () {
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      # New important addition: For special weak scaling, need to print out the number of (d,c) for the binary first, and then each of them in groups of {d,c,(d,c)}
-      # Note: still not 100% convinced this is necessary. Need to study scaplot first to make a decision on it.
-      # Write to plotInstructions file
-      if [ \${scaleRegime} == 2 ];
-      then
-	echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
-
-	curD=\${pDimD}
-	curC=\${pDimC}
-	trickOffsetTemp=\${trickOffset}
-	for ((z=0; z<\${nodeCount}; z++))
-	do
-	  echo "echo \"\${curD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-	  echo "echo \"\${curC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-	  echo "echo \"(\${curD},\${curC})\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-	  trickOffsetTempMod=\$(( trickOffsetTemp % 4 ))
-	  if [ \${trickOffsetTempMod} == 0 ];
-	  then
-	    curD=\$(( \${curD} / 2))
-	    curC=\$(( \${curC} * 2))
-	  else
-	    curD=\$(( \${curD} * 2))
-	  fi
-	  trickOffsetTemp=\$(( \${trickOffsetTemp} + 1 ))
-	done
-      fi
-
-      WriteMethodDataForPlotting ${tag1} \${PostFile} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
-      writePlotFileName \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1  
+      WriteMethodDataForPlotting 0 ${tag1} \${PostFile} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
+      TemporaryDCplotInfo \${scaleRegime} \${nodeCount} \${pDimD} \${pDimC} 
+      writePlotFileName \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1  
     fi
 
     WriteMethodDataForCollectingStage1 ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
@@ -709,14 +746,14 @@ launch$tag2 () {
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      WriteMethodDataForPlotting ${tag2} \${PostFile} \${numProws} \${k} \${ppn} \${tpr}
-      writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
+      WriteMethodDataForPlotting 0 ${tag2} \${PostFile} \${numProws} \${k} \${ppn} \${tpr}
+      writePlotFileNameScalapackQR \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
     WriteMethodDataForCollectingStage1 ${tag2} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} ${tag2} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ \${PostFile} \${PostFile}_NoFormQ \${PostFile}_FormQ $SCRATCH/${fileName}/collectInstructionsStage2.sh
     launchJobsPortal \${2} ${tag2} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
-    writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
+    writePlotFileNameScalapackQR \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
   done
 }
 
@@ -764,8 +801,8 @@ launch$tag3 () {
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      WriteMethodDataForPlotting ${tag3} \${PostFile} \${cubeDim} \${curInverseCutOffMult} \${ppn} \${tpr}
-      writePlotFileName \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
+      WriteMethodDataForPlotting 0 ${tag3} \${PostFile} \${cubeDim} \${curInverseCutOffMult} \${ppn} \${tpr}
+      writePlotFileName \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
     WriteMethodDataForCollectingStage1 ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
@@ -804,14 +841,14 @@ launch$tag4 () {
     if [ \${nodeIndex} == 0 ];
     then
       # Write to plotInstructions file
-      WriteMethodDataForPlotting ${tag4} \${PostFile} \${k} \${ppn} \${tpr}
-      writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/plotInstructions.sh 1
+      WriteMethodDataForPlotting 0 ${tag4} \${PostFile} \${k} \${ppn} \${tpr}
+      writePlotFileNameScalapackCholesky \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
     WriteMethodDataForCollectingStage1 ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah \${PostFile} \${PostFile} \${PostFile} $SCRATCH/${fileName}/collectInstructionsStage2.sh
     launchJobsPortal \${2} ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
-    writePlotFileNameScalapack \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
+    writePlotFileNameScalapackCholesky \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
   done
 }
 
@@ -866,6 +903,9 @@ do
   read -p "Enter matrix dimension n: " matrixDimN
   read -p "Enter number of iterations (per launch): " numIterations
 
+  echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+  echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
+
   j=1
   while [ 1 -eq 1 ];		# Loop iterates until user says stop
   do
@@ -902,13 +942,6 @@ do
     then
       binaryPath=\${binaryPath}_${mpiType}
     fi
-
-    if [ \${j} == 1 ];
-    then
-      echo "echo \"\${matrixDimM}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-      echo "echo \"\${matrixDimN}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
-    fi
-
 
     # State variables that scale with nodes must be initialized here. Otherwise, repeated input is needed in loops below
     if [ \${binaryTag} == 'cqr2' ];
@@ -1119,6 +1152,7 @@ do
     j=\$(( \${j} + 1 ))
     echo "echo \"1\"" >> $SCRATCH/${fileName}/collectInstructionsStage1.sh	# Signals end of the data files for this specific methodID
     echo "echo \"1\"" >> $SCRATCH/${fileName}/collectInstructionsStage2.sh	# Signals end of the data files for this specific methodID
+    echo "echo \"1\"" >> $SCRATCH/${fileName}/plotInstructions.sh	# Signals end of the data files for this specific methodID
   done
 done
 EOF
@@ -1167,7 +1201,7 @@ then
             qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
           else
             chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
-            sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+            #sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
           fi
           curTPR=$(( ${curTPR} * 2 ))
         done

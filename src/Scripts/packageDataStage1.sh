@@ -58,6 +58,7 @@ then
   if [ ${IsRound1} -eq 1 ];
   then
     cp ${SCRATCH}/${srcDir}/collectInstructionsStage2.sh ${RESULTSPATH}/${destDir}/collectInstructionsStage2.sh
+    cp ${SCRATCH}/${srcDir}/plotInstructions.sh ${RESULTSPATH}/${destDir}/plotInstructions.sh
   fi
 fi
 
