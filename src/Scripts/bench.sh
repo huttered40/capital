@@ -572,6 +572,22 @@ launchJobsPortal () {
 }
 
 
+launchJobsPortal () {
+  # Launch performance job always.
+  launchJobs \${@:2:\${#}}
+
+  # If analysis is turned on, launch Profiling job and Critter job.
+  if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
+  then
+    launchJobs \${@:2:\${7}} \${1}_CRITTER \${@:9:\${#}}
+  fi
+  if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
+  then
+    launchJobs \${@:2:\${7}} \${1}_TIMER \${@:9:\${#}}
+  fi
+}
+
+
 ###################################################### Method Launches ######################################################
 
 # For CA-CQR2
