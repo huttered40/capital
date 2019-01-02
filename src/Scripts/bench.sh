@@ -5,6 +5,10 @@ tag2='bsqr'
 tag3='cfr3d'
 tag4='bench_scala_cholesky'
 
+# Product of PPN and TPR. Tells me how each node is being used.
+minPEcountStampede2=16
+maxPEcountStampede2=256
+
 # Make sure that the src/bin directory is created, or else compilation won't work
 if [ ! -d "../bin" ];
 then
@@ -203,9 +207,9 @@ then
     export PROFTYPE=PERFORMANCE
     profType=P
     ./configure
-    make bsqr
+    make bench_scala_qr
     cd -
-    mv ${scalaDir}/bin/benchmarks/bsqr ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE}
+    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE}
     mv ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE} ../bin/
   fi
 fi
@@ -696,11 +700,12 @@ launch$tag1 () {
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes"
     local PostFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimDorig}_\${pDimCorig}_\${ppn}_\${tpr}"
+    local UpdatePlotFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimCorig}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      WriteMethodDataForPlotting 0 ${tag1} \${PostFile} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
+      WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag1} \${PostFile} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
       TemporaryDCplotInfo \${scaleRegime} \${nodeCount} \${pDimD} \${pDimC} 
       writePlotFileName \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1  
     fi
@@ -729,12 +734,13 @@ launch$tag2 () {
   local matrixDimM=\${8}
   local matrixDimN=\${9}
   local numProwsorig=\${10}
-  local numProws=\${11}
-  local minBlockSize=\${12}
-  local maxBlockSize=\${13}
-  local nodeIndex=\${14}
-  local scaleRegime=\${15}
-  local nodeCount=\${16}
+  local numPcolsorig=\${11}
+  local numProws=\${12}
+  local minBlockSize=\${13}
+  local maxBlockSize=\${14}
+  local nodeIndex=\${15}
+  local scaleRegime=\${16}
+  local nodeCount=\${17}
   for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
   do
     # Set up the file string that will store the local benchmarking results
@@ -742,11 +748,12 @@ launch$tag2 () {
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
     local PostFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProwsorig}_\${k}_\${ppn}_\${tpr}"
+    local UpdatePlotFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numPcolsorig}_\${k}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      WriteMethodDataForPlotting 0 ${tag2} \${PostFile} \${numProws} \${k} \${ppn} \${tpr}
+      WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag2} \${PostFile} \${numProws} \${k} \${ppn} \${tpr}
       writePlotFileNameScalapackQR \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
@@ -797,11 +804,12 @@ launch$tag3 () {
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes"
     local PostFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDimorig}_\${ppn}_\${tpr}"
+    local UpdatePlotFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDimorig}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      WriteMethodDataForPlotting 0 ${tag3} \${PostFile} \${cubeDim} \${curInverseCutOffMult} \${ppn} \${tpr}
+      WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag3} \${PostFile} \${cubeDim} \${curInverseCutOffMult} \${ppn} \${tpr}
       writePlotFileName \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
@@ -837,11 +845,12 @@ launch$tag4 () {
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag4}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
     local PostFile="${tag4}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}"
+    local UpdatePlotFile="${tag4}_\${scale}_\${matrixDimM}_\${k}"
 
     if [ \${nodeIndex} == 0 ];
     then
       # Write to plotInstructions file
-      WriteMethodDataForPlotting 0 ${tag4} \${PostFile} \${k} \${ppn} \${tpr}
+      WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag4} \${PostFile} \${k} \${ppn} \${tpr}
       writePlotFileNameScalapackCholesky \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
@@ -1045,7 +1054,7 @@ do
 	        then
                   originalNumPcols=\${numPcolsArrayOrig[\${w}]}
                   originalNumProws=\$(( \${StartingNumProcesses} / \${originalNumPcols} ))
-		  launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalNumProws} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
+		  launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalNumProws} \${originalNumPcols} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
                 fi
               done
 	    elif [ \${binaryTag} == 'cfr3d' ];
