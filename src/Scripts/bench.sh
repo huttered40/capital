@@ -3,7 +3,7 @@
 tag1='cqr2'
 tag2='bsqr'
 tag3='cfr3d'
-tag4='bench_scala_cholesky'
+tag4='bscf'
 
 # Product of PPN and TPR. Tells me how each node is being used.
 minPEcountPerNode=""
@@ -207,12 +207,26 @@ then
     make clean
     rm config.mk
     export PROFTYPE=PERFORMANCE
+    export SPECIAL_SCALA_ARG=MKL
     profType=P
     ./configure
     make bench_scala_qr
     cd -
     mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE}
     mv ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE} ../bin/
+
+    # Now build reference scalapack
+    cd ${scalaDir}
+    make clean
+    rm config.mk
+    export PROFTYPE=PERFORMANCE
+    export SPECIAL_SCALA_ARG=REF
+    profType=P
+    ./configure
+    make bench_scala_qr
+    cd -
+    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/rsqr_${machineName}_${PROFTYPE}
+    mv ${scalaDir}/bin/benchmarks/rsqr_${machineName}_${PROFTYPE} ../bin/
   fi
 fi
 
@@ -412,7 +426,7 @@ WriteHeaderForCollection () {
 }
 
 
-# Only for cqr2
+# Non-scalapack
 writePlotFileName() {
   # Performance runs will always run, so no reason for an if-statement here
   Prefix1=""
@@ -448,7 +462,7 @@ writePlotFileName() {
   fi
 }
 
-# Only for bsqr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
+# Only for bsqr/rsqr -- only necessary for Performance now. Might want to use Critter later, but not Profiler
 writePlotFileNameScalapackQR() {
   Prefix1=""
   Prefix2=""
@@ -469,7 +483,7 @@ writePlotFileNameScalapackQR() {
   fi
 }
 
-# Only for bench_scala_cholesky -- only necessary for Performance now. Might want to use Critter later, but not Profiler
+# Only for bscf -- only necessary for Performance now. Might want to use Critter later, but not Profiler
 writePlotFileNameScalapackCholesky() {
   Prefix1=""
   Prefix2=""
@@ -570,7 +584,7 @@ WriteMethodDataForCollectingStage1 () {
   echo "echo \"0\"" >> \${WriteFile}
   echo "echo \"\${MethodTag}\"" >> \${WriteFile}
   echo "echo \"\${FileName1}\"" >> \${WriteFile}
-  if [ "\${MethodTag}" != "bench_scala_cholesky" ];
+  if [ "\${MethodTag}" != "bscf" ];
   then
     echo "echo \"\${FileName2}\"" >> \${WriteFile}
   fi
@@ -601,7 +615,7 @@ WriteMethodDataForCollectingStage2 () {
     echo "echo \"0\"" >> \${WriteFile}
     echo "echo \"\${MethodTag}\"" >> \${WriteFile}
     echo "echo \"\${PostFileName1}\"" >> \${WriteFile}
-    if [ "\${MethodTag}" != "bench_scala_cholesky" ];
+    if [ "\${MethodTag}" != "bscf" ];
     then
       echo "echo \"\${PostFileName2}\"" >> \${WriteFile}
     fi
@@ -614,7 +628,7 @@ WriteMethodDataForCollectingStage2 () {
       echo "echo \"\${PostFileNameBase}_timer\"" >> \${WriteFile}
     fi
     echo "echo \"\${PreFileName1}\"" >> \${WriteFile}
-    if [ "\${MethodTag}" != "bench_scala_cholesky" ];
+    if [ "\${MethodTag}" != "bscf" ];
     then
       echo "echo \"\${PreFileName2}\"" >> \${WriteFile}
     fi
@@ -626,22 +640,6 @@ WriteMethodDataForCollectingStage2 () {
     then
       echo "echo \"\${PreFileNameBase}_timer\"" >> \${WriteFile}
     fi
-  fi
-}
-
-
-launchJobsPortal () {
-  # Launch performance job always.
-  launchJobs \${@:2:\${#}}
-
-  # If analysis is turned on, launch Profiling job and Critter job.
-  if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
-  then
-    launchJobs \${@:2:\${7}} \${1}_CRITTER \${@:9:\${#}}
-  fi
-  if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
-  then
-    launchJobs \${@:2:\${7}} \${1}_TIMER \${@:9:\${#}}
   fi
 }
 
@@ -721,7 +719,7 @@ launch$tag1 () {
 
     WriteMethodDataForCollectingStage1 ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics \${PostFile} \${PostFile}_perf \${PostFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage2.sh
-    launchJobsPortal \${2} ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    launchJobsPortal \${binaryPath} ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done
@@ -733,44 +731,45 @@ launch$tag1 () {
 # For ScaLAPACK QR
 launch$tag2 () {
   # launch scaLAPACK_QR
-  local scale=\${1}
-  local binaryPath=\${2}
-  local numIterations=\${3}
-  local launchID=\${4}
-  local NumNodes=\${5}
-  local ppn=\${6}
-  local tpr=\${7}
-  local matrixDimM=\${8}
-  local matrixDimN=\${9}
-  local matrixDimMorig=\${10}
-  local matrixDimNorig=\${11}
-  local numProwsorig=\${12}
-  local numPcolsorig=\${13}
-  local numProws=\${14}
-  local minBlockSize=\${15}
-  local maxBlockSize=\${16}
-  local nodeIndex=\${17}
-  local scaleRegime=\${18}
-  local nodeCount=\${19}
+  local binaryTag=\${1}
+  local scale=\${2}
+  local binaryPath=\${3}
+  local numIterations=\${4}
+  local launchID=\${5}
+  local NumNodes=\${6}
+  local ppn=\${7}
+  local tpr=\${8}
+  local matrixDimM=\${9}
+  local matrixDimN=\${10}
+  local matrixDimMorig=\${11}
+  local matrixDimNorig=\${12}
+  local numProwsorig=\${13}
+  local numPcolsorig=\${14}
+  local numProws=\${15}
+  local minBlockSize=\${16}
+  local maxBlockSize=\${17}
+  local nodeIndex=\${18}
+  local scaleRegime=\${19}
+  local nodeCount=\${20}
   for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
   do
     # Set up the file string that will store the local benchmarking results
-    local fileString="DataFiles/results_${tag2}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    local fileString="DataFiles/results_\${binaryTag}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
-    local PreFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
-    local PostFile="${tag2}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${numProwsorig}_\${k}_\${ppn}_\${tpr}"
-    local UpdatePlotFile="${tag2}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${numPcolsorig}_\${k}"
+    local PreFile="\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
+    local PostFile="\${binaryTag}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${numProwsorig}_\${k}_\${ppn}_\${tpr}"
+    local UpdatePlotFile="\${binaryTag}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${numPcolsorig}_\${k}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag2} \${PostFile} \${numProws} \${k} \${ppn} \${tpr}
+      WriteMethodDataForPlotting 0 \${UpdatePlotFile} \${binaryTag} \${PostFile} \${numProws} \${k} \${ppn} \${tpr}
       writePlotFileNameScalapackQR \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
-    WriteMethodDataForCollectingStage1 ${tag2} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ $SCRATCH/${fileName}/collectInstructionsStage1.sh
-    WriteMethodDataForCollectingStage2 \${launchID} ${tag2} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ \${PostFile} \${PostFile}_NoFormQ \${PostFile}_FormQ $SCRATCH/${fileName}/collectInstructionsStage2.sh
-    launchJobsPortal \${2} ${tag2} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+    WriteMethodDataForCollectingStage1 \${binaryTag} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ $SCRATCH/${fileName}/collectInstructionsStage1.sh
+    WriteMethodDataForCollectingStage2 \${launchID} \${binaryTag} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ \${PostFile} \${PostFile}_NoFormQ \${PostFile}_FormQ $SCRATCH/${fileName}/collectInstructionsStage2.sh
+    launchJobsPortal \${binaryPath} \${binaryTag} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
     writePlotFileNameScalapackQR \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
   done
 }
@@ -812,7 +811,7 @@ launch$tag3 () {
   while [ \${curInverseCutOffMult} -le \${invCutOffLoopMax} ];
   do
     # Set up the file string that will store the local benchmarking results
-    local fileString="DataFiles/results_${tag3}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${cubeDim}cubeDim_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    local fileString="DataFiles/results_${tag3}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${cubeDim}cubeDim_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes"
     local PostFile="${tag3}_\${scale}_\${matrixDimMorig}_\${curInverseCutOffMult}_\${cubeDimorig}_\${ppn}_\${tpr}"
@@ -827,7 +826,7 @@ launch$tag3 () {
 
     WriteMethodDataForCollectingStage1 ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics \${PostFile} \${PostFile}_perf \${PostFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage2.sh
-    launchJobsPortal \${2} ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    launchJobsPortal \${binaryPath} ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done
@@ -869,7 +868,7 @@ launch$tag4 () {
 
     WriteMethodDataForCollectingStage1 ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah \${PostFile} \${PostFile} \${PostFile} $SCRATCH/${fileName}/collectInstructionsStage2.sh
-    launchJobsPortal \${2} ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${2}_PERFORMANCE \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    launchJobsPortal \${binaryPath} ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileNameScalapackCholesky \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
   done
 }
@@ -934,7 +933,7 @@ do
     echo -e "\nStage #\${j}"
 
     # Echo for SCAPLOT makefile generator
-    read -p "Enter binary tag [0 for CA-CQR2, 1 for bsqr, 2 for CFR3D, 3 for bscf, 4 for quit]: " binaryTagChoice
+    read -p "Enter binary tag [0 for CA-CQR2, 1 for bsqr, 2 for CFR3D, 3 for bscf, 4 for quit, 5 for rsqr]: " binaryTagChoice
     echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/collectInstructionsStage1.sh
     echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/collectInstructionsStage2.sh
     echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -957,6 +956,9 @@ do
     elif [ \${binaryTagChoice} == 3 ];
     then
       binaryTag=bscf
+    elif [ \${binaryTagChoice} == 5 ];
+    then
+      binaryTag=rsqr
     fi
 
     binaryPath=${BINPATH}\${binaryTag}_${machineName}
@@ -971,7 +973,7 @@ do
       read -p "Enter start range of starting tunable processor grid dimension c: " startStartPdimC
       read -p "Enter end range of starting tunable processor grid dimension c (for any node count * ppn pairing): " endStartPdimC
       # invCutOff shouldn't be asked for. It should, for now, range up to 2 from 0, unless I am seeing a pattern in performance.
-    elif [ \${binaryTag} == 'bsqr' ];
+    elif [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
     then
       read -p "Enter the starting number of processor grid columns: " startStartNumPcols
       read -p "Enter the ending number of processor grid columns: " endStartNumPcols
@@ -981,7 +983,7 @@ do
     elif [ \${binaryTag} == 'cfr3d' ];
     then
       read -p "Enter the starting (cubic) processor grid dimension: " cubeDim
-    elif [ \${binaryTag} == 'bench_scala_cholesky' ];
+    elif [ \${binaryTag} == 'bscf' ];
     then
       read -p "Enter the minimum block size: " minBlockSize
       read -p "Enter the maximum block size: " maxBlockSize
@@ -1009,11 +1011,11 @@ do
           rangePdimClen=\$(( \${rangePdimClen} + 1 ))
         done
       fi
-      # bsqr
+      # bsqr/rsqr
       numPcolsArray=()
       numPcolsArrayOrig=()
       rangeNumPcolslen=0
-      if [ \${binaryTag} == 'bsqr' ];
+      if [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
       then
         for ((w=\${startStartNumPcols}; w<=\${endStartNumPcols}; w*=2));
         do
@@ -1061,11 +1063,13 @@ do
 		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount}
 		  fi
 		done
-	      elif [ \${binaryTag} == 'bsqr' ];
+	      elif [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
 	      then
                 # Special case to watch out for.
-                if [ \${numProcesses} -lt 16384 ];
+                if [ \${binaryTag} == 'bsqr' ] && [ \${numProcesses} -ge 16384 ];
                 then
+                  continue
+                else
 		  for ((w=0; w<\${rangeNumPcolslen}; w+=1));
 		  do
 		    numPcols=\${numPcolsArray[\${w}]}
@@ -1074,14 +1078,15 @@ do
 		    then
 		      originalNumPcols=\${numPcolsArrayOrig[\${w}]}
 		      originalNumProws=\$(( \${StartingNumProcesses} / \${originalNumPcols} ))
-		      launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalNumProws} \${originalNumPcols} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
+                      sharedBinaryTag="bsqr"	# Even if rsqr, use bsqr and then have the corresponding method use the new argument for binaryTag
+		      launch\${sharedBinaryTag} \${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalNumProws} \${originalNumPcols} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
 		    fi
 		  done
                 fi
 	      elif [ \${binaryTag} == 'cfr3d' ];
 	      then
 		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${matrixDimM} \${cubeDim} \${curCubeDim} \${nodeIndex} \${scaleRegime} \${nodeCount}
-	      elif [ \${binaryTag} == 'bench_scala_cholesky' ];
+	      elif [ \${binaryTag} == 'bscf' ];
 	      then
 		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${matrixDimM} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
 	      fi
@@ -1101,7 +1106,7 @@ do
 	    echo "Do nothing"
           fi
           # below: bench scala qr
-	  if [ \${binaryTag} == 'bsqr' ];
+	  if [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
           then
 	    echo "Do nothing"
 	  fi
@@ -1119,7 +1124,7 @@ do
 	    echo "Do nothing"
 	  fi
 	  # below: bench scala qr
-	  if [ \${binaryTag} == 'bsqr' ];
+	  if [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
           then
 	    echo "Do nothing"
 	  fi
@@ -1147,7 +1152,7 @@ do
 	      done
             fi
             # below: bench scala qr
-	    if [ \${binaryTag} == 'bsqr' ];
+	    if [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
             then
               for ((w=0; w<\${rangeNumPcolslen}; w+=1));
               do
@@ -1165,7 +1170,7 @@ do
 	      echo "Do nothing"
 	    fi
             # below: bench scala qr
-	    if [ \${binaryTag} == 'bsqr' ];
+	    if [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
             then
 	      echo "Do nothing"
 	    fi
@@ -1236,7 +1241,7 @@ then
               qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
             else
               chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
-              sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+              #sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
             fi
           fi
           curTPR=$(( ${curTPR} * 2 ))

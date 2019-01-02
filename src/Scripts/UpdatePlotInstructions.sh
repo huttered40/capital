@@ -103,7 +103,7 @@ do
               then
                 saveMethodID+=(0)
               fi
-            elif [ "${binaryTag}" == "bsqr" ];
+            elif [ "${binaryTag}" == "bsqr" ] || [ "${binaryTag}" == "rsqr" ];
             then
               numGarbageReads=9
               if [ ${isUnique} -eq 1 ];
