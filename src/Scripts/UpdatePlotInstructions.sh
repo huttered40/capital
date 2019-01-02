@@ -128,6 +128,13 @@ do
               fi
             fi
 
+            if [ "${binaryTag}" == "cqr2" ] && [ "${scaleType}" == "WS" ];
+            then
+              incrAmount=$(( ${NodeCount} * 3 ))
+              incrAmount=$(( ${incrAmount} + 1 ))		# factors in the extra nodeCount that we don't need anymore
+              numGarbageReads=$(( ${numGarbageReads} + ${incrAmount} ))
+            fi
+
             NewTestData+=(${PlotTag})
             NewTestData+=(${binaryTag})
             NewTestData+=(${numGarbageReads})
@@ -226,5 +233,10 @@ do
 done
 
 rm plotInstructionsCopy.sh
-echo "What is this? ${1}${WriteFile}"
-mv ${WriteFile} ${1}${WriteFile}
+mv ${WriteFile} ${2}${WriteFile}
+
+# Redo the tar now that plotInstructionsNodeUsage.sh is included
+cd ${1}
+rm ${3}.tar
+tar -cvf ${3}.tar ${3}/*
+cd -
