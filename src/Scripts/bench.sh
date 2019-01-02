@@ -676,13 +676,15 @@ launch$tag1 () {
   local tpr=\${7}
   local matrixDimM=\${8}
   local matrixDimN=\${9}
-  local pDimDorig=\${10}
-  local pDimCorig=\${11}
-  local pDimD=\${12}
-  local pDimC=\${13}
-  local nodeIndex=\${14}
-  local scaleRegime=\${15}
-  local nodeCount=\${16}
+  local matrixDimMorig=\${10}
+  local matrixDimNorig=\${11}
+  local pDimDorig=\${12}
+  local pDimCorig=\${13}
+  local pDimD=\${14}
+  local pDimC=\${15}
+  local nodeIndex=\${16}
+  local scaleRegime=\${17}
+  local nodeCount=\${18}
   local bcDim=0
 
   # Next: Based on pDimC, decide on invCutOff parameter, which will range from 0 to a max of 2 for now
@@ -706,8 +708,8 @@ launch$tag1 () {
     local fileString="DataFiles/results_${tag1}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${pDimD}pDimD_\${pDimC}pDimC_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes"
-    local PostFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimDorig}_\${pDimCorig}_\${ppn}_\${tpr}"
-    local UpdatePlotFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimCorig}"
+    local PostFile="${tag1}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${curInverseCutOffMult}_\${pDimDorig}_\${pDimCorig}_\${ppn}_\${tpr}"
+    local UpdatePlotFile="${tag1}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${curInverseCutOffMult}_\${pDimCorig}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
@@ -740,22 +742,24 @@ launch$tag2 () {
   local tpr=\${7}
   local matrixDimM=\${8}
   local matrixDimN=\${9}
-  local numProwsorig=\${10}
-  local numPcolsorig=\${11}
-  local numProws=\${12}
-  local minBlockSize=\${13}
-  local maxBlockSize=\${14}
-  local nodeIndex=\${15}
-  local scaleRegime=\${16}
-  local nodeCount=\${17}
+  local matrixDimMorig=\${10}
+  local matrixDimNorig=\${11}
+  local numProwsorig=\${12}
+  local numPcolsorig=\${13}
+  local numProws=\${14}
+  local minBlockSize=\${15}
+  local maxBlockSize=\${16}
+  local nodeIndex=\${17}
+  local scaleRegime=\${18}
+  local nodeCount=\${19}
   for ((k=\${minBlockSize}; k<=\${maxBlockSize}; k*=2))
   do
     # Set up the file string that will store the local benchmarking results
     local fileString="DataFiles/results_${tag2}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${numProws}numProws_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
-    local PostFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProwsorig}_\${k}_\${ppn}_\${tpr}"
-    local UpdatePlotFile="${tag2}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numPcolsorig}_\${k}"
+    local PostFile="${tag2}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${numProwsorig}_\${k}_\${ppn}_\${tpr}"
+    local UpdatePlotFile="${tag2}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${numPcolsorig}_\${k}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
@@ -782,11 +786,12 @@ launch$tag3 () {
   local ppn=\${6}
   local tpr=\${7}
   local matrixDimM=\${8}
-  local cubeDimorig=\${9}
-  local cubeDim=\${10}
-  local nodeIndex=\${11}
-  local scaleRegime=\${12}
-  local nodeCount=\${13}
+  local matrixDimMorig=\${9}
+  local cubeDimorig=\${10}
+  local cubeDim=\${11}
+  local nodeIndex=\${12}
+  local scaleRegime=\${13}
+  local nodeCount=\${14}
   local bcDim=0
 
   # Next: Based on pDimC, decide on invCutOff parameter, which will range from 0 to a max of 2 for now
@@ -810,8 +815,8 @@ launch$tag3 () {
     local fileString="DataFiles/results_${tag3}_\${1}_\${NumNodes}nodes_\${matrixDimM}dimM_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${cubeDim}cubeDim_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes"
-    local PostFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDimorig}_\${ppn}_\${tpr}"
-    local UpdatePlotFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDimorig}"
+    local PostFile="${tag3}_\${scale}_\${matrixDimMorig}_\${curInverseCutOffMult}_\${cubeDimorig}_\${ppn}_\${tpr}"
+    local UpdatePlotFile="${tag3}_\${scale}_\${matrixDimMorig}_\${curInverseCutOffMult}_\${cubeDimorig}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
@@ -840,6 +845,7 @@ launch$tag4 () {
   local ppn=\${6}
   local tpr=\${7}
   local matrixDimM=\${8}
+  local matrixDimMorig=\${8}
   local minBlockSize=\${9}
   local maxBlockSize=\${10}
   local nodeIndex=\${11}
@@ -851,8 +857,8 @@ launch$tag4 () {
     local fileString="DataFiles/results_${tag4}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${k}bSize_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag4}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
-    local PostFile="${tag4}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}"
-    local UpdatePlotFile="${tag4}_\${scale}_\${matrixDimM}_\${k}"
+    local PostFile="${tag4}_\${scale}_\${matrixDimMorig}_\${k}_\${ppn}_\${tpr}"
+    local UpdatePlotFile="${tag4}_\${scale}_\${matrixDimMorig}_\${k}"
 
     if [ \${nodeIndex} == 0 ];
     then
@@ -1052,28 +1058,32 @@ do
 		    originalPdimC=\${pDimCArrayOrig[\${w}]}
 		    originalPdimCsquared=\$(( \${originalPdimC} * \${originalPdimC} ))
 		    originalPdDimD=\$(( \${StartingNumProcesses} / \${originalPdimCsquared} ))
-		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount}
+		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount}
 		  fi
 		done
 	      elif [ \${binaryTag} == 'bsqr' ];
 	      then
-		for ((w=0; w<\${rangeNumPcolslen}; w+=1));
-		do
-		  numPcols=\${numPcolsArray[\${w}]}
-		  numProws=\$(( \${numProcesses} / \${numPcols} ))
-		  if [ \${numPcols} -le \${numProws} ];
-		  then
-		    originalNumPcols=\${numPcolsArrayOrig[\${w}]}
-		    originalNumProws=\$(( \${StartingNumProcesses} / \${originalNumPcols} ))
-		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalNumProws} \${originalNumPcols} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
-		  fi
-		done
+                # Special case to watch out for.
+                if [ \${numProcesses} -lt 16384 ];
+                then
+		  for ((w=0; w<\${rangeNumPcolslen}; w+=1));
+		  do
+		    numPcols=\${numPcolsArray[\${w}]}
+		    numProws=\$(( \${numProcesses} / \${numPcols} ))
+		    if [ \${numPcols} -le \${numProws} ];
+		    then
+		      originalNumPcols=\${numPcolsArrayOrig[\${w}]}
+		      originalNumProws=\$(( \${StartingNumProcesses} / \${originalNumPcols} ))
+		      launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalNumProws} \${originalNumPcols} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
+		    fi
+		  done
+                fi
 	      elif [ \${binaryTag} == 'cfr3d' ];
 	      then
-		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${cubeDim} \${curCubeDim} \${nodeIndex} \${scaleRegime} \${nodeCount}
+		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${matrixDimM} \${cubeDim} \${curCubeDim} \${nodeIndex} \${scaleRegime} \${nodeCount}
 	      elif [ \${binaryTag} == 'bench_scala_cholesky' ];
 	      then
-		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
+		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${matrixDimM} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
 	      fi
             fi
           done
