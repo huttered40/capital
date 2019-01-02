@@ -83,7 +83,7 @@ do
 
           read -p "Enter performance/NoFormQ file to write to: " preFilePerf
           preFileNumerics=""
-          if [ "${binaryTag}" != "bench_scala_cholesky" ];
+          if [ "${binaryTag}" != "bscf" ];
           then
 	    read -p "Enter numerics/FormQ file to write to: " preFileNumerics
           fi    
@@ -105,7 +105,7 @@ do
 #	  ./fileTransfer ${RESULTSPATH}/${srcDir}/${configFilePerf} ${RESULTSPATH}/${srcDir}/${InputFile} ${binaryTag} 1 ${k}
           WriteToPre ${SCRATCH}/${srcDir}/${InputFile} ${RESULTSPATH}/${destDir}/Pre/${preFilePerf}.txt
 
-	  if [ "${binaryTag}" != "bench_scala_cholesky" ];
+	  if [ "${binaryTag}" != "bscf" ];
 	  then 
 	    # Second, numerics
 	    read -p "Enter file to read from: " InputFile
