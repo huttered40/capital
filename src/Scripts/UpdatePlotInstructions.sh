@@ -226,4 +226,5 @@ do
 done
 
 rm plotInstructionsCopy.sh
+echo "What is this? ${1}${WriteFile}"
 mv ${WriteFile} ${1}${WriteFile}

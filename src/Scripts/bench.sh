@@ -6,8 +6,8 @@ tag3='cfr3d'
 tag4='bench_scala_cholesky'
 
 # Product of PPN and TPR. Tells me how each node is being used.
-minPEcountStampede2=16
-maxPEcountStampede2=256
+minPEcountPerNode=""
+maxPEcountPerNode=""
 
 # Make sure that the src/bin directory is created, or else compilation won't work
 if [ ! -d "../bin" ];
@@ -51,7 +51,9 @@ then
   machineName=STAMPEDE2
   scalaDir=~/CANDMC
   export MPITYPE=MPI_TYPE
-  mpiType=mpi
+  mpiType=mpi 
+  minPEcountPerNode=64
+  maxPEcountPerNode=128
 elif [ "$(hostname |grep "h2o")" != "" ];
 then
   machineName=BLUEWATERS
@@ -285,58 +287,63 @@ do
       curTPR=\${minTPR}
       while [ \${curTPR} -le \${maxTPR} ];
       do
-        scriptName=$SCRATCH/${fileName}/script_${fileID}id_${roundID}round_\${curLaunchID}launchID_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr.sh
-        if [ "${machineName}" == "BGQ" ];
+        # Make sure we are in a suitable range
+        numPEsPerNode=\$(( \${curPPN} * \${curTPR} ))
+        if [ ${minPEcountPerNode} -le \${numPEsPerNode} ] && [ ${maxPEcountPerNode} -ge \${numPEsPerNode} ];
         then
-          echo "#!/bin/sh" > \${scriptName}
-        elif [ "${machineName}" == "BLUEWATERS" ];
-        then
-          echo "#!/bin/bash" > \${scriptName}
-          echo "#PBS -l nodes=\${curNumNodes}:ppn=\${curPPN}:xe" >> \${scriptName}
-          echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
-          echo "#PBS -N testjob" >> \${scriptName}
-          echo "#PBS -e ${fileName}_\${curNumNodes}_\${curTPR}.err" >> \${scriptName}
-          echo "#PBS -o ${fileName}_\${curNumNodes}_\${curTPR}.out" >> \${scriptName}
-          echo "##PBS -m Ed" >> \${scriptName}
-          echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
-          echo "##PBS -A xyz" >> \${scriptName}
-          echo "#PBS -W umask=0027" >> \${scriptName}
-#          echo "cd \${PBS_O_WORKDIR}" >> \${scriptName}
-          echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
-          echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
-        elif [ "${machineName}" == "THETA" ];
-        then
-          echo "#!/bin/bash" > \${scriptName}
-          echo "#COBALT -t ${numMinutes}" >> \${scriptName}
-          echo "#COBALT -n \${curNumNodes}" >> \${scriptName}
-          echo "#COBALT --attrs mcdram=cache:numa=quad" >> \${scriptName}
-          echo "#COBALT -A QMCat" >> \${scriptName}
-          echo "export n_nodes=\${curNumNodes}" >> \${scriptName}
-          echo "export n_mpi_ranks_per_node=\${curPPN}" >> \${scriptName}
-          echo "export n_mpi_ranks=\$((\${curNumNodes} * \${curPPN}))" >> \${scriptName}
-          read -p "Enter number of OpenMP threads per rank: " numOMPthreadsPerRank
-          read -p "Enter number of hyperthreads per core: " numHyperThreadsPerCore
-          read -p "Enter number of hyperthreads skipped per rank: " numHyperThreadsSkippedPerRank
-          echo "export n_openmp_threads_per_rank=\${numOMPthreadsPerRank}" >> \${scriptName}
-          echo "export n_hyperthreads_per_core=\${numHyperThreadsPerCore}" >> \${scriptName}
-          echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \${scriptName}
-        elif [ "${machineName}" == "STAMPEDE2" ];
-        then
-          echo "bash script name: \${scriptName}"
-          echo "#!/bin/bash" > \${scriptName}
-          echo "#SBATCH -J myjob_${fileID}id_${roundID}round_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr" >> \${scriptName}
-          echo "#SBATCH -o myjob_${fileID}id_${roundID}round_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr.o%j" >> \${scriptName}
-          echo "#SBATCH -e myjob_${fileID}id_${roundID}round_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr.e%j" >> \${scriptName}
-          if [ \${curNumNodes} -le 256 ];
-          then
-            echo "#SBATCH -p normal" >> \${scriptName}
-          else
-            echo "#SBATCH -p large" >> \${scriptName}
-          fi
-          echo "#SBATCH -N \${curNumNodes}" >> \${scriptName}
-          echo "#SBATCH -n \$((\${curNumNodes} * \${curPPN}))" >> \${scriptName}
-          echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
-          echo "export MKL_NUM_THREADS=\${curTPR}" >> \${scriptName}
+	  scriptName=$SCRATCH/${fileName}/script_${fileID}id_${roundID}round_\${curLaunchID}launchID_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr.sh
+	  if [ "${machineName}" == "BGQ" ];
+	  then
+	    echo "#!/bin/sh" > \${scriptName}
+	  elif [ "${machineName}" == "BLUEWATERS" ];
+	  then
+	    echo "#!/bin/bash" > \${scriptName}
+	    echo "#PBS -l nodes=\${curNumNodes}:ppn=\${curPPN}:xe" >> \${scriptName}
+	    echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
+	    echo "#PBS -N testjob" >> \${scriptName}
+	    echo "#PBS -e ${fileName}_\${curNumNodes}_\${curTPR}.err" >> \${scriptName}
+	    echo "#PBS -o ${fileName}_\${curNumNodes}_\${curTPR}.out" >> \${scriptName}
+	    echo "##PBS -m Ed" >> \${scriptName}
+	    echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
+	    echo "##PBS -A xyz" >> \${scriptName}
+	    echo "#PBS -W umask=0027" >> \${scriptName}
+  #          echo "cd \${PBS_O_WORKDIR}" >> \${scriptName}
+	    echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
+	    echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
+	  elif [ "${machineName}" == "THETA" ];
+	  then
+	    echo "#!/bin/bash" > \${scriptName}
+	    echo "#COBALT -t ${numMinutes}" >> \${scriptName}
+	    echo "#COBALT -n \${curNumNodes}" >> \${scriptName}
+	    echo "#COBALT --attrs mcdram=cache:numa=quad" >> \${scriptName}
+	    echo "#COBALT -A QMCat" >> \${scriptName}
+	    echo "export n_nodes=\${curNumNodes}" >> \${scriptName}
+	    echo "export n_mpi_ranks_per_node=\${curPPN}" >> \${scriptName}
+	    echo "export n_mpi_ranks=\$((\${curNumNodes} * \${curPPN}))" >> \${scriptName}
+	    read -p "Enter number of OpenMP threads per rank: " numOMPthreadsPerRank
+	    read -p "Enter number of hyperthreads per core: " numHyperThreadsPerCore
+	    read -p "Enter number of hyperthreads skipped per rank: " numHyperThreadsSkippedPerRank
+	    echo "export n_openmp_threads_per_rank=\${numOMPthreadsPerRank}" >> \${scriptName}
+	    echo "export n_hyperthreads_per_core=\${numHyperThreadsPerCore}" >> \${scriptName}
+	    echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \${scriptName}
+	  elif [ "${machineName}" == "STAMPEDE2" ];
+	  then
+	    echo "bash script name: \${scriptName}"
+	    echo "#!/bin/bash" > \${scriptName}
+	    echo "#SBATCH -J myjob_${fileID}id_${roundID}round_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr" >> \${scriptName}
+	    echo "#SBATCH -o myjob_${fileID}id_${roundID}round_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr.o%j" >> \${scriptName}
+	    echo "#SBATCH -e myjob_${fileID}id_${roundID}round_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr.e%j" >> \${scriptName}
+	    if [ \${curNumNodes} -le 256 ];
+	    then
+	      echo "#SBATCH -p normal" >> \${scriptName}
+	    else
+	      echo "#SBATCH -p large" >> \${scriptName}
+	    fi
+	    echo "#SBATCH -N \${curNumNodes}" >> \${scriptName}
+	    echo "#SBATCH -n \$((\${curNumNodes} * \${curPPN}))" >> \${scriptName}
+	    echo "#SBATCH -t ${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
+	    echo "export MKL_NUM_THREADS=\${curTPR}" >> \${scriptName}
+	  fi
         fi
         curTPR=\$(( \${curTPR} * 2 ))
       done
@@ -1024,45 +1031,50 @@ do
           maxTPR=\${tprMaxListRunTime[\${nodeIndex}]}
 	  for ((curTPR=\${minTPR}; curTPR<=\${maxTPR}; curTPR*=2));
 	  do
-            # Now decide on a method:
-
-            if [ \${binaryTag} == 'cqr2' ];
+            # Make sure we are in a suitable range
+            numPEsPerNode=\$(( \${curPPN} * \${curTPR} ))
+            if [ ${minPEcountPerNode} -le \${numPEsPerNode} ] && [ ${maxPEcountPerNode} -ge \${numPEsPerNode} ];
             then
-	      # Below: note that the STARTING dimC is being changed. The parameters that aren't solely dependent on the node count are
-	      #   changed here and not in launchTag***
-	      for ((w=0; w<\${rangePdimClen}; w+=1));
-	      do
-	        pDimC=\${pDimCArray[\${w}]}
-                pDimCsquared=\$(( \${pDimC} * \${pDimC} ))
-                pDimD=\$(( \${numProcesses} / \${pDimCsquared} ))
-	        # Check if pDimC is too big. If so, pDimD will be 0
-	        if [ \${pDimD} -ge \${pDimC} ];
-	        then
-                  originalPdimC=\${pDimCArrayOrig[\${w}]}
-                  originalPdimCsquared=\$(( \${originalPdimC} * \${originalPdimC} ))
-                  originalPdDimD=\$(( \${StartingNumProcesses} / \${originalPdimCsquared} ))
-		  launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount}
-	        fi
-              done
-	    elif [ \${binaryTag} == 'bsqr' ];
-	    then
-	      for ((w=0; w<\${rangeNumPcolslen}; w+=1));
-	      do
-	        numPcols=\${numPcolsArray[\${w}]}
-                numProws=\$(( \${numProcesses} / \${numPcols} ))
-	        if [ \${numPcols} -le \${numProws} ];
-	        then
-                  originalNumPcols=\${numPcolsArrayOrig[\${w}]}
-                  originalNumProws=\$(( \${StartingNumProcesses} / \${originalNumPcols} ))
-		  launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalNumProws} \${originalNumPcols} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
-                fi
-              done
-	    elif [ \${binaryTag} == 'cfr3d' ];
-	    then
-              launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${cubeDim} \${curCubeDim} \${nodeIndex} \${scaleRegime} \${nodeCount}
-	    elif [ \${binaryTag} == 'bench_scala_cholesky' ];
-	    then
-              launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
+	      # Now decide on a method:
+
+	      if [ \${binaryTag} == 'cqr2' ];
+	      then
+		# Below: note that the STARTING dimC is being changed. The parameters that aren't solely dependent on the node count are
+		#   changed here and not in launchTag***
+		for ((w=0; w<\${rangePdimClen}; w+=1));
+		do
+		  pDimC=\${pDimCArray[\${w}]}
+		  pDimCsquared=\$(( \${pDimC} * \${pDimC} ))
+		  pDimD=\$(( \${numProcesses} / \${pDimCsquared} ))
+		  # Check if pDimC is too big. If so, pDimD will be 0
+		  if [ \${pDimD} -ge \${pDimC} ];
+		  then
+		    originalPdimC=\${pDimCArrayOrig[\${w}]}
+		    originalPdimCsquared=\$(( \${originalPdimC} * \${originalPdimC} ))
+		    originalPdDimD=\$(( \${StartingNumProcesses} / \${originalPdimCsquared} ))
+		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount}
+		  fi
+		done
+	      elif [ \${binaryTag} == 'bsqr' ];
+	      then
+		for ((w=0; w<\${rangeNumPcolslen}; w+=1));
+		do
+		  numPcols=\${numPcolsArray[\${w}]}
+		  numProws=\$(( \${numProcesses} / \${numPcols} ))
+		  if [ \${numPcols} -le \${numProws} ];
+		  then
+		    originalNumPcols=\${numPcolsArrayOrig[\${w}]}
+		    originalNumProws=\$(( \${StartingNumProcesses} / \${originalNumPcols} ))
+		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${originalNumProws} \${originalNumPcols} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
+		  fi
+		done
+	      elif [ \${binaryTag} == 'cfr3d' ];
+	      then
+		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${cubeDim} \${curCubeDim} \${nodeIndex} \${scaleRegime} \${nodeCount}
+	      elif [ \${binaryTag} == 'bench_scala_cholesky' ];
+	      then
+		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
+	      fi
             fi
           done
         done
@@ -1202,15 +1214,20 @@ then
         curTPR=${minTPR}
         while [ ${curTPR} -le ${maxTPR} ];
         do
-          if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ];
+          # Make sure we are in a suitable range
+          numPEsPerNode=$(( ${curPPN} * ${curTPR} ))
+          if [ ${minPEcountPerNode} -le ${numPEsPerNode} ] && [ ${maxPEcountPerNode} -ge ${numPEsPerNode} ];
           then
-            qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
-          elif [ "${machineName}" == "BLUEWATERS" ];
-          then
-            qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
-          else
-            chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
-            #sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+            if [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ];
+            then
+              qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+            elif [ "${machineName}" == "BLUEWATERS" ];
+            then
+              qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
+            else
+              chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+              sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+            fi
           fi
           curTPR=$(( ${curTPR} * 2 ))
         done
