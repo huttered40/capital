@@ -106,7 +106,7 @@ done
 
 # Write to a new file that will offer opportunity to mutate plotInstructions in order to analyze the node usage in scaling studies.
 echo "cp ${RESULTSPATH}/${destDir}/plotInstructions.sh plotInstructions.sh" > updatePlotScript.sh
-echo "bash UpdatePlotInstructions.sh ${RESULTSPATH} ${RESULTSPATH}/${destDir}/ ${RESULTSPATH}/${destDir} \${1}" >> updatePlotScript.sh
+echo "bash UpdatePlotInstructions.sh ${RESULTSPATH} ${RESULTSPATH}/${destDir}/ ${destDir} \${1}" >> updatePlotScript.sh
 
 cd ${RESULTSPATH}
 tar -cvf ${destDir}.tar ${destDir}/*
