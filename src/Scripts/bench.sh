@@ -549,10 +549,11 @@ WriteMethodDataForPlotting () {
 
 TemporaryDCplotInfo () {
   local scaleRegime=\${1}
-  local nodeCount=\${2}
-  local pDimD=\${3}
-  local pDimC=\${4}
-  local trickOffset=0
+  local nodeIndex=\${2}
+  local nodeCount=\${3}
+  local pDimD=\${4}
+  local pDimC=\${5}
+  local trickOffset=\${6}
   # New important addition: For special weak scaling, need to print out the number of (d,c) for the binary first, and then each of them in groups of {d,c,(d,c)}
   # Note: still not 100% convinced this is necessary. Need to study scaplot first to make a decision on it.
   # Write to plotInstructions file
@@ -562,7 +563,7 @@ TemporaryDCplotInfo () {
     curD=\${pDimD}
     curC=\${pDimC}
     trickOffsetTemp=\${trickOffset}
-    for ((z=0; z<\${nodeCount}; z++))
+    for ((z=\${nodeIndex}; z<\${nodeCount}; z++))
     do
       echo "echo \"\${curD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${curC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -690,6 +691,7 @@ launch$tag1 () {
   local nodeIndex=\${16}
   local scaleRegime=\${17}
   local nodeCount=\${18}
+  local WScounterOffset=\${19}
   local bcDim=0
 
   # Next: Based on pDimC, decide on invCutOff parameter, which will range from 0 to a max of 2 for now
@@ -736,7 +738,7 @@ launch$tag1 () {
     if [ \${nodeIndex} == 0 ] || [ \${isUniqueTag} -eq 1 ];
     then
       WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag1} \${PostFile} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
-      TemporaryDCplotInfo \${scaleRegime} \${nodeCount} \${pDimD} \${pDimC} 
+      TemporaryDCplotInfo \${scaleRegime} \${nodeIndex} \${nodeCount} \${pDimD} \${pDimC} \${WScounterOffset}
       writePlotFileName \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1  
     fi
 
@@ -1091,7 +1093,7 @@ do
 		    originalPdimC=\${pDimCArrayOrig[\${w}]}
 		    originalPdimCsquared=\$(( \${originalPdimC} * \${originalPdimC} ))
 		    originalPdDimD=\$(( \${StartingNumProcesses} / \${originalPdimCsquared} ))
-		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount}
+		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount} \${WShelpcounter}
 		  fi
 		done
 	      elif [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];

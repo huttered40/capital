@@ -37,11 +37,12 @@ do
 
   for ((i=0;i<${numTests};i++));
   do
+    echo "TEST ${i} of ${numTests}"
     # Read in the information static to each test
     read scaleType
     read NodeCount
     saveNodeNum=()
-    for ((i=0;i<${NodeCount};i++));
+    for ((j=0;j<${NodeCount};j++));
     do
       read nodeNum
       saveNodeNum+=(${nodeNum})
