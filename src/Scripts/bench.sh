@@ -200,39 +200,42 @@ then
 fi
 
 
-# Build CANDMC code (only if testing performance, not for profiling)
-if [ "${profType}" == "P" ];
+# Build CANDMC code
+read -p "Build scalapack? Yes[1], No[0]: " buildScala
+if [ ${buildScala} -eq 1 ];
 then
-  if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ] || [ "${machineName}" == "BLUEWATERS" ];
+  if [ "${profType}" == "P" ];
   then
-    # ScaLAPACK should now work for both analyzing (critter only) and performance
-    cd ${scalaDir}
-    make clean
-    rm config.mk
-    export PROFTYPE=PERFORMANCE
-    export SPECIAL_SCALA_ARG=MKL
-    profType=P
-    ./configure
-    make bench_scala_qr
-    cd -
-    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE}
-    mv ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE} ../bin/
+    if [ "${machineName}" == "THETA" ] || [ "${machineName}" == "STAMPEDE2" ] || [ "${machineName}" == "BLUEWATERS" ];
+    then
+      # ScaLAPACK should now work for both analyzing (critter only) and performance
+      cd ${scalaDir}
+      make clean
+      rm config.mk
+      export PROFTYPE=PERFORMANCE
+      export SPECIAL_SCALA_ARG=MKL
+      profType=P
+      ./configure
+      make bench_scala_qr
+      cd -
+      mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE}
+      mv ${scalaDir}/bin/benchmarks/bsqr_${machineName}_${PROFTYPE} ../bin/
 
-    # Now build reference scalapack
-    cd ${scalaDir}
-    make clean
-    rm config.mk
-    export PROFTYPE=PERFORMANCE
-    export SPECIAL_SCALA_ARG=REF
-    profType=P
-    ./configure
-    make bench_scala_qr
-    cd -
-    mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/rsqr_${machineName}_${PROFTYPE}
-    mv ${scalaDir}/bin/benchmarks/rsqr_${machineName}_${PROFTYPE} ../bin/
+      # Now build reference scalapack
+      cd ${scalaDir}
+      make clean
+      rm config.mk
+      export PROFTYPE=PERFORMANCE
+      export SPECIAL_SCALA_ARG=REF
+      profType=P
+      ./configure
+      make bench_scala_qr
+      cd -
+      mv ${scalaDir}/bin/benchmarks/bench_scala_qr ${scalaDir}/bin/benchmarks/rsqr_${machineName}_${PROFTYPE}
+      mv ${scalaDir}/bin/benchmarks/rsqr_${machineName}_${PROFTYPE} ../bin/
+    fi
   fi
 fi
-
 if [ "${machineName}" == "BGQ" ];
 then
   export SCRATCH=/projects/QMCat/huttered
