@@ -68,6 +68,8 @@ read -p "What round is this? " roundID
 read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
 read -p "Also enter factor to scale number of nodes: " nodeScaleFactor
+read -p "Also enter factor to scale PPN: " ppnScaleFactor
+read -p "Also enter factor to scale thread-per-rank: " tprScaleFactor
 read -p "Enter number of launches per binary: " NumLaunchesPerBinary
 
 ppnMinList=()
@@ -105,6 +107,7 @@ elif [ "${machineName}" == "BGQ" ] || [ "${machineName}" == "THETA" ];
 then
   read -p "Enter number of minutes of job: " numMinutes
 fi
+read -p "Enter email for job update: " MyEmail
 
 fileName=benchQR_launch${fileID}_${dateStr}_${machineName}_round${roundID}
 fileNameToProcess=benchQR_launch${fileID}_${machineName}	# Name of the corresponding directory in PAA_data. Allows for appending multiple runs
@@ -362,9 +365,9 @@ do
 	    echo "export MKL_NUM_THREADS=\${curTPR}" >> \${scriptName}
 	  fi
         fi
-        curTPR=\$(( \${curTPR} * 2 ))
+        curTPR=\$(( \${curTPR} * ${tprScaleFactor} ))
       done
-      curPPN=\$(( \${curPPN} * 2 ))
+      curPPN=\$(( \${curPPN} * ${ppnScaleFactor} ))
       tprIndex=\$(( \${tprIndex} + 1 ))
     done
     curNumNodes=\$(( \${curNumNodes} * ${nodeScaleFactor} ))   # So far, only use cases for nodeScaleFactor are 2 and 16.
@@ -546,10 +549,11 @@ WriteMethodDataForPlotting () {
 
 TemporaryDCplotInfo () {
   local scaleRegime=\${1}
-  local nodeCount=\${2}
-  local pDimD=\${3}
-  local pDimC=\${4}
-  local trickOffset=0
+  local nodeIndex=\${2}
+  local nodeCount=\${3}
+  local pDimD=\${4}
+  local pDimC=\${5}
+  local trickOffset=\${6}
   # New important addition: For special weak scaling, need to print out the number of (d,c) for the binary first, and then each of them in groups of {d,c,(d,c)}
   # Note: still not 100% convinced this is necessary. Need to study scaplot first to make a decision on it.
   # Write to plotInstructions file
@@ -559,7 +563,7 @@ TemporaryDCplotInfo () {
     curD=\${pDimD}
     curC=\${pDimC}
     trickOffsetTemp=\${trickOffset}
-    for ((z=0; z<\${nodeCount}; z++))
+    for ((z=\${nodeIndex}; z<\${nodeCount}; z++))
     do
       echo "echo \"\${curD}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
       echo "echo \"\${curC}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -666,6 +670,7 @@ launchJobsPortal () {
 ###################################################### Method Launches ######################################################
 
 # For CA-CQR2
+collectPlotTags=()
 launch$tag1 () {
   # launch CQR2
   local scale=\${1}
@@ -686,6 +691,7 @@ launch$tag1 () {
   local nodeIndex=\${16}
   local scaleRegime=\${17}
   local nodeCount=\${18}
+  local WScounterOffset=\${19}
   local bcDim=0
 
   # Next: Based on pDimC, decide on invCutOff parameter, which will range from 0 to a max of 2 for now
@@ -706,23 +712,39 @@ launch$tag1 () {
   while [ \${curInverseCutOffMult} -le \${invCutOffLoopMax} ];
   do
     # Set up the file string that will store the local benchmarking results
-    local fileString="DataFiles/results_${tag1}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${pDimD}pDimD_\${pDimC}pDimC_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+    local fileString="DataFiles/results_${tag1}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${curInverseCutOffMult}inverseCutOffMult_0bcMult_0panelDimMult_\${pDimD}pDimD_\${pDimC}pDimC_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${launchID}launchID"
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes"
     local PostFile="${tag1}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${curInverseCutOffMult}_\${pDimDorig}_\${pDimCorig}_\${ppn}_\${tpr}"
     local UpdatePlotFile="${tag1}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${curInverseCutOffMult}_\${pDimCorig}"
 
+    # Special corner case that only occurs for weak scaling, where invCutOff can increment abruptly to a value its never been before.
+    isUniqueTag=1
+    collectPlotTagArrayLen=\${#collectPlotTags[@]}
+    for ((i=0;i<\${collectPlotTagArrayLen};i++));
+    do
+      if [ "\${PostFile}" == "\${collectPlotTags[\${i}]}" ];
+      then
+        isUniqueTag=0
+      fi
+    done
+    if [ \${isUniqueTag} -eq 1 ];
+    then
+      echo "HERE, plotTags -- \${collectPlotTags[@]}"
+      collectPlotTags+=(\${PostFile})
+    fi
+
     # Plot instructions only need a single output per scaling study
-    if [ \${nodeIndex} == 0 ];
+    if [ \${nodeIndex} == 0 ] || [ \${isUniqueTag} -eq 1 ];
     then
       WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag1} \${PostFile} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
-      TemporaryDCplotInfo \${scaleRegime} \${nodeCount} \${pDimD} \${pDimC} 
+      TemporaryDCplotInfo \${scaleRegime} \${nodeIndex} \${nodeCount} \${pDimD} \${pDimC} \${WScounterOffset}
       writePlotFileName \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1  
     fi
 
     WriteMethodDataForCollectingStage1 ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics \${PostFile} \${PostFile}_perf \${PostFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage2.sh
-    launchJobsPortal \${binaryPath} ${tag1} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    launchJobsPortal \${binaryPath} ${tag1} \${fileString} \${launchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done
@@ -1000,7 +1022,7 @@ do
       nodeIndex=0
       curMatrixDimM=\${matrixDimM}
       curMatrixDimN=\${matrixDimN}
-      WShelpcounter=0
+      WShelpcounter=0			# change if we want to start at node offset (rare)
       # cqr2
       pDimCArray=()
       pDimCArrayOrig=()
@@ -1033,14 +1055,14 @@ do
       do
         minPPN=\${ppnMinListRunTime[\${nodeIndex}]}
         maxPPN=\${ppnMaxListRunTime[\${nodeIndex}]}
-        for ((curPPN=\${minPPN}; curPPN<=\${maxPPN}; curPPN*=2));
+        for ((curPPN=\${minPPN}; curPPN<=\${maxPPN}; curPPN*=${ppnScaleFactor}));
         do
           numProcesses=\$(( \${curNumNodes} * \${curPPN} ))
           StartingNumProcesses=\$(( \${startNumNodes} * \${curPPN} ))
 
           minTPR=\${tprMinListRunTime[\${nodeIndex}]}
           maxTPR=\${tprMaxListRunTime[\${nodeIndex}]}
-	  for ((curTPR=\${minTPR}; curTPR<=\${maxTPR}; curTPR*=2));
+	  for ((curTPR=\${minTPR}; curTPR<=\${maxTPR}; curTPR*=${tprScaleFactor}));
 	  do
             # Make sure we are in a suitable range
             numPEsPerNode=\$(( \${curPPN} * \${curTPR} ))
@@ -1057,13 +1079,21 @@ do
 		  pDimC=\${pDimCArray[\${w}]}
 		  pDimCsquared=\$(( \${pDimC} * \${pDimC} ))
 		  pDimD=\$(( \${numProcesses} / \${pDimCsquared} ))
+
+		  # Special check because performance for 16 PPN, 4 TPR shows superior performance for the skinniest grid
+                  isSpecial=1
+                  #if [ \${pDimC} -ne 1 ] && [ \${curPPN} -eq 16 ];
+                  #then
+                  #  isSpecial=0
+                  #fi
+
 		  # Check if pDimC is too big. If so, pDimD will be 0
-		  if [ \${pDimD} -ge \${pDimC} ];
+		  if [ \${pDimD} -ge \${pDimC} ] && [ \${isSpecial} == 1 ];
 		  then
 		    originalPdimC=\${pDimCArrayOrig[\${w}]}
 		    originalPdimCsquared=\$(( \${originalPdimC} * \${originalPdimC} ))
 		    originalPdDimD=\$(( \${StartingNumProcesses} / \${originalPdimCsquared} ))
-		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount}
+		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount} \${WShelpcounter}
 		  fi
 		done
 	      elif [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
@@ -1077,7 +1107,15 @@ do
 		  do
 		    numPcols=\${numPcolsArray[\${w}]}
 		    numProws=\$(( \${numProcesses} / \${numPcols} ))
-		    if [ \${numPcols} -le \${numProws} ];
+
+		    # Special check because performance for 16 PPN, 4 TPR shows superior performance for the skinniest grid for CA-CQR2
+                    isSpecial=1
+                    if [ \${curPPN} -eq 16 ];
+                    then
+                      isSpecial=0
+                    fi
+
+		    if [ \${numPcols} -le \${numProws} ] && [ \${isSpecial} == 1 ];
 		    then
 		      originalNumPcols=\${numPcolsArrayOrig[\${w}]}
 		      originalNumProws=\$(( \${StartingNumProcesses} / \${originalNumPcols} ))
@@ -1244,12 +1282,12 @@ then
               qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
             else
               chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
-              #sbatch ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+              #sbatch --mail-user=${MyEmail} --mail-type=all ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
             fi
           fi
-          curTPR=$(( ${curTPR} * 2 ))
+          curTPR=$(( ${curTPR} * ${ppnScaleFactor} ))
         done
-        curPPN=$(( ${curPPN} * 2 ))
+        curPPN=$(( ${curPPN} * ${tprScaleFactor} ))
         tprIndex=$(( ${tprIndex} + 1 ))
       done
       curNumNodes=$(( ${curNumNodes} * ${nodeScaleFactor} ))
