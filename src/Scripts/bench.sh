@@ -15,9 +15,6 @@ then
   mkdir ../bin
 fi
 
-# Lets remove the old instructions
-rm -f fileTransfer
-
 scalaDir=""
 machineName=""
 mpiType=""
