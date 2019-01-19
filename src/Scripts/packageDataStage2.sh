@@ -2,23 +2,23 @@
 
 if [ "$(hostname |grep "porter")" != "" ]
 then
-  export SCRATCH=../../../PAA_data
-  export RESULTSPATH=../../../PAA_data
+  export SCRATCH=../../../CAMFS_data
+  export RESULTSPATH=../../../CAMFS_data
 elif [ "$(hostname |grep "mira")" != "" ] || [ "$(hostname |grep "cetus")" != "" ]
 then
   export SCRATCH=/projects/QMCat/huttered
-  export RESULTSPATH=../../../PAA_data
+  export RESULTSPATH=../../../CAMFS_data
 elif [ "$(hostname |grep "theta")" != "" ]
 then
   export SCRATCH=/projects/QMCat/huttered
-  export RESULTSPATH=../../../PAA_data
+  export RESULTSPATH=../../../CAMFS_data
 elif [ "$(hostname |grep "h2o")" != "" ]
 then
   export SCRATCH=/scratch/sciteam/hutter/
-  export RESULTSPATH=../../../PAA_data
+  export RESULTSPATH=../../../CAMFS_data
 elif [ "$(hostname |grep "stampede2")" != "" ]
 then
-  export RESULTSPATH=../../../PAA_data
+  export RESULTSPATH=../../../CAMFS_data
 fi
 
 read -p "Enter the directory name within ${SCRATCH} where the results are hidden: " srcDir

@@ -110,7 +110,7 @@ fi
 read -p "Enter email for job update: " MyEmail
 
 fileName=benchQR_launch${fileID}_${dateStr}_${machineName}_round${roundID}
-fileNameToProcess=benchQR_launch${fileID}_${machineName}	# Name of the corresponding directory in PAA_data. Allows for appending multiple runs
+fileNameToProcess=benchQR_launch${fileID}_${machineName}	# Name of the corresponding directory in CAMFS_data. Allows for appending multiple runs
 
 # Below: might delete. Not sure if this is really necessary, but don't currently want to delete it before I'm sure.
 #if [ "${machineName}" == "STAMPEDE2" ];   # Will allow me to run multiple jobs with different numThreadsPerRank without the fileName aliasing.
@@ -141,7 +141,7 @@ then
   export INTTYPE=INT64_T_TYPE
 fi
 
-# Build PAA code
+# Build CAMFS code
 # Build separately for performance runs, critter runs, and profiling runs. To properly analyze, all 3 are necessary.
 # Any one without the other two renders it meaningless.
 
@@ -252,7 +252,7 @@ then
   export BINPATH=${SCRATCH}/${fileName}/bin/
 elif [ "${machineName}" == "PORTER" ];
 then
-  export SCRATCH=../../../PAA_data
+  export SCRATCH=../../../CAMFS_data
   export BINPATH=./../bin/
 fi
 
@@ -908,7 +908,7 @@ echo "echo \"${machineName}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${profType}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 echo "echo \"${nodeScaleFactor}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
 
-# Echo for data collection from remote machine (not porter) to PAA/src/Results
+# Echo for data collection from remote machine (not porter) to CAMFS/src/Results
 # This temporary file will be deleted while collectScript.sh is called.
 WriteHeaderForCollection $SCRATCH/${fileName}/collectInstructionsStage1.sh
 WriteHeaderForCollection $SCRATCH/${fileName}/collectInstructionsStage2.sh
