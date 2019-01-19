@@ -257,7 +257,7 @@ then
 fi
 
 # collectData.sh will always be a single line, just a necessary intermediate step.
-echo "bash $SCRATCH/${fileName}/collectInstructionsStage1.sh | bash packageDataStage1.sh" > collectData.sh
+echo "bash $SCRATCH/${fileName}/collectInstructionsStage1.sh | bash PackageDataRemoteStage1.sh" > collectData.sh
 # plotData.sh will always be a single line, just a necessary intermediate step.
 
 cat <<-EOF > $SCRATCH/${fileName}.sh

@@ -34,7 +34,7 @@ then
   rm ${RESULTSPATH}/${destDir}/Post/Stats/*
 fi
 
-g++ fileTransfer.cpp -o fileTransfer
+g++ RunStats.cpp -o RunStats
 read -p "Enter number of tests: " numTests
 
 for ((i=0; i<${numTests}; i++))
@@ -73,26 +73,26 @@ do
 	  # First, performance
 	  # Currently, every other input file will be performance (if profType=="P", if =="A", then every 4 is performance), so that is how this inner-loop code will be structured
 	  read -p "Enter file to read from: " InputFile
-	  ./fileTransfer ${RESULTSPATH}/${destDir}/Post/ ${postFilePerf} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 1 0
+	  ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFilePerf} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 1 0
 
 	  if [ "${binaryTag}" != "bench_scala_cholesky" ];
 	  then 
 	    # Second, numerics
 	    read -p "Enter file to read from: " InputFile
-	    ./fileTransfer ${RESULTSPATH}/${destDir}/Post/ ${postFileNumerics} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 2 0
+	    ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFileNumerics} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 2 0
 	  fi
 
 	  if [ "${profType}" == "PC"  ] || [ "${profType}" == "PCT" ];
 	  then
 	    # Third, critter
 	    read -p "Enter file to read from: " InputFile
-	    ./fileTransfer ${RESULTSPATH}/${destDir}/Post/ ${postFileCritter} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 3 0
+	    ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFileCritter} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 3 0
 	  fi
 	  if [ "${profType}" == "PT"  ] || [ "${profType}" == "PCT" ];
 	  then
 	    # Fourth, timer
 	    read -p "Enter file to read from: " InputFile
-	    ./fileTransfer ${RESULTSPATH}/${destDir}/Post/ ${postFileTimer} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 4 0
+	    ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFileTimer} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 4 0
 	  fi
         else
           break
@@ -111,7 +111,7 @@ echo "bash UpdatePlotInstructions.sh ${RESULTSPATH} ${RESULTSPATH}/${destDir}/ $
 cd ${RESULTSPATH}
 tar -cvf ${destDir}.tar ${destDir}/*
 cd -
-rm fileTransfer
+rm RunStats
 rm collectDataStage2.sh
 
 # Start stage 3

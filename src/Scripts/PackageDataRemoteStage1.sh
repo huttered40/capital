@@ -50,7 +50,7 @@ then
     mkdir ${RESULTSPATH}/${destDir}/Post	# Post is where the analyzed datafiles are written to. This does not happen in this file
     mkdir ${RESULTSPATH}/${destDir}/Post/Raw
     mkdir ${RESULTSPATH}/${destDir}/Post/Stats
-    echo "bash ${RESULTSPATH}/${destDir}/collectInstructionsStage2.sh | bash packageDataStage2.sh" > collectDataStage2.sh
+    echo "bash ${RESULTSPATH}/${destDir}/collectInstructionsStage2.sh | bash PackageDataRemoteStage2.sh" > collectDataStage2.sh
   fi
   mkdir ${RESULTSPATH}/${destDir}/${srcDir}/
   cp -r ${SCRATCH}/${srcDir}/* ${RESULTSPATH}/${destDir}/${srcDir}/
