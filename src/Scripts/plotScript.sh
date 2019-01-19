@@ -19,11 +19,9 @@ then
   export SCRATCH=/scratch/sciteam/hutter
 fi
 
-read -p "Enter specific directory that will never be used: " garbageDirectory
 read -p "Enter the directory name within ${SCRATCH} where the results are hidden: " resultsDir
+read -p "Enter the machine from which you want to grab data (PORTER,MIRA,CETUS,THETA,STAMPEDE2,BLUEWATERS): " machineName
 cd ../../../../myData/
-
-read -p "Enter the machine from which you want to grab data: " machineName
 
 if [ "${machineName}" == "PORTER" ]
 then

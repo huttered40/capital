@@ -241,3 +241,5 @@ cd ${1}
 rm ${3}.tar
 tar -cvf ${3}.tar ${3}/*
 cd -
+
+rm updatePlotScript.sh

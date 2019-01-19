@@ -141,3 +141,7 @@ done
 cd ${RESULTSPATH}
 rm -rf ${destDir}/${srcDir}/bin
 cd -
+
+# start stage 2
+rm collectDataStage1.sh
+bash collectDataStage2.sh

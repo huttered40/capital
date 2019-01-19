@@ -112,3 +112,7 @@ cd ${RESULTSPATH}
 tar -cvf ${destDir}.tar ${destDir}/*
 cd -
 rm fileTransfer
+rm collectDataStage2.sh
+
+# Start stage 3
+bash updatePlotScript.sh

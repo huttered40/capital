@@ -257,9 +257,8 @@ then
 fi
 
 # collectData.sh will always be a single line, just a necessary intermediate step.
-echo "bash $SCRATCH/${fileName}/collectInstructionsStage1.sh | bash packageDataStage1.sh" > collectDataStage1.sh
+echo "bash $SCRATCH/${fileName}/collectInstructionsStage1.sh | bash packageDataStage1.sh" > collectData.sh
 # plotData.sh will always be a single line, just a necessary intermediate step.
-echo "bash collectInstructionsStage1.sh | bash plotScript.sh" > plotData.sh	# plotScript only needs the 2nd and 3rd items in collectInstructionsStage1.sh, so overwritting it doesn't matter.
 
 cat <<-EOF > $SCRATCH/${fileName}.sh
 scriptName=$SCRATCH/${fileName}/script.sh
@@ -1240,7 +1239,7 @@ bash $SCRATCH/${fileName}.sh
 
 # Copy a local version to Scripts directory so that it can be used on the local side to generate plots.
 # But its important that we keep a backup in SCRATCH/fileName in case we overwrite collectInstructionsStage1.sh, we can always write it back.
-cp $SCRATCH/${fileName}/collectInstructionsStage1.sh collectInstructionsStage1.sh
+# cp $SCRATCH/${fileName}/collectInstructionsStage1.sh collectInstructionsStage1.sh		// collectInstructionsStage1.sh will not be needed locally anymore.
 # Do not copy collectInstructionsStage2 to local directory.
 
 # Note that for Porter, no need to do this, since we are submitting to a queue
