@@ -2,26 +2,9 @@
 
 # Note: must be in CAMFS/src/Scripts on my local machine to run this
 
-if [ "$(hostname |grep "porter")" != "" ]
-then
-  export SCRATCH=../../../CAMFS_data
-elif [ "$(hostname |grep "mira")" != "" ] || [ "$(hostname |grep "cetus")" != "" ]
-then
-  export SCRATCH=/projects/QMCat/huttered
-elif [ "$(hostname |grep "theta")" != "" ]
-then
-  export SCRATCH=/projects/QMCat/huttered
-elif [ "$(hostname |grep "stampede2")" != "" ]
-then
-  export SCRATCH=/scratch/05608/tg849075
-elif [ "$(hostname |grep "h2o")" != "" ]
-then
-  export SCRATCH=/scratch/sciteam/hutter
-fi
-
-read -p "Enter the directory name within ${SCRATCH} where the results are hidden: " resultsDir
+read -p "Enter the directory name where the results are hidden: " resultsDir
 read -p "Enter the machine from which you want to grab data (PORTER,MIRA,CETUS,THETA,STAMPEDE2,BLUEWATERS): " machineName
-cd ../../../../myData/
+cd ../../../../ResearchData/TemporaryData/
 
 if [ "${machineName}" == "PORTER" ]
 then
@@ -51,4 +34,4 @@ scriptDir=$(pwd)
 
 # Generate the Makefile for Scaplot
 cd ${scaplotDir}/CAMFS
-bash ../../ResearchData/${resultsDir}/plotInstructions.sh | bash MakePlotScript.sh
+bash ../../ResearchData/TemporaryData/${resultsDir}/plotInstructions.sh | bash MakePlotScript.sh
