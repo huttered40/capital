@@ -50,5 +50,5 @@ scaplotDir=../../../scaplot/
 scriptDir=$(pwd)
 
 # Generate the Makefile for Scaplot
-cd ${scaplotDir}
+cd ${scaplotDir}/CAMFS
 bash ../../ResearchData/${resultsDir}/plotInstructions.sh | bash MakePlotScript.sh
