@@ -27,50 +27,10 @@ void QRvalidate<T,U>::validateLocal1D(
   std::vector<T> tau(globalDimensionN);
   std::vector<T> matrixQ = globalMatrixA;		// true copy
 
-  #if defined(BGQ) || defined(BLUEWATERS)
-  int info;
-  #ifdef FLOAT_TYPE
-  sgeqrf_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &matrixQ[0], &globalDimensionM, &tau[0], &info);
-  sorgqr_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &globalDimensionN, &matrixQ[0],
-    &globalDimensionM, &tau[0], &info);
-  #endif
-  #ifdef DOUBLE_TYPE
-  dgeqrf_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &matrixQ[0], &globalDimensionM, &tau[0], &info);
-  dorgqr_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &globalDimensionN, &matrixQ[0],
-    &globalDimensionM, &tau[0], &info);
-  #endif
-  #ifdef COMPLEX_FLOAT_TYPE
-  cgeqrf_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &matrixQ[0], &globalDimensionM, &tau[0], &info);
-  corgqr_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &globalDimensionN, &matrixQ[0],
-    &globalDimensionM, &tau[0], &info);
-  #endif
-  #ifdef COMPLEX_DOUBLE_TYPE
-  zgeqrf_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &matrixQ[0], &globalDimensionM, &tau[0], &info);
-  zorgqr_(/*LAPACK_COL_MAJOR, */&globalDimensionM, &globalDimensionN, &globalDimensionN, &matrixQ[0],
-    &globalDimensionM, &tau[0], &info);
-  #endif
-  #else
-  #ifdef FLOAT_TYPE
-  LAPACKE_sgeqrf(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, &matrixQ[0], globalDimensionM, &tau[0]);
-  LAPACKE_sorgqr(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, globalDimensionN, &matrixQ[0],
-    globalDimensionM, &tau[0]);
-  #endif
-  #ifdef DOUBLE_TYPE
-  LAPACKE_dgeqrf(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, &matrixQ[0], globalDimensionM, &tau[0]);
-  LAPACKE_dorgqr(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, globalDimensionN, &matrixQ[0],
-    globalDimensionM, &tau[0]);
-  #endif
-  #ifdef COMPLEX_FLOAT_TYPE
-  LAPACKE_cgeqrf(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, &matrixQ[0], globalDimensionM, &tau[0]);
-  LAPACKE_corgqr(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, globalDimensionN, &matrixQ[0],
-    globalDimensionM, &tau[0]);
-  #endif
-  #ifdef COMPLEX_DOUBLE_TYPE
-  LAPACKE_zgeqrf(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, &matrixQ[0], globalDimensionM, &tau[0]);
-  LAPACKE_zorgqr(LAPACK_COL_MAJOR, globalDimensionM, globalDimensionN, globalDimensionN, &matrixQ[0],
-    globalDimensionM, &tau[0]);
-  #endif
-  #endif
+  lapackEngineArgumentPackage_geqrf<T> geqrfArgs(blasEngineOrder::AblasColumnMajor);
+  lapackEngineArgumentPackage_orgqr<T> orgqrArgs(blasEngineOrder::AblasColumnMajor);
+  lapackEngine::_geqrf(&matrixQ[0], &tau[0], globalDimensionM, globalDimensionN, globalDimensionM, geqrfArgs);
+  lapackEngine::_orgqr(&matrixQ[0], &tau[0], globalDimensionM, globalDimensionN, globalDimensionN, globalDimensionM, orgqrArgs);
 
   // Q is in globalMatrixA now
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.

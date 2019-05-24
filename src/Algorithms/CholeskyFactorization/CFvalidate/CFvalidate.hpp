@@ -39,34 +39,13 @@ void CFvalidate<T,U>::validateLocal(
     }
   }
 
-  #if defined(BGQ) || defined(BLUEWATERS)
-  int info;
-  #ifdef FLOAT_TYPE
-  spotrf_(/*LAPACK_COL_MAJOR, */&dir, &globalDimension, &globalMatrixA[0], &globalDimension, &info);
-  #endif
-  #ifdef DOUBLE_TYPE
-  dpotrf_(/*LAPACK_COL_MAJOR, */&dir, &globalDimension, &globalMatrixA[0], &globalDimension, &info);
-  #endif
-  #ifdef COMPLEX_FLOAT_TYPE
-  cpotrf_(/*LAPACK_COL_MAJOR, */&dir, &globalDimension, &globalMatrixA[0], &globalDimension, &info);
-  #endif
-  #ifdef COMPLEX_DOUBLE_TYPE
-  zpotrf_(/*LAPACK_COL_MAJOR, */&dir, &globalDimension, &globalMatrixA[0], &globalDimension, &info);
-  #endif
-  #else 
-  #ifdef FLOAT_TYPE
-  LAPACKE_spotrf(LAPACK_COL_MAJOR, dir, globalDimension, &globalMatrixA[0], globalDimension);
-  #endif
-  #ifdef DOUBLE_TYPE
-  LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, globalDimension, &globalMatrixA[0], globalDimension);
-  #endif
-  #ifdef COMPLEX_FLOAT_TYPE
-  LAPACKE_cpotrf(LAPACK_COL_MAJOR, dir, globalDimension, &globalMatrixA[0], globalDimension);
-  #endif
-  #ifdef COMPLEX_DOUBLE_TYPE
-  LAPACKE_zpotrf(LAPACK_COL_MAJOR, dir, globalDimension, &globalMatrixA[0], globalDimension);
-  #endif
-  #endif
+  if (dir == 'L'){
+    lapackEngineArgumentPackage_potrf<T> potrfArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasLower);
+    lapackEngine::_potrf(&globalMatrixA[0],globalDimension,globalDimension,potrfArgs);
+  } else{
+    lapackEngineArgumentPackage_potrf<T> potrfArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper);
+    lapackEngine::_potrf(&globalMatrixA[0],globalDimension,globalDimension,potrfArgs);
+  }
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
   T error = (dir == 'L' ? getResidualTriangleLower(matrixSol_CF.getVectorData(), globalMatrixA, localDimension, globalDimension, commInfo)

@@ -134,57 +134,11 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(
   //   but only try this later to see if it actually helps, because to do this, I will have to serialize and re-serialize. Would only make sense if dimensionX is huge.
   MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, MPI_SUM, commWorld);
 
-  // Now, localMMvec is replicated on every processor in commWorld
-  #if defined(BGQ) || defined(BLUEWATERS)
-  char dir = 'U';
-  int info;
-  #ifdef FLOAT_TYPE
-  spotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
+  lapackEngineArgumentPackage_potrf<T> potrfArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper);
+  lapackEngineArgumentPackage_trtri<T> trtriArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineDiag::NonUnit);
+  lapackEngine::_potrf(matrixR.getRawData(), localDimensionN, localDimensionN, potrfArgs);
   std::vector<T> RI = matrixR.getVectorData();
-  char dir2 = 'N';
-  strtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &localDimensionN, &RI[0], &localDimensionN, &info);
-  #endif
-  #ifdef DOUBLE_TYPE
-  int temp1 = static_cast<int>(localDimensionN);
-  dpotrf_(/*LAPACK_COL_MAJOR, */&dir, /*&localDimensionN*/&temp1, matrixR.getRawData(), /*&localDimensionN*/&temp1, &info);
-  std::vector<T> RI = matrixR.getVectorData();
-  char dir2 = 'N';
-  dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, /*&localDimensionN*/&temp1, &RI[0], /*&localDimensionN*/&temp1, &info);
-  #endif
-  #ifdef COMPLEX_FLOAT_TYPE
-  cpotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
-  std::vector<T> RI = matrixR.getVectorData();
-  char dir2 = 'N';
-  ctrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &localDimensionN, &RI[0], &localDimensionN, &info);
-  #endif
-  #ifdef COMPLEX_DOUBLE_TYPE
-  zpotrf_(/*LAPACK_COL_MAJOR, */&dir, &localDimensionN, matrixR.getRawData(), &localDimensionN, &info);
-  std::vector<T> RI = matrixR.getVectorData();
-  char dir2 = 'N';
-  ztrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &localDimensionN, &RI[0], &localDimensionN, &info);
-  #endif
-  #else
-  #ifdef FLOAT_TYPE
-  LAPACKE_spotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
-  std::vector<T> RI = matrixR.getVectorData();
-  LAPACKE_strtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionN, &RI[0], localDimensionN);
-  #endif
-  #ifdef DOUBLE_TYPE
-  LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
-  std::vector<T> RI = matrixR.getVectorData();
-  LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionN, &RI[0], localDimensionN);
-  #endif
-  #ifdef COMPLEX_FLOAT_TYPE
-  LAPACKE_cpotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
-  std::vector<T> RI = matrixR.getVectorData();
-  LAPACKE_ctrtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionN, &RI[0], localDimensionN);
-  #endif
-  #ifdef COMPLEX_DOUBLE_TYPE
-  LAPACKE_zpotrf(LAPACK_COL_MAJOR, 'U', localDimensionN, matrixR.getRawData(), localDimensionN);
-  std::vector<T> RI = matrixR.getVectorData();
-  LAPACKE_ztrtri(LAPACK_COL_MAJOR, 'U', 'N', localDimensionN, &RI[0], localDimensionN);
-  #endif
-  #endif
+  lapackEngine::_trtri(&RI[0], localDimensionN, localDimensionN, trtriArgs);
 
   // Finish by performing local matrix multiplication Q = A*R^{-1}
   blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,

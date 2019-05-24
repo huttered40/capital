@@ -9,7 +9,6 @@
 #include <iostream>
 #include <complex>
 #include <mpi.h>
-#include "/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 
 // Local includes
 #include "./../../../Util/shared.h"

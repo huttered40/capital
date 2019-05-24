@@ -32,7 +32,7 @@
 #include "./../../../Timer/CTFtimer.h"
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../AlgebraicBLAS/blasEngine.h"
+#include "./../../../BLAS/blasEngine.h"
 
 /*
   We can implement square MM for now, but soon, we will need triangular MM

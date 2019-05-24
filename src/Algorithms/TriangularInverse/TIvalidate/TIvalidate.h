@@ -8,7 +8,6 @@
 #include <tuple>
 #include <cmath>
 #include <string>
-#include "/home/hutter2/hutter2/ExternalLibraries/LAPACK/lapack-3.7.1/LAPACKE/include/lapacke.h"
 
 // Local includes
 #include "./../../../Util/shared.h"

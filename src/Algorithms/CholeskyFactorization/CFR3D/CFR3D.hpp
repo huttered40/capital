@@ -477,52 +477,11 @@ void CFR3D<T,U,blasEngine>::baseCase(
       }
     }
 
-    #if defined(BGQ) || defined(BLUEWATERS)
-    int info;
-    char dir2 = 'N';
-    #ifdef FLOAT_TYPE
-    spotrf_(/*LAPACK_COL_MAJOR, */&dir, &finalDim/*bcDimension*/, &deepBaseCase[0], &finalDim/*bcDimension*/, &info);
-    std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-    strtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &finalDim/*bcDimension*/, &deepBaseCaseInv[0], &finalDim/*bcDimension*/, &info);
-    #endif
-    #ifdef DOUBLE_TYPE
-    int temp1 = static_cast<int>(finalDim);
-    dpotrf_(/*LAPACK_COL_MAJOR, */&dir, /*&finalDim*//*bcDimension*/&temp1, &deepBaseCase[0], /*&finalDim*//*bcDimension*/&temp1, &info);
-    std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-    dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, /*&finalDim*//*bcDimension*/&temp1, &deepBaseCaseInv[0], /*&finalDim*//*bcDimension*/&temp1, &info);
-    #endif
-    #ifdef COMPLEX_FLOAT_TYPE
-    cpotrf_(/*LAPACK_COL_MAJOR, */&dir, &finalDim/*bcDimension*/, &deepBaseCase[0], &finalDim/*bcDimension*/, &info);
-    std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-    ctrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &finalDim/*bcDimension*/, &deepBaseCaseInv[0], &finalDim/*bcDimension*/, &info);
-    #endif
-    #ifdef COMPLEX_DOUBLE_TYPE
-    zpotrf_(/*LAPACK_COL_MAJOR, */&dir, &finalDim/*bcDimension*/, &deepBaseCase[0], &finalDim/*bcDimension*/, &info);
-    std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-    ztrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &finalDim/*bcDimension*/, &deepBaseCaseInv[0], &finalDim/*bcDimension*/, &info);
-    #endif
-    #else
-    #ifdef FLOAT_TYPE
-    LAPACKE_spotrf(LAPACK_COL_MAJOR, dir, finalDim/*bcDimension*/, &deepBaseCase[0], finalDim/*bcDimension*/);
-    std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-    LAPACKE_strtri(LAPACK_COL_MAJOR, dir, 'N', finalDim/*bcDimension*/, &deepBaseCaseInv[0], finalDim/*bcDimension*/);
-    #endif
-    #ifdef DOUBLE_TYPE
-    LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, finalDim/*bcDimension*/, &deepBaseCase[0], finalDim/*bcDimension*/);
-    std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-    LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', finalDim/*bcDimension*/, &deepBaseCaseInv[0], finalDim/*bcDimension*/);
-    #endif
-    #ifdef COMPLEX_FLOAT_TYPE
-    LAPACKE_cpotrf(LAPACK_COL_MAJOR, dir, finalDim/*bcDimension*/, &deepBaseCase[0], finalDim/*bcDimension*/);
-    std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-    LAPACKE_ctrtri(LAPACK_COL_MAJOR, dir, 'N', finalDim/*bcDimension*/, &deepBaseCaseInv[0], finalDim/*bcDimension*/);
-    #endif
-    #ifdef COMPLEX_DOUBLE_TYPE
-    LAPACKE_zpotrf(LAPACK_COL_MAJOR, dir, finalDim/*bcDimension*/, &deepBaseCase[0], finalDim/*bcDimension*/);
-    std::vector<T> deepBaseCaseInv = deepBaseCase;		// true copy because we have to, unless we want to iterate (see below) two different times
-    LAPACKE_ztrtri(LAPACK_COL_MAJOR, dir, 'N', finalDim/*bcDimension*/, &deepBaseCaseInv[0], finalDim/*bcDimension*/);
-    #endif
-    #endif
+    lapackEngineArgumentPackage_potrf<T> potrfArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasLower);
+    lapackEngineArgumentPackage_trtri<T> trtriArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasLower, blasEngineDiag::NonUnit);
+    lapackEngine::_potrf(&deepBaseCase[0],finalDim,finalDim,potrfArgs);
+    std::vector<T> deepBaseCaseInv = deepBaseCase;              // true copy because we have to, unless we want to iterate (see below) two different times
+    lapackEngine::_trtri(&deepBaseCaseInv[0],finalDim,finalDim,trtriArgs);
 
     // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 
@@ -565,55 +524,14 @@ void CFR3D<T,U,blasEngine>::baseCase(
   }
   else
   {
+    int fTranDim1 = localDimension*pGridDimensionSize;
     std::vector<T>& storeMat = cyclicBaseCaseData;
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-    #if defined(BGQ) || defined(BLUEWATERS)
-    int info;
-    int fTranDim1 = localDimension*pGridDimensionSize;
-    char dir2 = 'N';
-    #ifdef FLOAT_TYPE
-    spotrf_(/*LAPACK_COL_MAJOR, */&dir, &fTranDim1/*bcDimension*/, &storeMat[0], &fTranDim1/*bcDimension*/, &info);
+    lapackEngineArgumentPackage_potrf<T> potrfArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper);
+    lapackEngineArgumentPackage_trtri<T> trtriArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineDiag::NonUnit);
+    lapackEngine::_potrf(&storeMat[0],fTranDim1,fTranDim1,potrfArgs);
     std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
-    strtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &fTranDim1/*bcDimension*/, &storeMatInv[0], &fTranDim1/*bcDimension*/, &info);
-    #endif
-    #ifdef DOUBLE_TYPE
-    dpotrf_(/*LAPACK_COL_MAJOR, */&dir, &fTranDim1/*bcDimension*/, &storeMat[0], &fTranDim1/*bcDimension*/, &info);
-    std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
-    dtrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &fTranDim1/*bcDimension*/, &storeMatInv[0], &fTranDim1/*bcDimension*/, &info);
-    #endif
-    #ifdef COMPLEX_FLOAT_TYPE
-    cpotrf_(/*LAPACK_COL_MAJOR, */&dir, &fTranDim1/*bcDimension*/, &storeMat[0], &fTranDim1/*bcDimension*/, &info);
-    std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
-    ctrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &fTranDim1/*bcDimension*/, &storeMatInv[0], &fTranDim1/*bcDimension*/, &info);
-    #endif
-    #ifdef COMPLEX_DOUBLE_TYPE
-    zpotrf_(/*LAPACK_COL_MAJOR, */&dir, &fTranDim1/*bcDimension*/, &storeMat[0], &fTranDim1/*bcDimension*/, &info);
-    std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
-    ztrtri_(/*LAPACK_COL_MAJOR, */&dir, &dir2, &fTranDim1/*bcDimension*/, &storeMatInv[0], &fTranDim1/*bcDimension*/, &info);
-    #endif
-    #else
-    #ifdef FLOAT_TYPE
-    LAPACKE_spotrf(LAPACK_COL_MAJOR, dir, localDimension*pGridDimensionSize, &storeMat[0], localDimension*pGridDimensionSize);
-    std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
-    LAPACKE_strtri(LAPACK_COL_MAJOR, dir, 'N', localDimension*pGridDimensionSize, &storeMatInv[0], localDimension*pGridDimensionSize);
-    #endif
-    #ifdef DOUBLE_TYPE
-    LAPACKE_dpotrf(LAPACK_COL_MAJOR, dir, localDimension*pGridDimensionSize, &storeMat[0], localDimension*pGridDimensionSize);
-    std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
-    LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', localDimension*pGridDimensionSize, &storeMatInv[0], localDimension*pGridDimensionSize);
-    #endif
-    #ifdef COMPLEX_FLOAT_TYPE
-    LAPACKE_cpotrf(LAPACK_COL_MAJOR, dir, localDimension*pGridDimensionSize, &storeMat[0], localDimension*pGridDimensionSize);
-    std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
-    LAPACKE_ctrtri(LAPACK_COL_MAJOR, dir, 'N', localDimension*pGridDimensionSize, &storeMatInv[0], localDimension*pGridDimensionSize);
-    #endif
-    #ifdef COMPLEX_DOUBLE_TYPE
-    LAPACKE_zpotrf(LAPACK_COL_MAJOR, dir, localDimension*pGridDimensionSize, &storeMat[0], localDimension*pGridDimensionSize);
-    std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
-    LAPACKE_ztrtri(LAPACK_COL_MAJOR, dir, 'N', localDimension*pGridDimensionSize, &storeMatInv[0], localDimension*pGridDimensionSize);
-    #endif
-    #endif
-
+    lapackEngine::_trtri(&storeMatInv[0],fTranDim1,fTranDim1,trtriArgs);
 
     // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 
