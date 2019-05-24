@@ -18,6 +18,18 @@ fi
 scalaDir=""
 machineName=""
 mpiType=""
+accelType=""
+testAccel_NoAccel=""
+export GPU=GPUACCEL
+read -p "GPU acceleration via XK7[y] or no[n]?" accelType
+if [ "${accelType}" == "y" ];
+then
+  export GPU=GPUACCEL
+  read -p "Do you want to test CA-CQR2 on both GPU accelated machines and the non-accelerated option [y] or no [n]?" testAccel_NoAccel
+else;
+  export GPU=NoGPUACCEL
+  testAccel_NoAccel="n"
+fi
 if [ "$(hostname |grep "porter")" != "" ];
 then
   machineName=PORTER
@@ -150,30 +162,31 @@ then
   then
     if [ "${PE_ENV}" == "GNU" ];
     then
-      module swap PrgEnv-gnu PrgEnv-intel
-      module load cblas
+      module swap PrgEnv/gnu-6.3.0-cuda-9.1 PrgEnv/intel-18.0.3.222-cuda-9.1
     elif [ "${PE_ENV}" == "CRAY" ];
     then
-      module swap PrgEnv-cray PrgEnv-intel
-      module load cblas
-    elif [ "${PE_ENV}" == "INTEL" ];
-    then
-      module load cblas
+      module swap PrgEnv/cray-18_06-cuda-9.1 PrgEnv/intel-18.0.3.222-cuda-9.1
+    #elif [ "${PE_ENV}" == "INTEL" ];
+    #then
     fi
   elif [ "${bwPrgEnv}" == "G" ];
   then
     if [ "${PE_ENV}" == "INTEL" ];
     then
-      module swap PrgEnv-intel PrgEnv-gnu
-      module load cblas
+      module swap PrgEnv/intel-18.0.3.222-cuda-9.1 PrgEnv/gnu-6.3.0-cuda-9.1
     elif [ "${PE_ENV}" == "CRAY" ];
     then
-      module swap PrgEnv-cray PrgEnv-gnu
-      module load cblas
-    elif [ "${PE_ENV}" == "GNU" ];
-    then
-      module load cblas
+      module swap PrgEnv/cray-18_06-cuda-9.1 PrgEnv/gnu-6.3.0-cuda-9.1
+    #elif [ "${PE_ENV}" == "GNU" ];
+    #then
     fi
+  fi
+  if [ "${accelType}" == "n" ];
+  then
+    module load cblas
+  else;
+    module load cudatoolkit
+    # Swap or load anything else? Does the PrgEnv matter with Cuda?
   fi
 fi
 
@@ -183,21 +196,69 @@ make -C./.. clean
 export PROFTYPE=PERFORMANCE
 make -C./.. cqr2_${mpiType}
 profType=P
+# If GPU-accelerated, we might want to run the non-accelerated binary as well
+if [ "${testAccel_NoAccel}" == "y" ];
+then
+  module unload cudatoolkit
+  module load cblas
+  export GPU=NoGPUACCEL
+  make -C./.. cqr2_${mpiType}
+fi
 if [ ${analyzeDecision1} == 1 ];
 then
+  if [ "${testAccel_NoAccel}" == "y" ];
+  then
+    # load back in GPU modules
+    module unload cblas
+    module load cudatoolkit
+    export GPU=GPUACCEL
+  fi
   profType=${profType}C
   export PROFTYPE=CRITTER
   make -C./.. cqr2_${mpiType}
+  # If GPU-accelerated, we might want to run the non-accelerated binary as well
+  if [ "${testAccel_NoAccel}" == "y" ];
+  then
+    module unload cudatoolkit
+    module load cblas
+    export GPU=NoGPUACCEL
+    make -C./.. cqr2_${mpiType}
+  fi
 fi
 if [ ${analyzeDecision2} == 1 ];
 then
+  if [ "${testAccel_NoAccel}" == "y" ];
+  then
+    # load back in GPU modules
+    module unload cblas
+    module load cudatoolkit
+    export GPU=GPUACCEL
+  fi
   profType=${profType}T
   export PROFTYPE=PROFILE
   make -C./.. cqr2_${mpiType}
+  # If GPU-accelerated, we might want to run the non-accelerated binary as well
+  if [ "${testAccel_NoAccel}" == "y" ];
+  then
+    module unload cudatoolkit
+    module load cblas
+    export GPU=NoGPUACCEL
+    make -C./.. cqr2_${mpiType}
+  fi
+fi
+
+# Now that all CA-CQR2 binaries have been created, set the GPU environment variable back to GPUACCEL if necessary
+if [ "${testAccel_NoAccel}" == "y" ];
+then
+  # load back in GPU modules
+  module unload cblas
+  module load cudatoolkit
+  export GPU=GPUACCEL
 fi
 
 
-# Build CANDMC code
+# Build CANDMC code - not GPU accelerated by default. Therefore, no extra logic needs to go into setting GPU environment variable before building, since
+#                     that flag is not being used inside CANDMC
 read -p "Build scalapack? Yes[1], No[0]: " buildScala
 if [ ${buildScala} -eq 1 ];
 then
@@ -314,11 +375,20 @@ do
 	  elif [ "${machineName}" == "BLUEWATERS" ];
 	  then
 	    echo "#!/bin/bash" > \${scriptName}
+            # Check if we want GPU acceleration (XK7 vs. XE6 nodes)
+            read -p "XE6 (Y) or XK7 (N) node: " nodeType
+            if [ "${nodeType}" == "Y" ];
+            then
+	      echo "#PBS -l nodes=\${curNumNodes}:ppn=\${curPPN}:xe" >> \${scriptName}
+            elif [ "${nodeType}" == "N" ];
+            then
+	      echo "#PBS -l nodes=\${curNumNodes}:ppn=\${curPPN}:xk" >> \${scriptName}
+            fi
 	    echo "#PBS -l nodes=\${curNumNodes}:ppn=\${curPPN}:xe" >> \${scriptName}
 	    echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
 	    echo "#PBS -N testjob" >> \${scriptName}
-	    echo "#PBS -e ${fileName}_\${curNumNodes}_\${curTPR}.err" >> \${scriptName}
-	    echo "#PBS -o ${fileName}_\${curNumNodes}_\${curTPR}.out" >> \${scriptName}
+	    echo "#PBS -e ${fileName}_\${curNumNodes}_\${curPPN}.err" >> \${scriptName}
+	    echo "#PBS -o ${fileName}_\${curNumNodes}_\${curPPN}.out" >> \${scriptName}
 	    echo "##PBS -m Ed" >> \${scriptName}
 	    echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
 	    echo "##PBS -A xyz" >> \${scriptName}
@@ -326,6 +396,11 @@ do
   #          echo "cd \${PBS_O_WORKDIR}" >> \${scriptName}
 	    echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
 	    echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
+            if [ "${nodeType}" == "N" ];
+            then
+              export CRAY_CUDA_MPS=1
+              export MPICH_RDMA_ENABLED_CUDA=1
+            fi
 	  elif [ "${machineName}" == "THETA" ];
 	  then
 	    echo "#!/bin/bash" > \${scriptName}
