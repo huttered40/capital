@@ -78,34 +78,31 @@ extern "C" void LAPACKE_zorgqr(char, int, int, int, std::complex<double>*, int, 
 
 // ************************************************************************************************************************************************************
 template<typename T>
-void* GetPOTRFroutine();
+class LType{};
 
-template<>
-void* GetPOTRFroutine<float>(){
+// ************************************************************************************************************************************************************
+auto GetPOTRFroutine(LType<float>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &spotrf_;
 #else
   return &LAPACKE_spotrf;
 #endif
 }
-template<>
-void* GetPOTRFroutine<double>(){
+auto GetPOTRFroutine(LType<double>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &dpotrf_;
 #else
   return &LAPACKE_dpotrf;
 #endif
 }
-template<>
-void* GetPOTRFroutine<std::complex<float>>(){
+auto GetPOTRFroutine(LType<std::complex<float>>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &cpotrf_;
 #else
   return &LAPACKE_cpotrf;
 #endif
 }
-template<>
-void* GetPOTRFroutine<std::complex<double>>(){
+auto GetPOTRFroutine(LType<std::complex<double>>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &zpotrf_;
 #else
@@ -113,35 +110,28 @@ void* GetPOTRFroutine<std::complex<double>>(){
 #endif
 }
 
-template<typename T>
-void* GetTRTRIroutine();
-
-template<>
-void* GetTRTRIroutine<float>(){
+auto GetTRTRIroutine(LType<float>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &strtri_;
 #else
   return &LAPACKE_strtri;
 #endif
 }
-template<>
-void* GetTRTRIroutine<double>(){
+auto GetTRTRIroutine(LType<double>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &dtrtri_;
 #else
   return &LAPACKE_dtrtri;
 #endif
 }
-template<>
-void* GetTRTRIroutine<std::complex<float>>(){
+auto GetTRTRIroutine(LType<std::complex<float>>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &ctrtri_;
 #else
   return &LAPACKE_ctrtri;
 #endif
 }
-template<>
-void* GetTRTRIroutine<std::complex<double>>(){
+auto GetTRTRIroutine(LType<std::complex<double>>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &ztrtri_;
 #else
@@ -149,35 +139,28 @@ void* GetTRTRIroutine<std::complex<double>>(){
 #endif
 }
 
-template<typename T>
-void* GetGEQRFroutine();
-
-template<>
-void* GetGEQRFroutine<float>(){
+auto GetGEQRFroutine(LType<float>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &sgeqrf_;
 #else
   return &LAPACKE_sgeqrf;
 #endif
 }
-template<>
-void* GetGEQRFroutine<double>(){
+auto GetGEQRFroutine(LType<double>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &dgeqrf_;
 #else
   return &LAPACKE_dgeqrf;
 #endif
 }
-template<>
-void* GetGEQRFroutine<std::complex<float>>(){
+auto GetGEQRFroutine(LType<std::complex<float>>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &cgeqrf_;
 #else
   return &LAPACKE_cgeqrf;
 #endif
 }
-template<>
-void* GetGEQRFroutine<std::complex<double>>(){
+auto GetGEQRFroutine(LType<std::complex<double>>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &zgeqrf_;
 #else
@@ -185,35 +168,28 @@ void* GetGEQRFroutine<std::complex<double>>(){
 #endif
 }
 
-template<typename T>
-void* GetORGQRroutine();
-
-template<>
-void* GetORGQRroutine<float>(){
+auto GetORGQRroutine(LType<float>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &sorgqr_;
 #else
   return &LAPACKE_sorgqr;
 #endif
 }
-template<>
-void* GetORGQRroutine<double>(){
+auto GetORGQRroutine(LType<double>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &dorgqr_;
 #else
   return &LAPACKE_dorgqr;
 #endif
 }
-template<>
-void* GetORGQRroutine<std::complex<float>>(){
+auto GetORGQRroutine(LType<std::complex<float>>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &corgqr_;
 #else
   return &LAPACKE_corgqr;
 #endif
 }
-template<>
-void* GetORGQRroutine<std::complex<double>>(){
+auto GetORGQRroutine(LType<std::complex<double>>){
 #if defined(BGQ) || defined(BLUEWATERS)
   return &zorgqr_;
 #else
@@ -260,10 +236,10 @@ public:
   lapackEngine& operator=(lapackEngine&& rhs) = delete;
   ~lapackEngine() = delete;
 
-  static auto _potrf_ = GetPOTRFroutine<T>();
-  static auto _trtri_ = GetTRTRIroutine<T>();
-  static auto _geqrf_ = GetGEQRFroutine<T>();
-  static auto _orgqr_ = GetORGQRroutine<T>();
+  static auto _potrf_ = GetPOTRFroutine(LType<T>());
+  static auto _trtri_ = GetTRTRIroutine(LType<T>());
+  static auto _geqrf_ = GetGEQRFroutine(LType<T>());
+  static auto _orgqr_ = GetORGQRroutine(LType<T>());
 
   // Engine methods
   static void _potrf(T* matrixA, T* matrixB, T* matrixC, U m, U n, U k,

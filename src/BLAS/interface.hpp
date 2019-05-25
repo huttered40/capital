@@ -43,7 +43,7 @@ void blasHelper::setInfoParameters_syrk(
 }
 
 template<typename T, typename U>
-void cblasEngine<T,U>::_gemm(
+void blasEngine<T,U>::_gemm(
             T* matrixA,
             T* matrixB,
             T* matrixC,
@@ -67,7 +67,7 @@ void cblasEngine<T,U>::_gemm(
 }
 
 template<typename T, typename U>
-void cblasEngine<T,U>::_trmm(
+void blasEngine<T,U>::_trmm(
             T* matrixA,
             T* matrixB,
             U m,
@@ -91,7 +91,7 @@ void cblasEngine<T,U>::_trmm(
 }
 
 template<typename T, typename U>
-void cblasEngine<T,U>::_syrk(
+void blasEngine<T,U>::_syrk(
             T* matrixA,
             T* matrixC,
             U n,

@@ -46,24 +46,24 @@
 
 // ************************************************************************************************************************************************************
 #ifdef FLOAT_TYPE
-extern "C" void cblas_sgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const float, const float *, const int, const float *, const int, const float, float *, const int);
-extern "C" void cblas_strmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const float, const float *, const int, float *, const int);
-extern "C" void cblas_ssyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const float, const float *, const int, const float, float *, const int);
+extern void cblas_sgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const float, const float *, const int, const float *, const int, const float, float *, const int);
+extern void cblas_strmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const float, const float *, const int, float *, const int);
+extern void cblas_ssyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const float, const float *, const int, const float, float *, const int);
 #endif
 #ifdef DOUBLE_TYPE
-extern "C" void cblas_dgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const double, const double *, const int, const double *, const int, const double, double *, const int);
-extern "C" void cblas_dtrmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const double, const double *, const int, double *, const int);
-extern "C" void cblas_dsyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const double, const double *, const int, const double, double *, const int);
+extern void cblas_dgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const double, const double *, const int, const double *, const int, const double, double *, const int);
+extern void cblas_dtrmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const double, const double *, const int, double *, const int);
+extern void cblas_dsyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const double, const double *, const int, const double, double *, const int);
 #endif
 #ifdef COMPLEX_FLOAT_TYPE
-extern "C" void cblas_cgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const std::complex<float>, const std::complex<float> *, const int, const std::complex<float> *, const int, const std::complex<float>, std::complex<float> *, const int);
-extern "C" void cblas_ctrmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const std::complex<float>, const std::complex<float> *, const int, std::complex<float> *, const int);
-extern "C" void cblas_csyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const std::complex<float>, const std::complex<float> *, const int, const std::complex<float>, std::complex<float> *, const int);
+extern void cblas_cgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const std::complex<float>, const std::complex<float> *, const int, const std::complex<float> *, const int, const std::complex<float>, std::complex<float> *, const int);
+extern void cblas_ctrmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const std::complex<float>, const std::complex<float> *, const int, std::complex<float> *, const int);
+extern void cblas_csyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const std::complex<float>, const std::complex<float> *, const int, const std::complex<float>, std::complex<float> *, const int);
 #endif
 #ifdef COMPLEX_DOUBLE_TYPE
-extern "C" void cblas_zgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const std::complex<double>, const std::complex<double> *, const int, const std::complex<double> *, const int, const std::complex<double>, std::complex<double> *, const int);
-extern "C" void cblas_ztrmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const std::complex<double>, const std::complex<double> *, const int, std::complex<double> *, const int);
-extern "C" void cblas_zsyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const std::complex<double>, const std::complex<double> *, const int, const std::complex<double>, std::complex<double> *, const int);
+extern void cblas_zgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const std::complex<double>, const std::complex<double> *, const int, const std::complex<double> *, const int, const std::complex<double>, std::complex<double> *, const int);
+extern void cblas_ztrmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const std::complex<double>, const std::complex<double> *, const int, std::complex<double> *, const int);
+extern void cblas_zsyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const std::complex<double>, const std::complex<double> *, const int, const std::complex<double>, std::complex<double> *, const int);
 #endif
 
 // Local includes
@@ -83,62 +83,45 @@ extern "C" void cblas_zsyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const
 
 // ************************************************************************************************************************************************************
 template<typename T>
-void* GetGEMMroutine();
+class BType{};
 
-template<>
-void* GetGEMMroutine<float>(){
+// ************************************************************************************************************************************************************
+auto GetGEMMroutine(BType<float>) -> decltype(&cblas_sgemm){
   return &cblas_sgemm;
 }
-template<>
-void* GetGEMMroutine<double>(){
+auto GetGEMMroutine(BType<double>) -> decltype(&cblas_dgemm){
   return &cblas_dgemm;
 }
-template<>
-void* GetGEMMroutine<std::complex<float>>(){
+auto GetGEMMroutine(BType<std::complex<float>>) -> decltype(&cblas_cgemm){
   return &cblas_cgemm;
 }
-template<>
-void* GetGEMMroutine<std::complex<double>>(){
+auto GetGEMMroutine(BType<std::complex<double>>) -> decltype(&cblas_zgemm){
   return &cblas_zgemm;
 }
 
-template<typename T>
-void* GetTRMMroutine();
-
-template<>
-void* GetTRMMroutine<float>(){
+auto GetTRMMroutine(BType<float>) -> decltype(&cblas_strmm){
   return &cblas_strmm;
 }
-template<>
-void* GetTRMMroutine<double>(){
+auto GetTRMMroutine(BType<double>) -> decltype(&cblas_dtrmm){
   return &cblas_dtrmm;
 }
-template<>
-void* GetTRMMroutine<std::complex<float>>(){
+auto GetTRMMroutine(BType<std::complex<float>>) -> decltype(&cblas_ctrmm){
   return &cblas_ctrmm;
 }
-template<>
-void* GetTRMMroutine<std::complex<double>>(){
+auto GetTRMMroutine(BType<std::complex<double>>) -> decltype(&cblas_ztrmm){
   return &cblas_ztrmm;
 }
 
-template<typename T>
-void* GetSYRKroutine();
-
-template<>
-void* GetSYRKroutine<float>(){
+auto GetSYRKroutine(BType<float>) -> decltype(&cblas_ssyrk){
   return &cblas_ssyrk;
 }
-template<>
-void* GetSYRKroutine<double>(){
+auto GetSYRKroutine(BType<double>) -> decltype(&cblas_dsyrk){
   return &cblas_dsyrk;
 }
-template<>
-void* GetSYRKroutine<std::complex<float>>(){
+auto GetSYRKroutine(BType<std::complex<float>>) -> decltype(&cblas_csyrk){
   return &cblas_csyrk;
 }
-template<>
-void* GetSYRKroutine<std::complex<double>>(){
+auto GetSYRKroutine(BType<std::complex<double>>) -> decltype(&cblas_zsyrk){
   return &cblas_zsyrk;
 }
 
@@ -178,9 +161,9 @@ public:
   blasEngine& operator=(blasEngine&& rhs) = delete;
   ~blasEngine() = delete;
 
-  static auto _gemm_ = GetGEMMroutine<T>();
-  static auto _trmm_ = GetTRMMroutine<T>();
-  static auto _syrk_ = GetSYRKroutine<T>();
+  static auto _gemm_ = GetGEMMroutine(BType<T>());
+  static auto _trmm_ = GetTRMMroutine(BType<T>());
+  static auto _syrk_ = GetSYRKroutine(BType<T>());
 
   // Engine methods
   static void _gemm(T* matrixA, T* matrixB, T* matrixC, U m, U n, U k,

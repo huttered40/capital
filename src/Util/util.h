@@ -11,7 +11,7 @@
 #include "./../Timer/CTFtimer.h"
 #include "../Matrix/Matrix.h"
 #include "../Matrix/MatrixSerializer.h"
-#include "../AlgebraicBLAS/blasEngine.h"
+#include "../BLAS/blasEngine.h"
 
 template<typename T, typename U>
 class util

@@ -26,7 +26,7 @@ if [ "${accelType}" == "y" ];
 then
   export GPU=GPUACCEL
   read -p "Do you want to test CA-CQR2 on both GPU accelated machines and the non-accelerated option [y] or no [n]?" testAccel_NoAccel
-else;
+else
   export GPU=NoGPUACCEL
   testAccel_NoAccel="n"
 fi
@@ -78,6 +78,7 @@ read -p "Enter minimum number of nodes requested: " minNumNodes
 read -p "Enter maximum number of nodes requested: " maxNumNodes
 read -p "Also enter factor to scale number of nodes: " nodeScaleFactor
 read -p "Also enter factor to scale PPN: " ppnScaleFactor
+# Only revelant for non-GPU
 read -p "Also enter factor to scale thread-per-rank: " tprScaleFactor
 read -p "Enter number of launches per binary: " NumLaunchesPerBinary
 
@@ -91,6 +92,7 @@ while [ ${curNumNodes} -le ${maxNumNodes} ];
 do
   read -p "Enter min ppn for node count ${curNumNodes}: " ppnMin
   read -p "Enter max ppn for node count ${curNumNodes}: " ppnMax
+  # Only revelant for non-GPU
   read -p "Enter min tpr for node count ${curNumNodes}: " tprMin
   read -p "Enter max tpr for node count ${curNumNodes}: " tprMax
 
@@ -162,10 +164,10 @@ then
   then
     if [ "${PE_ENV}" == "GNU" ];
     then
-      module swap PrgEnv/gnu-6.3.0-cuda-9.1 PrgEnv/intel-18.0.3.222-cuda-9.1
+      module swap PrgEnv-gnu PrgEnv-intel
     elif [ "${PE_ENV}" == "CRAY" ];
     then
-      module swap PrgEnv/cray-18_06-cuda-9.1 PrgEnv/intel-18.0.3.222-cuda-9.1
+      module swap PrgEnv-cray PrgEnv-intel
     #elif [ "${PE_ENV}" == "INTEL" ];
     #then
     fi
@@ -173,10 +175,10 @@ then
   then
     if [ "${PE_ENV}" == "INTEL" ];
     then
-      module swap PrgEnv/intel-18.0.3.222-cuda-9.1 PrgEnv/gnu-6.3.0-cuda-9.1
+      module swap PrgEnv-intel PrgEnv-gnu
     elif [ "${PE_ENV}" == "CRAY" ];
     then
-      module swap PrgEnv/cray-18_06-cuda-9.1 PrgEnv/gnu-6.3.0-cuda-9.1
+      module swap PrgEnv-cray PrgEnv-gnu
     #elif [ "${PE_ENV}" == "GNU" ];
     #then
     fi
@@ -184,7 +186,7 @@ then
   if [ "${accelType}" == "n" ];
   then
     module load cblas
-  else;
+  else
     module load cudatoolkit
     # Swap or load anything else? Does the PrgEnv matter with Cuda?
   fi
@@ -334,6 +336,7 @@ while [ \${curNumNodes} -le ${maxNumNodes} ];
 do
   read -p "Enter min ppn for node count \${curNumNodes}: " ppnMin
   read -p "Enter max ppn for node count \${curNumNodes}: " ppnMax
+  # Only revelant for non-GPU
   read -p "Enter min tpr for node count \${curNumNodes}: " tprMin
   read -p "Enter max tpr for node count \${curNumNodes}: " tprMax
 

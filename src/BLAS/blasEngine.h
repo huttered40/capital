@@ -142,7 +142,7 @@ public:
 };
 
 // Local includes -- include the possible BLAS libraries
-#include "cblasEngine.h"
+#include "interface.h"
 
 
 #endif /* BLASENGINE_H_ */

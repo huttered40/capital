@@ -10,7 +10,7 @@
 #include "util.h"
 #include "./../Timer/CTFtimer.h"
 #include "../Matrix/Matrix.h"
-#include "../AlgebraicAlgorithms/MatrixMultiplication/MM3D/MM3D.h"
+#include "../Algorithms/MatrixMultiplication/MM3D/MM3D.h"
 
 template<typename T, typename U>
 class validator

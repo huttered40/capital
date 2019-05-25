@@ -466,5 +466,5 @@ void util<T,U>::InitialGEMM()
   std::vector<T> matrixB(128*128,0.);
   std::vector<T> matrixC(128*128,0.);
   blasEngineArgumentPackage_gemm<T> gemmPack1(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
-  cblasEngine<T,U>::_gemm(&matrixA[0], &matrixB[0], &matrixC[0], 128, 128, 128, 128, 128, 128, gemmPack1);
+  cblasEngine::_gemm(&matrixA[0], &matrixB[0], &matrixC[0], 128, 128, 128, 128, 128, 128, gemmPack1);
 }
