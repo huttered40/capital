@@ -49,26 +49,26 @@ extern "C" void zorgqr_(int*, int*, int*, std::complex<double>*, int*, std::comp
 #ifdef FLOAT_TYPE
 extern "C" void LAPACKE_spotrf(char, char, int, float*, int);
 extern "C" void LAPACKE_strtri(char, char, char, int, float*, int);
-extern "C" void LAPACKE_sgeqrf_(char, int, int, float*, int, float*);
-extern "C" void LAPACKE_sorgqr_(char, int, int, int, float*, int, float*);
+extern "C" void LAPACKE_sgeqrf(char, int, int, float*, int, float*);
+extern "C" void LAPACKE_sorgqr(char, int, int, int, float*, int, float*);
 #endif
 #ifdef DOUBLE_TYPE
 extern "C" void LAPACKE_dpotrf(char, char, int, double*, int);
 extern "C" void LAPACKE_dtrtri(char, char, char, int, double*, int);
-extern "C" void LAPACKE_sgeqrf_(char, int, int, double*, int, float*);
-extern "C" void LAPACKE_sorgqr_(char, int, int, int, double*, int, float*);
+extern "C" void LAPACKE_dgeqrf(char, int, int, double*, int, float*);
+extern "C" void LAPACKE_dorgqr(char, int, int, int, double*, int, float*);
 #endif
 #ifdef COMPLEX_FLOAT_TYPE
 extern "C" void LAPACKE_cpotrf(char, char, int, std::complex<float>*, int);
 extern "C" void LAPACKE_ctrtri(char, char, char, int, std::complex<float>*, int);
-extern "C" void LAPACKE_sgeqrf_(char, int, int, std::complex<float>*, int, std::complex<float>*);
-extern "C" void LAPACKE_sorgqr_(char, int, int, int, std::complex<float>*, int, std::complex<float>*);
+extern "C" void LAPACKE_cgeqrf(char, int, int, std::complex<float>*, int, std::complex<float>*);
+extern "C" void LAPACKE_corgqr(char, int, int, int, std::complex<float>*, int, std::complex<float>*);
 #endif
 #ifdef COMPLEX_DOUBLE_TYPE
 extern "C" void LAPACKE_zpotrf(char, char, int, std::complex<double>*, int);
 extern "C" void LAPACKE_ztrtri(char, char, char, int, std::complex<double>*, int);
-extern "C" void LAPACKE_sgeqrf_(char, int, int, std::complex<double>*, int, std::complex<double>*);
-extern "C" void LAPACKE_sorgqr_(char, int, int, int, std::complex<double>*, int, std::complex<double>*);
+extern "C" void LAPACKE_zgeqrf(char, int, int, std::complex<double>*, int, std::complex<double>*);
+extern "C" void LAPACKE_zorgqr(char, int, int, int, std::complex<double>*, int, std::complex<double>*);
 #endif
 #endif
 
@@ -256,8 +256,8 @@ public:
   lapackEngine() = delete;
   lapackEngine(const lapackEngine& rhs) = delete;
   lapackEngine(lapackEngine&& rhs) = delete;
-  lapackEngine<T,U>& operator=(const lapackEngine& rhs) = delete;
-  lapackEngine<T,U>& operator=(lapackEngine&& rhs) = delete;
+  lapackEngine& operator=(const lapackEngine& rhs) = delete;
+  lapackEngine& operator=(lapackEngine&& rhs) = delete;
   ~lapackEngine() = delete;
 
   static auto _potrf_ = GetPOTRFroutine<T>();
