@@ -48,7 +48,7 @@ static pair<T,double> runTestCF(
   double startTime=MPI_Wtime();
   #endif
   auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
-  CFR3D<T,U,cblasEngine>::Factor(
+  CFR3D<T,U>::Factor(
     matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, MPI_COMM_WORLD, commInfo3D);
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE

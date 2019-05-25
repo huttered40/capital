@@ -1,11 +1,11 @@
 /* Author: Edward Hutter */
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<
   	  template<typename,typename, template<typename,typename,int> class> class StructureB,
   	  template<typename,typename,int> class Distribution
 	>
-void MM3D<T,U,blasEngine>::Multiply(
+void MM3D<T,U>::Multiply(
                                    	    T* matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         T* matrixC,
@@ -71,7 +71,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   T* matrixCforEnginePtr = matrixC;
   if (srcPackage.beta == 0)
   {
-    blasEngine<T,U>::_gemm(matrixAEnginePtr, matrixBEnginePtr, matrixCforEnginePtr, localDimensionM, localDimensionN, localDimensionK,
+    blasEngine::_gemm(matrixAEnginePtr, matrixBEnginePtr, matrixCforEnginePtr, localDimensionM, localDimensionN, localDimensionK,
       (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
       localDimensionM, srcPackage);
@@ -81,7 +81,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   {
     // This cancels out any affect beta could have. Beta is just not compatable with MM3D and must be handled separately
      std::vector<T> holdProduct(sizeC,0);
-     blasEngine<T,U>::_gemm(matrixAEnginePtr, matrixBEnginePtr, &holdProduct[0], localDimensionM, localDimensionN, localDimensionK,
+     blasEngine::_gemm(matrixAEnginePtr, matrixBEnginePtr, &holdProduct[0], localDimensionM, localDimensionN, localDimensionK,
        (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
        (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
        localDimensionM, srcPackage); 
@@ -100,14 +100,14 @@ void MM3D<T,U,blasEngine>::Multiply(
 //   Of course we will serialize into Square Structure if not in Square Structure already in order to be compatible
 //   with BLAS-3 routines.
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<
 	  template<typename,typename, template<typename,typename,int> class> class StructureA,
   	  template<typename,typename, template<typename,typename,int> class> class StructureB,
   	  template<typename,typename, template<typename,typename,int> class> class StructureC,
   	  template<typename,typename,int> class Distribution
 	>
-void MM3D<T,U,blasEngine>::Multiply(
+void MM3D<T,U>::Multiply(
                                    	    Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         Matrix<T,U,StructureC,Distribution>& matrixC,
@@ -155,7 +155,7 @@ void MM3D<T,U,blasEngine>::Multiply(
   T* matrixCforEnginePtr = matrixC.getRawData();
   if (srcPackage.beta == 0)
   {
-    blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+    blasEngine::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
       matrixCforEnginePtr, localDimensionM, localDimensionN, localDimensionK,
       (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
@@ -167,7 +167,7 @@ void MM3D<T,U,blasEngine>::Multiply(
    {
      // This cancels out any affect beta could have. Beta is just not compatable with MM3D and must be handled separately
      std::vector<T> holdProduct(matrixC.getNumElems(),0);
-     blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+     blasEngine::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
        &holdProduct[0], localDimensionM, localDimensionN, localDimensionK,
        (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
        (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
@@ -182,13 +182,13 @@ void MM3D<T,U,blasEngine>::Multiply(
   TAU_FSTOP(MM3D::Multiply);
 }
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
   		template<typename,typename, template<typename,typename,int> class> class StructureB,
   		template<typename,typename,int> class Distribution
 	>
-void MM3D<T,U,blasEngine>::Multiply(
+void MM3D<T,U>::Multiply(
                                    	    Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureB,Distribution>& matrixB,
                                         MPI_Comm commWorld,
@@ -230,7 +230,7 @@ void MM3D<T,U,blasEngine>::Multiply(
         matrixA, matrixB, commInfo3D, matrixAEngineVector, matrixBEngineVector,
         serializeKeyA, serializeKeyB);
     }
-    blasEngine<T,U>::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+    blasEngine::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
       localDimensionM, localDimensionN, localDimensionM, (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN),
       srcPackage);
   }
@@ -248,7 +248,7 @@ void MM3D<T,U,blasEngine>::Multiply(
       _start2(
         matrixB, matrixA, commInfo3D, matrixBEngineVector, matrixAEngineVector, serializeKeyB, serializeKeyA);
     }
-    blasEngine<T,U>::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+    blasEngine::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
       localDimensionM, localDimensionN, localDimensionN, (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN),
       srcPackage);
   }
@@ -258,12 +258,12 @@ void MM3D<T,U,blasEngine>::Multiply(
   TAU_FSTOP(MM3D::Multiply);
 }
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<
   	  template<typename,typename, template<typename,typename,int> class> class StructureA,
   	  template<typename,typename,int> class Distribution
 	>
-void MM3D<T,U,blasEngine>::Multiply(
+void MM3D<T,U>::Multiply(
                                         Matrix<T,U,StructureA,Distribution>& matrixA,
                                    	    T* matrixB,
                                         U matrixAnumColumns,
@@ -323,7 +323,7 @@ void MM3D<T,U,blasEngine>::Multiply(
     BroadcastPanels(
       (isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
     matrixBEnginePtr = (isRootColumn ? matrixB : foreignB);
-    blasEngine<T,U>::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionM,
+    blasEngine::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionM,
       (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
   else
@@ -345,7 +345,7 @@ void MM3D<T,U,blasEngine>::Multiply(
     BroadcastPanels(
       (isRootRow ? matrixB : foreignB), sizeB, isRootRow, pGridCoordZ, rowComm);
     matrixBEnginePtr = (isRootRow ? matrixB : foreignB);
-    blasEngine<T,U>::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionN,
+    blasEngine::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionN,
       (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
   MPI_Allreduce(MPI_IN_PLACE,matrixBEnginePtr, sizeB, MPI_DATATYPE, MPI_SUM, depthComm);
@@ -356,13 +356,13 @@ void MM3D<T,U,blasEngine>::Multiply(
 }
 
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
   		template<typename,typename, template<typename,typename,int> class> class StructureC,
   		template<typename,typename,int> class Distribution
 	>
-void MM3D<T,U,blasEngine>::Multiply(
+void MM3D<T,U>::Multiply(
                                    	    Matrix<T,U,StructureA,Distribution>& matrixA,
                                         Matrix<T,U,StructureC,Distribution>& matrixC,
                                         MPI_Comm commWorld,
@@ -428,14 +428,14 @@ void MM3D<T,U,blasEngine>::Multiply(
     if (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans)
     {
       blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, -1., 1.);
-      blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+      blasEngine::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
         matrixCforEnginePtr, localDimensionN, localDimensionN, localDimensionK,
         localDimensionN, localDimensionN, localDimensionN, gemmArgs);
     }
     else
     {
       blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, -1., 1.);
-      blasEngine<T,U>::_gemm((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr), (serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr),
+      blasEngine::_gemm((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr), (serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr),
         matrixCforEnginePtr, localDimensionN, localDimensionN, localDimensionK,
         localDimensionK, localDimensionK, localDimensionN, gemmArgs);
     }
@@ -449,14 +449,14 @@ void MM3D<T,U,blasEngine>::Multiply(
     if (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans)
     {
       blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, -1., 1.);
-      blasEngine<T,U>::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
+      blasEngine::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
         &holdProduct[0], localDimensionN, localDimensionN, localDimensionK,
         localDimensionN, localDimensionN, localDimensionN, gemmArgs);
     }
     else
     {
       blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, -1., 1.);
-      blasEngine<T,U>::_gemm((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr), (serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr),
+      blasEngine::_gemm((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr), (serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr),
         &holdProduct[0], localDimensionN, localDimensionN, localDimensionK,
         localDimensionK, localDimensionK, localDimensionN, gemmArgs);
     }
@@ -471,14 +471,14 @@ void MM3D<T,U,blasEngine>::Multiply(
   TAU_FSTOP(MM3D::Multiply);
 }
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
   		template<typename,typename, template<typename,typename,int> class> class StructureB,
   		template<typename,typename, template<typename,typename,int> class> class StructureC,
   		template<typename,typename,int> class Distribution
 	>
-void MM3D<T,U,blasEngine>::Multiply(
+void MM3D<T,U>::Multiply(
                 Matrix<T,U,StructureA,Distribution>& matrixA,
                 Matrix<T,U,StructureB,Distribution>& matrixB,
 				        Matrix<T,U,StructureC,Distribution>& matrixC,
@@ -543,13 +543,13 @@ void MM3D<T,U,blasEngine>::Multiply(
 }
 
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
   		template<typename,typename, template<typename,typename,int> class> class StructureB,
   		template<typename,typename,int> class Distribution
 	 >
-void MM3D<T,U,blasEngine>::Multiply(
+void MM3D<T,U>::Multiply(
 				      Matrix<T,U,StructureA,Distribution>& matrixA,
 				      Matrix<T,U,StructureB,Distribution>& matrixB,
 				      U matrixAcutXstart,
@@ -600,13 +600,13 @@ void MM3D<T,U,blasEngine>::Multiply(
 }
 
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<
 		template<typename,typename, template<typename,typename,int> class> class StructureA,
   		template<typename,typename, template<typename,typename,int> class> class StructureC,
   		template<typename,typename,int> class Distribution
 	 >
-void MM3D<T,U,blasEngine>::Multiply(
+void MM3D<T,U>::Multiply(
 				      Matrix<T,U,StructureA,Distribution>& matrixA,
 				      Matrix<T,U,StructureC,Distribution>& matrixC,
 				      U matrixAcutXstart,
@@ -659,12 +659,12 @@ void MM3D<T,U,blasEngine>::Multiply(
 }
 
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<template<typename,typename,int> class Distribution,
   template<typename,typename, template<typename,typename,int> class> class StructureArg1,
   template<typename,typename, template<typename,typename,int> class> class StructureArg2,
   typename tupleStructure>
-void MM3D<T,U,blasEngine>::_start1(
+void MM3D<T,U>::_start1(
 					Matrix<T,U,StructureArg1,Distribution>& matrixA,
 					Matrix<T,U,StructureArg2,Distribution>& matrixB,
 					tupleStructure& commInfo3D,
@@ -727,10 +727,10 @@ void MM3D<T,U,blasEngine>::_start1(
 }
 
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution,
   typename tupleStructure>
-void MM3D<T,U,blasEngine>::_end1(
+void MM3D<T,U>::_end1(
 					T* matrixEnginePtr,
 					Matrix<T,U,StructureArg,Distribution>& matrix,
 					tupleStructure& commInfo3D,
@@ -758,12 +758,12 @@ void MM3D<T,U,blasEngine>::_end1(
   TAU_FSTOP(MM3D::_end1);
 }
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<template<typename,typename,int> class Distribution,
   template<typename,typename, template<typename,typename,int> class> class StructureArg1,
   template<typename,typename, template<typename,typename,int> class> class StructureArg2,
   typename tupleStructure>
-void MM3D<T,U,blasEngine>::_start2(
+void MM3D<T,U>::_start2(
 					Matrix<T,U,StructureArg1,Distribution>& matrixA,
 					Matrix<T,U,StructureArg2,Distribution>& matrixB,
 					tupleStructure& commInfo3D,
@@ -954,8 +954,8 @@ void MM3D<T,U,blasEngine>::_start2(
 
 
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-void MM3D<T,U,blasEngine>::BroadcastPanels(
+template<typename T, typename U>
+void MM3D<T,U>::BroadcastPanels(
 						std::vector<T>& data,
 						U size,
 						bool isRoot,
@@ -976,8 +976,8 @@ void MM3D<T,U,blasEngine>::BroadcastPanels(
   TAU_FSTOP(MM3D::BroadcastPanels);
 }
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
-void MM3D<T,U,blasEngine>::BroadcastPanels(
+template<typename T, typename U>
+void MM3D<T,U>::BroadcastPanels(
 						T*& data,
 						U size,
 						bool isRoot,
@@ -1001,10 +1001,10 @@ void MM3D<T,U,blasEngine>::BroadcastPanels(
 }
 
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-void MM3D<T,U,blasEngine>::getEnginePtr(
+void MM3D<T,U>::getEnginePtr(
 					Matrix<T,U,StructureArg, Distribution>& matrixArg,
 					Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
 					std::vector<T>& data,
@@ -1029,10 +1029,10 @@ void MM3D<T,U,blasEngine>::getEnginePtr(
 }
 
 
-template<typename T, typename U, template<typename,typename> class blasEngine>							// Defaulted to cblasEngine
+template<typename T, typename U>
 template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-Matrix<T,U,StructureArg,Distribution> MM3D<T,U,blasEngine>::getSubMatrix(
+Matrix<T,U,StructureArg,Distribution> MM3D<T,U>::getSubMatrix(
 								Matrix<T,U,StructureArg, Distribution>& srcMatrix,
 								U matrixArgColumnStart,
 								U matrixArgColumnEnd,

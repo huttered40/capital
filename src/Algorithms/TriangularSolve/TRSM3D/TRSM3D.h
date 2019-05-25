@@ -22,7 +22,7 @@
 // Also note, we do not need an extra template parameter for L-inverse. Presumably if the user wants L to be LowerTriangular, then he wants L-inverse
 //   to be LowerTriangular as well
 
-template<typename T, typename U, template<typename, typename> class blasEngine>
+template<typename T, typename U>
 class TRSM3D
 {
 public:

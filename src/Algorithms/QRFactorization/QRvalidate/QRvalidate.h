@@ -15,7 +15,7 @@
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../AlgebraicBLAS/blasEngine.h"
+#include "./../../../BLAS/blasEngine.h"
 #include "./../../../Util/util.h"
 #include "./../../../Util/validation.h"
 

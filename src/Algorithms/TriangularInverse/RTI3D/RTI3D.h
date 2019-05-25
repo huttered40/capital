@@ -15,10 +15,10 @@
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Timer/CTFtimer.h"
 #include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../AlgebraicBLAS/blasEngine.h"
+#include "./../../../BLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 
-template<typename T, typename U, template<typename, typename> class blasEngine>
+template<typename T, typename U>
 class RTI3D
 {
 public:
@@ -26,8 +26,8 @@ public:
   RTI3D() = delete;
   RTI3D(const RTI3D& rhs) = delete;
   RTI3D(RTI3D&& rhs) = delete;
-  RTI3D<T,U,blasEngine>& operator=(const RTI3D& rhs) = delete;
-  RTI3D<T,U,blasEngine>& operator=(RTI3D&& rhs) = delete;
+  RTI3D& operator=(const RTI3D& rhs) = delete;
+  RTI3D& operator=(RTI3D&& rhs) = delete;
 
   template<template<typename,typename,int> class Distribution>
   static void Invert(

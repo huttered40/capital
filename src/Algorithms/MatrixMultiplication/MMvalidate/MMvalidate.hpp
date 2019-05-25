@@ -2,14 +2,14 @@
 
 // We enforce that matrixSol must have Square Structure.
 
-template<typename T, typename U, template<typename,typename> class blasEngine>
+template<typename T, typename U>
 template<
   template<typename,typename, template<typename,typename,int> class> class StructureArgA,
   template<typename,typename, template<typename,typename,int> class> class StructureArgB,
   template<typename,typename, template<typename,typename,int> class> class StructureArgC,
   template<typename,typename,int> class Distribution
         >
-void MMvalidate<T,U,blasEngine>::validateLocal(
+void MMvalidate<T,U>::validateLocal(
 		        Matrix<T,U,StructureArgA,Distribution>& matrixA,
 		        Matrix<T,U,StructureArgB,Distribution>& matrixB,
 		        Matrix<T,U,StructureArgC,Distribution>& matrixC,
@@ -49,7 +49,7 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   std::vector<T> matrixCforEngine(globalDimensionM*globalDimensionN, 0);	// No matrix needed for this. Only used in BLAS call
 
   // Assume column-major matrix and no transposes
-  blasEngine<T,U>::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], globalDimensionM, globalDimensionN,
+  blasEngine::_gemm(&matrixAforEngine[0], &matrixBforEngine[0], &matrixCforEngine[0], globalDimensionM, globalDimensionN,
     globalDimensionK, globalDimensionM, globalDimensionK, globalDimensionM, srcPackage);
 
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
@@ -64,13 +64,13 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   MPI_Comm_free(&sliceComm);
 }
 
-template<typename T, typename U, template<typename,typename> class blasEngine>
+template<typename T, typename U>
 template<
   template<typename,typename, template<typename,typename,int> class> class StructureArgA,
   template<typename,typename, template<typename,typename,int> class> class StructureArgB,
   template<typename,typename,int> class Distribution
         >
-void MMvalidate<T,U,blasEngine>::validateLocal(
+void MMvalidate<T,U>::validateLocal(
                         Matrix<T,U,StructureArgA,Distribution>& matrixA,
                         Matrix<T,U,StructureArgB,Distribution>& matrixBin,
                         Matrix<T,U,StructureArgB,Distribution>& matrixBout,
@@ -107,7 +107,7 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
   std::vector<T> matrixBforEngine = util<T,U>::getReferenceMatrix(
     matrixBin, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
 
-  blasEngine<T,U>::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], globalDimensionM, globalDimensionN,
+  blasEngine::_trmm(&matrixAforEngine[0], &matrixBforEngine[0], globalDimensionM, globalDimensionN,
     (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionM : globalDimensionN),
     (srcPackage.order == blasEngineOrder::AblasColumnMajor ? globalDimensionM : globalDimensionN), srcPackage);
 
@@ -124,8 +124,8 @@ void MMvalidate<T,U,blasEngine>::validateLocal(
 }
 
   
-template<typename T, typename U, template<typename,typename> class blasEngine>
-T MMvalidate<T,U,blasEngine>::getResidual(
+template<typename T, typename U>
+T MMvalidate<T,U>::getResidual(
 		     std::vector<T>& myValues,
 		     std::vector<T>& blasValues,
 		     U localDimensionM,

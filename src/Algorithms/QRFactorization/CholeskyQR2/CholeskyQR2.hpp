@@ -1,8 +1,8 @@
 /* Author: Edward Hutter */
 
-template<typename T,typename U,template<typename,typename> class blasEngine>
+template<typename T,typename U>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::Factor1D(
+void CholeskyQR2<T,U>::Factor1D(
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld)
 {
   TAU_FSTART(Factor1D);
@@ -32,14 +32,14 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D(
   }
   blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
     blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-  blasEngine<T,U>::_trmm(matrixR2.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionN,
+  blasEngine::_trmm(matrixR2.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionN, localDimensionN, trmmPack1);
   TAU_FSTOP(Factor1D);
 }
 
-template<typename T,typename U,template<typename,typename> class blasEngine>
+template<typename T,typename U>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::Factor3D(
+void CholeskyQR2<T,U>::Factor3D(
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR,MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D, 
       int inverseCutOffMultiplier, int baseCaseMultiplier, int panelDimensionMultiplier)
 {
@@ -62,14 +62,14 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D(
     blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
-  MM3D<T,U,blasEngine>::Multiply(
+  MM3D<T,U>::Multiply(
     matrixR2, matrixR, commWorld, commInfo3D, trmmPack1);
   TAU_FSTOP(Factor3D);
 }
 
-template<typename T,typename U,template<typename,typename> class blasEngine>
+template<typename T,typename U>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::FactorTunable(
+void CholeskyQR2<T,U>::FactorTunable(
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable, int inverseCutOffMultiplier,
       int baseCaseMultiplier, int panelDimensionMultiplier)
@@ -107,7 +107,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
     blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
-  MM3D<T,U,blasEngine>::Multiply(
+  MM3D<T,U>::Multiply(
     matrixR2, matrixR, miniCubeComm, commInfo3D, trmmPack1);
 
   util<T,U>::destroy3DTopology(commInfo3D);
@@ -115,9 +115,9 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable(
 }
 
 
-template<typename T,typename U,template<typename,typename> class blasEngine>
+template<typename T,typename U>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(
+void CholeskyQR2<T,U>::Factor1D_cqr(
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld)
 {
   TAU_FSTART(Factor1D_cqr);
@@ -126,7 +126,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(
   U localDimensionN = matrixA.getNumColumnsLocal();
   std::vector<T> localMMvec(localDimensionN*localDimensionN);
   blasEngineArgumentPackage_syrk<T> syrkPack(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineTranspose::AblasTrans, 1., 0.);
-  blasEngine<T,U>::_syrk(matrixA.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionM,
+  blasEngine::_syrk(matrixA.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionM,
     localDimensionM, localDimensionN, syrkPack);
 
   // MPI_Allreduce to replicate the dimensionY x dimensionY matrix on each processor
@@ -143,14 +143,14 @@ void CholeskyQR2<T,U,blasEngine>::Factor1D_cqr(
   // Finish by performing local matrix multiplication Q = A*R^{-1}
   blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
     blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-  blasEngine<T,U>::_trmm(&RI[0], matrixA.getRawData(), localDimensionM, localDimensionN,
+  blasEngine::_trmm(&RI[0], matrixA.getRawData(), localDimensionM, localDimensionN,
     localDimensionN, localDimensionM, trmmPack1);
   TAU_FSTOP(Factor1D_cqr);
 }
 
-template<typename T,typename U,template<typename,typename> class blasEngine>
+template<typename T,typename U>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
+void CholeskyQR2<T,U>::Factor3D_cqr(
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
       int inverseCutOffMultiplier, int baseCaseMultiplier, int panelDimensionMultiplier)
 {
@@ -182,7 +182,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
   blasEngineArgumentPackage_gemm<T> gemmPack1(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
 
   // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
-  blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
+  blasEngine::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
 
   MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE,
@@ -194,7 +194,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     matrixA.getNumColumnsGlobal(), matrixA.getNumColumnsGlobal(), true);
 
-  std::pair<bool,std::vector<U>> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(
+  std::pair<bool,std::vector<U>> baseCaseDimList = CFR3D<T,U>::Factor(
     matrixR, matrixRI, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U', commWorld, commInfo3D);
 
 
@@ -206,7 +206,7 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
   {
     blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    MM3D<T,U,blasEngine>::Multiply(
+    MM3D<T,U>::Multiply(
       matrixRI, matrixA, commWorld, commInfo3D, trmmPack1);
   }
   else
@@ -223,16 +223,16 @@ void CholeskyQR2<T,U,blasEngine>::Factor3D_cqr(
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
+    TRSM3D<T,U>::iSolveUpperLeft(
       matrixA, rectR, rectRI,
       baseCaseDimList.second, gemmPack1, trmmPackage, commWorld, commInfo3D);
   }
   TAU_FSTOP(Factor3D_cqr);
 }
 
-template<typename T,typename U,template<typename,typename> class blasEngine>
+template<typename T,typename U>
 template<template<typename,typename,template<typename,typename,int> class> class StructureA, template<typename,typename,int> class Distribution>
-void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
+void CholeskyQR2<T,U>::FactorTunable_cqr(
     Matrix<T,U,StructureA,Distribution>& matrixA, Matrix<T,U,MatrixStructureSquare,Distribution>& matrixR, int gridDimensionD, int gridDimensionC, MPI_Comm commWorld,
       std::tuple<MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm, MPI_Comm>& tunableCommunicators,
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D, int inverseCutOffMultiplier,
@@ -280,7 +280,7 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
   blasEngineArgumentPackage_gemm<T> gemmPack1(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
 
   // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
-  blasEngine<T,U>::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
+  blasEngine::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
 
   MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE,
@@ -294,14 +294,14 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN,
     globalDimensionN, globalDimensionN, true);
 
-  std::pair<bool,std::vector<U>> baseCaseDimList = CFR3D<T,U,blasEngine>::Factor(
+  std::pair<bool,std::vector<U>> baseCaseDimList = CFR3D<T,U>::Factor(
     matrixR, matrixRI, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U', miniCubeComm, commInfo3D);
 
   if (baseCaseDimList.first)
   {
     blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    MM3D<T,U,blasEngine>::Multiply(
+    MM3D<T,U>::Multiply(
       matrixRI, matrixA, miniCubeComm, commInfo3D, trmmPack1);
   }
   else
@@ -318,15 +318,15 @@ void CholeskyQR2<T,U,blasEngine>::FactorTunable_cqr(
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    TRSM3D<T,U,blasEngine>::iSolveUpperLeft(
+    TRSM3D<T,U>::iSolveUpperLeft(
       matrixA, rectR, rectRI,
       baseCaseDimList.second, gemmPack1, trmmPackage, miniCubeComm, commInfo3D);
   }
   TAU_FSTOP(FactorTunable_cqr);
 }
 
-template<typename T,typename U, template<typename,typename> class blasEngine>
-void CholeskyQR2<T,U,blasEngine>::BroadcastPanels(
+template<typename T,typename U>
+void CholeskyQR2<T,U>::BroadcastPanels(
 											std::vector<T>& data,
 											U size,
 											bool isRoot,

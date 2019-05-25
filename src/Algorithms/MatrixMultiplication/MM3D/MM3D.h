@@ -40,7 +40,7 @@
   Also, we need to figure out what to do with Rectangular.
 */
 
-template<typename T, typename U, template<typename,typename> class blasEngine = cblasEngine>
+template<typename T, typename U>
 class MM3D
 {
 

@@ -126,7 +126,7 @@ int main(int argc, char** argv)
     #endif
     auto commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
       MPI_COMM_WORLD, dimensionD, dimensionC);
-    CholeskyQR2<DATATYPE,INTTYPE,cblasEngine>::FactorTunable(
+    CholeskyQR2<DATATYPE,INTTYPE>::FactorTunable(
       matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
     util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
     #ifdef PERFORMANCE

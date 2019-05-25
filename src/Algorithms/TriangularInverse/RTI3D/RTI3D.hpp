@@ -2,9 +2,9 @@
   Author: Edward Hutter
 */
 
-template<typename T, typename U, template<typename, typename> class blasEngine>
+template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void RTI3D<T,U,blasEngine>::Invert(
+void RTI3D<T,U>::Invert(
               Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
               Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
               char dir,
@@ -27,9 +27,9 @@ void RTI3D<T,U,blasEngine>::Invert(
   }
 }
 
-template<typename T, typename U, template<typename, typename> class blasEngine>
+template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void RTI3D<T,U,blasEngine>::InvertLower(
+void RTI3D<T,U>::InvertLower(
                   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixL,
                   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
                   U localDimension,
@@ -65,9 +65,9 @@ void RTI3D<T,U,blasEngine>::InvertLower(
     blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 0.;
-    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0);
+    MM3D<T,U>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0);
     blasArgs.alpha = -1.;
-    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0);
+    MM3D<T,U>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0);
     return;
   }
 
@@ -135,9 +135,9 @@ void RTI3D<T,U,blasEngine>::InvertLower(
     blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 0.;
-    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0);
+    MM3D<T,U>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0);
     blasArgs.alpha = -1.;
-    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0);
+    MM3D<T,U>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0);
     MPI_Comm_free(&sliceComm);
   }
   else if (key == 1)
@@ -189,17 +189,17 @@ void RTI3D<T,U,blasEngine>::InvertLower(
     blasArgs.transposeB = blasEngineTranspose::AblasNoTrans;
     blasArgs.alpha = 1.;
     blasArgs.beta = 0.;
-    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0);
+    MM3D<T,U>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0);
     // One more MM3D call to complete the matrix multiplication
     blasArgs.beta = 1;
-    MM3D<T,U,blasEngine>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0, smallDim);
+    MM3D<T,U>::Multiply(matrixL, matrixLI, tempInverse, startX, startX+localShift, startY+localShift, endY, startX, startX+localShift, startY, startY+localShift, 0, localShift, 0, localShift, commWorld, blasArgs, true, true, false, 0, smallDim);
 
     blasArgs.beta = 0;
     blasArgs.alpha = -1.;
-    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0);
+    MM3D<T,U>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0);
     blasArgs.beta = 1;
     // One more MM3D call to complete the matrix multiplication
-    MM3D<T,U,blasEngine>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0, smallDim);
+    MM3D<T,U>::Multiply(matrixLI, tempInverse, matrixLI, startX+localShift, endX, startY+localShift, endY, 0, localShift, 0, localShift, startX, startX+localShift, startY+localShift, endY, commWorld, blasArgs, true, false, true, 0, smallDim);
 
     MPI_Comm_free(&sliceComm);
     return;
@@ -218,9 +218,9 @@ void RTI3D<T,U,blasEngine>::InvertLower(
 }
 
 
-template<typename T, typename U, template<typename, typename> class blasEngine>
+template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void RTI3D<T,U,blasEngine>::InvertUpper(
+void RTI3D<T,U>::InvertUpper(
                   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixU,
                   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixUI,
                   U localDimension,
@@ -238,9 +238,9 @@ void RTI3D<T,U,blasEngine>::InvertUpper(
 }
 
 
-template<typename T, typename U, template<typename, typename> class blasEngine>
+template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-void RTI3D<T,U,blasEngine>::sliceExchangeBase(
+void RTI3D<T,U>::sliceExchangeBase(
                   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixT,
                   Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
                   U localDimension,
@@ -310,9 +310,9 @@ void RTI3D<T,U,blasEngine>::sliceExchangeBase(
 }
 
 
-template<typename T, typename U, template<typename, typename> class blasEngine>
+template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
-std::vector<T> RTI3D<T,U,blasEngine>::blockedToCyclicTransformation(
+std::vector<T> RTI3D<T,U>::blockedToCyclicTransformation(
 									Matrix<T,U,MatrixStructureSquare,Distribution>& matT,
 									U localDimension,
 									U globalDimension,
@@ -379,8 +379,8 @@ std::vector<T> RTI3D<T,U,blasEngine>::blockedToCyclicTransformation(
 //   when we are really only writing to a triangle. So there is a source of optimization here at least in terms of
 //   number of flops, but in terms of memory accesses and cache lines, not sure. Note that with this optimization,
 //   we may need to separate into two different functions
-template<typename T, typename U, template<typename, typename> class blasEngine>
-void RTI3D<T,U,blasEngine>::cyclicToLocalTransformation(
+template<typename T, typename U>
+void RTI3D<T,U>::cyclicToLocalTransformation(
 								std::vector<T>& storeT,
 								U localDimension,
 								U globalDimension,

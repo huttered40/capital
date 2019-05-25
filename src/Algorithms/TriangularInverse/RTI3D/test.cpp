@@ -67,7 +67,7 @@ int main(int argc, char** argv)
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      RTI3D<double,int,cblasEngine>::Invert(matL, matLI, 'L', MPI_COMM_WORLD);
+      RTI3D<double,int>::Invert(matL, matLI, 'L', MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "RTI3D Lower", i);
     }
@@ -86,7 +86,7 @@ int main(int argc, char** argv)
     for (int i=0; i<numIterations; i++)
     {
       myTimer.setStartTime();
-      RTI3D<double,int,cblasEngine>::Invert(matR, matRI, 'U', MPI_COMM_WORLD);
+      RTI3D<double,int>::Invert(matR, matRI, 'U', MPI_COMM_WORLD);
       myTimer.setEndTime();
       myTimer.printParallelTime(1e-8, MPI_COMM_WORLD, "RTI3D Upper", i);
     }

@@ -13,14 +13,14 @@
 #include "./../../../Timer/CTFtimer.h"
 #include "./../../../Matrix/Matrix.h"
 #include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../AlgebraicBLAS/blasEngine.h"
+#include "./../../../BLAS/blasEngine.h"
 #include "./../../../Util/util.h"
 
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
 
-template<typename T, typename U, template<typename,typename> class blasEngine>
+template<typename T, typename U>
 class MMvalidate
 {
 public:

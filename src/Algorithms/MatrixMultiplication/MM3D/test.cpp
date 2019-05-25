@@ -47,7 +47,7 @@ static double runTestGemm(
   volatile double startTime=MPI_Wtime();
   #endif
   auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
-  MM3D<T,U,cblasEngine>::Multiply(
+  MM3D<T,U>::Multiply(
     matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
@@ -90,7 +90,7 @@ static double runTestTrmm(
   #endif
   auto commInfo3D = util<T,U>::build3DTopology(
     MPI_COMM_WORLD);
-  MM3D<T,U,cblasEngine>::Multiply(
+  MM3D<T,U>::Multiply(
     matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util<T,U>::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE

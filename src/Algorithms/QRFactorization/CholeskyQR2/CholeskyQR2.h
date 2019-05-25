@@ -26,14 +26,14 @@
 #include "./../../../Util/shared.h"
 #include "./../../../Timer/CTFtimer.h"
 #include "../../../Matrix/Matrix.h"
-#include "./../../../AlgebraicBLAS/blasEngine.h"
+#include "./../../../BLAS/blasEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 #include "./../../CholeskyFactorization/CFR3D/CFR3D.h"
 #include "./../../TriangularSolve/TRSM3D/TRSM3D.h"
 #include "./../../../Util/util.h"
 
 // Need template parameters for all 3 matrices (A,Q,R), as well as some other things, right?
-template<typename T,typename U,template<typename,typename> class blasEngine>
+template<typename T,typename U>
 class CholeskyQR2
 {
 public:
