@@ -14,7 +14,7 @@ ifeq ($(INTTYPE),)
   INTTYPE=INT_TYPE
 endif
 ifeq ($(MPITYPE),)
-  MPITYPE=MPI
+  MPITYPE=MPI_TYPE
 endif
 ifeq ($(PROFTYPE),)
   PROFTYPE=TIMER_TYPE
