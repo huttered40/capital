@@ -41,9 +41,8 @@ void QRvalidate<T,U>::validateLocal1D(
 
   // Now generate R using Q and A
   std::vector<T> matrixR(globalDimensionN*globalDimensionN,0);
-  // For right now, I will just use cblas, but Note that I should template this class with blasEngine
-  cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, globalDimensionN, globalDimensionN, globalDimensionM,
-    1., &matrixQ[0], globalDimensionM, &globalMatrixA[0], globalDimensionM, 0., &matrixR[0], globalDimensionN);
+  blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
+  blasEngine::_gemm(&matrixQ[0], &globalMatrixA[0], &matrixR[0], globalDimensionN, globalDimensionN, globalDimensionM, globalDimensionM, globalDimensionM, globalDimensionN, gemmArgs);
 
   // Need to set up error2 for matrix R, but do that later
   T error2 = getResidual1D_Full(myR.getVectorData(), matrixR, globalDimensionN, globalDimensionM, commWorld);
@@ -164,9 +163,8 @@ T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, 
 
   // generate Q^T*Q and the compare against 0s and 1s, implicely forming the Identity matrix
   std::vector<T> myI(globalDimensionX*globalDimensionX,0);
-  // Again, for now, lets just use cblas, but I can encapsulate it into blasEngine later
-  cblas_dsyrk(CblasColMajor, CblasUpper, CblasTrans, globalDimensionX, localDimensionY, 1., &myQ[0],
-    localDimensionY, 0., &myI[0], globalDimensionX);
+  blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineTranspose::AblasTrans, 1., 0.);
+  blasEngine::_gemm(&myQ[0], &myI[0], globalDimensionX, localDimensionY, localDimensionY, globalDimensionX, syrkArgs);
 
   // To complete the sum (rightward movement of Matvecs), perform an AllReduce
   MPI_Allreduce(MPI_IN_PLACE, &myI[0], globalDimensionX*globalDimensionX, MPI_DATATYPE, MPI_SUM, commWorld);
@@ -206,9 +204,8 @@ T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::
   MPI_Comm_rank(commWorld, &myRank);
 
   std::vector<T> computedA(globalDimensionX*localDimensionY,0);
-  // Again, for now, lets just use cblas, but I can encapsulate it into blasEngine later
-  cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, localDimensionY, globalDimensionX, globalDimensionX,
-    1., &myQ[0], localDimensionY, &myR[0], globalDimensionX, 0., &computedA[0], localDimensionY);
+  blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
+  blasEngine::_gemm(&myQ[0], &myR[0], &computedA[0], localDimensionY, globalDimensionX, globalDimensionX, localDimensionY, globalDimensionX, localDimensionY, gemmArgs);
 
   U trueDimensionY = globalDimensionY/numPEs + ((myRank < (globalDimensionY%numPEs)) ? 1 : 0);
   T error = 0;

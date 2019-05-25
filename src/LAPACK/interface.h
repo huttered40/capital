@@ -32,11 +32,9 @@ extern "C" void dorgqr_(int*, int*, int*, double*, int*, double*, int*);
 extern "C" void cpotrf_(char*, int*, std::complex<float>*, int*, int*);
 extern "C" void ctrtri_(char*, char*, int*, std::complex<float>*, int*, int*);
 extern "C" void cgeqrf_(int*, int*, std::complex<float>*, int*, std::complex<float>*, int*);
-extern "C" void corgqr_(int*, int*, int*, std::complex<float>*, int*, std::complex<float>*, int*);
 extern "C" void zpotrf_(char*, int*, double*, int*, int*);
 extern "C" void ztrtri_(char*, char*, int*, double*, int*, int*);
 extern "C" void zgeqrf_(int*, int*, std::complex<double>*, int*, std::complex<double>*, int*);
-extern "C" void zorgqr_(int*, int*, int*, std::complex<double>*, int*, std::complex<double>*, int*);
 
 // These constants below are placeholders. They mean nothing on these machines.
 #define LAPACK_ROW_MAJOR 0
@@ -54,11 +52,9 @@ extern "C" void LAPACKE_dorgqr(char, int, int, int, double*, int, float*);
 extern "C" void LAPACKE_cpotrf(char, char, int, std::complex<float>*, int);
 extern "C" void LAPACKE_ctrtri(char, char, char, int, std::complex<float>*, int);
 extern "C" void LAPACKE_cgeqrf(char, int, int, std::complex<float>*, int, std::complex<float>*);
-extern "C" void LAPACKE_corgqr(char, int, int, int, std::complex<float>*, int, std::complex<float>*);
 extern "C" void LAPACKE_zpotrf(char, char, int, std::complex<double>*, int);
 extern "C" void LAPACKE_ztrtri(char, char, char, int, std::complex<double>*, int);
 extern "C" void LAPACKE_zgeqrf(char, int, int, std::complex<double>*, int, std::complex<double>*);
-extern "C" void LAPACKE_zorgqr(char, int, int, int, std::complex<double>*, int, std::complex<double>*);
 #endif
 
 // Local includes
@@ -169,20 +165,6 @@ auto GetORGQRroutine(LType<double>){
   return &dorgqr_;
 #else
   return &LAPACKE_dorgqr;
-#endif
-}
-auto GetORGQRroutine(LType<std::complex<float>>){
-#if defined(BGQ) || defined(BLUEWATERS)
-  return &corgqr_;
-#else
-  return &LAPACKE_corgqr;
-#endif
-}
-auto GetORGQRroutine(LType<std::complex<double>>){
-#if defined(BGQ) || defined(BLUEWATERS)
-  return &zorgqr_;
-#else
-  return &LAPACKE_zorgqr;
 #endif
 }
 
