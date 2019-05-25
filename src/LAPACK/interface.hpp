@@ -1,51 +1,47 @@
 /* Author: Edward Hutter */
 
-
-template<typename T>
 void lapackHelper::setInfoParameters_potrf(
-                                          const lapackEngineArgumentPackage_potrf<T>& srcPackage,
+                                          const lapackEngineArgumentPackage_potrf& srcPackage,
                                           int& destArg1,
                                           char& destArg2){
-  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? AlapackRowMajor : AlapackColMajor);
+  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
   destArg2 = (srcPackage.uplo == lapackEngineUpLo::AlapackUpper ? 'U' : 'L');
 }
 
-template<typename T>
 void lapackHelper::setInfoParameters_trtri(
-                                          const lapackEngineArgumentPackage_trmm<T>& srcPackage,
+                                          const lapackEngineArgumentPackage_trtri& srcPackage,
                                           int& destArg1,
                                           char& destArg2,
                                           char& destArg3){
-  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? AlapackRowMajor : AlapackColMajor);
+  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
   destArg2 = (srcPackage.uplo == lapackEngineUpLo::AlapackUpper ? 'U' : 'L');
   destArg3 = (srcPackage.diag == lapackEngineDiag::AlapackUnit ? 'U' : 'N');
 }
 
-template<typename T>
 void lapackHelper::setInfoParameters_geqrf(
-                                          const lapackEngineArgumentPackage_syrk<T>& srcPackage,
+                                          const lapackEngineArgumentPackage_geqrf& srcPackage,
                                           int& destArg1){
-  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? AlapackRowMajor : AlapackColMajor);
+  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
+}
+
+void lapackHelper::setInfoParameters_orgqr(
+                                          const lapackEngineArgumentPackage_orgqr& srcPackage,
+                                          int& destArg1){
+  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
 }
 
 template<typename T>
-void lapackHelper::setInfoParameters_orgqr(
-                                          const lapackEngineArgumentPackage_syrk<T>& srcPackage,
-                                          int& destArg1){
-  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? AlapackRowMajor : AlapackColMajor);
-}
-
-template<typename T, typename U>
-void lapackEngine<T,U>::_potrf(
+void lapackEngine::_potrf(
             T* matrixA,
-            U n,
-            U lda,
-            const lapackEngineArgumentPackage_potrf<T>& srcPackage){
+            int n,
+            int lda,
+            const lapackEngineArgumentPackage_potrf& srcPackage){
   TAU_FSTART(potrf);
   // First, unpack the info parameter
-  CBLAS_ORDER arg1;
-  CBLAS_UPLO arg2;
+  int arg1; char arg2;
   setInfoParameters_potrf(srcPackage, arg1, arg2);
+
+  auto _potrf_ = GetPOTRFroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
   int info;
   _potrf_(&arg2, &n, matrixA, &lda, &info);
@@ -55,19 +51,18 @@ void lapackEngine<T,U>::_potrf(
   TAU_FSTOP(potrf);
 }
 
-template<typename T, typename U>
-void lapackEngine<T,U>::_trtri(
+template<typename T>
+void lapackEngine::_trtri(
             T* matrixA,
-            U n,
-            U lda,
-            const lapackEngineArgumentPackage_trtri<T>& srcPackage){
+            int n,
+            int lda,
+            const lapackEngineArgumentPackage_trtri& srcPackage){
   TAU_FSTART(trtri);
   // First, unpack the info parameter
-  CBLAS_ORDER arg1;
-  CBLAS_UPLO arg2;
-  CBLAS_DIAG arg3;
+  int arg1; char arg2; char arg3;
   setInfoParameters_trtri(srcPackage, arg1, arg2, arg3);
 
+  static auto _trtri_ = GetTRTRIroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
   int info;
   _trtri_(&arg2, &arg3, &n, matrixA, &lda, &info);
@@ -77,19 +72,20 @@ void lapackEngine<T,U>::_trtri(
   TAU_FSTOP(trtri);
 }
 
-template<typename T, typename U>
-void lapackEngine<T,U>::_geqrf(
+template<typename T>
+void lapackEngine::_geqrf(
             T* matrixA,
             T* tau,
-            U m,
-            U n,
-            U lda,
-            const lapackEngineArgumentPackage_geqrf<T>& srcPackage){
+            int m,
+            int n,
+            int lda,
+            const lapackEngineArgumentPackage_geqrf& srcPackage){
   TAU_FSTART(geqrf);
   // First, unpack the info parameter
-  CBLAS_ORDER arg1;
+  int arg1;
   setInfoParameters_geqrf(srcPackage, arg1);
 
+  auto _geqrf_ = GetGEQRFroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
   int info;
   _geqrf_(&m, &n, matrixA, &lda, tau, &info);
@@ -99,20 +95,21 @@ void lapackEngine<T,U>::_geqrf(
   TAU_FSTOP(geqrf);
 }
 
-template<typename T, typename U>
-void lapackEngine<T,U>::_orgqr(
+template<typename T>
+void lapackEngine::_orgqr(
             T* matrixA,
             T* tau,
-            U m,
-            U n,
-            U k,
-            U lda,
-            const lapackEngineArgumentPackage_orgqr<T>& srcPackage){
+            int m,
+            int n,
+            int k,
+            int lda,
+            const lapackEngineArgumentPackage_orgqr& srcPackage){
   TAU_FSTART(orgqr);
   // First, unpack the info parameter
-  CBLAS_ORDER arg1;
+  int arg1;
   setInfoParameters_orgqr(srcPackage, arg1);
 
+  auto _orgqr_ = GetORGQRroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
   int info;
   _orgqr_(&m, &n, &k, matrixA, &lda, tau, &info);

@@ -43,7 +43,7 @@ void blasHelper::setInfoParameters_syrk(
 }
 
 template<typename T, typename U>
-void blasEngine<T,U>::_gemm(
+void blasEngine::_gemm(
             T* matrixA,
             T* matrixB,
             T* matrixC,
@@ -61,13 +61,15 @@ void blasEngine<T,U>::_gemm(
   CBLAS_TRANSPOSE arg2;
   CBLAS_TRANSPOSE arg3;
   setInfoParameters_gemm(srcPackage, arg1, arg2, arg3);
+
+  auto _gemm_ = GetGEMMroutine(BType<T>());
   _gemm_(arg1, arg2, arg3, m, n, k, srcPackage.alpha,
     matrixA, lda, matrixB, ldb, srcPackage.beta, matrixC, ldc);
   TAU_FSTOP(gemm);
 }
 
 template<typename T, typename U>
-void blasEngine<T,U>::_trmm(
+void blasEngine::_trmm(
             T* matrixA,
             T* matrixB,
             U m,
@@ -85,13 +87,14 @@ void blasEngine<T,U>::_trmm(
   CBLAS_DIAG arg5;
   setInfoParameters_trmm(srcPackage, arg1, arg2, arg3, arg4, arg5);
 
+  auto _trmm_ = GetTRMMroutine(BType<T>());
   _trmm_(arg1, arg2, arg3, arg4, arg5, m, n, srcPackage.alpha, matrixA,
     lda, matrixB, ldb);
   TAU_FSTOP(trmm);
 }
 
 template<typename T, typename U>
-void blasEngine<T,U>::_syrk(
+void blasEngine::_syrk(
             T* matrixA,
             T* matrixC,
             U n,
@@ -107,6 +110,7 @@ void blasEngine<T,U>::_syrk(
   CBLAS_TRANSPOSE arg3;
   setInfoParameters_syrk(srcPackage, arg1, arg2, arg3);
 
+  auto _syrk_ = GetSYRKroutine(BType<T>());
   _syrk_(arg1, arg2, arg3, n, k, srcPackage.alpha, matrixA,
     lda, srcPackage.beta, matrixC, ldc);
   TAU_FSTOP(syrk);

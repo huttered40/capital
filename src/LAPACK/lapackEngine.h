@@ -19,18 +19,18 @@
 // Enum definitions for the user
 
 enum class lapackEngineOrder : unsigned char{
-  AblasRowMajor = 0x0,
-  AblasColumnMajor = 0x1
+  AlapackRowMajor = 0x0,
+  AlapackColumnMajor = 0x1
 };
 
 enum class lapackEngineUpLo : unsigned char{
-  AblasLower = 0x0,
-  AblasUpper = 0x1
+  AlapackLower = 0x0,
+  AlapackUpper = 0x1
 };
 
 enum class lapackEngineDiag : unsigned char{
-  AblasNonUnit = 0x0,
-  AblasUnit = 0x1
+  AlapackNonUnit = 0x0,
+  AlapackUnit = 0x1
 };
 
 enum class lapackEngineMethod : unsigned char{
@@ -44,21 +44,16 @@ enum class lapackEngineMethod : unsigned char{
 
 // We need to template this because we use the base class as the "type" of derived class memory in places like MatrixMultiplication
   // so that we don't need multiple functions for using gemm or dtrmm, etc.
-template<typename T>
 class lapackEngineArgumentPackage{
 public:
   // Base class contains a single member variable that can be used by its derived classes without explicitely casting
   lapackEngineMethod method;
 };
 
-// Now we have the derived classes that inherit from blasEngineArgumentPackage and contain the necessary arguments for the BLAS method
+// Now we have the derived classes that inherit from lapackEngineArgumentPackage and contain the necessary arguments for the LAPACK method
 //   specified by the user
 
-// We assume that the user will use T = float, double, complex<float>, or complex<double>
-	// We could declare this class template, and then use full template specialization to just implement
-	// those 4 cases, but the BLAS compiler will catch it anyways. The first option is always on the table
-template<typename T>
-class lapackEngineArgumentPackage_potrf : public lapackEngineArgumentPackage<T>{
+class lapackEngineArgumentPackage_potrf : public lapackEngineArgumentPackage{
 public:
   lapackEngineArgumentPackage_potrf(lapackEngineOrder orderArg, lapackEngineUpLo uploArg){
     this->method = lapackEngineMethod::AlapackPotrf;
@@ -70,8 +65,7 @@ public:
   lapackEngineUpLo uplo;
 };
 
-template<typename T>
-class lapackEngineArgumentPackage_trtri : public lapackEngineArgumentPackage<T>{
+class lapackEngineArgumentPackage_trtri : public lapackEngineArgumentPackage{
 public:
   lapackEngineArgumentPackage_trtri(lapackEngineOrder orderArg, lapackEngineUpLo uploArg, lapackEngineDiag diagArg){
     this->method = lapackEngineMethod::AlapackTrtri;
@@ -85,8 +79,7 @@ public:
   lapackEngineDiag diag;
 };
 
-template<typename T>
-class lapackEngineArgumentPackage_geqrf : public lapackEngineArgumentPackage<T>{
+class lapackEngineArgumentPackage_geqrf : public lapackEngineArgumentPackage{
 public:
   lapackEngineArgumentPackage_geqrf(lapackEngineOrder orderArg){
     this->method = lapackEngineMethod::AlapackGeqrf;
@@ -96,8 +89,7 @@ public:
   lapackEngineOrder order;
 };
 
-template<typename T>
-class lapackEngineArgumentPackage_orgqr : public lapackEngineArgumentPackage<T>{
+class lapackEngineArgumentPackage_orgqr : public lapackEngineArgumentPackage{
 public:
   lapackEngineArgumentPackage_orgqr(lapackEngineOrder orderArg){
     this->method = lapackEngineMethod::AlapackOrgqr;

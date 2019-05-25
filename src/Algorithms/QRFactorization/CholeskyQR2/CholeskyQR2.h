@@ -27,6 +27,7 @@
 #include "./../../../Timer/CTFtimer.h"
 #include "../../../Matrix/Matrix.h"
 #include "./../../../BLAS/blasEngine.h"
+#include "./../../../LAPACK/lapackEngine.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 #include "./../../CholeskyFactorization/CFR3D/CFR3D.h"
 #include "./../../TriangularSolve/TRSM3D/TRSM3D.h"

@@ -134,8 +134,8 @@ void CholeskyQR2<T,U>::Factor1D_cqr(
   //   but only try this later to see if it actually helps, because to do this, I will have to serialize and re-serialize. Would only make sense if dimensionX is huge.
   MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, MPI_SUM, commWorld);
 
-  lapackEngineArgumentPackage_potrf<T> potrfArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper);
-  lapackEngineArgumentPackage_trtri<T> trtriArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineDiag::NonUnit);
+  lapackEngineArgumentPackage_potrf potrfArgs(lapackEngineOrder::AlapackColumnMajor, lapackEngineUpLo::AlapackUpper);
+  lapackEngineArgumentPackage_trtri trtriArgs(lapackEngineOrder::AlapackColumnMajor, lapackEngineUpLo::AlapackUpper, lapackEngineDiag::AlapackNonUnit);
   lapackEngine::_potrf(matrixR.getRawData(), localDimensionN, localDimensionN, potrfArgs);
   std::vector<T> RI = matrixR.getVectorData();
   lapackEngine::_trtri(&RI[0], localDimensionN, localDimensionN, trtriArgs);

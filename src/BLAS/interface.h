@@ -45,26 +45,18 @@
 #endif
 
 // ************************************************************************************************************************************************************
-#ifdef FLOAT_TYPE
 extern void cblas_sgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const float, const float *, const int, const float *, const int, const float, float *, const int);
 extern void cblas_strmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const float, const float *, const int, float *, const int);
 extern void cblas_ssyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const float, const float *, const int, const float, float *, const int);
-#endif
-#ifdef DOUBLE_TYPE
 extern void cblas_dgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const double, const double *, const int, const double *, const int, const double, double *, const int);
 extern void cblas_dtrmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const double, const double *, const int, double *, const int);
 extern void cblas_dsyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const double, const double *, const int, const double, double *, const int);
-#endif
-#ifdef COMPLEX_FLOAT_TYPE
 extern void cblas_cgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const std::complex<float>, const std::complex<float> *, const int, const std::complex<float> *, const int, const std::complex<float>, std::complex<float> *, const int);
 extern void cblas_ctrmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const std::complex<float>, const std::complex<float> *, const int, std::complex<float> *, const int);
 extern void cblas_csyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const std::complex<float>, const std::complex<float> *, const int, const std::complex<float>, std::complex<float> *, const int);
-#endif
-#ifdef COMPLEX_DOUBLE_TYPE
 extern void cblas_zgemm(const enum CBLAS_ORDER, const enum CBLAS_TRANSPOSE, const enum CBLAS_TRANSPOSE, const int, const int, const int, const std::complex<double>, const std::complex<double> *, const int, const std::complex<double> *, const int, const std::complex<double>, std::complex<double> *, const int);
 extern void cblas_ztrmm(const enum CBLAS_ORDER, const enum CBLAS_SIDE, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const enum CBLAS_DIAG, const int, const int, const std::complex<double>, const std::complex<double> *, const int, std::complex<double> *, const int);
 extern void cblas_zsyrk(const enum CBLAS_ORDER, const enum CBLAS_UPLO, const enum CBLAS_TRANSPOSE, const int, const int, const std::complex<double>, const std::complex<double> *, const int, const std::complex<double>, std::complex<double> *, const int);
-#endif
 
 // Local includes
 #include "./../Util/shared.h"
@@ -86,43 +78,25 @@ template<typename T>
 class BType{};
 
 // ************************************************************************************************************************************************************
-auto GetGEMMroutine(BType<float>) -> decltype(&cblas_sgemm){
+auto GetGEMMroutine(BType<float>){
   return &cblas_sgemm;
 }
-auto GetGEMMroutine(BType<double>) -> decltype(&cblas_dgemm){
+auto GetGEMMroutine(BType<double>){
   return &cblas_dgemm;
 }
-auto GetGEMMroutine(BType<std::complex<float>>) -> decltype(&cblas_cgemm){
-  return &cblas_cgemm;
-}
-auto GetGEMMroutine(BType<std::complex<double>>) -> decltype(&cblas_zgemm){
-  return &cblas_zgemm;
-}
 
-auto GetTRMMroutine(BType<float>) -> decltype(&cblas_strmm){
+auto GetTRMMroutine(BType<float>){
   return &cblas_strmm;
 }
-auto GetTRMMroutine(BType<double>) -> decltype(&cblas_dtrmm){
+auto GetTRMMroutine(BType<double>){
   return &cblas_dtrmm;
 }
-auto GetTRMMroutine(BType<std::complex<float>>) -> decltype(&cblas_ctrmm){
-  return &cblas_ctrmm;
-}
-auto GetTRMMroutine(BType<std::complex<double>>) -> decltype(&cblas_ztrmm){
-  return &cblas_ztrmm;
-}
 
-auto GetSYRKroutine(BType<float>) -> decltype(&cblas_ssyrk){
+auto GetSYRKroutine(BType<float>){
   return &cblas_ssyrk;
 }
-auto GetSYRKroutine(BType<double>) -> decltype(&cblas_dsyrk){
+auto GetSYRKroutine(BType<double>){
   return &cblas_dsyrk;
-}
-auto GetSYRKroutine(BType<std::complex<float>>) -> decltype(&cblas_csyrk){
-  return &cblas_csyrk;
-}
-auto GetSYRKroutine(BType<std::complex<double>>) -> decltype(&cblas_zsyrk){
-  return &cblas_zsyrk;
 }
 
 // ************************************************************************************************************************************************************
@@ -150,7 +124,6 @@ protected:
 // ************************************************************************************************************************************************************
 // Declare this fully templated "base" class but do not define it. This prevents users from using this class, but
 //   allows partially specialized template classes to specialize it.
-template<typename T, typename U>
 class blasEngine : blasHelper{
   // Lets prevent any instances of this class from being created.
 public:
@@ -161,14 +134,15 @@ public:
   blasEngine& operator=(blasEngine&& rhs) = delete;
   ~blasEngine() = delete;
 
-  static auto _gemm_ = GetGEMMroutine(BType<T>());
-  static auto _trmm_ = GetTRMMroutine(BType<T>());
-  static auto _syrk_ = GetSYRKroutine(BType<T>());
-
   // Engine methods
+  template<typename T, typename U>
   static void _gemm(T* matrixA, T* matrixB, T* matrixC, U m, U n, U k,
                       U lda, U ldb, U ldc, const blasEngineArgumentPackage_gemm<T>& srcPackage);
+
+  template<typename T, typename U>
   static void _trmm(T* matrixA, T* matrixB, U m, U n, U lda, U ldb, const blasEngineArgumentPackage_trmm<T>& srcPackage);
+
+  template<typename T, typename U>
   static void _syrk(T* matrixA, T* matrixC, U n, U k, U lda, U ldc, const blasEngineArgumentPackage_syrk<T>& srcPackage);
 };
 

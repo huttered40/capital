@@ -119,10 +119,10 @@ ifneq ($(BlueWaters_machine),)
   PRG_ENV_FLAG_GNU=$(shell echo $(PE_ENV) |grep 'GNU')
 
   ifneq ($(PRG_ENV_FLAG_INTEL),)
-    CFLAGS = -fast -std=c++11
+    CFLAGS = -fast -std=c++1y
   endif
   ifneq ($(PRG_ENV_FLAG_GNU),)
-    CFLAGS = -O3 -ffast-math -funroll-loops -ftree-vectorize -std=gnu++11
+    CFLAGS = -O3 -ffast-math -funroll-loops -ftree-vectorize -std=gnu++1y
   endif
 
   OBJS1 = cqr2_$(MACHINE)_$(PROFTYPE)

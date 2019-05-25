@@ -21,7 +21,7 @@ mpiType=""
 accelType=""
 testAccel_NoAccel=""
 export GPU=GPUACCEL
-read -p "GPU acceleration via XK7[y] or no[n]?" accelType
+read -p "GPU acceleration via XK7[y] or no[n]: " accelType
 if [ "${accelType}" == "y" ];
 then
   export GPU=GPUACCEL

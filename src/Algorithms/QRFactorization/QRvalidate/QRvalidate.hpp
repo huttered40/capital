@@ -27,8 +27,8 @@ void QRvalidate<T,U>::validateLocal1D(
   std::vector<T> tau(globalDimensionN);
   std::vector<T> matrixQ = globalMatrixA;		// true copy
 
-  lapackEngineArgumentPackage_geqrf<T> geqrfArgs(blasEngineOrder::AblasColumnMajor);
-  lapackEngineArgumentPackage_orgqr<T> orgqrArgs(blasEngineOrder::AblasColumnMajor);
+  lapackEngineArgumentPackage_geqrf geqrfArgs(blasEngineOrder::AblasColumnMajor);
+  lapackEngineArgumentPackage_orgqr orgqrArgs(blasEngineOrder::AblasColumnMajor);
   lapackEngine::_geqrf(&matrixQ[0], &tau[0], globalDimensionM, globalDimensionN, globalDimensionM, geqrfArgs);
   lapackEngine::_orgqr(&matrixQ[0], &tau[0], globalDimensionM, globalDimensionN, globalDimensionN, globalDimensionM, orgqrArgs);
 
