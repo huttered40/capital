@@ -6,6 +6,7 @@
 #define ALGORITHMS_H_
 
 // Algorithmic design choices yield type parameters
+class NoAcceleration;		// Used primarily for validation routines
 class OffloadEachGemm;	// Offload each GEMM to a GPU via Cuda
 class OffloadImmediate;	// Immediately offload matrix data to GPU and keep it resident there
 
