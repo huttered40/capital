@@ -12,11 +12,11 @@ class OffloadImmediate;	// Immediately offload matrix data to GPU and keep it re
 // Local includes
 #include "./../Util/shared.h"
 #include "./../Timer/CTFtimer.h"
+#include "./../BLAS/blasEngine.h"
+#include "./../LAPACK/lapackEngine.h"
 #include "./../Matrix/MatrixDistributer.h"
 #include "./../Matrix/Matrix.h"
 #include "./../Matrix/MatrixSerializer.h"
-#include "./../BLAS/blasEngine.h"
-#include "./../LAPACK/lapackEngine.h"
 #include "./../Util/util.h"
 
 #endif // ALGORITHMS_H_
