@@ -7,8 +7,7 @@ void CFvalidate<T,U>::validateLocal(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
                         char dir,
                         MPI_Comm commWorld
-                      )
-{
+                      ){
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
@@ -16,8 +15,7 @@ void CFvalidate<T,U>::validateLocal(
   int myRank;
   MPI_Comm_rank(commWorld, &myRank);
 
-  auto commInfo = util<T,U>::getCommunicatorSlice(
-    commWorld);
+  auto commInfo = util<T,U>::getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
   U pGridCoordY = std::get<2>(commInfo);
@@ -26,14 +24,11 @@ void CFvalidate<T,U>::validateLocal(
 
   U localDimension = matrixSol_CF.getNumRowsLocal();
   U globalDimension = matrixSol_CF.getNumRowsGlobal();
-  std::vector<T> globalMatrixA = util<T,U>::getReferenceMatrix(
-    matrixA, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
+  std::vector<T> globalMatrixA = util<T,U>::getReferenceMatrix(matrixA, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
 
   // for ease in finding Frobenius Norm
-  for (U i=0; i<globalDimension; i++)
-  {
-    for (U j=0; j<globalDimension; j++)
-    {
+  for (U i=0; i<globalDimension; i++){
+    for (U j=0; j<globalDimension; j++){
       if ((dir == 'L') && (i>j)) globalMatrixA[i*globalDimension+j] = 0;
       if ((dir == 'U') && (j>i)) globalMatrixA[i*globalDimension+j] = 0;
     }
@@ -80,14 +75,12 @@ T CFvalidate<T,U>::validateParallel(
                         char dir,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
-                      )
-{
+                      ){
   int rank,size;
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(commWorld, &size);
 
-  auto commInfo = util<T,U>::getCommunicatorSlice(
-    commWorld);
+  auto commInfo = util<T,U>::getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
   U pGridCoordY = std::get<2>(commInfo);
@@ -103,8 +96,7 @@ T CFvalidate<T,U>::validateParallel(
   #endif
   util<T,U>::removeTriangle(matrixTri, pGridCoordX, pGridCoordY, pGridDimensionSize, dir);
   Matrix<T,U,MatrixStructureSquare,Distribution> matrixTriTrans = matrixTri;
-  util<T,U>::transposeSwap(
-    matrixTriTrans, rank, transposePartner, MPI_COMM_WORLD);
+  util<T,U>::transposeSwap(matrixTriTrans, rank, transposePartner, MPI_COMM_WORLD);
   std::string str = "Residual: ";
   return validator<T,U>::validateResidualParallel(
     (dir == 'L' ? matrixTri : matrixTriTrans), (dir == 'L' ? matrixTriTrans : matrixTri), matrixA, dir, commWorld, commInfo3D, MPI_COMM_WORLD, str);
@@ -118,15 +110,13 @@ T CFvalidate<T,U>::getResidualTriangleLower(
 		     U localDimension,
 		     U globalDimension,
 		     std::tuple<MPI_Comm, int, int, int, int> commInfo
-		   )
-{
+		   ){
   T error = 0;
   int pCoordX = std::get<1>(commInfo);
   int pCoordY = std::get<2>(commInfo);
   int pCoordZ = std::get<3>(commInfo);
   bool isRank1 = false;
-  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 0))
-  {
+  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 0)){
     isRank1 = true;
   }
   int pGridDimensionSize = std::get<4>(commInfo);
@@ -137,12 +127,10 @@ T CFvalidate<T,U>::getResidualTriangleLower(
   U trueDimensionM = globalDimension/pGridDimensionSize + ((pCoordY < (globalDimension%pGridDimensionSize)) ? 1 : 0);
   U trueDimensionN = globalDimension/pGridDimensionSize + ((pCoordX < (globalDimension%pGridDimensionSize)) ? 1 : 0);
 
-  for (U i=0; i<trueDimensionN; i++)
-  {
+  for (U i=0; i<trueDimensionN; i++){
     U saveCountRef = solIndex;
     U saveCountMy = myIndex;
-    for (U j=0; j<trueDimensionM; j++)
-    {
+    for (U j=0; j<trueDimensionM; j++){
       if (i>j) {solIndex+=pGridDimensionSize; myIndex++; continue;}
       T errorSquare = std::abs(myValues[myIndex] - lapackValues[solIndex]);
       //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " " << i << " " << j << " " << myIndex << " " << std::endl;
@@ -168,15 +156,13 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
 		     U localDimension,
 		     U globalDimension,
 		     std::tuple<MPI_Comm, int, int, int, int> commInfo
-		   )
-{
+		   ){
   T error = 0;
   int pCoordX = std::get<1>(commInfo);
   int pCoordY = std::get<2>(commInfo);
   int pCoordZ = std::get<3>(commInfo);
   bool isRank1 = false;
-  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 0))
-  {
+  if ((pCoordY == 0) && (pCoordX == 0) && (pCoordZ == 0)){
     isRank1 = true;
   }
 
@@ -187,12 +173,10 @@ T CFvalidate<T,U>::getResidualTriangleUpper(
   // We want to truncate this to use only the data that we own
   U trueDimensionM = globalDimension/pGridDimensionSize + ((pCoordY < (globalDimension%pGridDimensionSize)) ? 1 : 0);
   U trueDimensionN = globalDimension/pGridDimensionSize + ((pCoordX < (globalDimension%pGridDimensionSize)) ? 1 : 0);
-  for (U i=0; i<trueDimensionN; i++)
-  {
+  for (U i=0; i<trueDimensionN; i++){
     U saveCountRef = solIndex;
     U saveCountMy = myIndex;
-    for (U j=0; j<trueDimensionM; j++)
-    {
+    for (U j=0; j<trueDimensionM; j++){
       if (i<j) {solIndex+=pGridDimensionSize; myIndex++; continue;}
       T errorSquare = std::abs(myValues[myIndex] - lapackValues[solIndex]);
       //if (isRank1) std::cout << errorSquare << " " << myValues[myIndex] << " " << lapackValues[solIndex] << " i - " << i << ", j - " << j << std::endl;

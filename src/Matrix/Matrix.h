@@ -3,13 +3,7 @@
 #ifndef MATRIX_H_
 #define MATRIX_H_
 
-// System includes
-#include <vector>
-#include <iostream>
-
 // Local includes -- the policy classes
-#include "./../Util/shared.h"
-#include "./../Timer/CTFtimer.h"
 #include "MatrixStructure.h"
 
 /*
@@ -36,9 +30,7 @@ NOTE: Below idea does not work. It has been removed!
 // We now use template-template parameters to give the library user a more intuitive interface and to give
 //  the library itself more freedome to instantiate particular policy classes with different template parameters.
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-class Matrix
-{
-
+class Matrix{
 public:
   explicit Matrix() = delete;
   explicit Matrix(U globalDimensionX, U globalDimensionY, int globalPgridX, int globalPgridY);				// Regular constructor

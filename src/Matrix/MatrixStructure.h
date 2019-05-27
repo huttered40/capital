@@ -3,18 +3,6 @@
 #ifndef MATRIX_STRUCTURE_H_
 #define MATRIX_STRUCTURE_H_
 
-// System includes
-#include <iostream>
-#include <vector>
-#include <cassert>
-#include <cstring>
-
-
-// Local includes
-#include "./../Util/shared.h"
-#include "./../Timer/CTFtimer.h"
-#include "MatrixDistributer.h"
-
 // Create the many Structure classes that I want to experiment with.
 //   See MatrixDistributer.h for discussions on the format of this code.
 
@@ -25,8 +13,7 @@
 //   will be a vector<T*>. We can change and generalize this later as needed.
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-class MatrixStructureSquare
-{
+class MatrixStructureSquare{
 public:
   // Prevent all compiler-generated constructors/destructors
   MatrixStructureSquare() = delete;
@@ -53,8 +40,7 @@ public:
 
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-class MatrixStructureRectangle
-{
+class MatrixStructureRectangle{
 public:
   // Prevent all compiler-generated constructors/destructors
   MatrixStructureRectangle() = delete;
@@ -79,8 +65,7 @@ public:
 };
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-class MatrixStructureUpperTriangular
-{
+class MatrixStructureUpperTriangular{
 public:
   // Prevent all compiler-generated constructors/destructors
   MatrixStructureUpperTriangular() = delete;
@@ -105,8 +90,7 @@ public:
 };
 
 template<typename T, typename U, template<typename,typename,int> class Distributer>
-class MatrixStructureLowerTriangular
-{
+class MatrixStructureLowerTriangular{
 public:
   // Prevent all compiler-generated constructors/destructors
   MatrixStructureLowerTriangular() = delete;

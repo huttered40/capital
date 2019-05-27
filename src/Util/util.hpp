@@ -3,8 +3,7 @@
 template<typename T, typename U>
 std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> util<T,U>::build3DTopology(
                     MPI_Comm commWorld
-                  )
-{
+                  ){
   TAU_FSTART(setUpCommunicators);
   int rank,size;
   MPI_Comm_rank(commWorld, &rank);
@@ -48,8 +47,7 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> util<T,U>::build3DTo
 
 template<typename T, typename U>
 std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util<T,U>::buildTunableTopology(
-      MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC)
-{
+      MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC){
   TAU_FSTART(getTunableCommunicators);
   int worldRank, worldSize, columnRank, cubeRank;
   MPI_Comm_rank(commWorld, &worldRank);
@@ -92,8 +90,7 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util<T,U>::bui
 }
 
 template<typename T, typename U>
-void util<T,U>::destroy3DTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D)
-{
+void util<T,U>::destroy3DTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D){
   MPI_Comm_free(&std::get<0>(commInfo3D));
   MPI_Comm_free(&std::get<1>(commInfo3D));
   MPI_Comm_free(&std::get<2>(commInfo3D));
@@ -101,8 +98,7 @@ void util<T,U>::destroy3DTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm
 }
 
 template<typename T, typename U>
-void util<T,U>::destroyTunableTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable)
-{
+void util<T,U>::destroyTunableTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable){
   MPI_Comm_free(&std::get<0>(commInfoTunable));
   MPI_Comm_free(&std::get<1>(commInfoTunable));
   MPI_Comm_free(&std::get<2>(commInfoTunable));
@@ -114,8 +110,7 @@ void util<T,U>::destroyTunableTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename T, typename U>
 std::vector<T> util<T,U>::blockedToCyclicSpecial(
-  std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize, char dir)
-{
+  std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize, char dir){
   TAU_FSTART(Util::blockedToCyclic);
   U aggregNumRows = localDimensionRows*pGridDimensionSize;
   U aggregNumColumns = localDimensionColumns*pGridDimensionSize;
@@ -124,34 +119,28 @@ std::vector<T> util<T,U>::blockedToCyclicSpecial(
   U numCyclicBlocksPerRow = localDimensionRows;
   U numCyclicBlocksPerCol = localDimensionColumns;
 
-  if (dir == 'L')
-  {
+  if (dir == 'L'){
     U writeIndex = 0;
     U recvDataOffset = blockedData.size()/(pGridDimensionSize*pGridDimensionSize);
     U off1 = (-1)*numCyclicBlocksPerRow-1;
     U off3 = pGridDimensionSize*recvDataOffset;
     // MACRO loop over all cyclic "blocks" (dimensionX direction)
-    for (U i=0; i<numCyclicBlocksPerCol; i++)
-    {
+    for (U i=0; i<numCyclicBlocksPerCol; i++){
       off1 += (numCyclicBlocksPerRow-i+1);
       // Inner loop over all columns in a cyclic "block"
-      for (U j=0; j<pGridDimensionSize; j++)
-      {
+      for (U j=0; j<pGridDimensionSize; j++){
         U off2 = j*recvDataOffset + off1;
         writeIndex += (i*pGridDimensionSize) + j;
         // Treat first block separately
-        for (U z=j; z<pGridDimensionSize; z++)
-        {
+        for (U z=j; z<pGridDimensionSize; z++){
           U readIndex = off2 + z*off3;
           cyclicData[writeIndex++] = blockedData[readIndex];
         }
         // Inner loop over all cyclic "blocks"
-        for (U k=(i+1); k<numCyclicBlocksPerRow; k++)
-        {
+        for (U k=(i+1); k<numCyclicBlocksPerRow; k++){
           U off4 = off2;
           // Inner loop over all elements along columns
-          for (U z=0; z<pGridDimensionSize; z++)
-          {
+          for (U z=0; z<pGridDimensionSize; z++){
             U readIndex = off4 + z*off3 + (k-i);
             cyclicData[writeIndex++] = blockedData[readIndex];
           }
@@ -166,21 +155,17 @@ std::vector<T> util<T,U>::blockedToCyclicSpecial(
     U off1 = 0;
     U off3 = pGridDimensionSize*recvDataOffset;
     // MACRO loop over all cyclic "blocks" (dimensionX direction)
-    for (U i=0; i<numCyclicBlocksPerCol; i++)
-    {
+    for (U i=0; i<numCyclicBlocksPerCol; i++){
       off1 += i;
       // Inner loop over all columns in a cyclic "block"
-      for (U j=0; j<pGridDimensionSize; j++)
-      {
+      for (U j=0; j<pGridDimensionSize; j++){
         U off2 = j*recvDataOffset + off1;
         writeIndex = ((i*pGridDimensionSize)+j)*aggregNumRows;    //  reset each time
         // Inner loop over all cyclic "blocks"
-        for (U k=0; k<i; k++)
-        {
+        for (U k=0; k<i; k++){
           U off4 = off2;
           // Inner loop over all elements along columns
-          for (U z=0; z<pGridDimensionSize; z++)
-          {
+          for (U z=0; z<pGridDimensionSize; z++){
             U readIndex = off4 + z*off3 + k;
             cyclicData[writeIndex++] = blockedData[readIndex];
           }
@@ -189,8 +174,7 @@ std::vector<T> util<T,U>::blockedToCyclicSpecial(
         // Special final block
         U off4 = off2;
         // Inner loop over all elements along columns
-        for (U z=0; z<=j; z++)
-        {
+        for (U z=0; z<=j; z++){
           U readIndex = off4 + z*off3 + i;
           cyclicData[writeIndex++] = blockedData[readIndex];
         }
@@ -207,8 +191,7 @@ std::vector<T> util<T,U>::blockedToCyclicSpecial(
 
 template<typename T, typename U>
 std::vector<T> util<T,U>::blockedToCyclic(
-  std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize)
-{
+  std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize){
   TAU_FSTART(Util::blockedToCyclic);
   U aggregNumRows = localDimensionRows*pGridDimensionSize;
   U aggregNumColumns = localDimensionColumns*pGridDimensionSize;
@@ -219,17 +202,13 @@ std::vector<T> util<T,U>::blockedToCyclic(
   U writeIndex = 0;
   U recvDataOffset = localDimensionRows*localDimensionColumns;
   // MACRO loop over all cyclic "blocks" (dimensionX direction)
-  for (U i=0; i<numCyclicBlocksPerCol; i++)
-  {
+  for (U i=0; i<numCyclicBlocksPerCol; i++){
     // Inner loop over all columns in a cyclic "block"
-    for (U j=0; j<pGridDimensionSize; j++)
-    {
+    for (U j=0; j<pGridDimensionSize; j++){
       // Inner loop over all cyclic "blocks"
-      for (U k=0; k<numCyclicBlocksPerRow; k++)
-      {
+      for (U k=0; k<numCyclicBlocksPerRow; k++){
         // Inner loop over all elements along columns
-        for (U z=0; z<pGridDimensionSize; z++)
-        {
+        for (U z=0; z<pGridDimensionSize; z++){
           U readIndex = i*numCyclicBlocksPerRow + j*recvDataOffset + k + z*pGridDimensionSize*recvDataOffset;
           cyclicData[writeIndex++] = blockedData[readIndex];
         }
@@ -251,8 +230,7 @@ std::vector<T> util<T,U>::getReferenceMatrix(
               Matrix<T,U,StructureArg,Distribution>& myMatrix,
 							U key,
 							std::tuple<MPI_Comm, int, int, int, int> commInfo
-						  )
-{
+						  ){
   MPI_Comm sliceComm = std::get<0>(commInfo);
   int pGridCoordX = std::get<1>(commInfo);
   int pGridCoordY = std::get<2>(commInfo);
@@ -273,8 +251,7 @@ std::vector<T> util<T,U>::getReferenceMatrix(
   T* matrixPtr = myMatrix.getRawData();
   Matrix<T,U,MatrixStructureRectangle,Distribution> matrixDest(std::vector<T>(), localNumColumns, localNumRows, globalNumColumns, globalNumRows);
   if ((!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-    && (!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
-  {
+    && (!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)){
     Serializer<T,U,StructureArg,MatrixStructureRectangle>::Serialize(myMatrix, matrixDest);
     matrixPtr = matrixDest.getRawData();
   }
@@ -288,17 +265,13 @@ std::vector<T> util<T,U>::getReferenceMatrix(
 //  std::vector<T> cyclicMatrix(aggregSize);
   MPI_Allgather(matrixPtr, localSize, MPI_DATATYPE, &blockedMatrix[0], localSize, MPI_DATATYPE, sliceComm);
 
-  std::vector<T> cyclicMatrix = util<T,U>::blockedToCyclic(
-    blockedMatrix, localNumRows, localNumColumns, pGridDimensionSize);
+  std::vector<T> cyclicMatrix = util<T,U>::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, pGridDimensionSize);
 
   // In case there are hidden zeros, we will recopy
-  if ((globalNumRows%pGridDimensionSize) || (globalNumColumns%pGridDimensionSize))
-  {
+  if ((globalNumRows%pGridDimensionSize) || (globalNumColumns%pGridDimensionSize)){
     U index = 0;
-    for (U i=0; i<globalNumColumns; i++)
-    {
-      for (U j=0; j<globalNumRows; j++)
-      {
+    for (U i=0; i<globalNumColumns; i++){
+      for (U j=0; j<globalNumRows; j++){
         cyclicMatrix[index++] = cyclicMatrix[i*aggregNumRows+j];
       }
     }
@@ -315,8 +288,7 @@ void util<T,U>::transposeSwap(
 											int myRank,
 											int transposeRank,
 											MPI_Comm commWorld
-										     )
-{
+										     ){
   TAU_FSTART(Util::transposeSwap);
   //if (myRank != transposeRank)
   //{
@@ -333,8 +305,7 @@ void util<T,U>::transposeSwap(
 
 template<typename T, typename U>
 std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(
-  MPI_Comm commWorld)
-{
+  MPI_Comm commWorld){
   TAU_FSTART(Util::getCommunicatorSlice);
   int rank,size;
   MPI_Comm_rank(commWorld, &rank);
@@ -361,11 +332,9 @@ std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(
 }
 
 template<typename T, typename U>
-U util<T,U>::getNextPowerOf2(U localShift)
-{
+U util<T,U>::getNextPowerOf2(U localShift){
   TAU_FSTART(Util::getNextPowerOf2);
-  if ((localShift & (localShift-1)) != 0)
-  {
+  if ((localShift & (localShift-1)) != 0){
     // move localShift up to the next power of 2
     localShift--;
     localShift |= (localShift >> 1);
@@ -384,23 +353,18 @@ U util<T,U>::getNextPowerOf2(U localShift)
 template<typename T, typename U>
 template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
   template<typename,typename,int> class Distribution>
-void util<T,U>::removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, int pGridCoordX, int pGridCoordY, int pGridDimensionSize, char dir)
-{
+void util<T,U>::removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, int pGridCoordX, int pGridCoordY, int pGridDimensionSize, char dir){
   U globalDimVert = pGridCoordY;
   U globalDimHoriz = pGridCoordX;
   U localVert = matrix.getNumRowsLocal();
   U localHoriz = matrix.getNumColumnsLocal();
-  for (U i=0; i<localHoriz; i++)
-  {
+  for (U i=0; i<localHoriz; i++){
     globalDimVert = pGridCoordY;    //   reset
-    for (U j=0; j<localVert; j++)
-    {
-      if ((globalDimVert < globalDimHoriz) && (dir == 'L'))
-      {
+    for (U j=0; j<localVert; j++){
+      if ((globalDimVert < globalDimHoriz) && (dir == 'L')){
         matrix.getRawData()[i*localVert + j] = 0;
       }
-      if ((globalDimVert > globalDimHoriz) && (dir == 'U'))
-      {
+      if ((globalDimVert > globalDimHoriz) && (dir == 'U')){
         matrix.getRawData()[i*localVert + j] = 0;
       }
       globalDimVert += pGridDimensionSize;
@@ -410,25 +374,20 @@ void util<T,U>::removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, in
 }
 
 template<typename T, typename U>
-void util<T,U>::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, int numFuncs, int numIterations, int rank)
-{
-  if (rank == 0)
-  {
+void util<T,U>::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, int numFuncs, int numIterations, int rank){
+  if (rank == 0){
     std::ifstream fptrTotal2(fileStrTotal.c_str());
     //debugging
-    if (!fptrTotal2.is_open())
-    {
+    if (!fptrTotal2.is_open()){
       abort();
     }
     using profileType = std::tuple<std::string,int,double,double,double,double>;
     std::vector<profileType> profileVector(numFuncs, std::make_tuple("",0,0,0,0,0));
-    for (int i=0; i<numIterations; i++)
-    {
+    for (int i=0; i<numIterations; i++){
       // read in first item on line: iteration #
       int numIter;
       fptrTotal2 >> numIter;
-      for (int j=0; j<numFuncs; j++)
-      {
+      for (int j=0; j<numFuncs; j++){
         std::string funcName;
         int numCalls;
         double info1,info2,info3,info4;
@@ -443,8 +402,7 @@ void util<T,U>::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fil
         std::get<5>(profileVector[j]) += info4;
       }
     }
-    for (int i=0; i<numFuncs; i++)
-    {
+    for (int i=0; i<numFuncs; i++){
       if (i>0) fptrAvg << "\t";
       fptrAvg << std::get<0>(profileVector[i]).c_str();
       fptrAvg << "\t" << std::get<1>(profileVector[i]);
@@ -459,8 +417,7 @@ void util<T,U>::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fil
 }
 
 template<typename T, typename U>
-void util<T,U>::InitialGEMM()
-{
+void util<T,U>::InitialGEMM(){
   // Function must be called before performance testing is done due to MKL implementation of GEMM
   std::vector<T> matrixA(128*128,0.);
   std::vector<T> matrixB(128*128,0.);

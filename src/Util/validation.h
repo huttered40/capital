@@ -3,18 +3,11 @@
 #ifndef VALIDATION_H_
 #define VALIDATION_H_
 
-#include <vector>
-#include <tuple>
-
-#include "shared.h"
-#include "util.h"
-#include "./../Timer/CTFtimer.h"
-#include "../Matrix/Matrix.h"
+// This file is included by the validation headers, which each include the rest of the dependencies
 #include "../Algorithms/MatrixMultiplication/MM3D/MM3D.h"
 
 template<typename T, typename U>
-class validator
-{
+class validator{
 public:
   validator() = delete;
   ~validator();

@@ -3,26 +3,14 @@
 #ifndef CFVALIDATE_H_
 #define CFVALIDATE_H_
 
-// System includes
-#include <iostream>
-#include <tuple>
-#include <cmath>
-#include <string>
-
-// Local includes
-#include "./../../../Util/shared.h"
-#include "./../../../Matrix/Matrix.h"
-#include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../Timer/CTFtimer.h"
-#include "./../../../Util/util.h"
+#include "./../../Algorithms.h"
 #include "./../../../Util/validation.h"
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
 
 template<typename T, typename U>
-class CFvalidate
-{
+class CFvalidate{
 public:
   CFvalidate() = delete;
   ~CFvalidate() = delete;

@@ -14,8 +14,7 @@ T validator<T,U>::validateResidualParallel(
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         MPI_Comm columnAltComm,
 			std::string& label
-                      )
-{
+                      ){
   int rank,size,rankCommWorld;
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_rank(MPI_COMM_WORLD, &rankCommWorld);	// Used for printing out to file.
@@ -34,37 +33,26 @@ T validator<T,U>::validateResidualParallel(
   int helper = pGridDimensionSize;
   helper *= helper;
 
-  if (dir == 'L')
-  {
+  if (dir == 'L'){
     blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, 1., -1.);
-    MM3D<T,U>::Multiply(
-      matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
+    MM3D<T,U>::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
-  else if (dir == 'U')
-  {
+  else if (dir == 'U'){
     blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., -1.);
-    MM3D<T,U>::Multiply(
-      matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
+    MM3D<T,U>::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
-  else if (dir == 'F')
-  {
+  else if (dir == 'F'){
     blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., -1.);
-    MM3D<T,U>::Multiply(
-      matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
+    MM3D<T,U>::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
-  else if (dir == 'I')
-  {
+  else if (dir == 'I'){
     blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
-    MM3D<T,U>::Multiply(
-      matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
-    if (columnAltComm != MPI_COMM_WORLD)
-    {
-      MPI_Allreduce(MPI_IN_PLACE, matrixC.getRawData(), matrixC.getNumElems(), MPI_DATATYPE,
-        MPI_SUM, columnAltComm);
+    MM3D<T,U>::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
+    if (columnAltComm != MPI_COMM_WORLD){
+      MPI_Allreduce(MPI_IN_PLACE, matrixC.getRawData(), matrixC.getNumElems(), MPI_DATATYPE, MPI_SUM, columnAltComm);
     }
   }
-  else
-  {
+  else{
     abort();
   }
 
@@ -75,20 +63,16 @@ T validator<T,U>::validateResidualParallel(
   U localNumColumns = matrixC.getNumColumnsLocal();
   U globalX = pGridCoordX;
   U globalY = pGridCoordY;
-  for (U i=0; i<localNumColumns; i++)
-  {
+  for (U i=0; i<localNumColumns; i++){
     globalY = pGridCoordY;    // reset
-    for (int j=0; j<localNumRows; j++)
-    {
+    for (int j=0; j<localNumRows; j++){
       T val = 0;
       T temp = 0;
-      if ((dir == 'F') || ((dir == 'L') && (globalY >= globalX)) || ((dir == 'U') && (globalY <= globalX)))
-      {
+      if ((dir == 'F') || ((dir == 'L') && (globalY >= globalX)) || ((dir == 'U') && (globalY <= globalX))){
         val = matrixC.getRawData()[i*localNumRows+j];
         temp = saveMatC.getRawData()[i*localNumRows+j];
       }
-      else if (dir == 'I')
-      {
+      else if (dir == 'I'){
         if (globalX == globalY)
         {
           val = std::abs(1. - matrixC.getRawData()[i*localNumRows+j]);
@@ -125,14 +109,12 @@ T validator<T,U>::validateOrthogonalityParallel(
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
                         MPI_Comm columnAltComm,
 			std::string& label
-                      )
-{
+                      ){
   int rank,size;
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(commWorld, &size);
 
-  auto commInfo = util<T,U>::getCommunicatorSlice(
-    commWorld);
+  auto commInfo = util<T,U>::getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   U pGridCoordX = std::get<1>(commInfo);
   U pGridCoordY = std::get<2>(commInfo);
@@ -147,16 +129,14 @@ T validator<T,U>::validateOrthogonalityParallel(
   #endif
 
   Matrix<T,U,StructureArg,Distribution> matrixQtrans = matrixQ;
-  util<T,U>::transposeSwap(
-    matrixQtrans, rank, transposePartner, commWorld);
+  util<T,U>::transposeSwap(matrixQtrans, rank, transposePartner, commWorld);
   U localNumRows = matrixQtrans.getNumColumnsLocal();
   U localNumColumns = matrixQ.getNumColumnsLocal();
   U globalNumRows = matrixQtrans.getNumColumnsGlobal();
   U globalNumColumns = matrixQ.getNumColumnsGlobal();
   U numElems = localNumRows*localNumColumns;
   Matrix<T,U,StructureArg,Distribution> matrixI(std::vector<T>(numElems,0), localNumColumns, localNumRows, globalNumColumns, globalNumRows, true);
-  T error = validateResidualParallel(
-    matrixQtrans,matrixQ,matrixI,'I',commWorld, commInfo3D, columnAltComm, label);
+  T error = validateResidualParallel(matrixQtrans,matrixQ,matrixI,'I',commWorld, commInfo3D, columnAltComm, label);
   MPI_Comm_free(&sliceComm);
   return error;
 }

@@ -3,36 +3,7 @@
 #ifndef MM3D_H_
 #define MM3D_H_
 
-// System includes
-#include <iostream>
-#include <complex>
-#include <vector>
-#include <utility>
-#include <tuple>
-
-#ifdef CRITTER
-#ifdef PORTER
-#include "../../../../../ExternalLibraries/CRITTER/critter/critter.h"
-#endif /*PORTER*/
-#ifdef STAMPEDE2
-#include "../../../../../critter/critter.h"
-#endif /*STAMPEDE2*/
-#ifdef BLUEWATERS
-#include "../../../../../critter/critter.h"
-#endif /*BLUEWATERS*/
-#endif /*CRITTER*/
-
-#ifndef CRITTER
-#include <mpi.h>
-#endif /*CRITTER*/
-
-// Local includes
-#include "./../../../Util/shared.h"
-#include "./../../../Util/util.h"
-#include "./../../../Timer/CTFtimer.h"
-#include "./../../../Matrix/Matrix.h"
-#include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../BLAS/blasEngine.h"
+#include "./../../Algorithms.h"
 
 /*
   We can implement square MM for now, but soon, we will need triangular MM
@@ -40,10 +11,8 @@
   Also, we need to figure out what to do with Rectangular.
 */
 
-template<typename T, typename U>
-class MM3D
-{
-
+template<typename T, typename U, typename OffloadType = OffloadEachGemm>
+class MM3D{
 public:
   // Prevent any instantiation of this class.
   MM3D() = delete;

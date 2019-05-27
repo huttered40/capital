@@ -3,8 +3,7 @@
 // #include "Matrix.h"  -> Compiler needs the full definition of the templated class in order to instantiate it.
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-Matrix<T,U,Structure,Distributer>::Matrix(U globalDimensionX, U globalDimensionY, int globalPgridX, int globalPgridY)
-{
+Matrix<T,U,Structure,Distributer>::Matrix(U globalDimensionX, U globalDimensionY, int globalPgridX, int globalPgridY){
   // Extra padding of zeros is at most 1 in either dimension
   int pHelper = globalDimensionX%globalPgridX;
   this->_dimensionX = {globalDimensionX/globalPgridX + (pHelper ? 1 : 0)};
@@ -26,8 +25,7 @@ Matrix<T,U,Structure,Distributer>::Matrix(U globalDimensionX, U globalDimensionY
 
 // This guy could be changed to use pass-by-value via rvalue constructor
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-Matrix<T,U,Structure,Distributer>::Matrix(std::vector<T>&& data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, bool assemble)
-{
+Matrix<T,U,Structure,Distributer>::Matrix(std::vector<T>&& data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, bool assemble){
   // Idea: move the data argument into this_data, and then set up the matrix rows (this_matrix)
   // Note that the owner of data and positions should be aware that the vectors they pass in will be destroyed and the data sucked out upon return.
 
@@ -49,23 +47,20 @@ Matrix<T,U,Structure,Distributer>::Matrix(std::vector<T>&& data, U dimensionX, U
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-Matrix<T,U,Structure,Distributer>::Matrix(const Matrix& rhs)
-{
+Matrix<T,U,Structure,Distributer>::Matrix(const Matrix& rhs){
   copy(rhs);
   return;
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-Matrix<T,U,Structure,Distributer>::Matrix(Matrix&& rhs)
-{
+Matrix<T,U,Structure,Distributer>::Matrix(Matrix&& rhs){
   // Use std::forward in the future.
   mover(std::move(rhs));
   return;
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-Matrix<T,U,Structure,Distributer>& Matrix<T,U,Structure,Distributer>::operator=(const Matrix& rhs)
-{
+Matrix<T,U,Structure,Distributer>& Matrix<T,U,Structure,Distributer>::operator=(const Matrix& rhs){
   if (this != &rhs)
   {
     copy(rhs);
@@ -74,8 +69,7 @@ Matrix<T,U,Structure,Distributer>& Matrix<T,U,Structure,Distributer>::operator=(
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-Matrix<T,U,Structure,Distributer>& Matrix<T,U,Structure,Distributer>::operator=(Matrix&& rhs)
-{
+Matrix<T,U,Structure,Distributer>& Matrix<T,U,Structure,Distributer>::operator=(Matrix&& rhs){
   // Use std::forward in the future.
   if (this != &rhs)
   {
@@ -85,16 +79,14 @@ Matrix<T,U,Structure,Distributer>& Matrix<T,U,Structure,Distributer>::operator=(
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-Matrix<T,U,Structure,Distributer>::~Matrix()
-{
+Matrix<T,U,Structure,Distributer>::~Matrix(){
   // Actually, now that we are purly using vectors, I don't think we need to delete anything. Once the instance
   //   of the class goes out of scope, the vector data gets deleted automatically.
   //Structure<T,U,Distributer>::Dissamble(this->_data);
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-void Matrix<T,U,Structure,Distributer>::copy(const Matrix& rhs)
-{
+void Matrix<T,U,Structure,Distributer>::copy(const Matrix& rhs){
   this->_dimensionX = {rhs._dimensionX};
   this->_dimensionY = {rhs._dimensionY};
   this->_numElems = {rhs._numElems};
@@ -105,8 +97,7 @@ void Matrix<T,U,Structure,Distributer>::copy(const Matrix& rhs)
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-void Matrix<T,U,Structure,Distributer>::mover(Matrix&& rhs)
-{
+void Matrix<T,U,Structure,Distributer>::mover(Matrix&& rhs){
   this->_dimensionX = {rhs._dimensionX};
   this->_dimensionY = {rhs._dimensionY};
   this->_numElems = {rhs._numElems};
@@ -120,8 +111,7 @@ void Matrix<T,U,Structure,Distributer>::mover(Matrix&& rhs)
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-void Matrix<T,U,Structure,Distributer>::DistributeRandom(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY, U key)
-{
+void Matrix<T,U,Structure,Distributer>::DistributeRandom(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY, U key){
   // Matrix must be already constructed with memory. Add a check for this later.
 
   // This is a 2-level Policy-class trick due to the lack of orthogonality between the
@@ -131,8 +121,7 @@ void Matrix<T,U,Structure,Distributer>::DistributeRandom(int localPgridX, int lo
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-void Matrix<T,U,Structure,Distributer>::DistributeSymmetric(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY, U key, bool diagonallyDominant)
-{
+void Matrix<T,U,Structure,Distributer>::DistributeSymmetric(int localPgridX, int localPgridY, int globalPgridX, int globalPgridY, U key, bool diagonallyDominant){
   // Matrix must be already constructed with memory. Add a check for this later.
 
   // This is a 2-level Policy-class trick due to the lack of orthogonality between the
@@ -143,7 +132,6 @@ void Matrix<T,U,Structure,Distributer>::DistributeSymmetric(int localPgridX, int
 }
 
 template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class Structure, template<typename, typename,int> class Distributer>
-void Matrix<T,U,Structure,Distributer>::print() const
-{
+void Matrix<T,U,Structure,Distributer>::print() const{
   Structure<T,U,Distributer>::Print(this->_matrix, this->_dimensionX, this->_dimensionY);
 }

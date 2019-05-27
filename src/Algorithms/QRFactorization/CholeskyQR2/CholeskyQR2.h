@@ -3,38 +3,13 @@
 #ifndef CHOLESKYQR2_H_
 #define CHOLESKYQR2_H_
 
-// System includes
-#include <iostream>
-
-#ifdef CRITTER
-#ifdef PORTER
-#include "../../../../../ExternalLibraries/CRITTER/critter/critter.h"
-#endif /*PORTER*/
-#ifdef STAMPEDE2
-#include "../../../../../critter/critter.h"
-#endif /*STAMPEDE2*/
-#ifdef BLUEWATERS
-#include "../../../../../critter/critter.h"
-#endif /*BLUEWATERS*/
-#endif /*CRITTER*/
-
-#ifndef CRITTER
-#include <mpi.h>
-#endif /*CRITTER*/
-
-// Local includes
-#include "./../../../Util/shared.h"
-#include "./../../../Timer/CTFtimer.h"
-#include "../../../Matrix/Matrix.h"
-#include "./../../../BLAS/blasEngine.h"
-#include "./../../../LAPACK/lapackEngine.h"
+#include "./../../Algorithms.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
-#include "./../../CholeskyFactorization/CFR3D/CFR3D.h"
 #include "./../../TriangularSolve/TRSM3D/TRSM3D.h"
-#include "./../../../Util/util.h"
+#include "./../../CholeskyFactorization/CFR3D/CFR3D.h"
 
 // Need template parameters for all 3 matrices (A,Q,R), as well as some other things, right?
-template<typename T,typename U>
+template<typename T,typename U, typename OffloadType = OffloadEachGemm>
 class CholeskyQR2
 {
 public:

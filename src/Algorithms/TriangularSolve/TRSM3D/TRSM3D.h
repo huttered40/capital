@@ -3,17 +3,7 @@
 #ifndef TRSM3D_H_
 #define TRSM3D_H_
 
-// System includes
-#include <iostream>
-#include <complex>
-#include <mpi.h>
-
-// Local includes
-#include "./../../../Util/shared.h"
-#include "./../../../Timer/CTFtimer.h"
-#include "./../../../Matrix/Matrix.h"
-#include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../BLAS/blasEngine.h"
+#include "./../../Algorithms.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 
 // Lets use partial template specialization
@@ -22,7 +12,7 @@
 // Also note, we do not need an extra template parameter for L-inverse. Presumably if the user wants L to be LowerTriangular, then he wants L-inverse
 //   to be LowerTriangular as well
 
-template<typename T, typename U>
+template<typename T, typename U, typename OffloadType = OffloadEachGemm>
 class TRSM3D
 {
 public:

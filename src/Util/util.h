@@ -3,19 +3,8 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
-#include <fstream>
-#include <vector>
-#include <tuple>
-
-#include "shared.h"
-#include "./../Timer/CTFtimer.h"
-#include "../Matrix/Matrix.h"
-#include "../Matrix/MatrixSerializer.h"
-#include "../BLAS/blasEngine.h"
-
 template<typename T, typename U>
-class util
-{
+class util{
 public:
   util() = delete;
   ~util();

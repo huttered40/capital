@@ -3,17 +3,6 @@
 #ifndef CTF_TIMER_H_
 #define CTF_TIMER_H_
 
-// System includes
-#include <string>
-#include <fstream>
-#include <cstring>
-#include <stdio.h>
-#include <vector>
-#include <algorithm>
-
-// Local includes
-#include "../Util/shared.h"
-
 namespace CTF {
 
   using namespace std;

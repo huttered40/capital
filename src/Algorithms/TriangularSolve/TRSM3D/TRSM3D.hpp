@@ -1,12 +1,12 @@
 /* Author: Edward Hutter */
 
-template<typename T, typename U>
+template<typename T, typename U, typename OffloadType>
 template<
   template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename, template<typename,typename,int> class> class StructureTriangularArg,
   template<typename,typename,int> class Distribution
 >
-void TRSM3D<T,U>::iSolveLowerLeft(
+void TRSM3D<T,U,OffloadType>::iSolveLowerLeft(
   Matrix<T,U,StructureArg,Distribution>& matrixA,
   Matrix<T,U,StructureTriangularArg,Distribution>& matrixL,
   Matrix<T,U,StructureTriangularArg,Distribution>& matrixLI,
@@ -14,19 +14,18 @@ void TRSM3D<T,U>::iSolveLowerLeft(
   blasEngineArgumentPackage_gemm<T>& gemmPackage,
   blasEngineArgumentPackage_trmm<T>& trmmPackage,
   MPI_Comm commWorld,
-  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D)
-{
+  std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D){
 }
 
 
 // For solving AU=B for A. But note that B is A, and we are modifying B in place to solve for A
-template<typename T, typename U>
+template<typename T, typename U, typename OffloadType>
 template<
   template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename, template<typename,typename,int> class> class StructureTriangularArg,
   template<typename,typename,int> class Distribution
 >
-void TRSM3D<T,U>::iSolveUpperLeft(
+void TRSM3D<T,U,OffloadType>::iSolveUpperLeft(
                        Matrix<T,U,StructureArg,Distribution>& matrixA,
                        Matrix<T,U,StructureTriangularArg,Distribution>& matrixU,
                        Matrix<T,U,StructureTriangularArg,Distribution>& matrixUI,
@@ -35,8 +34,7 @@ void TRSM3D<T,U>::iSolveUpperLeft(
                        blasEngineArgumentPackage_trmm<T>& trmmPackage,
                        MPI_Comm commWorld,
                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
-                     )
-{
+                     ){
   TAU_FSTART(TRSM3D::iSolveUpperLeft);
   int pGridDimensionSize;
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
@@ -69,15 +67,13 @@ void TRSM3D<T,U>::iSolveUpperLeft(
   U offset1 = 0;
   U offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]);
   U offset3 = 0;
-  for (U i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++)
-  {
+  for (U i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++){
     // Update the current column by accumulating the updates via MM
     gemmPackage.alpha = -1;
     gemmPackage.beta = 1.;
 
     // Only update once first panel is solved
-    if (i>0)
-    {
+    if (i>0){
       // As i increases, the size of these updates gets smaller.
       // Special handling. This might only work since the triangular matrix is square, which should be ok
       U arg1 = (gemmPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset1 : offset3);
@@ -88,8 +84,7 @@ void TRSM3D<T,U>::iSolveUpperLeft(
       Matrix<T,U,MatrixStructureRectangle,Distribution> matrixUpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*pGridDimensionSize, (arg4-arg3)*pGridDimensionSize);
       Serializer<T,U,StructureTriangularArg,MatrixStructureRectangle>::Serialize(matrixU, matrixUpartition,
         arg1, arg2, arg3, arg4);
-      MM3D<T,U>::Multiply(
-        matrixA.getRawData()+(offset3*matAendY), matrixUpartition, matrixA.getRawData()+(offset1*matAendY),
+      MM3D<T,U,OffloadType>::Multiply(matrixA.getRawData()+(offset3*matAendY), matrixUpartition, matrixA.getRawData()+(offset1*matAendY),
         offset1-offset3, matAendY, arg2-arg1, arg4-arg3, matAendX-offset1, matAendY, commWorld, commInfo3D, gemmPackage);
     }
 
@@ -97,23 +92,15 @@ void TRSM3D<T,U>::iSolveUpperLeft(
     U save1 = offset2-offset1;
     // New optimization: prevent this copy if we are doing TRSM only at the top level
     // Note: this change might be rendered useless now that I modified CFR3D.hpp with a similar optimization for that top level of TRSM
-    if (baseCaseDimList.size() <= 1)
-    {
-      MM3D<T,U>::Multiply(
-        matrixUI, matrixA.getRawData()+(offset1*matAendY),
-        save1, save1, save1, matAendY, commWorld, commInfo3D, trmmPackage);
+    if (baseCaseDimList.size() <= 1){
+      MM3D<T,U,OffloadType>::Multiply(matrixUI, matrixA.getRawData()+(offset1*matAendY), save1, save1, save1, matAendY, commWorld, commInfo3D, trmmPackage);
     }
-    else
-    {
+    else{
       Matrix<T,U,StructureTriangularArg,Distribution> matrixUIpartition(std::vector<T>(), save1, save1, save1*pGridDimensionSize, save1*pGridDimensionSize);
-      Serializer<T,U,StructureTriangularArg,StructureTriangularArg>::Serialize(matrixUI, matrixUIpartition,
-        offset1, offset2, offset1, offset2);
-      MM3D<T,U>::Multiply(
-        matrixUIpartition, matrixA.getRawData()+(offset1*matAendY),
-        save1, save1, save1, matAendY, commWorld, commInfo3D, trmmPackage);
+      Serializer<T,U,StructureTriangularArg,StructureTriangularArg>::Serialize(matrixUI, matrixUIpartition, offset1, offset2, offset1, offset2);
+      MM3D<T,U,OffloadType>::Multiply(matrixUIpartition, matrixA.getRawData()+(offset1*matAendY), save1, save1, save1, matAendY, commWorld, commInfo3D, trmmPackage);
     }
-    if ((i+1) < baseCaseDimList.size())
-    {
+    if ((i+1) < baseCaseDimList.size()){
       // Update the offsets
       offset3 = offset1;
       offset1 = offset2;
@@ -125,13 +112,13 @@ void TRSM3D<T,U>::iSolveUpperLeft(
 
 
 // For solving RA=A for A
-template<typename T, typename U>
+template<typename T, typename U, typename OffloadType>
 template<
   template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename, template<typename,typename,int> class> class StructureTriangularArg,
   template<typename,typename,int> class Distribution
 >
-void TRSM3D<T,U>::iSolveLowerRight(
+void TRSM3D<T,U,OffloadType>::iSolveLowerRight(
   Matrix<T,U,StructureTriangularArg,Distribution>& matrixR,
   Matrix<T,U,StructureTriangularArg,Distribution>& matrixRI,
   Matrix<T,U,StructureArg,Distribution>& matrixA,
@@ -140,8 +127,7 @@ void TRSM3D<T,U>::iSolveLowerRight(
   blasEngineArgumentPackage_trmm<T>& trmmPackage,
   MPI_Comm commWorld,
   std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
-  )
-{
+  ){
   TAU_FSTART(TRSM3D::iSolveLowerRight);
   int pGridDimensionSize;
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
@@ -162,16 +148,14 @@ void TRSM3D<T,U>::iSolveLowerRight(
   U offset1 = 0;
   U offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]);
   U offset3 = 0;
-  for (U i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++)
-  {
+  for (U i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++){
 
     // Update the current column by accumulating the updates via MM
     gemmPackage.alpha = -1;
     gemmPackage.beta = 1.;
 
     // Only update once first panel is solved
-    if (i>0)
-    {
+    if (i>0){
       // As i increases, the size of these updates gets smaller.
       // Special handling. This might only work since the triangular matrix is square, which should be ok
 
@@ -182,20 +166,15 @@ void TRSM3D<T,U>::iSolveLowerRight(
       U arg4 = (gemmPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset1 : offset1);
 
       Matrix<T,U,MatrixStructureRectangle,Distribution> matrixRpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*pGridDimensionSize, (arg4-arg3)*pGridDimensionSize);
-      Serializer<T,U,StructureTriangularArg,MatrixStructureRectangle>::Serialize(matrixR, matrixRpartition,
-        arg1, arg2, arg3, arg4);
-      MM3D<T,U>::Multiply(
-        matrixRpartition, matrixA, matrixA, 0, arg2-arg1, 0, arg4-arg3, 0, matAendX, offset3, offset1,
+      Serializer<T,U,StructureTriangularArg,MatrixStructureRectangle>::Serialize(matrixR, matrixRpartition, arg1, arg2, arg3, arg4);
+      MM3D<T,U,OffloadType>::Multiply(matrixRpartition, matrixA, matrixA, 0, arg2-arg1, 0, arg4-arg3, 0, matAendX, offset3, offset1,
         0, matAendX, offset1, matAendY, commWorld, commInfo3D, gemmPackage, false, true, true);
     }
 
     // Solve via MM
-    MM3D<T,U>::Multiply(
-      matrixRI, matrixA, offset1, offset2, offset1, offset2,
-      0, matAendX, offset1, offset2, commWorld, commInfo3D, trmmPackage, true, true);
+    MM3D<T,U,OffloadType>::Multiply(matrixRI, matrixA, offset1, offset2, offset1, offset2, 0, matAendX, offset1, offset2, commWorld, commInfo3D, trmmPackage, true, true);
 
-    if ((i+1) < baseCaseDimList.size())
-    {
+    if ((i+1) < baseCaseDimList.size()){
       // Update the offsets
       offset3 = offset1;
       offset1 = offset2;
@@ -206,13 +185,13 @@ void TRSM3D<T,U>::iSolveLowerRight(
 }
 
 
-template<typename T, typename U>
+template<typename T, typename U, typename OffloadType>
 template<
   template<typename,typename, template<typename,typename,int> class> class StructureArg,
   template<typename,typename, template<typename,typename,int> class> class StructureTriangularArg,
   template<typename,typename,int> class Distribution
 >
-void TRSM3D<T,U>::iSolveUpperRight(
+void TRSM3D<T,U,OffloadType>::iSolveUpperRight(
   Matrix<T,U,StructureTriangularArg,Distribution>& matrixU,
   Matrix<T,U,StructureTriangularArg,Distribution>& matrixUI,
   Matrix<T,U,StructureArg,Distribution>& matrixA,
@@ -221,6 +200,5 @@ void TRSM3D<T,U>::iSolveUpperRight(
   blasEngineArgumentPackage_trmm<T>& trmmPackage,
   MPI_Comm commWorld,
   std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
-  )
-{
+  ){
 }

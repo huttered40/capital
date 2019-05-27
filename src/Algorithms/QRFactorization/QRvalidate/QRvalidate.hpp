@@ -8,8 +8,7 @@ void QRvalidate<T,U>::validateLocal1D(
                         Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
                         MPI_Comm commWorld
-                      )
-{
+                      ){
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
@@ -71,18 +70,15 @@ std::pair<T,T> QRvalidate<T,U>::validateParallel3D(
                         Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
-                      )
-{
+                      ){
   // generate A_computed = myQ*myR and compare against original A
   int size; MPI_Comm_size(commWorld, &size);
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   util<T,U>::removeTriangle(myR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
   std::string str1 = "Residual: ";
-  T error1 = validator<T,U>::validateResidualParallel(
-    myQ, myR, matrixA, 'F', commWorld, commInfo3D, str1);
+  T error1 = validator<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', commWorld, commInfo3D, str1);
   std::string str2 = "Deviation from orthogonality: ";
-  T error2 = validator<T,U>::validateOrthogonalityParallel(
-    myQ,commWorld, commInfo3D, str2);
+  T error2 = validator<T,U>::validateOrthogonalityParallel(myQ,commWorld, commInfo3D, str2);
   return std::make_pair(error1,error2);
 }
 
@@ -98,21 +94,17 @@ std::pair<T,T> QRvalidate<T,U>::validateParallelTunable(
                         int gridDimensionC,
                         MPI_Comm commWorld,
                         std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable
-                      )
-{
+                      ){
   MPI_Comm miniCubeComm = std::get<5>(commInfoTunable);
-  auto commInfo3D = util<T,U>::build3DTopology(
-      miniCubeComm);
+  auto commInfo3D = util<T,U>::build3DTopology(miniCubeComm);
   MPI_Comm columnAltComm = std::get<2>(commInfoTunable);
   int size; MPI_Comm_size(miniCubeComm, &size);
   int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   util<T,U>::removeTriangle(myR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
   std::string str1 = "Residual: ";
-  T error1 = validator<T,U>::validateResidualParallel(
-    myQ, myR, matrixA, 'F', miniCubeComm, commInfo3D, MPI_COMM_WORLD, str1);
+  T error1 = validator<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', miniCubeComm, commInfo3D, MPI_COMM_WORLD, str1);
   std::string str2 = "Deviation from orthogonality: ";
-  T error2 = validator<T,U>::validateOrthogonalityParallel(
-    myQ, miniCubeComm, commInfo3D, columnAltComm, str2);
+  T error2 = validator<T,U>::validateOrthogonalityParallel(myQ, miniCubeComm, commInfo3D, columnAltComm, str2);
   util<T,U>::destroy3DTopology(commInfo3D);
   return std::make_pair(error1,error2);
 }
@@ -120,17 +112,14 @@ std::pair<T,T> QRvalidate<T,U>::validateParallelTunable(
 
 /* Used for comparing a matrix owned among processors in a 1D row-cyclic manner to a full matrix */
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld)
-{
+T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld){
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
 
   T error = 0;
-  for (U i=0; i<globalDimensionX; i++)
-  {
-    for (U j=0; j<localDimensionY; j++)
-    {
+  for (U i=0; i<globalDimensionX; i++){
+    for (U j=0; j<localDimensionY; j++){
       U myIndex = i*localDimensionY+j;
       U solIndex = i*globalDimensionY+(j*numPEs+myRank);
 /*
@@ -155,8 +144,7 @@ T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector
 
 
 template<typename T, typename U>
-T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld)
-{
+T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld){
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
@@ -170,19 +158,15 @@ T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, 
   MPI_Allreduce(MPI_IN_PLACE, &myI[0], globalDimensionX*globalDimensionX, MPI_DATATYPE, MPI_SUM, commWorld);
 
   T error = 0;
-  for (U i=0; i<globalDimensionX; i++)
-  {
-    for (U j=0; j<globalDimensionX; j++)
-    {
+  for (U i=0; i<globalDimensionX; i++){
+    for (U j=0; j<globalDimensionX; j++){
       U myIndex = i*globalDimensionX+j;
       T errorSquare = 0;
       // To avoid inner-loop if statements, I could separate out this inner loop, but its not necessary right now
-      if (i==j)
-      {
+      if (i==j){
         errorSquare = std::abs(myI[myIndex] - 1.);
       }
-      else
-      {
+      else{
         errorSquare = std::abs(myI[myIndex] - 0.);
       }
       errorSquare *= errorSquare;
@@ -197,8 +181,7 @@ T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, 
 
 // generate A_computed = myQ*myR and compare against original A
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>&myR, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld)
-{
+T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>&myR, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld){
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
@@ -209,10 +192,8 @@ T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::
 
   U trueDimensionY = globalDimensionY/numPEs + ((myRank < (globalDimensionY%numPEs)) ? 1 : 0);
   T error = 0;
-  for (U i=0; i<globalDimensionX; i++)
-  {
-    for (U j=0; j<trueDimensionY; j++)
-    {
+  for (U i=0; i<globalDimensionX; i++){
+    for (U j=0; j<trueDimensionY; j++){
       U myIndex = i*localDimensionY+j;
       T errorSquare = std::abs(myA[myIndex] - computedA[myIndex]);
       //`if (myRank==0) std::cout << errorSquare << " " << myA[myIndex] << " " << computedA[myIndex] << " i - " << i << ", j - " << j << std::endl;
@@ -228,18 +209,15 @@ T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::
 
 /* Used for comparing a full matrix to a full matrix */
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld)
-{
+T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld){
   // Matrix R is owned by every processor
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
 
   T error = 0;
-  for (U i=0; i<globalDimensionX; i++)
-  {
-    for (U j=0; j<(i+1); j++)
-    {
+  for (U i=0; i<globalDimensionX; i++){
+    for (U j=0; j<(i+1); j++){
       U myIndex = i*globalDimensionX+j;
 /*
       if (std::abs(myMatrix[myIndex] + solutionMatrix[myIndex]) <= 1e-12)
@@ -265,8 +243,7 @@ T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& 
 template<typename T, typename U>
 template<template<typename,typename,int> class Distribution>
 T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
-                               U globalDimensionM, U globalDimensionN, MPI_Comm commWorld)
-{
+                               U globalDimensionM, U globalDimensionN, MPI_Comm commWorld){
   int myRank;
   MPI_Comm_rank(commWorld, &myRank);
   auto commInfo3D = util<T,U>::getCommunicatorSlice(commWorld);
@@ -354,8 +331,7 @@ std::vector<T> QRvalidate<T,U>::getReferenceMatrix1D(
 							U localDimensionY,
 							U key,
 							MPI_Comm commWorld
-						  )
-{
+						  ){
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
@@ -372,14 +348,11 @@ std::vector<T> QRvalidate<T,U>::getReferenceMatrix1D(
 
   U writeIndex = 0;
   // MACRO loop over all columns
-  for (U i=0; i<globalDimensionX; i++)
-  {
+  for (U i=0; i<globalDimensionX; i++){
     // Inner loop over "block"s
-    for (U j=0; j<localDimensionY; j++)
-    {
+    for (U j=0; j<localDimensionY; j++){
       // Inner loop over all rows in a "block"
-      for (U k=0; k<numPEs; k++)
-      {
+      for (U k=0; k<numPEs; k++){
         U readIndex = i*localDimensionY + j + k*localSize;
         cyclicMatrix[writeIndex++] = blockedMatrix[readIndex];
       }

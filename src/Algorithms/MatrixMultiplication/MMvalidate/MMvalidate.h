@@ -3,26 +3,14 @@
 #ifndef MMVALIDATE_H_
 #define MMVALIDATE_H_
 
-// System includes
-#include <iostream>
-#include <tuple>
-#include <cmath>
-
-// Local includes
-#include "./../../../Util/shared.h"
-#include "./../../../Timer/CTFtimer.h"
-#include "./../../../Matrix/Matrix.h"
-#include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../BLAS/blasEngine.h"
-#include "./../../../Util/util.h"
-
+#include "./../../Algorithms.h"
+#include "./../../../Util/validation.h"
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
 
 template<typename T, typename U>
-class MMvalidate
-{
+class MMvalidate{
 public:
   MMvalidate() = delete;
   ~MMvalidate() = delete;

@@ -3,36 +3,9 @@
 #ifndef CFR3D_H_
 #define CFR3D_H_
 
-// System includes
-#include <iostream>
-#include <complex>
-
-#ifdef CRITTER
-#ifdef PORTER
-#include "../../../../../ExternalLibraries/CRITTER/critter/critter.h"
-#endif /*PORTER*/
-#ifdef STAMPEDE2
-#include "../../../../../critter/critter.h"
-#endif /*STAMPEDE2*/
-#ifdef BLUEWATERS
-#include "../../../../../critter/critter.h"
-#endif /*BLUEWATERS*/
-#endif /*CRITTER*/
-
-#ifndef CRITTER
-#include <mpi.h>
-#endif /*CRITTER*/
-
-// Local includes
-#include "./../../../Util/shared.h"
-#include "./../../../Timer/CTFtimer.h"
-#include "./../../../Matrix/Matrix.h"
-#include "./../../../Matrix/MatrixSerializer.h"
-#include "./../../../BLAS/blasEngine.h"
-#include "./../../../LAPACK/lapackEngine.h"
+#include "./../../Algorithms.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 #include "./../../TriangularSolve/TRSM3D/TRSM3D.h"
-#include "./../../../Util/util.h"
 
 // Lets use partial template specialization
 // So only declare the fully templated class
@@ -40,7 +13,7 @@
 // Also note, we do not need an extra template parameter for L-inverse. Presumably if the user wants L to be LowerTriangular, then he wants L-inverse
 //   to be LowerTriangular as well
 
-template<typename T, typename U>
+template<typename T, typename U, typename OffloadType = OffloadEachGemm>
 class CFR3D
 {
 public:
