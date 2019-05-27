@@ -25,9 +25,9 @@ read -p "GPU acceleration via XK7[y] or no[n]: " accelType
 if [ "${accelType}" == "y" ];
 then
   export GPU=GPUACCEL
-  read -p "Do you want to test CA-CQR2 on both GPU accelated machines and the non-accelerated option [y] or no [n]?" testAccel_NoAccel
+  read -p "Do you want to test CA-CQR2 on both GPU accelated machines and the non-accelerated option[y] or no[n]: " testAccel_NoAccel
 else
-  export GPU=NoGPUACCEL
+  export GPU=NOGPU
   testAccel_NoAccel="n"
 fi
 if [ "$(hostname |grep "porter")" != "" ];
@@ -159,7 +159,7 @@ fi
 # Choice of compiler for Blue Waters (assumes Cray compiler is loaded by default)
 if [ "${machineName}" == "BLUEWATERS" ];
 then
-  read -p "Do you want the Intel Programming Environment (I) or the GNU Programming Environment (G): " bwPrgEnv
+  read -p "Do you want the Intel Programming Environment (I) or the GNU Programming Environment (G) (choose G if running on GPU): " bwPrgEnv
   if [ "${bwPrgEnv}" == "I" ];
   then
     if [ "${PE_ENV}" == "GNU" ];
@@ -203,7 +203,7 @@ if [ "${testAccel_NoAccel}" == "y" ];
 then
   module unload cudatoolkit
   module load cblas
-  export GPU=NoGPUACCEL
+  export GPU=NOGPU
   make -C./.. cqr2_${mpiType}
 fi
 if [ ${analyzeDecision1} == 1 ];
@@ -223,7 +223,7 @@ then
   then
     module unload cudatoolkit
     module load cblas
-    export GPU=NoGPUACCEL
+    export GPU=NOGPU
     make -C./.. cqr2_${mpiType}
   fi
 fi
@@ -244,7 +244,7 @@ then
   then
     module unload cudatoolkit
     module load cblas
-    export GPU=NoGPUACCEL
+    export GPU=NOGPU
     make -C./.. cqr2_${mpiType}
   fi
 fi

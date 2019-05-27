@@ -25,6 +25,8 @@ ifneq ($(PORTER_machine),)
   CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
   CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
   CFLAGS = -g -Wall -O0 -std=c++11
+  LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/CRITTER/critter/lib
+  LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread -lcritter
 
   OBJS1 = cqr2_$(MACHINE)_mpi_$(PROFTYPE)
   OBJS2 = cqr2_$(MACHINE)_ampi_$(PROFTYPE)
@@ -36,13 +38,13 @@ ifneq ($(PORTER_machine),)
 	mv charmrun $(BIN)charmrun
 
   $(OBJS1): $(OBJS1).o
-	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L/home/hutter2/hutter2/ExternalLibraries/CRITTER/critter/lib /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread -lcritter
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 
   $(OBJS1).o: test.cpp CholeskyQR2.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
 
   $(OBJS2): $(OBJS2).o
-	$(CCAMPI) $(CFLAGS) -o $(BIN)$(OBJS2) $(OBJS2).o /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread
+	$(CCAMPI) $(CFLAGS) -o $(BIN)$(OBJS2) $(OBJS2).o $(LIB_PATH) $(LIBS)
 
   $(OBJS2).o: test.cpp CholeskyQR2.h
 	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS2).o -c test.cpp
@@ -55,6 +57,9 @@ ifneq ($(BGQ_machine),)
   MACHINE=BGQ
   CCMPI = mpic++11
   CFLAGS = -std=c++11 -g
+  INCLUDES=-I/soft/libraries/essl/current/essl/5.1/include/
+  LIB_PATH=-L../../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64
+  LIBS=-llapack -lcblas -lblas -lesslbg -lgfortran -lxlopt -lxlf90_r -lxlfmath -lxl -lcritter
 
   OBJS1 = cqr2_$(MACHINE)_$(PROFTYPE)
 
@@ -62,7 +67,7 @@ ifneq ($(BGQ_machine),)
 	rm *.o
 
   $(OBJS1): $(OBJS1).o
-	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -I/soft/libraries/essl/current/essl/5.1/include/ -L../../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64 -llapack -lcblas -lblas -lesslbg -lgfortran -lxlopt -lxlf90_r -lxlfmath -lxl -lcritter
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(INCLUDES) $(LIB_PATH) $(LIBS)
 
   $(OBJS1).o: test.cpp CholeskyQR2.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
@@ -76,6 +81,8 @@ ifneq ($(THETA_machine),)
   MACHINE=THETA
   CCMPI = CC
   CFLAGS = -g -Wall -fast -std=c++11 -mkl=parallel -xMIC-AVX512
+  LIB_PATH=-L../../../../../CritterXC40/critter/lib
+  LIBS=-lcritter
 
   OBJS1 = cqr2_$(MACHINE)_$(PROFTYPE)
 
@@ -83,7 +90,7 @@ ifneq ($(THETA_machine),)
 	rm *.o
 
   $(OBJS1): $(OBJS1).o
-	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L../../../../../CritterXC40/critter/lib -lcritter
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 
   $(OBJS1).o: test.cpp CholeskyQR2.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
@@ -96,6 +103,8 @@ ifneq ($(STAMPEDE2_machine),)
   MACHINE=STAMPEDE2
   CCMPI = mpicxx
   CFLAGS = -g -Wall -O3 -std=c++11 -mkl=parallel -xMIC-AVX512
+  LIB_PATH=-L../../../../../critter/lib
+  LIBS=-lcritter
 
   OBJS1 = cqr2_$(MACHINE)_$(PROFTYPE)
 
@@ -103,7 +112,7 @@ ifneq ($(STAMPEDE2_machine),)
 	rm *.o
 
   $(OBJS1): $(OBJS1).o
-	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L../../../../../critter/lib -lcritter
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 
   $(OBJS1).o: test.cpp CholeskyQR2.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
@@ -114,27 +123,44 @@ endif
 
 ifneq ($(BlueWaters_machine),)
   MACHINE=BLUEWATERS
-  CCMPI = CC
   PRG_ENV_FLAG_INTEL=$(shell echo $(PE_ENV) |grep 'INTEL')
   PRG_ENV_FLAG_GNU=$(shell echo $(PE_ENV) |grep 'GNU')
+  GPU_ACCEL=$(shell echo $(GPU) |grep 'GPUACCEL')
+  GPU_NO_ACCEL=$(shell echo $(GPU) |grep 'NOGPU')
+  LIB_PATH=-L../../../../../critter/lib
+  LIBS=-lcritter
+  CCMPI=CC
+
+  ifneq ($(GPU_ACCEL),)
+    CCMPI=nvcc
+    LIBS=$(LIBS) -lcublas -lcusolver
+  endif
+  ifneq ($(GPU_NO_ACCEL),)
+    CCMPI=CC
+  endif
 
   ifneq ($(PRG_ENV_FLAG_INTEL),)
     CFLAGS = -fast -std=c++1y
   endif
   ifneq ($(PRG_ENV_FLAG_GNU),)
-    CFLAGS = -O3 -ffast-math -funroll-loops -ftree-vectorize -std=gnu++1y
+    ifneq ($(GPU_ACCEL),)
+      CFLAGS = -gencode=arch=compute_35,code=compute_35 -O3 -use_fast_math -std=c++11
+    endif
+    ifneq ($(GPU_NO_ACCEL),)
+      CFLAGS = -O3 -ffast-math -funroll-loops -ftree-vectorize -std=gnu++1y
+    endif
   endif
 
-  OBJS1 = cqr2_$(MACHINE)_$(PROFTYPE)
+  OBJS1 = cqr2_$(MACHINE)_$(GPU)_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
 
   $(OBJS1): $(OBJS1).o
-	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o -L../../../../../critter/lib -lcritter
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 
   $(OBJS1).o: test.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -D$(GPU) -o $(OBJS1).o -c test.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
