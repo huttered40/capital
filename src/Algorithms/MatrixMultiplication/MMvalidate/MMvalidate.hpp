@@ -2,34 +2,26 @@
 
 // We enforce that matrixSol must have Square Structure.
 
-template<typename T, typename U>
-template<
-  template<typename,typename, template<typename,typename,int> class> class StructureArgA,
-  template<typename,typename, template<typename,typename,int> class> class StructureArgB,
-  template<typename,typename, template<typename,typename,int> class> class StructureArgC,
-  template<typename,typename,int> class Distribution
-        >
-void MMvalidate<T,U>::validateLocal(
-		        Matrix<T,U,StructureArgA,Distribution>& matrixA,
-		        Matrix<T,U,StructureArgB,Distribution>& matrixB,
-		        Matrix<T,U,StructureArgC,Distribution>& matrixC,
-                        MPI_Comm commWorld,
-                        const blasEngineArgumentPackage_gemm<T>& srcPackage
-                      ){
+template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
+void MMvalidate::validateLocal(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, MPI_Comm commWorld,
+                               const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage){
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
 
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
+
   int myRank,sliceRank;
   MPI_Comm_rank(commWorld, &myRank);
 
-  std::tuple<MPI_Comm, int, int, int, int> commInfo = util<T,U>::getCommunicatorSlice(commWorld);
+  std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo = util<T,U>::getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   MPI_Comm_rank(sliceComm, &sliceRank);
-  int pGridCoordX = std::get<1>(commInfo);
-  int pGridCoordY = std::get<2>(commInfo);
-  int pGridCoordZ = std::get<3>(commInfo);
-  int pGridDimensionSize = std::get<4>(commInfo);
+  size_t pGridCoordX = std::get<1>(commInfo);
+  size_t pGridCoordY = std::get<2>(commInfo);
+  size_t pGridCoordZ = std::get<3>(commInfo);
+  size_t pGridDimensionSize = std::get<4>(commInfo);
 
   // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
   // Fast pass-by-value via modern C++ move semantics
@@ -59,33 +51,26 @@ void MMvalidate<T,U>::validateLocal(
   MPI_Comm_free(&sliceComm);
 }
 
-template<typename T, typename U>
-template<
-  template<typename,typename, template<typename,typename,int> class> class StructureArgA,
-  template<typename,typename, template<typename,typename,int> class> class StructureArgB,
-  template<typename,typename,int> class Distribution
-        >
-void MMvalidate<T,U>::validateLocal(
-                        Matrix<T,U,StructureArgA,Distribution>& matrixA,
-                        Matrix<T,U,StructureArgB,Distribution>& matrixBin,
-                        Matrix<T,U,StructureArgB,Distribution>& matrixBout,
-                        MPI_Comm commWorld,
-                        const blasEngineArgumentPackage_trmm<T>& srcPackage
-                      ){
+template<typename MatrixAType, typename MatrixBinType, typename MatrixBoutType>
+void MMvalidate::validateLocal(MatrixAType& matrixA, MatrixBinType& matrixBin, MatrixBoutType& matrixBout,
+                               MPI_Comm commWorld, const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage){
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
 
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
+
   int myRank,sliceRank;
   MPI_Comm_rank(commWorld, &myRank);
 
-  std::tuple<MPI_Comm, int, int, int, int> commInfo = util<T,U>::getCommunicatorSlice(commWorld);
+  std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo = util::getCommunicatorSlice(commWorld);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   MPI_Comm_rank(sliceComm, &sliceRank);
-  int pGridCoordX = std::get<1>(commInfo);
-  int pGridCoordY = std::get<2>(commInfo);
-  int pGridCoordZ = std::get<3>(commInfo);
-  int pGridDimensionSize = std::get<4>(commInfo);
+  size_t pGridCoordX = std::get<1>(commInfo);
+  size_t pGridCoordY = std::get<2>(commInfo);
+  size_t pGridCoordZ = std::get<3>(commInfo);
+  size_t pGridDimensionSize = std::get<4>(commInfo);
 
   U localDimensionM = matrixBin.getNumRowsLocal();
   U localDimensionN = matrixBin.getNumColumnsLocal();
@@ -93,8 +78,8 @@ void MMvalidate<T,U>::validateLocal(
   U globalDimensionN = matrixBin.getNumColumnsGlobal();
   // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
   // Fast pass-by-value via modern C++ move semantics
-  int localTriDim = (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN);
-  int globalTriDim = (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionM : globalDimensionN);
+  U localTriDim = (srcPackage.side == blasEngineSide::AblasLeft ? localDimensionM : localDimensionN);
+  U globalTriDim = (srcPackage.side == blasEngineSide::AblasLeft ? globalDimensionM : globalDimensionN);
   std::vector<T> matrixAforEngine = util<T,U>::getReferenceMatrix(matrixA, pGridCoordX*pGridDimensionSize+pGridCoordY, commInfo);
   std::vector<T> matrixBforEngine = util<T,U>::getReferenceMatrix(matrixBin, (pGridCoordX*pGridDimensionSize+pGridCoordY)*(-1), commInfo);
 
@@ -115,20 +100,13 @@ void MMvalidate<T,U>::validateLocal(
 
   
 template<typename T, typename U>
-T MMvalidate<T,U>::getResidual(
-		     std::vector<T>& myValues,
-		     std::vector<T>& blasValues,
-		     U localDimensionM,
-		     U localDimensionN,
-		     U globalDimensionM,
-		     U globalDimensionN,
-		     std::tuple<MPI_Comm, int, int, int, int> commInfo
-		   ){
+T MMvalidate::getResidual(std::vector<T>& myValues, std::vector<T>& blasValues,
+                          U localDimensionM, U localDimensionN, U globalDimensionM, U globalDimensionN, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo){
   T error = 0;
-  int pCoordX = std::get<1>(commInfo);
-  int pCoordY = std::get<2>(commInfo);
-  int pCoordZ = std::get<3>(commInfo);
-  int pGridDimensionSize = std::get<4>(commInfo);
+  size_t pCoordX = std::get<1>(commInfo);
+  size_t pCoordY = std::get<2>(commInfo);
+  size_t pCoordZ = std::get<3>(commInfo);
+  size_t pGridDimensionSize = std::get<4>(commInfo);
   U myIndex = 0;
   U solIndex = pCoordX *globalDimensionM + pCoordY;
 

@@ -13,152 +13,57 @@
 // Also note, we do not need an extra template parameter for L-inverse. Presumably if the user wants L to be LowerTriangular, then he wants L-inverse
 //   to be LowerTriangular as well
 
-template<typename T, typename U, typename OffloadType = OffloadEachGemm>
-class CFR3D
-{
+class CFR3D{
 public:
-  // Prevent instantiation of this class
-  CFR3D() = delete;
-  CFR3D(const CFR3D& rhs) = delete;
-  CFR3D(CFR3D&& rhs) = delete;
-  CFR3D& operator=(const CFR3D& rhs) = delete;
-  CFR3D& operator=(CFR3D&& rhs) = delete;
-
-  template<template<typename,typename,int> class Distribution>
-  static std::pair<bool,std::vector<U>> Factor(
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixTI,
-                      U inverseCutOffGlobalDimension,
-                      U blockSizeMultiplier,
-                      U panelDimensionMultiplier,
-                      char dir,
-                      MPI_Comm commWorld,
-                      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
-                    );
-
+  template<typename MatrixAType, typename MatrixTIType>
+  static std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
+         Factor(MatrixAType& matrixA, MatrixTIType& matrixTI, typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
+                typename MatrixAType::DimensionType blockSizeMultiplier, typename MatrixAType::DimensionType panelDimensionMultiplier,
+                char dir, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D);
 
 private:
-  template<template<typename,typename,int> class Distribution>
-  static void rFactorLower(
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
-                       U localDimension,
-                       U trueLocalDimenion,
-                       U bcDimension,
-                       U globalDimension,
-                       U trueGlobalDimension,
-                       U matAstartX,
-                       U matAendX,
-                       U matAstartY,
-                       U matAendY,
-                       U matLIstartX,
-                       U matLIendX,
-                       U matLIstartY,
-                       U matLIendY,
-                       U tranposePartner,
-                       MPI_Comm commWorld,
-                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                       bool& isInversePath,
-                       std::vector<U>& baseCaseDimList,
-                       U inverseCutoffGlobalDimension,
-                       U panelDimension
-                     );
+  template<typename MatrixAType, typename MatrixLIType>
+  static void rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimenion,
+                           typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
+                           typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
+                           typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matLIstartX, typename MatrixAType::DimensionType matLIendX,
+                           typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY, size_t tranposePartner, MPI_Comm commWorld,
+                           std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension);
 
-  template<template<typename,typename,int> class Distribution>
-  static void rFactorUpper(
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                       Matrix<T,U,MatrixStructureSquare,Distribution>& matrixRI,
-                       U localDimension,
-                       U trueLocalDimension,
-                       U bcDimension,
-                       U globalDimension,
-                       U trueGlobalDimension,
-                       U matAstartX,
-                       U matAendX,
-                       U matAstartY,
-                       U matAendY,
-                       U matRIstartX,
-                       U matRIendX,
-                       U matRIstartY,
-                       U matRIendY,
-                       U transposePartner,
-                       MPI_Comm commWorld,
-                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                       bool& isInversePath,
-                       std::vector<U>& baseCaseDimList,
-                       U inverseCutoffGlobalDimension,
-                       U panelDimension
-                     );
+  template<typename MatrixAType, typename MatrixRIType>
+  static void rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+                           typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
+                           typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
+                           typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matRIstartX, typename MatrixAType::DimensionType matRIendX,
+                           typename MatrixAType::DimensionType matRIstartY, typename MatrixAType::DimensionType matRIendY, size_t transposePartner, MPI_Comm commWorld,
+                           std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension);
 
-  template<template<typename,typename,int> class Distribution>
-  static void baseCase(
-      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-      Matrix<T,U,MatrixStructureSquare,Distribution>& matrixLI,
-      U localDimension,
-      U trueLocalDimension,
-      U bcDimension,
-      U globalDimension,
-      U trueGlobalDimension,
-      U matAstartX,
-      U matAendX,
-      U matAstartY,
-      U matAendY,
-      U matLIstartX,
-      U matLIendX,
-      U matLIstartY,
-      U matLIendY,
-      U transposePartner,
-      MPI_Comm commWorld, 	// We want to pass in commWorld as MPI_COMM_WORLD because we want to pass that into 3D MM
-      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-      bool& isInversePath,
-      std::vector<U>& baseCaseDimList,
-      U inverseCutoffGlobalDimension,
-      U panelDimension,
-      char dir
-      );
+  
+  template<typename MatrixAType, typename MatrixIType>
+  static void baseCase(MatrixAType& matrixA, MatrixIType& matrixLI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+                       typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
+                       typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
+                       typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matIstartX, typename MatrixAType::DimensionType matIendX,
+                       typename MatrixAType::DimensionType matIstartY, typename MatrixAType::DimensionType matIendY, size_t transposePartner, MPI_Comm commWorld,
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                       typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension, char dir);
 
-  template<template<typename,typename,template<typename,typename,int> class> class StructureArg,
-    template<typename,typename,int> class Distribution>
-  static void transposeSwap(
-				Matrix<T,U,StructureArg,Distribution>& mat,
-				int myRank,
-				int transposeRank,
-				MPI_Comm commWorld
-			   );
+  template<typename MatrixType>
+  static void transposeSwap(MatrixType& mat, size_t myRank, size_t transposeRank, MPI_Comm commWorld);
 
-  template<template<typename,typename,int> class Distribution>
-  static std::vector<T> blockedToCyclicTransformation(
-							Matrix<T,U,MatrixStructureSquare,Distribution>& matA,
-							U localDimension,
-							U globalDimension,
-							U bcDimension,
-							U matAstartX,
-							U matAendX,
-							U matAstartY,
-							U matAendY,
-							int pGridDimensionSize,
-							MPI_Comm slice2Dcomm,
-							char dir
-						     );
+  template<typename MatrixType>
+  static std::vector<typename MatrixType::ScalarType>
+  blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
+                                typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType matAstartX, typename MatrixType::DimensionType matAendX,
+                                typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, size_t pGridDimensionSize, MPI_Comm slice2Dcomm, char dir);
 
-  static void cyclicToLocalTransformation(
-						std::vector<T>& storeT,
-						std::vector<T>& storeTI,
-						U localDimension,
-						U globalDimension,
-						U bcDimension,
-						int pGridDimensionSize,
-						int rankSlice,
-						char dir
-					 );
+  template<typename T, typename U>
+  static void cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, size_t pGridDimensionSize, size_t rankSlice, char dir);
 
-  static inline void updateInversePath(
-                                       U inverseCutoffGlobalDimension,
-                                       U globalDimension,
-                                       bool& isInversePath,
-                                       std::vector<U>& baseCaseDimList,
-                                       U localDimension);
-
+  template<typename U>
+  static inline void updateInversePath(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension);
 };
 
 #include "CFR3D.hpp"

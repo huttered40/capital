@@ -11,17 +11,8 @@
   Also, we need to figure out what to do with Rectangular.
 */
 
-template<typename T, typename U, typename OffloadType = OffloadEachGemm>
 class MM3D{
 public:
-  // Prevent any instantiation of this class.
-  MM3D() = delete;
-  MM3D(const MM3D& rhs) = delete;
-  MM3D(MM3D&& rhs) = delete;
-  MM3D& operator=(const MM3D& rhs) = delete;
-  MM3D& operator=(MM3D&& rhs) = delete;
-  ~MM3D() = delete;
-
   // Format: matrixA is M x K
   //         matrixB is K x N
   //         matrixC is M x N
@@ -29,248 +20,87 @@ public:
   // New design: user will specify via an argument to the overloaded Multiply() method what underlying BLAS routine he wants called.
   //             I think this is a reasonable assumption to make and will allow me to optimize each routine.
 
-  template<
-  	  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  	  template<typename,typename,int> class Distribution
-	>
-  static void Multiply(
-                 T* matrixA,
-                 Matrix<T,U,StructureB,Distribution>& matrixB,
-                 T* matrixC,
-                 U matrixAnumColumns,
-                 U matrixAnumRows,
-                 U matrixBnumColumns,
-                 U matrixBnumRows,
-                 U matrixCnumColumns,
-                 U matrixCnumRows,
-                 MPI_Comm commWorld,
-                 std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                 const blasEngineArgumentPackage_gemm<T>& srcPackage
-             );
+  template<typename MatrixBType>
+  static void Multiply(typename MatrixBType::ScalarType* matrixA, MatrixBType& matrixB, typename MatrixBType::ScalarType* matrixC,
+                       typename MatrixBType::DimensionType matrixAnumColumns, typename MatrixBType::DimensionType matrixAnumRows,
+                       typename MatrixBType::DimensionType matrixBnumColumns, typename MatrixBType::DimensionType matrixBnumRows,
+                       typename MatrixBType::DimensionType matrixCnumColumns, typename MatrixBType::DimensionType matrixCnumRows, MPI_Comm commWorld,
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, const blasEngineArgumentPackage_gemm<typename MatrixBType::ScalarType>& srcPackage);
 
-  template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
-  		template<typename,typename, template<typename,typename,int> class> class StructureC = MatrixStructureSquare,
-  		template<typename,typename,int> class Distribution
-	  >
-  static void Multiply(
-                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                        Matrix<T,U,StructureC,Distribution>& matrixC,
-                        MPI_Comm commWorld,
-                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        const blasEngineArgumentPackage_gemm<T>& srcPackage,
-			                  int methodKey = 0
-                      );
+  template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
+  static void Multiply(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                       const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
 
-  template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
-  		template<typename,typename,int> class Distribution
-	  >
-  static void Multiply(
-                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                        MPI_Comm commWorld,
-                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        const blasEngineArgumentPackage_trmm<T>& srcPackage,
-			                  int methodKey = 0
-                      );
+  template<typename MatrixAType, typename MatrixBType>
+  static void Multiply(MatrixAType& matrixA, MatrixBType& matrixB, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                       const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
 
-  template<
-  	  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  	  template<typename,typename,int> class Distribution
-	>
-  static void Multiply(
-                                Matrix<T,U,StructureA,Distribution>& matrixA,
-                                T* matrixB,
-                                U matrixAnumColumns,
-                                U matrixAnumRows,
-                                U matrixBnumColumns,
-                                U matrixBnumRows,
-                                MPI_Comm commWorld,
-                                std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                                const blasEngineArgumentPackage_trmm<T>& srcPackage
-                           );
+  template<typename MatrixAType>
+  static void Multiply(MatrixAType& matrixA, typename MatrixAType::ScalarType* matrixB, typename MatrixAType::DimensionType matrixAnumColumns,
+                       typename MatrixAType::DimensionType matrixAnumRows, typename MatrixAType::DimensionType matrixBnumColumns,
+                       typename MatrixAType::DimensionType matrixBnumRows, MPI_Comm commWorld,
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage);
 
-  template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureC,
-  		template<typename,typename,int> class Distribution
-	  >
-  static void Multiply(
-                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureC,Distribution>& matrixC,
-                        MPI_Comm commWorld,
-                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        const blasEngineArgumentPackage_syrk<T>& srcPackage,
-			                  int methodKey = 0
-                      );
+  template<typename MatrixAType, typename MatrixCType>
+  static void Multiply(MatrixAType& matrixA, MatrixCType& matrixC, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                       const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
 
-  template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
-  		template<typename,typename, template<typename,typename,int> class> class StructureC = MatrixStructureSquare,
-  		template<typename,typename,int> class Distribution
-	  >
-  static void Multiply(
-                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                        Matrix<T,U,StructureC,Distribution>& matrixC,
-                        U matrixAcutXstart,
-                        U matrixAcutXend,
-                        U matrixAcutYstart,
-                        U matrixAcutYend,
-                        U matrixBcutZstart,
-                        U matrixBcutZend,
-                        U matrixBcutXstart,
-                        U matrixBcutXend,
-                        U matrixCcutZstart,
-                        U matrixCcutZend,
-                        U matrixCcutYstart,
-                        U matrixCcutYend,
-                        MPI_Comm commWorld,
-                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        const blasEngineArgumentPackage_gemm<T>& srcPackage,
-                        bool cutA,
-                        bool cutB,
-                        bool cutC,
-                  			int methodKey = 0
-                      );
+  template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
+  static void Multiply(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
+                       typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
+                       typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
+                       typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
+                       typename MatrixBType::DimensionType matrixBcutXend, typename MatrixCType::DimensionType matrixCcutZstart,
+                       typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutYstart,
+                       typename MatrixCType::DimensionType matrixCcutYend, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                        const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC, size_t methodKey = 0);
 
-  template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
-  		template<typename,typename,int> class Distribution
-	  >
-  static void Multiply(
-                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                        U matrixAcutXstart,
-                        U matrixAcutXend,
-                        U matrixAcutYstart,
-                        U matrixAcutYend,
-                        U matrixBcutZstart,
-                        U matrixBcutZend,
-                        U matrixBcutXstart,
-                        U matrixBcutXend,
-                        MPI_Comm commWorld,
-                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        const blasEngineArgumentPackage_trmm<T>& srcPackage,
-                        bool cutA,
-                        bool cutB,
-                  			int methodKey = 0
-                      );
+  template<typename MatrixAType, typename MatrixBType>
+  static void Multiply(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAType::DimensionType matrixAcutXstart,
+                       typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
+                       typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
+                       typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
+                       typename MatrixBType::DimensionType matrixBcutXend, MPI_Comm commWorld,
+                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                       const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, size_t methodKey = 0);
 
-  template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureC,
-  		template<typename,typename,int> class Distribution
-	  >
-  static void Multiply(
-                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                        Matrix<T,U,StructureC,Distribution>& matrixB,		// MatrixB represents MatrixC in a typical SYRK routine. matrixB will hold the output
-                        U matrixAcutXstart,
-                        U matrixAcutXend,
-                        U matrixAcutYstart,
-                        U matrixAcutYend,
-                        U matrixCcutZstart,
-                        U matrixCcutZend,
-                        U matrixCcutXstart,
-                        U matrixCcutXend,
-                        MPI_Comm commWorld,
-                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                        const blasEngineArgumentPackage_syrk<T>& srcPackage,
-                        bool cutA = true,
-                        bool cutC = true,
-                        int methodKey = 0 // I chose an integer instead of another template parameter
-                      );
+  template<typename MatrixAType, typename MatrixCType>
+  static void Multiply(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
+                       typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
+                       typename MatrixAType::DimensionType matrixAcutYend, typename MatrixCType::DimensionType matrixCcutZstart,
+                       typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutXstart,
+                       typename MatrixCType::DimensionType matrixCcutXend, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                       const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA = true, bool cutC = true, size_t methodKey = 0);
 
 private:
 
-  template<template<typename,typename,int> class Distribution,
-    template<typename,typename, template<typename,typename,int> class> class StructureArg1,
-    template<typename,typename, template<typename,typename,int> class> class StructureArg2,
-    typename tupleStructure>
-  static void _start1(
-  		Matrix<T,U,StructureArg1,Distribution>& matrixA,
-			Matrix<T,U,StructureArg2,Distribution>& matrixB,
-			tupleStructure& commInfo3D,
-			T*& matrixAEnginePtr,
-			T*& matrixBEnginePtr,
-			std::vector<T>& matrixAEngineVector,
-			std::vector<T>& matrixBEngineVector,
-			std::vector<T>& foreignA,
-			std::vector<T>& foreignB,
-			bool& serializeKeyA,
-			bool& serializeKeyB
-		     );
+  template<typename MatrixAType, typename MatrixBType, typename tupleStructure>
+  static void _start1(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& commInfo3D, typename MatrixAType::ScalarType*& matrixAEnginePtr,
+                      typename MatrixBType::ScalarType*& matrixBEnginePtr, std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector,
+                      std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector, std::vector<typename MatrixAType::ScalarType>& foreignA,
+                      std::vector<typename MatrixBType::ScalarType>& foreignB, bool& serializeKeyA, bool& serializeKeyB);
 
-  template<template<typename,typename,int> class Distribution,
-    template<typename,typename, template<typename,typename,int> class> class StructureArg1,
-    template<typename,typename, template<typename,typename,int> class> class StructureArg2,
-    typename tupleStructure>
-  static void _start2(
-  	  Matrix<T,U,StructureArg1,Distribution>& matrixA,
-			Matrix<T,U,StructureArg2,Distribution>& matrixB,
-			tupleStructure& commInfo3D,
-			std::vector<T>& matrixAEngineVector,
-			std::vector<T>& matrixBEngineVector,
-			bool& serializeKeyA,
-			bool& serializeKeyB
-		     );
+  template<typename MatrixAType, typename MatrixBType, typename tupleStructure>
+  static void _start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& commInfo3D,
+                      std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector, std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector,
+                      bool& serializeKeyA, bool& serializeKeyB);
 
-  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution,
-    typename tupleStructure>
-  static void _end1(
-			T* matrixEnginePtr,
-  			Matrix<T,U,StructureArg,Distribution>& matrix,
-			tupleStructure& commInfo3D,
-		   int dir = 0
-       );
+  template<typename MatrixType, typename tupleStructure>
+  static void _end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, tupleStructure& commInfo3D, size_t dir = 0);
 
-  static void BroadcastPanels(
-				std::vector<T>& data,
-				U size,
-				bool isRoot,
-				int pGridCoordZ,
-				MPI_Comm panelComm
-			     );
+  template<typename T, typename U>
+  static void BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm);
 
-  static void BroadcastPanels(
-						T*& data,
-						U size,
-						bool isRoot,
-						int pGridCoordZ,
-						MPI_Comm panelComm
-					   );
+  template<typename T, typename U>
+  static void BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm);
 
-  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
-    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-  static void getEnginePtr(
-				Matrix<T,U,StructureArg, Distribution>& matrixArg,
-				Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
-				std::vector<T>& data,
-				bool isRoot
-                          );
+  template<typename MatrixSrcType, typename MatrixDestType>
+  static void getEnginePtr(MatrixSrcType& matrixArg, MatrixDestType& matrixDest, std::vector<typename MatrixSrcType::ScalarType>& data, bool isRoot);
 
-  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
-    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-  static Matrix<T,U,StructureArg,Distribution> getSubMatrix(
-				Matrix<T,U,StructureArg, Distribution>& srcMatrix,
-				U matrixArgColumnStart,
-				U matrixArgColumnEnd,
-				U matrixArgRowStart,
-				U matrixArgRowEnd,
-		    int pGridDimensionSize, 
-				bool getSub
-			  );
+  template<typename MatrixType>
+  static MatrixType getSubMatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
+                                 typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd, size_t pGridDimensionSize, bool getSub);
 
-/*
-  There is no reason to store state here. All we need this to do is to act as an interface. Nothing more.
-  MatrixMultiplicationEngine will take over from here. Storing state here would make no sense.
-*/
 };
 
 #include "MM3D.hpp"

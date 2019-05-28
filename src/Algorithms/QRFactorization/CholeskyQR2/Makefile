@@ -130,13 +130,12 @@ ifneq ($(BlueWaters_machine),)
   LIB_PATH=-L../../../../../critter/lib
   LIBS=-lcritter
   CCMPI=CC
+  CCGPU=CC	# default unless overwritten
+  ENVS=-D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -D$(GPU)
 
   ifneq ($(GPU_ACCEL),)
-    CCMPI=nvcc
     LIBS=$(LIBS) -lcublas -lcusolver
-  endif
-  ifneq ($(GPU_NO_ACCEL),)
-    CCMPI=CC
+    CCGPU=nvcc
   endif
 
   ifneq ($(PRG_ENV_FLAG_INTEL),)
@@ -156,11 +155,14 @@ ifneq ($(BlueWaters_machine),)
   MPI: $(OBJS1)
 	rm *.o
 
-  $(OBJS1): $(OBJS1).o
+  $(OBJS1): $(OBJS1).o #offload.o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 
   $(OBJS1).o: test.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -D$(GPU) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c test.cpp
+
+  offload.o: ../../../Offload/offload.h
+	$(CCGPU) $(CFLAGS) $(ENVS) -o offload.o
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)

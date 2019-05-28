@@ -13,21 +13,19 @@
 
 // Helper static method -- fills a range with zeros
 template<typename T, typename U>
-static void fillZerosContig(T* addr, U size)
-{
-  for (U i=0; i<size; i++)
-  {
+static void fillZerosContig(T* addr, U size){
+  for (U i=0; i<size; i++){
     addr[i] = 0;
   }
 }
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
-  Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<Square,Square>::Serialize(SrcType& src, DestType& dest){
   TAU_FSTART(Serialize);
+
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U srcNumElems = srcNumRows*srcNumColumns;
@@ -38,13 +36,11 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
   std::vector<T*>& destMatrixData = dest.getMatrixData();
 
   bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < srcNumElems)
-  {
+  if (static_cast<U>(destVectorData.size()) < srcNumElems){
     assembleFinder = true;
     destVectorData.resize(srcNumElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
-  {
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
     assembleFinder = true;
     destMatrixData.resize(srcNumColumns);
   }
@@ -52,25 +48,26 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
   // direction doesn't matter here since no indexing here
   memcpy(&destVectorData[0], &srcVectorData[0], sizeof(T)*srcNumElems);
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     dest.setNumRowsLocal(srcNumRows);
     dest.setNumColumnsLocal(srcNumColumns);
     dest.setNumElems(srcNumElems);
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+    Square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
   TAU_FSTOP(Serialize);
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& big,
-  Matrix<T,U,MatrixStructureSquare,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<Square,Square>::Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart,
+                                           typename BigType::DimensionType cutDimensionXend, typename BigType::DimensionType cutDimensionYstart,
+                                           typename BigType::DimensionType cutDimensionYend, bool dir){
   TAU_FSTART(Serialize);
+
+  using T = typename BigType::ScalarType;
+  using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 /*  Commenting this assert out for now, since CFR3D requires non-square partitioning
@@ -98,13 +95,11 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
   U numElems = (dir ? bigNumRows*bigNumColumns : rangeX*rangeY);
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
-  {
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
-  {
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
@@ -115,50 +110,44 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>::Serialize(Mat
   U destCounter = (dir ? bigNumRows : rangeY);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeX; i++)
-  {
+  for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destIndex], &srcVectorData[srcIndex], sizeof(T)*rangeY);		// rangeX is fine. blocks of size rangeX are still being copied.
     destIndex += destCounter;
     srcIndex += srcCounter;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     small.setNumRowsLocal(rangeY);
     small.setNumColumnsLocal(numColumns);
     small.setNumElems(numElems);
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+    Square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   TAU_FSTOP(Serialize);
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<Square,Rectangular>::Serialize(SrcType& src, DestType& dest){
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet in MatrixSerializer Square -> Rectangle\n";
+  std::cout << "Not fully implemented yet in MatrixSerializer Square -> Rectangular\n";
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureSquare, Distributer>& src,Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<Square,Rectangular>::Serialize(BigType& src, SmallType& dest, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                               typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet in MatrixSerializer Square -> Rectangle\n";
+  std::cout << "Not fully implemented yet in MatrixSerializer Square -> Rectangular\n";
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
-  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<Square,UpperTriangular>::Serialize(SrcType& src, DestType& dest){
   TAU_FSTART(Serialize);
+
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -171,13 +160,11 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 
   U numElems = ((srcNumColumns*(srcNumColumns+1))>>1);
   bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems)
-  {
+  if (static_cast<U>(destVectorData.size()) < numElems){
     assembleFinder = true;
     destVectorData.resize(numElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumRows)
-  {
+  if (static_cast<U>(destMatrixData.size()) < srcNumRows){
     assembleFinder = true;
     destMatrixData.resize(srcNumRows);
   }
@@ -187,21 +174,19 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
   U destOffset{0};
   U counter2{srcNumColumns};
 
-  for (U i=0; i<srcNumColumns; i++)
-  {
+  for (U i=0; i<srcNumColumns; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
     srcOffset += counter2;
     destOffset += counter;
     counter++;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     dest.setNumRowsLocal(srcNumRows);
     dest.setNumColumnsLocal(srcNumColumns);
     dest.setNumElems(numElems);
-    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+    UpperTriangular::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
   TAU_FSTOP(Serialize);
   return;
@@ -210,10 +195,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 /*
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
-  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest, bool fillZeros, bool dir)
+void Serializer<T,U,Square, UpperTriangular>::Serialize(Matrix<T,U,Square,Distributer>& src,
+  Matrix<T,U,UpperTriangular,Distributer>& dest, bool fillZeros, bool dir)
 {
-  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  std::cout << "Not updated. Only Square is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
   abort();
   if (dir == true)
   {
@@ -246,12 +231,13 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 */
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& big,
-  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<Square,UpperTriangular>::Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                   typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   TAU_FSTART(Serialize);
+
+  using T = typename BigType::ScalarType;
+  using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -273,13 +259,11 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
   U numElems = (dir ? bigNumRows*bigNumRows : ((rangeX*(rangeX+1))>>1));
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
-  if ((dir ? bigVectorData.size() : smallVectorData.size()) < numElems)
-  {
+  if ((dir ? bigVectorData.size() : smallVectorData.size()) < numElems){
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if ((dir ? bigMatrixData.size() : smallMatrixData.size()) < numColumns)
-  {
+  if ((dir ? bigMatrixData.size() : smallMatrixData.size()) < numColumns){
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
@@ -289,23 +273,21 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
   U srcIndexSave = (dir ? 0 : cutDimensionYstart+bigNumRows*cutDimensionXstart);
   auto& destVectorData = (dir ? bigVectorData : smallVectorData);
   auto& srcVectorData = (dir ? smallVectorData : bigVectorData);
-  for (U i=0; i<rangeX; i++)
-  {
+  for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destIndex], &srcVectorData[srcIndexSave], sizeof(T)*counter);
     destIndex += (dir ? bigNumRows : counter);
     srcIndexSave += (dir ? counter : bigNumRows);
     counter++;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     small.setNumRowsLocal(rangeY);
     small.setNumColumnsLocal(numColumns);
     small.setNumElems(numElems);
     // I am only providing UT here, not square, because if square, it would have aborted
-    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+    UpperTriangular::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   TAU_FSTOP(Serialize);
 }
@@ -313,10 +295,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 /*
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
-  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
+void Serializer<T,U,Square, UpperTriangular>::Serialize(Matrix<T,U,Square,Distributer>& src,
+  Matrix<T,U,UpperTriangular,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
-  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  std::cout << "Not updated. Only Square is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
   abort();
   if (dir == true)
   {
@@ -351,12 +333,12 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>::Seri
 */
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
-  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<Square,LowerTriangular>::Serialize(SrcType& src, DestType& dest){
   TAU_FSTART(Serialize);
+
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -369,13 +351,11 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 
   U numElems = ((srcNumColumns*(srcNumColumns+1))>>1);
   bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems)
-  {
+  if (static_cast<U>(destVectorData.size()) < numElems){
     assembleFinder = true;
     destVectorData.resize(numElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
-  {
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
     assembleFinder = true;
     destMatrixData.resize(srcNumColumns);
   }
@@ -384,21 +364,19 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
   U srcOffset{0};
   U destOffset{0};
   U counter2{srcNumRows+1};
-  for (U i=0; i<srcNumColumns; i++)
-  {
+  for (U i=0; i<srcNumColumns; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
     srcOffset += counter2;
     destOffset += counter;
     counter--;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     dest.setNumRowsLocal(srcNumRows);
     dest.setNumColumnsLocal(srcNumColumns);
     dest.setNumElems(numElems);
-    MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+    LowerTriangular::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
   TAU_FSTOP(Serialize);
   return;
@@ -407,10 +385,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 /*
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
-  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest, bool fillZeros, bool dir)
+void Serializer<T,U,Square, LowerTriangular>::Serialize(Matrix<T,U,Square,Distributer>& src,
+  Matrix<T,U,LowerTriangular,Distributer>& dest, bool fillZeros, bool dir)
 {
-  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  std::cout << "Not updated. Only Square is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
   abort();
   if (dir == true)
   {
@@ -443,12 +421,13 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 */
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& big,
-  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<Square,LowerTriangular>::Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                   typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   TAU_FSTART(Serialize);
+
+  using T = typename BigType::ScalarType;
+  using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -470,13 +449,11 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
   U numElems = (dir ? bigNumRows*bigNumRows : ((rangeX*(rangeX+1))>>1));
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
-  if ((dir ? bigVectorData.size() : smallVectorData.size()) < numElems)
-  {
+  if ((dir ? bigVectorData.size() : smallVectorData.size()) < numElems){
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if ((dir ? bigMatrixData.size() : smallMatrixData.size()) < numColumns)
-  {
+  if ((dir ? bigMatrixData.size() : smallMatrixData.size()) < numColumns){
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
@@ -486,23 +463,21 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
   U destOffset = (dir ? cutDimensionYstart+bigNumRows*cutDimensionXstart  : 0);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeX; i++)
-  {
+  for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*counter);
     destOffset += (dir ? bigNumRows+1 : counter);
     srcOffset += (dir ? counter : bigNumRows+1);
     counter--;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     small.setNumRowsLocal(rangeY);
     small.setNumColumnsLocal(numColumns);
     small.setNumElems(numElems);
     // I am only providing UT here, not square, because if square, it would have aborted
-    MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+    LowerTriangular::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   TAU_FSTOP(Serialize);
 }
@@ -510,10 +485,10 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 /*
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src,
-  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
+void Serializer<T,U,Square, LowerTriangular>::Serialize(Matrix<T,U,Square,Distributer>& src,
+  Matrix<T,U,LowerTriangular,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
-  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  std::cout << "Not updated. Only Square is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
   abort();
   if (dir == true)
   {
@@ -548,32 +523,29 @@ void Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>::Seri
 */
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureRectangle,MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<Rectangular,Square>::Serialize(SrcType& src, DestType& dest){
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet in MatrixSerializer for Rectangle -> Square\n";
+  std::cout << "Not fully implemented yet in MatrixSerializer for Rectangular -> Square\n";
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureRectangle,MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-  U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<Rectangular,Square>::Serialize(BigType& src, SmallType& dest, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                               typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  std::cout << "Not fully implemented yet in MatrixSerializer for Rectangle -> Square\n";
+  std::cout << "Not fully implemented yet in MatrixSerializer for Rectangular -> Square\n";
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<Rectangular,Rectangular>::Serialize(SrcType& src, DestType& dest){
   TAU_FSTART(Serialize);
+
   // For now, just call Square counterpart, it should be the same --- Actually I can't unless I try to do a weird cast.
   // Annoying code bloat here
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U srcNumElems = srcNumRows*srcNumColumns;
@@ -584,13 +556,11 @@ void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serializ
   std::vector<T*>& destMatrixData = dest.getMatrixData();
 
   bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < srcNumElems)
-  {
+  if (static_cast<U>(destVectorData.size()) < srcNumElems){
     assembleFinder = true;
     destVectorData.resize(srcNumElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
-  {
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
     assembleFinder = true;
     destMatrixData.resize(srcNumColumns);
   }
@@ -598,27 +568,27 @@ void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serializ
   // direction doesn't matter here since no indexing here
   memcpy(&destVectorData[0], &srcVectorData[0], sizeof(T)*srcNumElems);
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     dest.setNumRowsLocal(srcNumRows);
     dest.setNumColumnsLocal(srcNumColumns);
     dest.setNumElems(srcNumElems);
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+    Square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
   TAU_FSTOP(Serialize);
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& big,Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
-  U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<Rectangular,Rectangular>::Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                    typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   TAU_FSTART(Serialize);
+
   // For now, just call Square counterpart, it should be the same --- Actually I can't unless I try to do a weird cast.
   // Annoying code bloat here
+  using T = typename BigType::ScalarType;
+  using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 /*  Commenting this assert out for now, since CFR3D requires non-square partitioning
@@ -646,13 +616,11 @@ void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serializ
   U numElems = (dir ? bigNumRows*bigNumColumns : rangeX*rangeY);
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
-  {
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
-  {
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
@@ -663,71 +631,61 @@ void Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>::Serializ
   U destCounter = (dir ? bigNumRows : rangeY);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeX; i++)
-  {
+  for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destIndex], &srcVectorData[srcIndex], sizeof(T)*rangeY);		// rangeX is fine. blocks of size rangeX are still being copied.
     destIndex += destCounter;
     srcIndex += srcCounter;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     small.setNumRowsLocal(rangeY);
     small.setNumColumnsLocal(numColumns);
     small.setNumElems(numElems);
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+    Square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   TAU_FSTOP(Serialize);
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureRectangle,MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<Rectangular,UpperTriangular>::Serialize(SrcType& src, DestType& dest){
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   std::cout << "Not fully implemented yet\n";
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureRectangle,MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
-  U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<Rectangular,UpperTriangular>::Serialize(BigType& src, SmallType& dest, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   std::cout << "Not fully implemented yet\n";
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureRectangle,MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<Rectangular,LowerTriangular>::Serialize(SrcType& src, DestType& dest){
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   std::cout << "Not fully implemented yet\n";
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureRectangle,MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
-  U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<Rectangular,LowerTriangular>::Serialize(BigType& src, SmallType& dest, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   std::cout << "Not fully implemented yet\n";
   return;
 }
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
-  Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<UpperTriangular,Square>::Serialize(SrcType& src, DestType& dest){
   TAU_FSTART(Serialize);
+
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -740,13 +698,11 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 
   U numElems = srcNumColumns*srcNumColumns;
   bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems)
-  {
+  if (static_cast<U>(destVectorData.size()) < numElems){
     assembleFinder = true;
     destVectorData.resize(numElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
-  {
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
     assembleFinder = true;
     destMatrixData.resize(srcNumRows);
   }
@@ -755,8 +711,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   U srcOffset{0};
   U destOffset{0};
   U counter2{srcNumRows};
-  for (U i=0; i<srcNumRows; i++)
-  {
+  for (U i=0; i<srcNumRows; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
     U fillZeros = srcNumRows-counter;
     fillZerosContig(&destVectorData[destOffset+counter], fillZeros);
@@ -765,24 +720,24 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
     counter++;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     dest.setNumRowsLocal(srcNumRows);
     dest.setNumColumnsLocal(srcNumColumns);
     dest.setNumElems(numElems);
-    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+    UpperTriangular::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
   TAU_FSTOP(Serialize);
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& big,
-  Matrix<T,U,MatrixStructureSquare,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<UpperTriangular, Square>::Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   TAU_FSTART(Serialize);
+
+  using T = typename BigType::ScalarType;
+  using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -800,13 +755,11 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeX);
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
-  {
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallVectorData.size())) < numColumns)
-  {
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallVectorData.size())) < numColumns){
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
@@ -818,23 +771,21 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
   U destOffset = (dir ? bigMatOffset : 0);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeX; i++)
-  {
+  for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
     destOffset += (dir ? (bigMatCounter+1) : rangeY);
     srcOffset += (dir ? rangeY : (bigMatCounter+1));
     bigMatCounter++;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     small.setNumRowsLocal(numColumns);
     small.setNumColumnsLocal(rangeY);
     small.setNumElems(numElems);
     // I am only providing Square here, not UT, because if UT, it would have aborted
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+    Square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   TAU_FSTOP(Serialize);
 }
@@ -842,10 +793,10 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 /* No reason for this method. Just use UT to little square
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
-  Matrix<T,U,MatrixStructureSquare,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
+void Serializer<T,U,UpperTriangular, Square>::Serialize(Matrix<T,U,UpperTriangular,Distributer>& src,
+  Matrix<T,U,Square,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
-  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  std::cout << "Not updated. Only Square is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
   abort();
   if (dir == true)
   {
@@ -885,14 +836,15 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>::Seri
 */
   
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<UpperTriangular,Rectangular>::Serialize(SrcType& src, DestType& dest){
   TAU_FSTART(Serialize);
+
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -905,13 +857,11 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
 
   U numElems = srcNumColumns*srcNumColumns;
   bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems)
-  {
+  if (static_cast<U>(destVectorData.size()) < numElems){
     assembleFinder = true;
     destVectorData.resize(numElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
-  {
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
     assembleFinder = true;
     destMatrixData.resize(srcNumRows);
   }
@@ -920,8 +870,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
   U srcOffset{0};
   U destOffset{0};
   U counter2{srcNumRows};
-  for (U i=0; i<srcNumRows; i++)
-  {
+  for (U i=0; i<srcNumRows; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
     U fillZeros = srcNumRows-counter;
     fillZerosContig(&destVectorData[destOffset+counter], fillZeros);
@@ -930,28 +879,28 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
     counter++;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     dest.setNumRowsLocal(srcNumRows);
     dest.setNumColumnsLocal(srcNumColumns);
     dest.setNumElems(numElems);
-    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+    UpperTriangular::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
   TAU_FSTOP(Serialize);
   return;
 }
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& big, Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<UpperTriangular,Rectangular>::Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   TAU_FSTART(Serialize);
+
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
+  using T = typename BigType::ScalarType;
+  using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -968,13 +917,11 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
   U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeY);
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
-  {
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
-  {
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
@@ -986,34 +933,32 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>::S
   U destOffset = (dir ? bigMatOffset : 0);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeX; i++)
-  {
+  for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
     destOffset += (dir ? (bigMatCounter+1) : rangeY);
     srcOffset += (dir ? rangeY : (bigMatCounter+1));
     bigMatCounter++;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     if (dir) {abort();}		// weird case that I want to check against
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     small.setNumRowsLocal(rangeY);
     small.setNumColumnsLocal(numColumns);
     small.setNumElems(numElems);
     // I am only providing Square here, not UT, because if UT, it would have aborted
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+    Square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   TAU_FSTOP(Serialize);
 }
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src,
-  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<UpperTriangular,UpperTriangular>::Serialize(SrcType& src, DestType& dest){
   TAU_FSTART(Serialize);
+
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U srcNumElems = srcNumRows*srcNumColumns;
@@ -1024,13 +969,11 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
   std::vector<T*>& destMatrixData = dest.getMatrixData();
 
   bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < srcNumElems)
-  {
+  if (static_cast<U>(destVectorData.size()) < srcNumElems){
     assembleFinder = true;
     destVectorData.resize(srcNumElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
-  {
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
     assembleFinder = true;
     destMatrixData.resize(srcNumColumns);
   }
@@ -1038,27 +981,26 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
   // direction doesn't matter here since no indexing here
   memcpy(&destVectorData[0], &srcVectorData[0], sizeof(T)*srcNumElems);
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     dest.setNumRowsLocal(srcNumRows);
     dest.setNumColumnsLocal(srcNumColumns);
     dest.setNumElems(srcNumElems);
-    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+    UpperTriangular::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
   TAU_FSTOP(Serialize);
   return;
 }
 
 
-
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>::Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& big,
-  Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<UpperTriangular,UpperTriangular>::Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                            typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   TAU_FSTART(Serialize);
+
+  using T = typename BigType::ScalarType;
+  using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -1076,13 +1018,11 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
   U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : ((rangeX*(rangeX+1))>>1));
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
-  {
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
-  {
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
@@ -1096,8 +1036,7 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
   U destOffset = (dir ? bigMatOffset : smallMatOffset);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeX; i++)
-  {
+  for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*smallMatCounter);
     destOffset += (dir ? (bigMatCounter+1) : smallMatCounter);
     srcOffset += (dir ? smallMatCounter : (bigMatCounter+1));
@@ -1105,27 +1044,26 @@ void Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangul
     smallMatCounter++;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     if (dir) {abort();}
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     small.setNumRowsLocal(rangeY);
     small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
     small.setNumElems(numElems);
-    MatrixStructureUpperTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+    UpperTriangular::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   TAU_FSTOP(Serialize);
   return;
 }
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
-  Matrix<T,U,MatrixStructureSquare,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<LowerTriangular, Square>::Serialize(SrcType& src, DestType& dest){
   TAU_FSTART(Serialize);
+
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -1138,13 +1076,11 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 
   U numElems = srcNumColumns*srcNumColumns;
   bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems)
-  {
+  if (static_cast<U>(destVectorData.size()) < numElems){
     assembleFinder = true;
     destVectorData.resize(numElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
-  {
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
     assembleFinder = true;
     destMatrixData.resize(srcNumColumns);
   }
@@ -1153,8 +1089,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   U srcOffset{0};
   U destOffset{0};
   U counter2{srcNumColumns};
-  for (U i=0; i<srcNumColumns; i++)
-  {
+  for (U i=0; i<srcNumColumns; i++){
     fillZerosContig(&destVectorData[destOffset], i);
     memcpy(&destVectorData[destOffset+i], &srcVectorData[srcOffset], counter*sizeof(T));
     srcOffset += counter;
@@ -1162,14 +1097,13 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
     counter--;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     dest.setNumRowsLocal(srcNumRows);
     dest.setNumColumnsLocal(srcNumColumns);	// no dir needed here due to abort above
     dest.setNumElems(numElems);
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
+    Square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
   }
   TAU_FSTOP(Serialize);
   return;
@@ -1177,12 +1111,13 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& big,
-  Matrix<T,U,MatrixStructureSquare,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<LowerTriangular,Square>::Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                   typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   TAU_FSTART(Serialize);
+
+  using T = typename BigType::ScalarType;
+  using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   std::cout << "rangeX,rangeY - " << rangeX << " " << rangeY << std::endl;
@@ -1201,13 +1136,11 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeX);
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
-  {
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
-  {
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
@@ -1223,22 +1156,20 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
   U destOffset = (dir ? bigMatOffset : smallMatOffset);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeX; i++)
-  {
+  for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
     destOffset += (dir ? (bigMatCounter-1) : smallMatCounter);
     srcOffset += (dir ? smallMatCounter : (bigMatCounter-1));
     bigMatCounter--;
   }
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     if (dir) {abort();}
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     small.setNumRowsLocal(rangeY);
     small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
     small.setNumElems(numElems);
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+    Square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   TAU_FSTOP(Serialize);
   return;
@@ -1248,10 +1179,10 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 /*
 template<typename T, typename U>
 template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
-  Matrix<T,U,MatrixStructureSquare,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
+void Serializer<T,U,LowerTriangular, Square>::Serialize(Matrix<T,U,LowerTriangular,Distributer>& src,
+  Matrix<T,U,Square,Distributer>& dest, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir)
 {
-  std::cout << "Not updated. Only MatrixStructureSquare is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
+  std::cout << "Not updated. Only Square is. Makes no sense to change the implementation of all of these Structures until we think that the Square is right.\n";
   abort();
   if (dir == true)
   {
@@ -1288,14 +1219,15 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>::Seri
 }
 */
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<LowerTriangular,Rectangular>::Serialize(SrcType& src, DestType& dest){
   TAU_FSTART(Serialize);
+
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U destNumRows = dest.getNumRowsLocal();
@@ -1308,13 +1240,11 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::S
 
   U numElems = srcNumColumns*srcNumRows;
   bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems)
-  {
+  if (static_cast<U>(destVectorData.size()) < numElems){
     assembleFinder = true;
     destVectorData.resize(numElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
-  {
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
     assembleFinder = true;
     destMatrixData.resize(srcNumColumns);
   }
@@ -1323,8 +1253,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::S
   U srcOffset{0};
   U destOffset{0};
   U counter2{srcNumColumns};
-  for (U i=0; i<srcNumColumns; i++)
-  {
+  for (U i=0; i<srcNumColumns; i++){
     fillZerosContig(&destVectorData[destOffset], i);
     memcpy(&destVectorData[destOffset+i], &srcVectorData[srcOffset], counter*sizeof(T));
     srcOffset += counter;
@@ -1332,29 +1261,28 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::S
     counter--;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     dest.setNumRowsLocal(srcNumRows);
     dest.setNumColumnsLocal(srcNumColumns);	// no dir needed here due to abort above
     dest.setNumElems(numElems);
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
+    Square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
   }
   TAU_FSTOP(Serialize);
   return;
 }
 
-
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& big, Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<LowerTriangular,Rectangular>::Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   TAU_FSTART(Serialize);
+
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the Serializer from UT to Square, because thats what this will actually be doing
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
+  using T = typename BigType::ScalarType;
+  using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
@@ -1371,13 +1299,11 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::S
   U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeY*rangeX);
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
-  {
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
-  {
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
@@ -1393,34 +1319,32 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>::S
   U destOffset = (dir ? bigMatOffset : smallMatOffset);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeX; i++)
-  {
+  for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
     destOffset += (dir ? (bigMatCounter-1) : smallMatCounter);
     srcOffset += (dir ? smallMatCounter : (bigMatCounter-1));
     bigMatCounter--;
   }
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     if (dir) {abort();}
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     small.setNumRowsLocal(rangeY);
     small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
     small.setNumElems(numElems);
-    MatrixStructureSquare<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+    Square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   TAU_FSTOP(Serialize);
   return;
 }
 
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src,
-  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest)
-{
+template<typename SrcType, typename DestType>
+void Serializer<LowerTriangular,LowerTriangular>::Serialize(SrcType& src, DestType& dest){
   TAU_FSTART(Serialize);
+
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
   U srcNumElems = srcNumRows*srcNumColumns;
@@ -1431,13 +1355,11 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
   std::vector<T*>& destMatrixData = dest.getMatrixData();
 
   bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < srcNumElems)
-  {
+  if (static_cast<U>(destVectorData.size()) < srcNumElems){
     assembleFinder = true;
     destVectorData.resize(srcNumElems);
   }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns)
-  {
+  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
     assembleFinder = true;
     destMatrixData.resize(srcNumColumns);
   }
@@ -1445,25 +1367,25 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
   // direction doesn't matter here since no indexing here
   memcpy(&destVectorData[0], &srcVectorData[0], sizeof(T)*srcNumElems);
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     dest.setNumRowsLocal(srcNumRows);
     dest.setNumColumnsLocal(srcNumColumns);
     dest.setNumElems(srcNumElems);
-    MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+    LowerTriangular::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
   TAU_FSTOP(Serialize);
   return;
 }
 
-template<typename T, typename U>
-template<template<typename, typename,int> class Distributer>
-void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>::Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& big,
-  Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& small, U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir)
-{
+template<typename BigType, typename SmallType>
+void Serializer<LowerTriangular,LowerTriangular>::Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                                                            typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   TAU_FSTART(Serialize);
+
+  using T = typename BigType::ScalarType;
+  using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
@@ -1481,13 +1403,11 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
   U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : ((rangeX*(rangeX+1))>>1));
   U numColumns = (dir ? bigNumColumns : rangeX);
   bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems)
-  {
+  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
     assembleFinder = true;
     dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
   }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns)
-  {
+  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
     assembleFinder = true;
     dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
   }
@@ -1503,8 +1423,7 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
   U destOffset = (dir ? bigMatOffset : smallMatOffset);
   auto& destVectorData = dir ? bigVectorData : smallVectorData;
   auto& srcVectorData = dir ? smallVectorData : bigVectorData;
-  for (U i=0; i<rangeY; i++)
-  {
+  for (U i=0; i<rangeY; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*smallMatCounter);
     destOffset += (dir ? bigMatCounter : smallMatCounter);
     srcOffset += (dir ? smallMatCounter : bigMatCounter);
@@ -1512,15 +1431,14 @@ void Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangul
     smallMatCounter--;
   }
 
-  if (assembleFinder)
-  {
+  if (assembleFinder){
     if (dir) {abort();}
     // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
     // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
     small.setNumRowsLocal(rangeY);
     small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
     small.setNumElems(numElems);
-    MatrixStructureLowerTriangular<T,U,Distributer>::AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
+    LowerTriangular::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   TAU_FSTOP(Serialize);
   return;

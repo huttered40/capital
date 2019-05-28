@@ -50,10 +50,10 @@
   #define MPI_DATATYPE MPI_C_DOUBLE_COMPLEX
 #endif
 #ifdef INT_TYPE
-  #define INTTYPE int
+  #define INTTYPE size_t
 #endif
 #ifdef INT64_T_TYPE
-  #define INTTYPE int64_t
+  #define INTTYPE uint64_t
 #endif
 
 #endif /*SHARED*/

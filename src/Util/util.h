@@ -3,57 +3,38 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
-template<typename T, typename U>
 class util{
 public:
-  util() = delete;
-  ~util();
-  util(const util& rhs) = delete;
-  util(util&& rhs) = delete;
-  util& operator=(const util& rhs) = delete;
-  util& operator=(util&& rhs) = delete;
+  static std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t> build3DTopology(MPI_Comm commWorld);
+  static std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> buildTunableTopology(MPI_Comm commWorld, size_t pGridDimensionD, size_t pGridDimensionC);
 
-  static std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> build3DTopology(
-                    MPI_Comm commWorld);
-  static std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> buildTunableTopology(
-      MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC);
-
-  static void destroy3DTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D);
+  static void destroy3DTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D);
   static void destroyTunableTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable);
 
-  static std::vector<T> blockedToCyclic(
-    std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize);
+  template<typename T, typename U>
+  static std::vector<T> blockedToCyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t pGridDimensionSize);
 
-  static std::vector<T> blockedToCyclicSpecial(
-  std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize, char dir);
+  template<typename T, typename U>
+  static std::vector<T> blockedToCyclicSpecial(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t pGridDimensionSize, char dir);
 
-  template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
-    template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-  static std::vector<T> getReferenceMatrix(
-              Matrix<T,U,StructureArg,Distribution>& myMatrix,
-							U key,
-							std::tuple<MPI_Comm, int, int, int, int> commInfo
-						  );
+  template<typename MatrixType>
+  static std::vector<typename MatrixType::ScalarType>
+         getReferenceMatrix(MatrixType& myMatrix, size_t key, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo);
 
-  template< template<typename,typename,template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution>
-  static void transposeSwap(
-					Matrix<T,U,StructureArg,Distribution>& mat,
-				  int myRank,
-					int transposeRank,
-					MPI_Comm commWorld
-					);
+  template<typename MatrixType>
+  static void transposeSwap(MatrixType& mat, size_t myRank, size_t transposeRank, MPI_Comm commWorld);
 
-  static std::tuple<MPI_Comm, int, int, int, int> getCommunicatorSlice(
-    MPI_Comm commWorld);
+  static std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> getCommunicatorSlice(MPI_Comm commWorld);
 
+  template<typename U>
   static U getNextPowerOf2(U localShift);
 
-  template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
-    template<typename,typename,int> class Distribution>
-  static void removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, int pGridCoordX, int pGridCoordY, int pGridDimensionSize, char dir);
+  template<typename MatrixType>
+  static void removeTriangle(MatrixType& matrix, size_t pGridCoordX, size_t pGridCoordY, size_t pGridDimensionSize, char dir);
   
-  static void processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, int numFuncs, int numIterations, int rank);
+  static void processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, size_t numFuncs, size_t numIterations, size_t rank);
 
+  template<typename T>
   static void InitialGEMM();
 };
 

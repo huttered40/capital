@@ -15,7 +15,6 @@ class OffloadImmediate;	// Immediately offload matrix data to GPU and keep it re
 #include "./../Timer/CTFtimer.h"
 #include "./../BLAS/blasEngine.h"
 #include "./../LAPACK/lapackEngine.h"
-#include "./../Matrix/MatrixDistributer.h"
 #include "./../Matrix/Matrix.h"
 #include "./../Matrix/MatrixSerializer.h"
 #include "./../Util/util.h"

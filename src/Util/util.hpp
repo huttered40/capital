@@ -1,21 +1,19 @@
 /* Author: Edward Hutter */
 
-template<typename T, typename U>
-std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> util<T,U>::build3DTopology(
-                    MPI_Comm commWorld
-                  ){
+std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t> util::build3DTopology(MPI_Comm commWorld){
   TAU_FSTART(setUpCommunicators);
+
   int rank,size;
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(commWorld, &size);
 
-  int pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
-  int helper = pGridDimensionSize;
+  size_t pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
+  size_t helper = pGridDimensionSize;
   helper *= helper;
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
-  int pGridCoordZ = rank%pGridDimensionSize;
-  int pGridCoordY = rank/helper;
-  int pGridCoordX = (rank%helper)/pGridDimensionSize;
+  size_t pGridCoordZ = rank%pGridDimensionSize;
+  size_t pGridCoordY = rank/helper;
+  size_t pGridCoordX = (rank%helper)/pGridDimensionSize;
 
   MPI_Comm rowComm, columnComm, sliceComm, depthComm;
 
@@ -26,9 +24,9 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> util<T,U>::build3DTo
   MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
   #else
-  int pGridCoordX = rank%pGridDimensionSize;
-  int pGridCoordY = (rank%helper)/pGridDimensionSize;
-  int pGridCoordZ = rank/helper;
+  size_t pGridCoordX = rank%pGridDimensionSize;
+  size_t pGridCoordY = (rank%helper)/pGridDimensionSize;
+  size_t pGridCoordZ = rank/helper;
 
   MPI_Comm rowComm, columnComm, sliceComm, depthComm;
 
@@ -40,27 +38,25 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int> util<T,U>::build3DTo
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
   #endif
 
-
   TAU_FSTOP(setUpCommunicators);
   return std::make_tuple(rowComm, columnComm, sliceComm, depthComm, pGridCoordX, pGridCoordY, pGridCoordZ);
 }
 
-template<typename T, typename U>
-std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util<T,U>::buildTunableTopology(
-      MPI_Comm commWorld, int pGridDimensionD, int pGridDimensionC){
+std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util::buildTunableTopology(MPI_Comm commWorld, size_t pGridDimensionD, size_t pGridDimensionC){
   TAU_FSTART(getTunableCommunicators);
+
   int worldRank, worldSize, columnRank, cubeRank;
   MPI_Comm_rank(commWorld, &worldRank);
   MPI_Comm_size(commWorld, &worldSize);
 
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
-  int SubCubeSize = pGridDimensionC*pGridDimensionC*pGridDimensionC;
-  int SubCubeSliceSize = pGridDimensionC*pGridDimensionC;
+  size_t SubCubeSize = pGridDimensionC*pGridDimensionC*pGridDimensionC;
+  size_t SubCubeSliceSize = pGridDimensionC*pGridDimensionC;
   MPI_Comm sliceComm, rowComm, columnComm, columnContigComm, columnAltComm, depthComm, miniCubeComm;
   MPI_Comm_split(commWorld, worldRank/SubCubeSize, worldRank, &miniCubeComm);
   MPI_Comm_rank(miniCubeComm, &cubeRank);
-  int temp1 = (cubeRank%pGridDimensionC) + pGridDimensionC*(cubeRank/SubCubeSliceSize);
-  int temp2 = worldRank % SubCubeSliceSize;
+  size_t temp1 = (cubeRank%pGridDimensionC) + pGridDimensionC*(cubeRank/SubCubeSliceSize);
+  size_t temp2 = worldRank % SubCubeSliceSize;
   MPI_Comm_split(miniCubeComm, cubeRank/pGridDimensionC, cubeRank, &depthComm);
   MPI_Comm_split(miniCubeComm, temp1, cubeRank, &rowComm);
   // Note: columnComm in the tunable grid is of size d, not size c like in the 3D grid
@@ -70,12 +66,12 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util<T,U>::bui
   MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
   MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
   #else
-  int sliceSize = pGridDimensionD*pGridDimensionC;
+  size_t sliceSize = pGridDimensionD*pGridDimensionC;
   MPI_Comm sliceComm, rowComm, columnComm, columnContigComm, columnAltComm, depthComm, miniCubeComm;
   MPI_Comm_split(commWorld, worldRank/sliceSize, worldRank, &sliceComm);
   MPI_Comm_rank(sliceComm, &sliceRank);
   MPI_Comm_split(sliceComm, sliceRank/pGridDimensionC, sliceRank, &rowComm);
-  int cubeInt = worldRank%sliceSize;
+  size_t cubeInt = worldRank%sliceSize;
   MPI_Comm_split(commWorld, cubeInt/(pGridDimensionC*pGridDimensionC), worldRank, &miniCubeComm);
   MPI_Comm_split(commWorld, cubeInt, worldRank, &depthComm);
   MPI_Comm_split(sliceComm, sliceRank%pGridDimensionC, sliceRank, &columnComm);
@@ -89,29 +85,33 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util<T,U>::bui
   return std::make_tuple(rowComm, columnContigComm, columnAltComm, depthComm, sliceComm, miniCubeComm);
 }
 
-template<typename T, typename U>
-void util<T,U>::destroy3DTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D){
+void util::destroy3DTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D){
+  TAU_FSTART(Util::destroy3DTopology);
+
   MPI_Comm_free(&std::get<0>(commInfo3D));
   MPI_Comm_free(&std::get<1>(commInfo3D));
   MPI_Comm_free(&std::get<2>(commInfo3D));
   MPI_Comm_free(&std::get<3>(commInfo3D));
+  TAU_FSTOP(Util::destroy3DTopology);
 }
 
-template<typename T, typename U>
-void util<T,U>::destroyTunableTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable){
+void util::destroyTunableTopology(std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable){
+  TAU_FSTART(Util::destroyTunableTopology);
+
   MPI_Comm_free(&std::get<0>(commInfoTunable));
   MPI_Comm_free(&std::get<1>(commInfoTunable));
   MPI_Comm_free(&std::get<2>(commInfoTunable));
   MPI_Comm_free(&std::get<3>(commInfoTunable));
   MPI_Comm_free(&std::get<4>(commInfoTunable));
   MPI_Comm_free(&std::get<5>(commInfoTunable));
+  TAU_FSTOP(Util::destroyTunableTopology);
 }
 
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename T, typename U>
-std::vector<T> util<T,U>::blockedToCyclicSpecial(
-  std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize, char dir){
+std::vector<T> util::blockedToCyclicSpecial(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t pGridDimensionSize, char dir){
   TAU_FSTART(Util::blockedToCyclic);
+
   U aggregNumRows = localDimensionRows*pGridDimensionSize;
   U aggregNumColumns = localDimensionColumns*pGridDimensionSize;
   U aggregSize = aggregNumRows*aggregNumColumns;
@@ -190,9 +190,9 @@ std::vector<T> util<T,U>::blockedToCyclicSpecial(
 }
 
 template<typename T, typename U>
-std::vector<T> util<T,U>::blockedToCyclic(
-  std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, int pGridDimensionSize){
+std::vector<T> util::blockedToCyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t pGridDimensionSize){
   TAU_FSTART(Util::blockedToCyclic);
+
   U aggregNumRows = localDimensionRows*pGridDimensionSize;
   U aggregNumColumns = localDimensionColumns*pGridDimensionSize;
   U aggregSize = aggregNumRows*aggregNumColumns;
@@ -223,36 +223,39 @@ std::vector<T> util<T,U>::blockedToCyclic(
 
 }
 
-template<typename T, typename U>
-template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
-  template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-std::vector<T> util<T,U>::getReferenceMatrix(
-              Matrix<T,U,StructureArg,Distribution>& myMatrix,
-							U key,
-							std::tuple<MPI_Comm, int, int, int, int> commInfo
-						  ){
+template<typename MatrixType>
+std::vector<typename MatrixType::ScalarType>
+util::getReferenceMatrix(MatrixType& myMatrix, size_t key, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo){
+  TAU_FSTART(Util::getReferenceMatrix);
+
+  using T = typename MatrixType::ScalarType;
+  using U = typename MatrixType::DimensionType;
+  using Structure = typename MatrixType::StructureType;
+  using Distribution = typename MatrixType::DistributionType;
+  using Offload = typename MatrixType::OffloadType;
+
   MPI_Comm sliceComm = std::get<0>(commInfo);
-  int pGridCoordX = std::get<1>(commInfo);
-  int pGridCoordY = std::get<2>(commInfo);
-  int pGridCoordZ = std::get<3>(commInfo);
-  int pGridDimensionSize = std::get<4>(commInfo);
+  size_t pGridCoordX = std::get<1>(commInfo);
+  size_t pGridCoordY = std::get<2>(commInfo);
+  size_t pGridCoordZ = std::get<3>(commInfo);
+  size_t pGridDimensionSize = std::get<4>(commInfo);
 
   U localNumColumns = myMatrix.getNumColumnsLocal();
   U localNumRows = myMatrix.getNumRowsLocal();
   U globalNumColumns = myMatrix.getNumColumnsGlobal();
   U globalNumRows = myMatrix.getNumRowsGlobal();
 /*
-  using MatrixType = Matrix<T,U,MatrixStructureSquare,Distribution>;
+  using MatrixType = Matrix<T,U,Square,Distribution>;
   MatrixType localMatrix(globalNumColumns, globalNumRows, pGridDimensionSize, pGridDimensionSize);
   localMatrix.DistributeSymmetric(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key, true);
 */
   // I first want to check whether or not I want to serialize into a rectangular buffer (I don't care too much about efficiency here,
   //   if I did, I would serialize after the AllGather, but whatever)
   T* matrixPtr = myMatrix.getRawData();
-  Matrix<T,U,MatrixStructureRectangle,Distribution> matrixDest(std::vector<T>(), localNumColumns, localNumRows, globalNumColumns, globalNumRows);
-  if ((!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-    && (!std::is_same<StructureArg<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)){
-    Serializer<T,U,StructureArg,MatrixStructureRectangle>::Serialize(myMatrix, matrixDest);
+  Matrix<T,U,Rectangular,Distribution,Offload> matrixDest(std::vector<T>(), localNumColumns, localNumRows, globalNumColumns, globalNumRows);
+  if ((!std::is_same<Structure,Rectangular>::value)
+    && (!std::is_same<Structure,Square>::value)){
+    Serializer<Structure,Rectangular>::Serialize(myMatrix, matrixDest);
     matrixPtr = matrixDest.getRawData();
   }
 
@@ -265,7 +268,7 @@ std::vector<T> util<T,U>::getReferenceMatrix(
 //  std::vector<T> cyclicMatrix(aggregSize);
   MPI_Allgather(matrixPtr, localSize, MPI_DATATYPE, &blockedMatrix[0], localSize, MPI_DATATYPE, sliceComm);
 
-  std::vector<T> cyclicMatrix = util<T,U>::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, pGridDimensionSize);
+  std::vector<T> cyclicMatrix = util::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, pGridDimensionSize);
 
   // In case there are hidden zeros, we will recopy
   if ((globalNumRows%pGridDimensionSize) || (globalNumColumns%pGridDimensionSize)){
@@ -278,18 +281,14 @@ std::vector<T> util<T,U>::getReferenceMatrix(
     // In this case, globalSize < aggregSize
     cyclicMatrix.resize(globalSize);
   }
+  TAU_FSTOP(Util::getReferenceMatrix);
   return cyclicMatrix;
 }
 
-template<typename T, typename U>
-template< template<typename,typename,template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution>
-void util<T,U>::transposeSwap(
-											Matrix<T,U,StructureArg,Distribution>& mat,
-											int myRank,
-											int transposeRank,
-											MPI_Comm commWorld
-										     ){
+template<typename MatrixType>
+void util::transposeSwap(MatrixType& mat, size_t myRank, size_t transposeRank, MPI_Comm commWorld){
   TAU_FSTART(Util::transposeSwap);
+
   //if (myRank != transposeRank)
   //{
     // Transfer with transpose rank
@@ -303,37 +302,37 @@ void util<T,U>::transposeSwap(
   TAU_FSTOP(Util::transposeSwap);
 }
 
-template<typename T, typename U>
-std::tuple<MPI_Comm, int, int, int, int> util<T,U>::getCommunicatorSlice(
-  MPI_Comm commWorld){
+std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> util::getCommunicatorSlice(MPI_Comm commWorld){
   TAU_FSTART(Util::getCommunicatorSlice);
+
   int rank,size;
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(commWorld, &size);
 
-  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  size_t pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   
-  int helper = pGridDimensionSize;
+  size_t helper = pGridDimensionSize;
   helper *= helper;
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
-  int pCoordZ = rank%pGridDimensionSize;
-  int pCoordY = rank/helper;
-  int pCoordX = (rank%helper)/pGridDimensionSize;
+  size_t pCoordZ = rank%pGridDimensionSize;
+  size_t pCoordY = rank/helper;
+  size_t pCoordX = (rank%helper)/pGridDimensionSize;
   #else
-  int pCoordX = rank%pGridDimensionSize;
-  int pCoordY = (rank%helper)/pGridDimensionSize;
-  int pCoordZ = rank/helper;
+  size_t pCoordX = rank%pGridDimensionSize;
+  size_t pCoordY = (rank%helper)/pGridDimensionSize;
+  size_t pCoordZ = rank/helper;
   #endif
 
   MPI_Comm sliceComm;
-  MPI_Comm_split(commWorld, pCoordZ, rank, &sliceComm);
+  MPI_Comm_split(commWorld,pCoordZ,rank,&sliceComm);
   TAU_FSTOP(Util::getCommunicatorSlice);
-  return std::make_tuple(sliceComm, pCoordX, pCoordY, pCoordZ, pGridDimensionSize); 
+  return std::make_tuple(sliceComm,pCoordX,pCoordY,pCoordZ,pGridDimensionSize); 
 }
 
-template<typename T, typename U>
-U util<T,U>::getNextPowerOf2(U localShift){
+template<typename U>
+U util::getNextPowerOf2(U localShift){
   TAU_FSTART(Util::getNextPowerOf2);
+
   if ((localShift & (localShift-1)) != 0){
     // move localShift up to the next power of 2
     localShift--;
@@ -350,10 +349,12 @@ U util<T,U>::getNextPowerOf2(U localShift){
   return localShift;
 }
 
-template<typename T, typename U>
-template< template<typename,typename,template<typename,typename,int> class> class StructureArg,
-  template<typename,typename,int> class Distribution>
-void util<T,U>::removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, int pGridCoordX, int pGridCoordY, int pGridDimensionSize, char dir){
+template<typename MatrixType>
+void util::removeTriangle(MatrixType& matrix, size_t pGridCoordX, size_t pGridCoordY, size_t pGridDimensionSize, char dir){
+  TAU_FSTART(Util::removeTriangle);
+
+  using U = typename MatrixType::DimensionType;
+
   U globalDimVert = pGridCoordY;
   U globalDimHoriz = pGridCoordX;
   U localVert = matrix.getNumRowsLocal();
@@ -371,25 +372,25 @@ void util<T,U>::removeTriangle(Matrix<T,U,StructureArg,Distribution>& matrix, in
     }
     globalDimHoriz += pGridDimensionSize;
   }
+  TAU_FSTOP(Util::removeTriangle);
 }
 
-template<typename T, typename U>
-void util<T,U>::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, int numFuncs, int numIterations, int rank){
+void util::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, size_t numFuncs, size_t numIterations, size_t rank){
   if (rank == 0){
     std::ifstream fptrTotal2(fileStrTotal.c_str());
     //debugging
     if (!fptrTotal2.is_open()){
       abort();
     }
-    using profileType = std::tuple<std::string,int,double,double,double,double>;
+    using profileType = std::tuple<std::string,size_t,double,double,double,double>;
     std::vector<profileType> profileVector(numFuncs, std::make_tuple("",0,0,0,0,0));
-    for (int i=0; i<numIterations; i++){
+    for (size_t i=0; i<numIterations; i++){
       // read in first item on line: iteration #
-      int numIter;
+      size_t numIter;
       fptrTotal2 >> numIter;
-      for (int j=0; j<numFuncs; j++){
+      for (size_t j=0; j<numFuncs; j++){
         std::string funcName;
-        int numCalls;
+        size_t numCalls;
         double info1,info2,info3,info4;
         fptrTotal2 >> funcName >> numCalls >> info1 >> info2 >> info3 >> info4;
 	// Below statement is for debugging
@@ -402,7 +403,7 @@ void util<T,U>::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fil
         std::get<5>(profileVector[j]) += info4;
       }
     }
-    for (int i=0; i<numFuncs; i++){
+    for (size_t i=0; i<numFuncs; i++){
       if (i>0) fptrAvg << "\t";
       fptrAvg << std::get<0>(profileVector[i]).c_str();
       fptrAvg << "\t" << std::get<1>(profileVector[i]);
@@ -416,8 +417,8 @@ void util<T,U>::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fil
   }
 }
 
-template<typename T, typename U>
-void util<T,U>::InitialGEMM(){
+template<typename T>
+void util::InitialGEMM(){
   // Function must be called before performance testing is done due to MKL implementation of GEMM
   std::vector<T> matrixA(128*128,0.);
   std::vector<T> matrixB(128*128,0.);

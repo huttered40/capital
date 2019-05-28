@@ -1,16 +1,6 @@
 /* Author: Edward Hutter */
 
-// System includes
-#include <iostream>
-#include <fstream>
-#include <cstdlib>
-#include <cmath>
-#include <string>
-
-// Local includes
-#include "./../../../Util/shared.h"
 #include "MM3D.h"
-#include "../../../Timer/CTFtimer.h"
 #include "../MMvalidate/MMvalidate.h"
 
 using namespace std;
@@ -30,9 +20,7 @@ static double runTestGemm(
                         Matrix<T,U,StructureC,Distribution>& matC,
 			blasEngineArgumentPackage_gemm<T>& blasArgs,
 			int methodKey3, int pCoordX, int pCoordY, int pGridDimensionSize,
-			ofstream& fptrTotal, int iterNum, int numIter, int rank, int size, int& numFuncs
-)
-{
+			ofstream& fptrTotal, int iterNum, int numIter, int rank, int size, int& numFuncs){
   double iterTimeGlobal;
   // Note: I think these calls below are still ok given the new topology mapping on Blue Waters/Stampede2
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
@@ -46,10 +34,9 @@ static double runTestGemm(
   #ifdef PERFORMANCE
   volatile double startTime=MPI_Wtime();
   #endif
-  auto commInfo3D = util<T,U>::build3DTopology(MPI_COMM_WORLD);
-  MM3D<T,U>::Multiply(
-    matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-  util<T,U>::destroy3DTopology(commInfo3D);
+  auto commInfo3D = util::build3DTopology(MPI_COMM_WORLD);
+  MM3D::Multiply(matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
+  util::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   volatile double iterTimeLocal=MPI_Wtime();
   iterTimeLocal -= startTime;
@@ -74,9 +61,7 @@ static double runTestTrmm(
                         Matrix<T,U,StructureB,Distribution>& matB,
 			blasEngineArgumentPackage_trmm<T>& blasArgs,
 			int methodKey3, int pCoordX, int pCoordY, int pGridDimensionSize,
-			ofstream& fptrTotal, int iterNum, int numIter, int rank, int size, int& numFuncs
-)
-{
+			ofstream& fptrTotal, int iterNum, int numIter, int rank, int size, int& numFuncs){
   double iterTimeGlobal;
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
@@ -88,11 +73,10 @@ static double runTestTrmm(
   #ifdef PERFORMANCE
   double startTime=MPI_Wtime();
   #endif
-  auto commInfo3D = util<T,U>::build3DTopology(
+  auto commInfo3D = util::build3DTopology(
     MPI_COMM_WORLD);
-  MM3D<T,U>::Multiply(
-    matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
-  util<T,U>::destroy3DTopology(commInfo3D);
+  MM3D::Multiply(matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
+  util::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   volatile double iterTimeLocal=MPI_Wtime();
   iterTimeLocal -= startTime;
@@ -107,12 +91,11 @@ static double runTestTrmm(
 }
 
 
-int main(int argc, char** argv)
-{
-  using MatrixTypeS = Matrix<DATATYPE,INTTYPE,MatrixStructureSquare,MatrixDistributerCyclic>;
-  using MatrixTypeR = Matrix<DATATYPE,INTTYPE,MatrixStructureRectangle,MatrixDistributerCyclic>;
-  using MatrixTypeLT = Matrix<DATATYPE,INTTYPE,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
-  using MatrixTypeUT = Matrix<DATATYPE,INTTYPE,MatrixStructureUpperTriangular,MatrixDistributerCyclic>;
+int main(int argc, char** argv){
+  using MatrixTypeS = Matrix<DATATYPE,INTTYPE,Square,Cyclic>;
+  using MatrixTypeR = Matrix<DATATYPE,INTTYPE,Rectangular,Cyclic>;
+  using MatrixTypeLT = Matrix<DATATYPE,INTTYPE,LowerTriangular,Cyclic>;
+  using MatrixTypeUT = Matrix<DATATYPE,INTTYPE,UpperTriangular,Cyclic>;
 
   #ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
@@ -124,7 +107,7 @@ int main(int argc, char** argv)
   // size -- total number of processors in the 3D grid
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  util<DATATYPE,INTTYPE>::InitialGEMM();
+  util::InitialGEMM<DATATYPE>();
 
   /*
     Choices for methodKey1: 0) Gemm
@@ -155,8 +138,7 @@ int main(int argc, char** argv)
   INTTYPE globalMatrixSizeN = atoi(argv[4]);
   INTTYPE localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
 
-  if (methodKey1 == 0)
-  {
+  if (methodKey1 == 0){
     // GEMM
     INTTYPE globalMatrixSizeK = atoi(argv[5]);
     INTTYPE localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
@@ -173,8 +155,7 @@ int main(int argc, char** argv)
     fileStrTotal += "_perf.txt";
     #endif
     ofstream fptrTotal;
-    if (rank == 0)
-    {
+    if (rank == 0){
       fptrTotal.open(fileStrTotal.c_str());
     }
 
@@ -186,18 +167,15 @@ int main(int argc, char** argv)
     // Loop for getting a good range of results.
     double totalTime = 0;
     int numFuncs = 0;
-    for (int i=0; i<numIterations; i++)
-    {
+    for (int i=0; i<numIterations; i++){
       double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
       totalTime += iterTime;
     }
-    if (rank == 0)
-    {
+    if (rank == 0){
       fptrTotal.close();
     }
   }
-  else if (methodKey1 == 1)
-  {
+  else if (methodKey1 == 1){
     // TRMM
     // First, we need to collect some special arguments.
     /*
@@ -206,8 +184,8 @@ int main(int argc, char** argv)
     */
     int matrixUpLo = atoi(argv[5]);
     /*
-      Choices for triangleSide: 0) Triangle * Rectangle (matrixA * matrixB)
-			        1) Rectangle * Triangle (matrixB * matrixA)
+      Choices for triangleSide: 0) Triangle * Rectangular (matrixA * matrixB)
+			        1) Rectangular * Triangle (matrixB * matrixA)
     */
     int triangleSide = atoi(argv[6]);
     int numIterations = atoi(argv[7]);
@@ -223,66 +201,57 @@ int main(int argc, char** argv)
     fileStrTotal += "_perf.txt";
     #endif
     ofstream fptrTotal;
-    if (rank == 0)
-    {
+    if (rank == 0){
       fptrTotal.open(fileStrTotal.c_str());
     }
 
     // I guess I will go through all cases. Ugh!
     double totalTime = 0;
     int numFuncs = 0;
-    if ((matrixUpLo == 0) && (triangleSide == 0))
-    {
+    if ((matrixUpLo == 0) && (triangleSide == 0)){
       MatrixTypeLT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasLower,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
  
       // Loop for getting a good range of results.
-      for (int i=0; i<numIterations; i++)
-      {
+      for (int i=0; i<numIterations; i++){
         double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
-    else if ((matrixUpLo == 0) && (triangleSide == 1))
-    {
+    else if ((matrixUpLo == 0) && (triangleSide == 1)){
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeLT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
       blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
-      for (int i=0; i<numIterations; i++)
-      {
+      for (int i=0; i<numIterations; i++){
         double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
-    else if ((matrixUpLo == 1) && (triangleSide == 0))
-    {
+    else if ((matrixUpLo == 1) && (triangleSide == 0)){
       MatrixTypeUT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   
       // Loop for getting a good range of results.
-      for (int i=0; i<numIterations; i++)
-      {
+      for (int i=0; i<numIterations; i++){
         double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
     }
-    else if ((matrixUpLo == 1) && (triangleSide == 1))
-    {
+    else if ((matrixUpLo == 1) && (triangleSide == 1)){
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeUT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
       blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
-      for (int i=0; i<numIterations; i++)
-      {
+      for (int i=0; i<numIterations; i++){
         double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }

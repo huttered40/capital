@@ -1,14 +1,11 @@
 /* Author: Edward Hutter */
 
 /* Validation against sequential BLAS/LAPACK constructs */
-template<typename T, typename U>
-template<template<typename,typename,int> class Distribution>
-void QRvalidate<T,U>::validateLocal1D(
-                        Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
-                        Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        MPI_Comm commWorld
-                      ){
+template<typename MatrixAType, typename MatrixQType, typename MatrixRType>
+void QRvalidate::validateLocal1D(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, MPI_Comm commWorld){
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
+
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
@@ -24,36 +21,36 @@ void QRvalidate<T,U>::validateLocal1D(
   std::vector<T> globalMatrixA = getReferenceMatrix1D(matrixA, globalDimensionN, globalDimensionM, localDimensionM, myRank, commWorld);
   // Assume row-major
   std::vector<T> tau(globalDimensionN);
-  std::vector<T> matrixQ = globalMatrixA;		// true copy
+  std::vector<T> matQ = globalMatrixA;		// true copy
 
   lapackEngineArgumentPackage_geqrf geqrfArgs(blasEngineOrder::AblasColumnMajor);
   lapackEngineArgumentPackage_orgqr orgqrArgs(blasEngineOrder::AblasColumnMajor);
-  lapackEngine::_geqrf(&matrixQ[0], &tau[0], globalDimensionM, globalDimensionN, globalDimensionM, geqrfArgs);
-  lapackEngine::_orgqr(&matrixQ[0], &tau[0], globalDimensionM, globalDimensionN, globalDimensionN, globalDimensionM, orgqrArgs);
+  lapackEngine::_geqrf(&matQ[0], &tau[0], globalDimensionM, globalDimensionN, globalDimensionM, geqrfArgs);
+  lapackEngine::_orgqr(&matQ[0], &tau[0], globalDimensionM, globalDimensionN, globalDimensionN, globalDimensionM, orgqrArgs);
 
   // Q is in globalMatrixA now
   // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error = getResidual1D_RowCyclic(myQ.getVectorData(), matrixQ, globalDimensionN, globalDimensionM, localDimensionM, commWorld);
+  T error = getResidual1D_RowCyclic(matrixQ.getVectorData(), matQ, globalDimensionN, globalDimensionM, localDimensionM, commWorld);
 
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DATATYPE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myQ - solQ is " << error << std::endl;}
 
   // Now generate R using Q and A
-  std::vector<T> matrixR(globalDimensionN*globalDimensionN,0);
+  std::vector<T> matR(globalDimensionN*globalDimensionN,0);
   blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
-  blasEngine::_gemm(&matrixQ[0], &globalMatrixA[0], &matrixR[0], globalDimensionN, globalDimensionN, globalDimensionM, globalDimensionM, globalDimensionM, globalDimensionN, gemmArgs);
+  blasEngine::_gemm(&matQ[0], &globalMatrixA[0], &matR[0], globalDimensionN, globalDimensionN, globalDimensionM, globalDimensionM, globalDimensionM, globalDimensionN, gemmArgs);
 
   // Need to set up error2 for matrix R, but do that later
-  T error2 = getResidual1D_Full(myR.getVectorData(), matrixR, globalDimensionN, globalDimensionM, commWorld);
+  T error2 = getResidual1D_Full(matrixR.getVectorData(), matR, globalDimensionN, globalDimensionM, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DATATYPE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total error of myR - solR is " << error2 << std::endl;}
 
-  // generate A_computed = myQ*myR and compare against original A
-  T error3 = getResidual1D(matrixA.getVectorData(), myQ.getVectorData(), myR.getVectorData(), globalDimensionN, globalDimensionM, localDimensionM, commWorld);
+  // generate A_computed = matrixQ*matrixR and compare against original A
+  T error3 = getResidual1D(matrixA.getVectorData(), matrixQ.getVectorData(), matrixR.getVectorData(), globalDimensionN, globalDimensionM, localDimensionM, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error3, 1, MPI_DATATYPE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Total residual error is " << error3 << std::endl;}
 
-  T error4 = testOrthogonality1D(myQ.getVectorData(), globalDimensionN, globalDimensionM, localDimensionM, commWorld);
+  T error4 = testOrthogonality1D(matrixQ.getVectorData(), globalDimensionN, globalDimensionM, localDimensionM, commWorld);
   MPI_Allreduce(MPI_IN_PLACE, &error4, 1, MPI_DATATYPE, MPI_SUM, commWorld);
   if (myRank == 0) {std::cout << "Deviation from orthogonality is " << error4 << std::endl;}
 
@@ -62,57 +59,51 @@ void QRvalidate<T,U>::validateLocal1D(
 
 
 /* Validation against sequential BLAS/LAPACK constructs */
-template<typename T, typename U>
-template<template<typename,typename,int> class Distribution>
-std::pair<T,T> QRvalidate<T,U>::validateParallel3D(
-                        Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
-                        Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        MPI_Comm commWorld,
-                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
-                      ){
-  // generate A_computed = myQ*myR and compare against original A
+template<typename MatrixAType, typename MatrixQType, typename MatrixRType>
+std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
+QRvalidate::validateParallel3D(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, MPI_Comm commWorld,
+                               std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D){
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
+
+  // generate A_computed = matrixQ*matrixR and compare against original A
   int size; MPI_Comm_size(commWorld, &size);
-  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  util<T,U>::removeTriangle(myR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
+  size_t pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  util::removeTriangle(matrixR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
   std::string str1 = "Residual: ";
-  T error1 = validator<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', commWorld, commInfo3D, str1);
+  T error1 = validator::validateResidualParallel(matrixQ, matrixR, matrixA, 'F', commWorld, commInfo3D, str1);
   std::string str2 = "Deviation from orthogonality: ";
-  T error2 = validator<T,U>::validateOrthogonalityParallel(myQ,commWorld, commInfo3D, str2);
+  T error2 = validator::validateOrthogonalityParallel(matrixQ, commWorld, commInfo3D, str2);
   return std::make_pair(error1,error2);
 }
 
 
 /* Validation against sequential BLAS/LAPACK constructs */
-template<typename T, typename U>
-template<template<typename,typename,int> class Distribution>
-std::pair<T,T> QRvalidate<T,U>::validateParallelTunable(
-                        Matrix<T,U,MatrixStructureRectangle,Distribution>& matrixA,
-                        Matrix<T,U,MatrixStructureRectangle,Distribution>& myQ,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& myR,
-                        int gridDimensionD,
-                        int gridDimensionC,
-                        MPI_Comm commWorld,
-                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable
-                      ){
+template<typename MatrixAType, typename MatrixQType, typename MatrixRType>
+std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
+QRvalidate::validateParallelTunable(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, size_t gridDimensionD, size_t gridDimensionC, MPI_Comm commWorld,
+                                    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable){
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
+
   MPI_Comm miniCubeComm = std::get<5>(commInfoTunable);
-  auto commInfo3D = util<T,U>::build3DTopology(miniCubeComm);
+  auto commInfo3D = util::build3DTopology(miniCubeComm);
   MPI_Comm columnAltComm = std::get<2>(commInfoTunable);
   int size; MPI_Comm_size(miniCubeComm, &size);
-  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  util<T,U>::removeTriangle(myR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
+  size_t pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  util::removeTriangle(matrixR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
   std::string str1 = "Residual: ";
-  T error1 = validator<T,U>::validateResidualParallel(myQ, myR, matrixA, 'F', miniCubeComm, commInfo3D, MPI_COMM_WORLD, str1);
+  T error1 = validator::validateResidualParallel(matrixQ, matrixR, matrixA, 'F', miniCubeComm, commInfo3D, MPI_COMM_WORLD, str1);
   std::string str2 = "Deviation from orthogonality: ";
-  T error2 = validator<T,U>::validateOrthogonalityParallel(myQ, miniCubeComm, commInfo3D, columnAltComm, str2);
-  util<T,U>::destroy3DTopology(commInfo3D);
+  T error2 = validator::validateOrthogonalityParallel(matrixQ, miniCubeComm, commInfo3D, columnAltComm, str2);
+  util::destroy3DTopology(commInfo3D);
   return std::make_pair(error1,error2);
 }
 
 
 /* Used for comparing a matrix owned among processors in a 1D row-cyclic manner to a full matrix */
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld){
+T QRvalidate::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld){
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
@@ -142,9 +133,8 @@ T QRvalidate<T,U>::getResidual1D_RowCyclic(std::vector<T>& myMatrix, std::vector
   return error;
 }
 
-
 template<typename T, typename U>
-T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld){
+T QRvalidate::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld){
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
@@ -181,7 +171,7 @@ T QRvalidate<T,U>::testOrthogonality1D(std::vector<T>& myQ, U globalDimensionX, 
 
 // generate A_computed = myQ*myR and compare against original A
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>&myR, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld){
+T QRvalidate::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::vector<T>&myR, U globalDimensionX, U globalDimensionY, U localDimensionY, MPI_Comm commWorld){
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
@@ -209,7 +199,7 @@ T QRvalidate<T,U>::getResidual1D(std::vector<T>& myA, std::vector<T>& myQ, std::
 
 /* Used for comparing a full matrix to a full matrix */
 template<typename T, typename U>
-T QRvalidate<T,U>::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld){
+T QRvalidate::getResidual1D_Full(std::vector<T>& myMatrix, std::vector<T>& solutionMatrix, U globalDimensionX, U globalDimensionY, MPI_Comm commWorld){
   // Matrix R is owned by every processor
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
@@ -246,7 +236,7 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distr
                                U globalDimensionM, U globalDimensionN, MPI_Comm commWorld){
   int myRank;
   MPI_Comm_rank(commWorld, &myRank);
-  auto commInfo3D = util<T,U>::getCommunicatorSlice(commWorld);
+  auto commInfo3D = util::getCommunicatorSlice(commWorld);
 
   int pGridDimensionSize;
   MPI_Comm sliceComm = std::get<0>(commInfo3D);
@@ -322,21 +312,18 @@ T QRvalidate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distr
 }
 */
 
-template<typename T, typename U>
-template<template<typename,typename,int> class Distribution>
-std::vector<T> QRvalidate<T,U>::getReferenceMatrix1D(
-                        				Matrix<T,U,MatrixStructureRectangle,Distribution>& myMatrix,
-							U globalDimensionX,
-							U globalDimensionY,
-							U localDimensionY,
-							U key,
-							MPI_Comm commWorld
-						  ){
+template<typename MatrixType>
+std::vector<typename MatrixType::ScalarType>
+QRvalidate::getReferenceMatrix1D(MatrixType& myMatrix, typename MatrixType::DimensionType globalDimensionX, typename MatrixType::DimensionType globalDimensionY,
+                                 typename MatrixType::DimensionType localDimensionY, size_t key, MPI_Comm commWorld){
+
+  using T = typename MatrixType::ScalarType;
+  using U = typename MatrixType::DimensionType;
+
   int numPEs, myRank;
   MPI_Comm_size(commWorld, &numPEs);
   MPI_Comm_rank(commWorld, &myRank);
 
-  using MatrixType = Matrix<T,U,MatrixStructureRectangle,Distribution>;
   MatrixType localMatrix(globalDimensionX, globalDimensionY, 1, numPEs);
   localMatrix.DistributeRandom(0, myRank, 1, numPEs, key);
 
@@ -352,7 +339,7 @@ std::vector<T> QRvalidate<T,U>::getReferenceMatrix1D(
     // Inner loop over "block"s
     for (U j=0; j<localDimensionY; j++){
       // Inner loop over all rows in a "block"
-      for (U k=0; k<numPEs; k++){
+      for (size_t k=0; k<numPEs; k++){
         U readIndex = i*localDimensionY + j + k*localSize;
         cyclicMatrix[writeIndex++] = blockedMatrix[readIndex];
       }

@@ -9,50 +9,21 @@
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
 
-template<typename T, typename U>
 class CFvalidate{
 public:
-  CFvalidate() = delete;
-  ~CFvalidate() = delete;
-  CFvalidate(const CFvalidate& rhs) = delete;
-  CFvalidate(CFvalidate&& rhs) = delete;
-  CFvalidate& operator=(const CFvalidate& rhs) = delete;
-  CFvalidate& operator=(CFvalidate&& rhs) = delete;
+  template<typename MatrixAType, typename MatrixSolType>
+  static void validateLocal(MatrixAType& matrixA, MatrixSolType& matrixSol, char dir, MPI_Comm commWorld);
 
-  template<template<typename,typename,int> class Distribution>
-  static void validateLocal(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
-			                  char dir,
-                        MPI_Comm commWorld
-                      );
-
-  template<template<typename,typename,int> class Distribution>
-  static T validateParallel(
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixA,
-                        Matrix<T,U,MatrixStructureSquare,Distribution>& matrixSol_CF,
-                        char dir,
-                        MPI_Comm commWorld,
-                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D
-                      );
+  template<typename MatrixAType, typename MatrixTriType>
+  static T validateParallel(MatrixAType& matrixA, MatrixTriType& matrixTri,
+                            char dir, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D);
 
 private:
+  template<typename T, typename U>
+  static T getResidualTriangleLower(std::vector<T>& myValues, std::vector<T>& lapackValues, U localDimension, U globalDimension, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo);
 
-  static T getResidualTriangleLower(
-				std::vector<T>& myValues,
-				std::vector<T>& lapackValues,
-				U localDimension,
-				U globalDimension,
-		                std::tuple<MPI_Comm, int, int, int, int> commInfo
-			    );
-
-  static T getResidualTriangleUpper(
-				std::vector<T>& myValues,
-				std::vector<T>& lapackValues,
-				U localDimension,
-				U globalDimension,
-		                std::tuple<MPI_Comm, int, int, int, int> commInfo
-			    );
+  template<typename T, typename U>
+  static T getResidualTriangleUpper(std::vector<T>& myValues, std::vector<T>& lapackValues, U localDimension, U globalDimension, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo);
 };
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)

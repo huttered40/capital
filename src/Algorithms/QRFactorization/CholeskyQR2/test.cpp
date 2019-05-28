@@ -1,28 +1,17 @@
 /* Author: Edward Hutter */
 
-// System includes
-#include <iostream>
-#include <fstream>
-#include <cstdlib>
-#include <cmath>
-#include <utility>
-
-// Local includes
-#include "./../../../Util/shared.h"
 #include "CholeskyQR2.h"
-#include "./../QRvalidate/QRvalidate.h"
-#include "../../../Timer/CTFtimer.h"
+#include "../QRvalidate/QRvalidate.h"
 
 using namespace std;
 
 // Idea: We calculate 3D Summa as usual, and then we pass it into the MMvalidate solo class
 
-int main(int argc, char** argv)
-{
-  using MatrixTypeS = Matrix<DATATYPE,INTTYPE,MatrixStructureSquare,MatrixDistributerCyclic>;
-  using MatrixTypeR = Matrix<DATATYPE,INTTYPE,MatrixStructureRectangle,MatrixDistributerCyclic>;
-  using MatrixTypeLT = Matrix<DATATYPE,INTTYPE,MatrixStructureLowerTriangular,MatrixDistributerCyclic>;
-  using MatrixTypeUT = Matrix<DATATYPE,INTTYPE,MatrixStructureSquare,MatrixDistributerCyclic>;
+int main(int argc, char** argv){
+  using MatrixTypeS = Matrix<DATATYPE,INTTYPE,Square,Cyclic>;
+  using MatrixTypeR = Matrix<DATATYPE,INTTYPE,Rectangular,Cyclic>;
+  using MatrixTypeLT = Matrix<DATATYPE,INTTYPE,LowerTriangular,Cyclic>;
+  using MatrixTypeUT = Matrix<DATATYPE,INTTYPE,Square,Cyclic>;
 
 #ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
@@ -36,35 +25,35 @@ int main(int argc, char** argv)
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  util<DATATYPE,INTTYPE>::InitialGEMM();
+  util::InitialGEMM<DATATYPE>();
 
   // size -- total number of processors in the tunable grid
   INTTYPE globalMatrixDimensionM = atoi(argv[1]);
   INTTYPE globalMatrixDimensionN = atoi(argv[2]);
 
-  int baseCaseMultiplier = atoi(argv[3]);
-  int inverseCutOffMultiplier = atoi(argv[4]);
-  int panelDimensionMultiplier = atoi(argv[5]);
+  size_t baseCaseMultiplier = atoi(argv[3]);
+  size_t inverseCutOffMultiplier = atoi(argv[4]);
+  size_t panelDimensionMultiplier = atoi(argv[5]);
  
   // Use the grid that the user specifies in the command line
-  int dimensionD = atoi(argv[6]);
-  int dimensionC = atoi(argv[7]);
-  int sliceSize = dimensionD*dimensionC;
+  size_t dimensionD = atoi(argv[6]);
+  size_t dimensionC = atoi(argv[7]);
+  size_t sliceSize = dimensionD*dimensionC;
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
-  int helper = dimensionC*dimensionC;
-  int pCoordZ = rank%dimensionC;
-  int pCoordY = rank/helper;
-  int pCoordX = (rank%helper)/dimensionC;
+  size_t helper = dimensionC*dimensionC;
+  size_t pCoordZ = rank%dimensionC;
+  size_t pCoordY = rank/helper;
+  size_t pCoordX = (rank%helper)/dimensionC;
   #else
-  int pCoordX = rank%dimensionC;
-  int pCoordY = (rank%sliceSize)/dimensionC;
-  int pCoordZ = rank/sliceSize;
+  size_t pCoordX = rank%dimensionC;
+  size_t pCoordY = (rank%sliceSize)/dimensionC;
+  size_t pCoordZ = rank/sliceSize;
   #endif
 
   INTTYPE localMatrixDimensionM = globalMatrixDimensionM/dimensionD;
   INTTYPE localMatrixDimensionN = globalMatrixDimensionN/dimensionC;
 
-  int numIterations=atoi(argv[8]);
+  size_t numIterations=atoi(argv[8]);
   string fileStr = argv[9];
   string fileStrTotal=fileStr;
   #ifdef PROFILE
@@ -80,8 +69,7 @@ int main(int argc, char** argv)
   ofstream fptrNumericsTotal;
   #endif
   ofstream fptrTotal;
-  if (rank == 0)
-  {
+  if (rank == 0){
     fptrTotal.open(fileStrTotal.c_str());
     #ifdef PERFORMANCE
     fptrNumericsTotal.open(fileStrNumericsTotal.c_str());
@@ -105,10 +93,9 @@ int main(int argc, char** argv)
 //  return 0;
 //  #endif
 
-  int numFuncs = 0;				// For figuring out how many functions are being profiled (smart way to find average over all iterations)
-  int i;
-  for (i=0; i<numIterations; i++)
-  {
+  size_t numFuncs = 0;				// For figuring out how many functions are being profiled (smart way to find average over all iterations)
+  size_t i;
+  for (i=0; i<numIterations; i++){
     double saveTime;
     // reset the matrix before timer starts
     #if defined(BLUEWATERS) || defined(STAMPEDE2)
@@ -124,11 +111,9 @@ int main(int argc, char** argv)
     #ifdef PERFORMANCE
     volatile double startTime=MPI_Wtime();
     #endif
-    auto commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
-      MPI_COMM_WORLD, dimensionD, dimensionC);
-    CholeskyQR2<DATATYPE,INTTYPE>::FactorTunable(
-      matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
-    util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
+    auto commInfoTunable = util::buildTunableTopology(MPI_COMM_WORLD, dimensionD, dimensionC);
+    CholeskyQR2::FactorTunable(matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+    util::destroyTunableTopology(commInfoTunable);
     #ifdef PERFORMANCE
     double iterTimeLocal = MPI_Wtime() - startTime;
     double iterTimeGlobal = 0;
@@ -150,24 +135,20 @@ int main(int argc, char** argv)
     #else
     saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, (rank%sliceSize));
     #endif
-    commInfoTunable = util<DATATYPE,INTTYPE>::buildTunableTopology(
-      MPI_COMM_WORLD, dimensionD, dimensionC);
-    pair<DATATYPE,DATATYPE> error = QRvalidate<DATATYPE,INTTYPE>::validateParallelTunable(
-      saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
-    util<DATATYPE,INTTYPE>::destroyTunableTopology(commInfoTunable);
+    commInfoTunable = util::buildTunableTopology(MPI_COMM_WORLD, dimensionD, dimensionC);
+    pair<DATATYPE,DATATYPE> error = QRvalidate::validateParallelTunable(saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
+    util::destroyTunableTopology(commInfoTunable);
     double residualErrorGlobal,orthogonalityErrorGlobal;
     MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    if (rank == 0)
-    {
+    if (rank == 0){
       fptrNumericsTotal << size << "\t" << i << "\t" << residualErrorGlobal << "\t" << orthogonalityErrorGlobal << endl;
       totalError1 += residualErrorGlobal;
       totalError2 += orthogonalityErrorGlobal;
     }
     #endif
   }
-  if (rank == 0)
-  {
+  if (rank == 0){
     fptrTotal.close();
     #ifdef PERFORMANCE
     fptrNumericsTotal.close();

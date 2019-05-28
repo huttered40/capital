@@ -1,28 +1,21 @@
 /* Author: Edward Hutter */
 
-template<typename T, typename U, typename OffloadType>
-template<
-  	  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  	  template<typename,typename,int> class Distribution
-	>
-void MM3D<T,U,OffloadType>::Multiply(
-                                   	T* matrixA,
-                                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                                        T* matrixC,
-                                        U matrixAnumColumns,
-                                        U matrixAnumRows,
-                                        U matrixBnumColumns,
-                                        U matrixBnumRows,
-                                        U matrixCnumColumns,
-                                        U matrixCnumRows,
-                                        MPI_Comm commWorld,
-                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                                        const blasEngineArgumentPackage_gemm<T>& srcPackage
-                                   ){
+template<typename MatrixBType>
+void MM3D::Multiply(typename MatrixBType::ScalarType* matrixA, MatrixBType& matrixB, typename MatrixBType::ScalarType* matrixC,
+                    typename MatrixBType::DimensionType matrixAnumColumns, typename MatrixBType::DimensionType matrixAnumRows,
+                    typename MatrixBType::DimensionType matrixBnumColumns, typename MatrixBType::DimensionType matrixBnumRows,
+                    typename MatrixBType::DimensionType matrixCnumColumns, typename MatrixBType::DimensionType matrixCnumRows, MPI_Comm commWorld,
+                    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, const blasEngineArgumentPackage_gemm<typename MatrixBType::ScalarType>& srcPackage){
   TAU_FSTART(MM3D::Multiply);
+
   // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
   //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
   //       Also, I only allow method1, not Allgather-based method2
+  using T = typename MatrixBType::ScalarType;
+  using U = typename MatrixBType::DimensionType;
+  using StructureB = typename MatrixBType::StructureType;
+  using Distribution = typename MatrixBType::DistributionType;
+  using Offload = typename MatrixBType::OffloadType;
 
   T* matrixAEnginePtr;
   T* matrixBEnginePtr;
@@ -50,9 +43,9 @@ void MM3D<T,U,OffloadType>::Multiply(
   BroadcastPanels((isRootRow ? matrixA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
   matrixAEnginePtr = (isRootRow ? matrixA : foreignA);
   BroadcastPanels((isRootColumn ? matrixB.getVectorData() : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
-  if ((!std::is_same<StructureB<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-    && (!std::is_same<StructureB<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)){
-    Matrix<T,U,MatrixStructureRectangle,Distribution> helperB(std::vector<T>(), matrixBnumColumns, matrixBnumRows, matrixBnumColumns, matrixBnumRows);
+  if ((!std::is_same<StructureB,Rectangular>::value)
+    && (!std::is_same<StructureB,Square>::value)){
+    Matrix<T,U,Rectangular,Distribution,Offload> helperB(std::vector<T>(), matrixBnumColumns, matrixBnumRows, matrixBnumColumns, matrixBnumRows);
     getEnginePtr(matrixB, helperB, (isRootColumn ? matrixB.getVectorData() : foreignB), isRootColumn);
     matrixBEnginePtr = helperB.getRawData();
   }
@@ -91,25 +84,15 @@ void MM3D<T,U,OffloadType>::Multiply(
 //   Of course we will serialize into Square Structure if not in Square Structure already in order to be compatible
 //   with BLAS-3 routines.
 
-template<typename T, typename U, typename OffloadType>
-template<
-	  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  	  template<typename,typename, template<typename,typename,int> class> class StructureB,
-  	  template<typename,typename, template<typename,typename,int> class> class StructureC,
-  	  template<typename,typename,int> class Distribution
-	>
-void MM3D<T,U,OffloadType>::Multiply(
-                                   	Matrix<T,U,StructureA,Distribution>& matrixA,
-                                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                                        Matrix<T,U,StructureC,Distribution>& matrixC,
-                                        MPI_Comm commWorld,
-                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                                        const blasEngineArgumentPackage_gemm<T>& srcPackage,
-                  			int methodKey // I chose an integer instead of another template parameter
-                                   ){
+template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
+void MM3D::Multiply(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                    const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
   TAU_FSTART(MM3D::Multiply);
+
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
 
   T* matrixAEnginePtr;
   T* matrixBEnginePtr;
@@ -124,14 +107,12 @@ void MM3D<T,U,OffloadType>::Multiply(
   U localDimensionK = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixA.getNumColumnsLocal() : matrixA.getNumRowsLocal());
 
   if (methodKey == 0){
-    _start1(matrixA,matrixB,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,
-      matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
+    _start1(matrixA,matrixB,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
   }
   else if (methodKey == 1){
     serializeKeyA = true;
     serializeKeyB = true;
-    _start2(matrixA,matrixB,commInfo3D,
-      matrixAEngineVector,matrixBEngineVector,serializeKeyA,serializeKeyB);
+    _start2(matrixA,matrixB,commInfo3D, matrixAEngineVector,matrixBEngineVector,serializeKeyA,serializeKeyB);
   }
 
   // Assume, for now, that matrixC has Rectangular Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
@@ -164,24 +145,15 @@ void MM3D<T,U,OffloadType>::Multiply(
   TAU_FSTOP(MM3D::Multiply);
 }
 
-template<typename T, typename U, typename OffloadType>
-template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
-  		template<typename,typename,int> class Distribution
-	>
-void MM3D<T,U,OffloadType>::Multiply(
-                                   	Matrix<T,U,StructureA,Distribution>& matrixA,
-                                        Matrix<T,U,StructureB,Distribution>& matrixB,
-                                        MPI_Comm commWorld,
-                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                                        const blasEngineArgumentPackage_trmm<T>& srcPackage,
-					int methodKey						// I chose an integer instead of another template parameter
-                                   ){
+template<typename MatrixAType, typename MatrixBType>
+void MM3D::Multiply(MatrixAType& matrixA, MatrixBType& matrixB, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                       const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
   TAU_FSTART(MM3D::Multiply);
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
 
   T* matrixAEnginePtr;
   T* matrixBEnginePtr;
@@ -228,26 +200,21 @@ void MM3D<T,U,OffloadType>::Multiply(
   TAU_FSTOP(MM3D::Multiply);
 }
 
-template<typename T, typename U, typename OffloadType>
-template<
-  	  template<typename,typename, template<typename,typename,int> class> class StructureA,
-  	  template<typename,typename,int> class Distribution
-	>
-void MM3D<T,U,OffloadType>::Multiply(
-                                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                                   	T* matrixB,
-                                        U matrixAnumColumns,
-                                        U matrixAnumRows,
-                                        U matrixBnumColumns,
-                                        U matrixBnumRows,
-                                        MPI_Comm commWorld,
-                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                                        const blasEngineArgumentPackage_trmm<T>& srcPackage
-                                   ){
+template<typename MatrixAType>
+void MM3D::Multiply(MatrixAType& matrixA, typename MatrixAType::ScalarType* matrixB, typename MatrixAType::DimensionType matrixAnumColumns,
+                    typename MatrixAType::DimensionType matrixAnumRows, typename MatrixAType::DimensionType matrixBnumColumns,
+                    typename MatrixAType::DimensionType matrixBnumRows, MPI_Comm commWorld,
+                    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage){
   TAU_FSTART(MM3D::Multiply);
   // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
   //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
   //       Also, I only allow method1, not Allgather-based method2
+
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
+  using StructureA = typename MatrixAType::StructureType;
+  using Distribution = typename MatrixAType::DistributionType;
+  using Offload = typename MatrixAType::OffloadType;
 
   std::vector<T> matrixAEnginePtr;
   T* matrixBEnginePtr;
@@ -276,9 +243,9 @@ void MM3D<T,U,OffloadType>::Multiply(
   if (srcPackage.side == blasEngineSide::AblasLeft){
     BroadcastPanels(
       (isRootRow ? matrixA.getVectorData() : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
-    if ((!std::is_same<StructureA<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-      && (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)){
-      Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
+    if ((!std::is_same<StructureA,Rectangular>::value)
+      && (!std::is_same<StructureA,Square>::value)){
+      Matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
       getEnginePtr(matrixA, helperA, (isRootRow ? matrixA.getVectorData() : foreignA), isRootRow);
       matrixAEnginePtr = std::move(helperA.getVectorData());
     }
@@ -292,9 +259,9 @@ void MM3D<T,U,OffloadType>::Multiply(
   }
   else{
     BroadcastPanels((isRootColumn ? matrixA.getVectorData() : foreignA), sizeA, isRootColumn, pGridCoordZ, columnComm);
-    if ((!std::is_same<StructureA<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-      && (!std::is_same<StructureA<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)){
-      Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
+    if ((!std::is_same<StructureA,Rectangular>::value)
+      && (!std::is_same<StructureA,Square>::value)){
+      Matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
       getEnginePtr(matrixA, helperA, (isRootColumn ? matrixA.getVectorData() : foreignA), isRootColumn);
       matrixAEnginePtr = std::move(helperA.getVectorData());
     }
@@ -314,38 +281,30 @@ void MM3D<T,U,OffloadType>::Multiply(
 }
 
 
-template<typename T, typename U, typename OffloadType>
-template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureC,
-  		template<typename,typename,int> class Distribution
-	>
-void MM3D<T,U,OffloadType>::Multiply(
-                                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                                        Matrix<T,U,StructureC,Distribution>& matrixC,
-                                        MPI_Comm commWorld,
-                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-                                        const blasEngineArgumentPackage_syrk<T>& srcPackage,
-			                int methodKey
-                                   ){
+template<typename MatrixAType, typename MatrixCType>
+void MM3D::Multiply(MatrixAType& matrixA, MatrixCType& matrixC, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                    const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
+  TAU_FSTART(MM3D::Multiply);
   // Note: Internally, this routine uses gemm, not syrk, as its not possible for each processor to perform local MM with symmetric matrices
   //         given the data layout over the processor grid.
 
-  TAU_FSTART(MM3D::Multiply);
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
+
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
   int rank, pGridDimensionSize;
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
-  int helper = pGridDimensionSize;
+  size_t helper = pGridDimensionSize;
   helper *= helper;
-  int pGridCoordX = std::get<4>(commInfo3D);
-  int pGridCoordY = std::get<5>(commInfo3D);
-  int pGridCoordZ = std::get<6>(commInfo3D);
+  size_t pGridCoordX = std::get<4>(commInfo3D);
+  size_t pGridCoordY = std::get<5>(commInfo3D);
+  size_t pGridCoordZ = std::get<6>(commInfo3D);
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
-  int transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
+  size_t transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
   #else
-  int transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
+  size_t transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
   #endif
 
   // Note: The routine will be C <- BA or AB, depending on the order in the srcPackage. B will always be the transposed matrix
@@ -360,8 +319,8 @@ void MM3D<T,U,OffloadType>::Multiply(
   U localDimensionN = matrixC.getNumColumnsLocal();  // rows or columns, doesn't matter. They should be the same. matrixC is meant to be square
   U localDimensionK = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixA.getNumColumnsLocal() : matrixA.getNumRowsLocal());
 
-  Matrix<T,U,StructureA,Distribution> matrixB = matrixA;
-  util<T,U>::transposeSwap(matrixB, rank, transposePartner, commWorld);
+  MatrixAType matrixB = matrixA;
+  util::transposeSwap(matrixB, rank, transposePartner, commWorld);
 
   if (methodKey == 0){
     if (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans){
@@ -416,39 +375,21 @@ void MM3D<T,U,OffloadType>::Multiply(
   TAU_FSTOP(MM3D::Multiply);
 }
 
-template<typename T, typename U, typename OffloadType>
-template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
-  		template<typename,typename, template<typename,typename,int> class> class StructureC,
-  		template<typename,typename,int> class Distribution
-	>
-void MM3D<T,U,OffloadType>::Multiply(
-                                        Matrix<T,U,StructureA,Distribution>& matrixA,
-                                        Matrix<T,U,StructureB,Distribution>& matrixB,
-				        Matrix<T,U,StructureC,Distribution>& matrixC,
-				        U matrixAcutXstart,
-				        U matrixAcutXend,
-				        U matrixAcutYstart,
-				        U matrixAcutYend,
-				        U matrixBcutZstart,
-				        U matrixBcutZend,
-				        U matrixBcutXstart,
-				        U matrixBcutXend,
-				        U matrixCcutZstart,
-				        U matrixCcutZend,
-				        U matrixCcutYstart,
-				        U matrixCcutYend,
-				        MPI_Comm commWorld,
-                                        std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-				        const blasEngineArgumentPackage_gemm<T>& srcPackage,
-				        bool cutA,
-				        bool cutB,
-				        bool cutC,
-                int methodKey // I chose an integer instead of another template parameter
-                                   ){
+template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
+void MM3D::Multiply(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
+                    typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
+                    typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
+                    typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
+                    typename MatrixBType::DimensionType matrixBcutXend, typename MatrixCType::DimensionType matrixCcutZstart,
+                    typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutYstart,
+                    typename MatrixCType::DimensionType matrixCcutYend, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                    const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC, size_t methodKey){
   TAU_FSTART(MM3D::MultiplyCut);
   // We will set up 3 matrices and call the method above.
+
+  using T = typename MatrixCType::ScalarType;
+  using U = typename MatrixCType::DimensionType;
+  using StructureC = typename MatrixCType::StructureType;
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
   U rangeA_y = matrixAcutYend-matrixAcutYstart;
@@ -461,52 +402,38 @@ void MM3D<T,U,OffloadType>::Multiply(
   U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
   U sizeC = matrixC.getNumElems(rangeC_y, rangeC_z);
 
-  int size;
-  int pGridDimensionSize;
-
+  int size, pGridDimensionSize;
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
-  Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
-  Matrix<T,U,StructureC,Distribution> matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, pGridDimensionSize, cutC);
+  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
+  MatrixBType matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
+  MatrixCType matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, pGridDimensionSize, cutC);
 
   Multiply((cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, commInfo3D, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC){
-    Serializer<T,U,StructureC,StructureC>::Serialize(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
+    Serializer<StructureC,StructureC>::Serialize(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
   }
   TAU_FSTOP(MM3D::MultiplyCut);
 }
 
 
-template<typename T, typename U, typename OffloadType>
-template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
-  		template<typename,typename,int> class Distribution
-	 >
-void MM3D<T,U,OffloadType>::Multiply(
-				      Matrix<T,U,StructureA,Distribution>& matrixA,
-				      Matrix<T,U,StructureB,Distribution>& matrixB,
-				      U matrixAcutXstart,
-				      U matrixAcutXend,
-				      U matrixAcutYstart,
-				      U matrixAcutYend,
-				      U matrixBcutZstart,
-				      U matrixBcutZend,
-				      U matrixBcutXstart,
-				      U matrixBcutXend,
-				      MPI_Comm commWorld,
-                                      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-				      const blasEngineArgumentPackage_trmm<T>& srcPackage,
-				      bool cutA,
-				      bool cutB,
-                                      int methodKey // I chose an integer instead of another template parameter
-                                    ){
+template<typename MatrixAType, typename MatrixBType>
+void MM3D::Multiply(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAType::DimensionType matrixAcutXstart,
+                    typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
+                    typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
+                    typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
+                    typename MatrixBType::DimensionType matrixBcutXend, MPI_Comm commWorld,
+                    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                    const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, size_t methodKey){
   TAU_FSTART(MM3D::MultiplyCut);
   // We will set up 2 matrices and call the method above.
+
+  using T = typename MatrixBType::ScalarType;
+  using U = typename MatrixBType::DimensionType;
+  using StructureB = typename MatrixBType::StructureType;
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
   U rangeA_y = matrixAcutYend-matrixAcutYstart;
@@ -520,44 +447,31 @@ void MM3D<T,U,OffloadType>::Multiply(
   U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
-  Matrix<T,U,StructureB,Distribution> matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
+  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
+  MatrixBType matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
   Multiply((cutA ? matA : matrixA), (cutB ? matB : matrixB), commWorld, commInfo3D, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
   if (cutB){
-    Serializer<T,U,StructureB,StructureB>::Serialize(matrixB, matB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
+    Serializer<StructureB,StructureB>::Serialize(matrixB, matB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
   }
   TAU_FSTOP(MM3D::MultiplyCut);
 }
 
 
-template<typename T, typename U, typename OffloadType>
-template<
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureC,
-  		template<typename,typename,int> class Distribution
-	 >
-void MM3D<T,U,OffloadType>::Multiply(
-				      Matrix<T,U,StructureA,Distribution>& matrixA,
-				      Matrix<T,U,StructureC,Distribution>& matrixC,
-				      U matrixAcutXstart,
-				      U matrixAcutXend,
-				      U matrixAcutYstart,
-				      U matrixAcutYend,
-				      U matrixCcutZstart,
-				      U matrixCcutZend,
-				      U matrixCcutXstart,
-				      U matrixCcutXend,
-				      MPI_Comm commWorld,
-                                      std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,int,int,int>& commInfo3D,
-				      const blasEngineArgumentPackage_syrk<T>& srcPackage,
-				      bool cutA,
-				      bool cutC,
-                                      int methodKey // I chose an integer instead of another template parameter
-				    ){
+template<typename MatrixAType, typename MatrixCType>
+void MM3D::Multiply(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
+                    typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
+                    typename MatrixAType::DimensionType matrixAcutYend, typename MatrixCType::DimensionType matrixCcutZstart,
+                    typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutXstart,
+                    typename MatrixCType::DimensionType matrixCcutXend, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                    const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutC, size_t methodKey){
   TAU_FSTART(MM3D::MultiplyCut);
   // We will set up 2 matrices and call the method above.
+
+  using T = typename MatrixCType::ScalarType;
+  using U = typename MatrixCType::DimensionType;
+  using StructureC = typename MatrixCType::StructureType;
 
   U rangeA_x = matrixAcutXend-matrixAcutXstart;
   U rangeA_y = matrixAcutYend-matrixAcutYstart;
@@ -567,51 +481,45 @@ void MM3D<T,U,OffloadType>::Multiply(
   U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
   U sizeC = matrixC.getNumElems(rangeC_x, rangeC_z);
 
-  int size;
-  int pGridDimensionSize;
+  int size, pGridDimensionSize;
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  Matrix<T,U,StructureA,Distribution> matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
-  Matrix<T,U,StructureC,Distribution> matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, pGridDimensionSize, cutC);
+  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
+  MatrixAType matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, pGridDimensionSize, cutC);
 
   Multiply((cutA ? matA : matrixA), (cutC ? matC : matrixC), commWorld, commInfo3D, srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC){
-    Serializer<T,U,StructureC,StructureC>::Serialize(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, true);
+    Serializer<StructureC,StructureC>::Serialize(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, true);
   }
   TAU_FSTOP(MM3D::MultiplyCut);
 }
 
 
-template<typename T, typename U, typename OffloadType>
-template<template<typename,typename,int> class Distribution,
-  template<typename,typename, template<typename,typename,int> class> class StructureArg1,
-  template<typename,typename, template<typename,typename,int> class> class StructureArg2,
-  typename tupleStructure>
-void MM3D<T,U,OffloadType>::_start1(
-					Matrix<T,U,StructureArg1,Distribution>& matrixA,
-					Matrix<T,U,StructureArg2,Distribution>& matrixB,
-					tupleStructure& commInfo3D,
-					T*& matrixAEnginePtr,
-					T*& matrixBEnginePtr,
-					std::vector<T>& matrixAEngineVector,
-					std::vector<T>& matrixBEngineVector,
-					std::vector<T>& foreignA,
-					std::vector<T>& foreignB,
-					bool& serializeKeyA,
-					bool& serializeKeyB
-				  ){
+template<typename MatrixAType, typename MatrixBType, typename tupleStructure>
+void MM3D::_start1(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& commInfo3D, typename MatrixAType::ScalarType*& matrixAEnginePtr,
+                   typename MatrixBType::ScalarType*& matrixBEnginePtr, std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector,
+                   std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector, std::vector<typename MatrixAType::ScalarType>& foreignA,
+                   std::vector<typename MatrixBType::ScalarType>& foreignB, bool& serializeKeyA, bool& serializeKeyB){
   TAU_FSTART(MM3D::_start1);
+
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
+  using StructureA = typename MatrixAType::StructureType;
+  using StructureB = typename MatrixBType::StructureType;
+  using Distribution = typename MatrixAType::DistributionType;
+  using Offload = typename MatrixAType::OffloadType;
+
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
   MPI_Comm sliceComm = std::get<2>(commInfo3D);
   MPI_Comm depthComm = std::get<3>(commInfo3D);
-  int pGridCoordX = std::get<4>(commInfo3D);
-  int pGridCoordY = std::get<5>(commInfo3D);
-  int pGridCoordZ = std::get<6>(commInfo3D);
+  size_t pGridCoordX = std::get<4>(commInfo3D);
+  size_t pGridCoordY = std::get<5>(commInfo3D);
+  size_t pGridCoordZ = std::get<6>(commInfo3D);
 
   U localDimensionM = matrixA.getNumRowsLocal();
   U localDimensionN = matrixB.getNumColumnsLocal();
@@ -628,17 +536,17 @@ void MM3D<T,U,OffloadType>::_start1(
 
   matrixAEnginePtr = (isRootRow ? &dataA[0] : &foreignA[0]);
   matrixBEnginePtr = (isRootColumn ? &dataB[0] : &foreignB[0]);
-  if ((!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-    && (!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)){
+  if ((!std::is_same<StructureA,Rectangular>::value)
+    && (!std::is_same<StructureA,Square>::value)){
     serializeKeyA = true;
-    Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
+    Matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
     getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
     matrixAEngineVector = std::move(helperA.getVectorData());
   }
-  if ((!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
-    && (!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value)){
+  if ((!std::is_same<StructureB,Rectangular>::value)
+    && (!std::is_same<StructureB,Square>::value)){
     serializeKeyB = true;
-    Matrix<T,U,MatrixStructureRectangle,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
+    Matrix<T,U,Rectangular,Distribution,Offload> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
     getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
@@ -646,24 +554,19 @@ void MM3D<T,U,OffloadType>::_start1(
 }
 
 
-template<typename T, typename U, typename OffloadType>
-template<template<typename,typename, template<typename,typename,int> class> class StructureArg,template<typename,typename,int> class Distribution,
-  typename tupleStructure>
-void MM3D<T,U,OffloadType>::_end1(
-					T* matrixEnginePtr,
-					Matrix<T,U,StructureArg,Distribution>& matrix,
-					tupleStructure& commInfo3D,
-                                        int dir
-		     ){
+template<typename MatrixType, typename tupleStructure>
+void MM3D::_end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, tupleStructure& commInfo3D, size_t dir){
   TAU_FSTART(MM3D::_end1);
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
+
+  using T = typename MatrixType::ScalarType;
+  using U = typename MatrixType::DimensionType;
+
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
   MPI_Comm sliceComm = std::get<2>(commInfo3D);
   MPI_Comm depthComm = std::get<3>(commInfo3D);
 
   U numElems = matrix.getNumElems();
-
   // Prevents buffer aliasing, which MPI does not like.
   if ((dir) || (matrixEnginePtr == matrix.getRawData())){
     MPI_Allreduce(MPI_IN_PLACE,matrixEnginePtr, numElems, MPI_DATATYPE, MPI_SUM, depthComm);
@@ -674,29 +577,23 @@ void MM3D<T,U,OffloadType>::_end1(
   TAU_FSTOP(MM3D::_end1);
 }
 
-template<typename T, typename U, typename OffloadType>
-template<template<typename,typename,int> class Distribution,
-  template<typename,typename, template<typename,typename,int> class> class StructureArg1,
-  template<typename,typename, template<typename,typename,int> class> class StructureArg2,
-  typename tupleStructure>
-void MM3D<T,U,OffloadType>::_start2(
-					Matrix<T,U,StructureArg1,Distribution>& matrixA,
-					Matrix<T,U,StructureArg2,Distribution>& matrixB,
-					tupleStructure& commInfo3D,
-					std::vector<T>& matrixAEngineVector,
-					std::vector<T>& matrixBEngineVector,
-					bool& serializeKeyA,
-					bool& serializeKeyB
-				  ){
+template<typename MatrixAType, typename MatrixBType, typename tupleStructure>
+void MM3D::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& commInfo3D,
+                   std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector, std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector,
+	           bool& serializeKeyA, bool& serializeKeyB){
   TAU_FSTART(MM3D::_start2);
+
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
+
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
   MPI_Comm sliceComm = std::get<2>(commInfo3D);
   MPI_Comm depthComm = std::get<3>(commInfo3D);
-  int pGridCoordX = std::get<4>(commInfo3D);
-  int pGridCoordY = std::get<5>(commInfo3D);
-  int pGridCoordZ = std::get<6>(commInfo3D);
+  size_t pGridCoordX = std::get<4>(commInfo3D);
+  size_t pGridCoordY = std::get<5>(commInfo3D);
+  size_t pGridCoordZ = std::get<6>(commInfo3D);
   int rowCommSize,columnCommSize,depthCommSize;
   MPI_Comm_size(rowComm, &rowCommSize);
   MPI_Comm_size(columnComm, &columnCommSize);
@@ -835,17 +732,17 @@ void MM3D<T,U,OffloadType>::_start2(
   }
 
 /*
-  if ((!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+  if ((!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureRectangular<T,U,Distribution>>::value)
     && (!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
-    Matrix<T,U,MatrixStructureRectangle,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
+    Matrix<T,U,MatrixStructureRectangular,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
     getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
     matrixAEngineVector = std::move(helperA.getVectorData());
   }
-  if ((!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureRectangle<T,U,Distribution>>::value)
+  if ((!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureRectangular<T,U,Distribution>>::value)
     && (!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
-    Matrix<T,U,MatrixStructureRectangle,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
+    Matrix<T,U,MatrixStructureRectangular,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
     getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
@@ -854,16 +751,10 @@ void MM3D<T,U,OffloadType>::_start2(
 }
 
 
-
-template<typename T, typename U, typename OffloadType>
-void MM3D<T,U,OffloadType>::BroadcastPanels(
-						std::vector<T>& data,
-						U size,
-						bool isRoot,
-						int pGridCoordZ,
-						MPI_Comm panelComm
-					   ){
+template<typename T, typename U>
+void MM3D::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm){
   TAU_FSTART(MM3D::BroadcastPanels);
+
   if (isRoot){
     MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panelComm);
   }
@@ -874,15 +765,10 @@ void MM3D<T,U,OffloadType>::BroadcastPanels(
   TAU_FSTOP(MM3D::BroadcastPanels);
 }
 
-template<typename T, typename U, typename OffloadType>
-void MM3D<T,U,OffloadType>::BroadcastPanels(
-						T*& data,
-						U size,
-						bool isRoot,
-						int pGridCoordZ,
-						MPI_Comm panelComm
-					   ){
+template<typename T, typename U>
+void MM3D::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm){
   TAU_FSTART(MM3D::BroadcastPanels);
+
   if (isRoot){
     MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panelComm);
   }
@@ -896,56 +782,48 @@ void MM3D<T,U,OffloadType>::BroadcastPanels(
 }
 
 
-template<typename T, typename U, typename OffloadType>
-template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
-  template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-void MM3D<T,U,OffloadType>::getEnginePtr(
-					Matrix<T,U,StructureArg, Distribution>& matrixArg,
-					Matrix<T,U,MatrixStructureRectangle, Distribution>& matrixDest,
-					std::vector<T>& data,
-					bool isRoot
-				     ){
+template<typename MatrixSrcType, typename MatrixDestType>
+void MM3D::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest, std::vector<typename MatrixSrcType::ScalarType>& data, bool isRoot){
   TAU_FSTART(MM3D::getEnginePtr);
+
+  using StructureSrc = typename MatrixSrcType::StructureType;
+  using StructureDest = typename MatrixDestType::StructureType;
+
   // Need to separate the below out into its own function that will not get instantied into object code
   //   unless it passes the test above. This avoids template-enduced template compiler errors
   if (!isRoot){
-    Matrix<T,U,StructureArg,Distribution> matrixToSerialize(std::move(data), matrixArg.getNumColumnsLocal(),
-      matrixArg.getNumRowsLocal(), matrixArg.getNumColumnsGlobal(), matrixArg.getNumRowsGlobal(), true);
-    Serializer<T,U,StructureArg,MatrixStructureRectangle>::Serialize(matrixToSerialize, matrixDest);
+    MatrixSrcType matrixToSerialize(std::move(data), matrixSrc.getNumColumnsLocal(), matrixSrc.getNumRowsLocal(), matrixSrc.getNumColumnsGlobal(), matrixSrc.getNumRowsGlobal(), true);
+    Serializer<StructureSrc,StructureDest>::Serialize(matrixToSerialize, matrixDest);
   }
   else{
-    // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangle
-    Serializer<T,U,StructureArg,MatrixStructureRectangle>::Serialize(matrixArg, matrixDest);
+    // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangular
+    Serializer<StructureSrc,StructureDest>::Serialize(matrixSrc, matrixDest);
   }
   TAU_FSTOP(MM3D::getEnginePtr);
 }
 
 
-template<typename T, typename U, typename OffloadType>
-template<template<typename,typename, template<typename,typename,int> class> class StructureArg,
-  template<typename,typename,int> class Distribution>					// Added additional template parameters just for this method
-Matrix<T,U,StructureArg,Distribution> MM3D<T,U,OffloadType>::getSubMatrix(
-								Matrix<T,U,StructureArg, Distribution>& srcMatrix,
-								U matrixArgColumnStart,
-								U matrixArgColumnEnd,
-								U matrixArgRowStart,
-								U matrixArgRowEnd,
-		            int pGridDimensionSize, 
-    						bool getSub
-						       ){
+template<typename MatrixType>
+MatrixType MM3D::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
+                              typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd,
+		              size_t  pGridDimensionSize, bool getSub){
   TAU_FSTART(MM3D::getSubMatrix);
+
+  using T = typename MatrixType::ScalarType;
+  using U = typename MatrixType::DimensionType;
+  using Structure = typename MatrixType::StructureType;
+
   if (getSub){
     U numColumns = matrixArgColumnEnd - matrixArgColumnStart;
     U numRows = matrixArgRowEnd - matrixArgRowStart;
-    Matrix<T,U,StructureArg,Distribution> fillMatrix(std::vector<T>(), numColumns, numRows, numColumns*pGridDimensionSize, numRows*pGridDimensionSize);
-    Serializer<T,U,StructureArg,StructureArg>::Serialize(srcMatrix, fillMatrix,
-      matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
+    MatrixType fillMatrix(std::vector<T>(), numColumns, numRows, numColumns*pGridDimensionSize, numRows*pGridDimensionSize);
+    Serializer<Structure,Structure>::Serialize(srcMatrix, fillMatrix, matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
     TAU_FSTOP(MM3D::getSubMatrix);
     return fillMatrix;			// I am returning an rvalue
   }
   else{
     // return cheap garbage.
     TAU_FSTOP(MM3D::getSubMatrix);
-    return Matrix<T,U,StructureArg,Distribution>(0,0,1,1);
+    return MatrixType(0,0,1,1);
   }
 }

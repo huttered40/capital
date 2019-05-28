@@ -6,344 +6,165 @@
 /*
   Note: Serialize is an engine that can take any Structure combo
   Example: Source is a (cyclically distributed) Upper-triangular matrix and Dest must be a Square (cyclically distributed) matrix
-  Future: Need to deal with changing between distributions. Maybe add this to the Distributer Policy.
+  TODO: Future: Do we need to deal with changing between distributions? Maybe add this to the Distributer Policy?
 */
 
 // Fully templated class is declared, not defined
-template<typename T, typename U, template<typename,typename,template<typename,typename,int> class> class StructureSource,
-  template<typename,typename,template<typename,typename,int> class> class StructureDest>
+template<typename Structure1, typename Structure2>
 class Serializer;
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureSquare, MatrixStructureSquare>{
+template<>
+class Serializer<Square,Square>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
-  //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
-  //   to stand for a template class that takes 3 template parameters as shown above.
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare, Distributer>& src,Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureSquare, MatrixStructureRectangle>{
+template<>
+class Serializer<Square,Rectangular>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureRectangle>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureRectangle>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
-  //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
-  //   to stand for a template class that takes 3 template parameters as shown above.
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare, Distributer>& src,Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureSquare, MatrixStructureUpperTriangular>{
+template<>
+class Serializer<Square,UpperTriangular>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest);
-
-/* I am removing this method. It just doesn't make sense. We cannot allow matrices with UT structure to be square. Its no cheaper than square to square anyway
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
-    bool fillZeros, bool dir = false);
-*/
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
-
-/*
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
-*/
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureSquare, MatrixStructureLowerTriangular>{
+template<>
+class Serializer<Square,LowerTriangular>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureSquare,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest);
-
-/*
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
-    bool fillZeros, bool dir = false);
-*/
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
-
-/*
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureSquare,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
-*/
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureRectangle, MatrixStructureSquare>{
+template<>
+class Serializer<Rectangular,Square>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureRectangle,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureRectangle,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
-  //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
-  //   to stand for a template class that takes 3 template parameters as shown above.
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureRectangle, MatrixStructureRectangle>{
+template<>
+class Serializer<Rectangular,Rectangular>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureRectangle,MatrixStructureRectangle>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
-  //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
-  //   to stand for a template class that takes 3 template parameters as shown above.
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& big,Matrix<T,U,MatrixStructureRectangle,Distributer>& small,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureRectangle, MatrixStructureUpperTriangular>{
+template<>
+class Serializer<Rectangular,UpperTriangular>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureRectangle,MatrixStructureUpperTriangular>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureRectangle,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
-  //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
-  //   to stand for a template class that takes 3 template parameters as shown above.
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureRectangle, MatrixStructureLowerTriangular>{
+template<>
+class Serializer<Rectangular,LowerTriangular>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureRectangle,MatrixStructureLowerTriangular>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureRectangle,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  // Need to provide an extra template parameter so that this class knows what Matrix template type it is dealing with.
-  //   Otherwise, Distributer is just a tag with no meaning. With the overloaded templated template class method, Distributer will be able
-  //   to stand for a template class that takes 3 template parameters as shown above.
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureRectangle,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureRectangle, Distributer>& src,Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureSquare>{
+template<>
+class Serializer<UpperTriangular,Square>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
-
-/*
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
-*/
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureRectangle>{
+template<>
+class Serializer<UpperTriangular,Rectangular>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureRectangle>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureRectangle>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
-
-/*
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
-*/
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureUpperTriangular, MatrixStructureUpperTriangular>{
+template<>
+class Serializer<UpperTriangular,UpperTriangular>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureUpperTriangular,MatrixStructureUpperTriangular>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& src, Matrix<T,U,MatrixStructureUpperTriangular,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureSquare>{
+template<>
+class Serializer<LowerTriangular,Square>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureSquare>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
-/*
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
-*/
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureRectangle>{
+template<>
+class Serializer<LowerTriangular,Rectangular>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureRectangle>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureRectangle>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureRectangle,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
-
-/*
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureSquare,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool fillZeros, bool dir = false);
-*/
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
-// Use partial specialization to define certain combinations
-template<typename T, typename U>
-class Serializer<T,U,MatrixStructureLowerTriangular, MatrixStructureLowerTriangular>{
+template<>
+class Serializer<LowerTriangular,LowerTriangular>{
 public:
-  // Prevent this class from being instantiated.
-  Serializer() = delete;
-  Serializer(const Serializer& rhs) = delete;
-  Serializer(Serializer&& rhs) = delete;
-  Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureLowerTriangular>& operator=(const Serializer& rhs) = delete;
-  Serializer<T,U,MatrixStructureLowerTriangular,MatrixStructureLowerTriangular>& operator=(Serializer&& rhs) = delete;
+  template<typename SrcType, typename DestType>
+  static void Serialize(SrcType& src, DestType& dest);
 
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest);
-
-  template<template<typename, typename,int> class Distributer>
-  static void Serialize(Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& src, Matrix<T,U,MatrixStructureLowerTriangular,Distributer>& dest,
-    U cutDimensionXstart, U cutDimensionXend, U cutDimensionYstart, U cutDimensionYend, bool dir = false);
+  template<typename BigType, typename SmallType>
+  static void Serialize(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
 };
 
 #include "MatrixSerializer.hpp"
