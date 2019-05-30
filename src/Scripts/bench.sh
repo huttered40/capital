@@ -1073,7 +1073,11 @@ do
       binaryPath=\${binaryPath}_${mpiType}
     elif [ "${machineName}" == "BLUEWATERS" ];
     then
-      binaryPath=${BINPATH}\${binaryTag}_${machineName}_${GPU}
+      # special case, only for CAMFS, not for bench_scalapack routines
+      if [ "\${binaryTag}" == "cqr2" ] || [ "\${binaryTag}" == "cfr3d" ];
+      then
+        binaryPath=${BINPATH}\${binaryTag}_${machineName}_${GPU}
+      fi
     fi
 
     # State variables that scale with nodes must be initialized here. Otherwise, repeated input is needed in loops below
