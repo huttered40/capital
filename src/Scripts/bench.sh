@@ -20,16 +20,6 @@ machineName=""
 mpiType=""
 accelType=""
 testAccel_NoAccel=""
-export GPU=GPUACCEL
-read -p "GPU acceleration via XK7[y] or no[n]: " accelType
-if [ "${accelType}" == "y" ];
-then
-  export GPU=GPUACCEL
-  read -p "Do you want to test CA-CQR2 on both GPU accelated machines and the non-accelerated option[y] or no[n]: " testAccel_NoAccel
-else
-  export GPU=NOGPU
-  testAccel_NoAccel="n"
-fi
 if [ "$(hostname |grep "porter")" != "" ];
 then
   machineName=PORTER
@@ -65,6 +55,15 @@ then
   maxPEcountPerNode=128
 elif [ "$(hostname |grep "h2o")" != "" ];
 then
+  read -p "GPU acceleration via XK7[y] or no[n]: " accelType
+  if [ "${accelType}" == "y" ];
+  then
+    export GPU=GPUACCEL
+    read -p "Do you want to test CA-CQR2 on both GPU accelated machines and the non-accelerated option[y] or no[n]: " testAccel_NoAccel
+  else
+    export GPU=NOGPU
+    testAccel_NoAccel="n"
+  fi
   machineName=BLUEWATERS
   scalaDir=~/CANDMC
   export MPITYPE=MPI_TYPE
@@ -394,12 +393,12 @@ do
             #fi
 	    echo "#PBS -l nodes=\${curNumNodes}:ppn=\${numPEsPerNode}:xe" >> \${scriptName}
 	    echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
-	    echo "#PBS -N testjob" >> \${scriptName}
+	    echo "#PBS -N ca-cqr2" >> \${scriptName}
 	    echo "#PBS -e ${fileName}_\${curNumNodes}_\${curPPN}.err" >> \${scriptName}
 	    echo "#PBS -o ${fileName}_\${curNumNodes}_\${curPPN}.out" >> \${scriptName}
 	    echo "##PBS -m Ed" >> \${scriptName}
-	    echo "##PBS -M hutter2@illinois.edu" >> \${scriptName}
-	    echo "##PBS -A xyz" >> \${scriptName}
+	    echo "#PBS -M hutter2@illinois.edu" >> \${scriptName}
+	    echo "#PBS -A bahv" >> \${scriptName}
 	    echo "#PBS -W umask=0027" >> \${scriptName}
   #          echo "cd \${PBS_O_WORKDIR}" >> \${scriptName}
 	    echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
@@ -1072,6 +1071,9 @@ do
     if [ "${machineName}" == "PORTER" ];
     then
       binaryPath=\${binaryPath}_${mpiType}
+    elif [ "${machineName}" == "BLUEWATERS" ];
+    then
+      binaryPath=${BINPATH}\${binaryTag}_${machineName}_${GPU}
     fi
 
     # State variables that scale with nodes must be initialized here. Otherwise, repeated input is needed in loops below
@@ -1347,7 +1349,7 @@ then
               qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
             elif [ "${machineName}" == "BLUEWATERS" ];
             then
-              qsub -A bahv ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
+              qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
             else
               chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
               #sbatch --mail-user=${MyEmail} --mail-type=all ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
