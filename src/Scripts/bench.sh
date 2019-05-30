@@ -373,12 +373,15 @@ do
         numPEsPerNode=\$(( \${curPPN} * \${curTPR} ))
         if [ ${minPEcountPerNode} -le \${numPEsPerNode} ] && [ ${maxPEcountPerNode} -ge \${numPEsPerNode} ];
         then
-	  scriptName=$SCRATCH/${fileName}/script_${fileID}id_${roundID}round_\${curLaunchID}launchID_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr.sh
-	  if [ "${machineName}" == "BGQ" ];
+	  scriptName=$SCRATCH/${fileName}/script_${fileID}id_${roundID}round_\${curLaunchID}launchID_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr
+          if [ "${machineName}" == "BGQ" ];
+          then
+            scriptName=\${scriptName}.sh
+            echo "TODO" > \${scriptName}
+          fi
+	  if [ "${machineName}" == "BLUEWATERS" ];
 	  then
-	    echo "#!/bin/sh" > \${scriptName}
-	  elif [ "${machineName}" == "BLUEWATERS" ];
-	  then
+            scriptName=\${scriptName}.pbs
 	    echo "#!/bin/bash" > \${scriptName}
             # Check if we want GPU acceleration (XK7 vs. XE6 nodes)
             #read -p "XE6 (Y) or XK7 (N) node: " nodeType
@@ -409,6 +412,7 @@ do
             #fi
 	  elif [ "${machineName}" == "THETA" ];
 	  then
+            scriptName=\${scriptName}.sh
 	    echo "#!/bin/bash" > \${scriptName}
 	    echo "#COBALT -t ${numMinutes}" >> \${scriptName}
 	    echo "#COBALT -n \${curNumNodes}" >> \${scriptName}
@@ -425,6 +429,7 @@ do
 	    echo "export n_hyperthreads_skipped_between_ranks=\${numHyperThreadsSkippedPerRank}" >> \${scriptName}
 	  elif [ "${machineName}" == "STAMPEDE2" ];
 	  then
+            scriptName=\${scriptName}.sh
 	    echo "bash script name: \${scriptName}"
 	    echo "#!/bin/bash" > \${scriptName}
 	    echo "#SBATCH -J myjob_${fileID}id_${roundID}round_\${curNumNodes}nodes_\${curPPN}ppn_\${curTPR}tpr" >> \${scriptName}
@@ -797,16 +802,16 @@ launch$tag1 () {
     # Special corner case that only occurs for weak scaling, where invCutOff can increment abruptly to a value its never been before.
     isUniqueTag=1
     collectPlotTagArrayLen=\${#collectPlotTags[@]}
-    for ((i=0;i<\${collectPlotTagArrayLen};i++));
+    for ((ii=0;ii<\${collectPlotTagArrayLen};ii++));
     do
-      if [ "\${PostFile}" == "\${collectPlotTags[\${i}]}" ];
+      if [ "\${PostFile}" == "\${collectPlotTags[\${ii}]}" ];
       then
         isUniqueTag=0
       fi
     done
     if [ \${isUniqueTag} -eq 1 ];
     then
-      echo "HERE, plotTags -- \${collectPlotTags[@]}"
+      #echo "HERE, plotTags -- \${collectPlotTags[@]}"
       collectPlotTags+=(\${PostFile})
     fi
 
@@ -1041,6 +1046,7 @@ do
     # break case
     if [ \${binaryTagChoice} -eq "4" ];
     then
+      echo "done with iteration \${i} of ${numTests}"
       break
     fi
 
@@ -1158,10 +1164,6 @@ do
 
 		  # Special check because performance for 16 PPN, 4 TPR shows superior performance for the skinniest grid
                   isSpecial=1
-                  #if [ \${pDimC} -ne 1 ] && [ \${curPPN} -eq 16 ];
-                  #then
-                  #  isSpecial=0
-                  #fi
 
 		  # Check if pDimC is too big. If so, pDimD will be 0
 		  if [ \${pDimD} -ge \${pDimC} ] && [ \${isSpecial} == 1 ];
