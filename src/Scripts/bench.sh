@@ -61,7 +61,7 @@ then
   scalaDir=~/CANDMC
   export MPITYPE=MPI_TYPE
   mpiType=mpi 
-  minPEcountPerNode=64
+  minPEcountPerNode=64		# Note: this will need to be changed before launching Critter runs
   maxPEcountPerNode=128
 elif [ "$(hostname |grep "h2o")" != "" ];
 then
@@ -69,6 +69,8 @@ then
   scalaDir=~/CANDMC
   export MPITYPE=MPI_TYPE
   mpiType=mpi
+  minPEcountPerNode=16
+  maxPEcountPerNode=32
 fi
 
 dateStr=$(date +%Y-%m-%d-%H_%M_%S)
@@ -379,15 +381,15 @@ do
 	  then
 	    echo "#!/bin/bash" > \${scriptName}
             # Check if we want GPU acceleration (XK7 vs. XE6 nodes)
-            read -p "XE6 (Y) or XK7 (N) node: " nodeType
-            if [ "${nodeType}" == "Y" ];
-            then
-	      echo "#PBS -l nodes=\${curNumNodes}:ppn=\${curPPN}:xe" >> \${scriptName}
-            elif [ "${nodeType}" == "N" ];
-            then
-	      echo "#PBS -l nodes=\${curNumNodes}:ppn=\${curPPN}:xk" >> \${scriptName}
-            fi
-	    echo "#PBS -l nodes=\${curNumNodes}:ppn=\${curPPN}:xe" >> \${scriptName}
+            #read -p "XE6 (Y) or XK7 (N) node: " nodeType
+            #if [ "${nodeType}" == "Y" ];
+            #then
+	    #echo "#PBS -l nodes=\${curNumNodes}:ppn=\${curPPN}:xe" >> \${scriptName}
+            #elif [ "${nodeType}" == "N" ];
+            #then
+	    #  echo "#PBS -l nodes=\${curNumNodes}:ppn=\${curPPN}:xk" >> \${scriptName}
+            #fi
+	    echo "#PBS -l nodes=\${curNumNodes}:ppn=\${numPEsPerNode}:xe" >> \${scriptName}
 	    echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
 	    echo "#PBS -N testjob" >> \${scriptName}
 	    echo "#PBS -e ${fileName}_\${curNumNodes}_\${curPPN}.err" >> \${scriptName}
@@ -399,11 +401,12 @@ do
   #          echo "cd \${PBS_O_WORKDIR}" >> \${scriptName}
 	    echo "#module load craype-hugepages2M  perftools" >> \${scriptName}
 	    echo "#export APRUN_XFER_LIMITS=1  # to transfer shell limits to the executable" >> \${scriptName}
-            if [ "${nodeType}" == "N" ];
-            then
-              export CRAY_CUDA_MPS=1
-              export MPICH_RDMA_ENABLED_CUDA=1
-            fi
+            echo "export OMP_NUM_THREADS=\${curTPR}" >> \${scriptName}
+            #if [ "${nodeType}" == "N" ];
+            #then
+            #  export CRAY_CUDA_MPS=1
+            #  export MPICH_RDMA_ENABLED_CUDA=1
+            #fi
 	  elif [ "${machineName}" == "THETA" ];
 	  then
 	    echo "#!/bin/bash" > \${scriptName}
@@ -593,8 +596,7 @@ launchJobs () {
     echo "runjob --np \${numProcesses} -p \${ppn} --block \$COBALT_PARTNAME --verbose=INFO : \${@:7:\$#}" >> $SCRATCH/${fileName}/\${scriptName}.sh
   elif [ "$machineName" == "BLUEWATERS" ];
   then
-    # Assume (for now) that we want a process mapped to each Bulldozer core (1 per 2 integer cores)
-    echo "aprun -n \${numProcesses} -N \${ppn} -d 2 \${@:7:\$#}" >> $SCRATCH/${fileName}/\${scriptName}.pbs
+    echo "aprun -n \${numProcesses} -N \${ppn} -d \${tpr} \${@:7:\$#}" >> $SCRATCH/${fileName}/\${scriptName}.pbs
   elif [ "$machineName" == "THETA" ];
   then
     echo "aprun -n \${numProcesses} -N \${ppn} --env OMP_NUM_THREADS=\${numOMPthreadsPerRank} -cc depth -d \${numHyperThreadsSkippedPerRank} -j \${numHyperThreadsPerCore} \${@:7:\$#}" >> $SCRATCH/${fileName}/\${scriptName}.sh
@@ -1173,31 +1175,21 @@ do
 	      elif [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
 	      then
                 # Special case to watch out for.
-                if [ \${binaryTag} == 'bsqr' ] && [ \${numProcesses} -ge 16384 ];
-                then
-                  continue
-                else
-		  for ((w=0; w<\${rangeNumPcolslen}; w+=1));
-		  do
-		    numPcols=\${numPcolsArray[\${w}]}
-		    numProws=\$(( \${numProcesses} / \${numPcols} ))
+		for ((w=0; w<\${rangeNumPcolslen}; w+=1));
+		do
+		  numPcols=\${numPcolsArray[\${w}]}
+		  numProws=\$(( \${numProcesses} / \${numPcols} ))
 
-		    # Special check because performance for 16 PPN, 4 TPR shows superior performance for the skinniest grid for CA-CQR2
-                    isSpecial=1
-                    if [ \${curPPN} -eq 16 ];
-                    then
-                      isSpecial=0
-                    fi
+                  isSpecial=1
 
-		    if [ \${numPcols} -le \${numProws} ] && [ \${isSpecial} == 1 ];
-		    then
-		      originalNumPcols=\${numPcolsArrayOrig[\${w}]}
-		      originalNumProws=\$(( \${StartingNumProcesses} / \${originalNumPcols} ))
-                      sharedBinaryTag="bsqr"	# Even if rsqr, use bsqr and then have the corresponding method use the new argument for binaryTag
-		      launch\${sharedBinaryTag} \${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalNumProws} \${originalNumPcols} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
-		    fi
-		  done
-                fi
+		  if [ \${numPcols} -le \${numProws} ] && [ \${isSpecial} == 1 ];
+		  then
+		    originalNumPcols=\${numPcolsArrayOrig[\${w}]}
+		    originalNumProws=\$(( \${StartingNumProcesses} / \${originalNumPcols} ))
+                    sharedBinaryTag="bsqr"	# Even if rsqr, use bsqr and then have the corresponding method use the new argument for binaryTag
+		    launch\${sharedBinaryTag} \${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalNumProws} \${originalNumPcols} \${numProws} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
+		  fi
+		done
 	      elif [ \${binaryTag} == 'cfr3d' ];
 	      then
 		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${matrixDimM} \${cubeDim} \${curCubeDim} \${nodeIndex} \${scaleRegime} \${nodeCount}
@@ -1353,7 +1345,7 @@ then
               qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
             elif [ "${machineName}" == "BLUEWATERS" ];
             then
-              qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
+              qsub -A bahv ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
             else
               chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
               #sbatch --mail-user=${MyEmail} --mail-type=all ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
