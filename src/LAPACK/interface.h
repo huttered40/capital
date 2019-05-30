@@ -39,8 +39,9 @@ extern "C" void zgeqrf_(int*, int*, std::complex<double>*, int*, std::complex<do
 // These constants below are placeholders. They mean nothing on these machines.
 #define LAPACK_ROW_MAJOR 0
 #define LAPACK_COL_MAJOR 0
+#endif
 
-#else // Try this for LAPACKE interface
+#ifdef PORTER // Try this for LAPACKE interface
 extern "C" void LAPACKE_spotrf(char, char, int, float*, int);
 extern "C" void LAPACKE_strtri(char, char, char, int, float*, int);
 extern "C" void LAPACKE_sgeqrf(char, int, int, float*, int, float*);
