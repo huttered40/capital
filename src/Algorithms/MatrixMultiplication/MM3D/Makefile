@@ -102,7 +102,7 @@ endif
 ifneq ($(STAMPEDE2_machine),)
   MACHINE=STAMPEDE2
   CCMPI = mpicxx
-  CFLAGS = -g -Wall -O3 -std=c++11 -mkl=parallel -xMIC-AVX512
+  CFLAGS = -g -Wall -O3 -std=c++14 -mkl=parallel -xMIC-AVX512
   LIB_PATH=-L../../../../../critter/lib
   LIBS=-lcritter
 
