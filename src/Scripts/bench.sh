@@ -636,17 +636,16 @@ WriteMethodDataForPlotting () {
 
 TemporaryDCplotInfo () {
   local scaleRegime=\${1}
-  local nodeIndex=\${2}
+  local nodeIndex=0 #\${2} Note that this 6th argument is no longer needed, as these will always print from the original (d,c), regardless of where the local offset is
   local nodeCount=\${3}
   local pDimD=\${4}
   local pDimC=\${5}
-  local trickOffset=\${6}
+  local trickOffset=0 #\${6} Note that this 6th argument is no longer needed, as these will always print from the original (d,c), regardless of where the local offset is
   # New important addition: For special weak scaling, need to print out the number of (d,c) for the binary first, and then each of them in groups of {d,c,(d,c)}
   # Note: still not 100% convinced this is necessary. Need to study scaplot first to make a decision on it.
   # Write to plotInstructions file
   if [ \${scaleRegime} == 2 ];
   then
-    trueNodeCount=\$(( \${nodeCount} - \${nodeIndex} ))
     echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
     curD=\${pDimD}
     curC=\${pDimC}
@@ -826,7 +825,7 @@ launch$tag1 () {
     if [ \${nodeIndex} == 0 ] || [ \${isUniqueTag} -eq 1 ];
     then
       WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag1} \${PostFile} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
-      TemporaryDCplotInfo \${scaleRegime} \${nodeIndex} \${nodeCount} \${pDimD} \${pDimC} \${WScounterOffset}
+      TemporaryDCplotInfo \${scaleRegime} \${nodeIndex} \${nodeCount} \${pDimDorig} \${pDimCorig} \${WScounterOffset}
       writePlotFileName \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1  
     fi
 
