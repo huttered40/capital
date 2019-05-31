@@ -646,6 +646,7 @@ TemporaryDCplotInfo () {
   # Write to plotInstructions file
   if [ \${scaleRegime} == 2 ];
   then
+    trueNodeCount=\$(( \${nodeCount} - \${nodeIndex} ))
     echo "echo \"\${nodeCount}\" " >> $SCRATCH/${fileName}/plotInstructions.sh
     curD=\${pDimD}
     curC=\${pDimC}
