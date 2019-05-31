@@ -5,22 +5,15 @@
 
 using namespace std;
 
-template<
-		typename T, typename U,
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
-  		template<typename,typename,int> class Distribution
-	>
-static pair<T,double> runTestCF(
-                        Matrix<T,U,StructureA,Distribution>& matA,
-                        Matrix<T,U,StructureB,Distribution>& matT,
-			char dir, int inverseCutOffMultiplier, int blockSizeMultiplier, int panelDimensionMultiplier,
-			int pCoordX, int pCoordY, int pGridDimensionSize, ofstream& fptrTotal,
-			#ifdef PERFORMANCE
-			ofstream& fptrNumericsTotal,
-			#endif
-			int iterNum, int numIter, int rank, int size, int& numFuncs
-){
+template<typename MatrixAType, typename MatrixTType>
+static pair<typename MatrixAType::ScalarType,double>
+       runTestCF(MatrixAType& matA, MatrixTType& matT, char dir, size_t inverseCutOffMultiplier, size_t blockSizeMultiplier, size_t panelDimensionMultiplier,
+                 size_t pCoordX, size_t pCoordY, size_t pGridDimensionSize, ofstream& fptrTotal,
+                 #ifdef PERFORMANCE
+                 ofstream& fptrNumericsTotal,
+                 #endif
+                 size_t iterNum, size_t numIter, size_t rank, size_t size, size_t& numFuncs){
+  using T = typename MatrixAType::ScalarType;
   double iterTimeGlobal=-1;
   T iterErrorGlobal;		// define this out here so that compilation doesn't fail with Critter/Analysis runs
   // Reset matrixA
@@ -58,7 +51,7 @@ static pair<T,double> runTestCF(
     CFvalidate<T,U>::validateLocal(saveA, matA, dir, MPI_COMM_WORLD);
   }
 */
-  Matrix<T,U,StructureA,Distribution> saveA = matA;
+  MatrixAType saveA = matA;
   // Note: I think this call below is still ok given the new topology mapping on Blue Waters/Stampede2
   saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   commInfo3D = util::build3DTopology(MPI_COMM_WORLD);
@@ -90,32 +83,33 @@ int main(int argc, char** argv){
 
   util::InitialGEMM<DATATYPE>();
 
-  int pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  int helper = pGridDimensionSize;
+  size_t pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  size_t helper = pGridDimensionSize;
   helper *= helper;
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
-  int pCoordZ = rank%pGridDimensionSize;
-  int pCoordY = rank/helper;
-  int pCoordX = (rank%helper)/pGridDimensionSize;
+  size_t pCoordZ = rank%pGridDimensionSize;
+  size_t pCoordY = rank/helper;
+  size_t pCoordX = (rank%helper)/pGridDimensionSize;
   #else
-  int pCoordX = rank%pGridDimensionSize;
-  int pCoordY = (rank%helper)/pGridDimensionSize;
-  int pCoordZ = rank/helper;
+  size_t pCoordX = rank%pGridDimensionSize;
+  size_t pCoordY = (rank%helper)/pGridDimensionSize;
+  size_t pCoordZ = rank/helper;
   #endif
 
   /*
     methodKey1 -> 0) Lower
 		  1) Upper
   */
-  int methodKey1 = atoi(argv[1]);
-  char dir = (methodKey1==0 ? 'L' : 'U');
-  INTTYPE globalMatrixSize = atoi(argv[2]);
-  int blockSizeMultiplier = atoi(argv[3]);
-  int inverseCutOffMultiplier = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
-  int panelDimensionMultiplier = atoi(argv[5]);
-  int numIterations = atoi(argv[6]);
+//  size_t methodKey1 = atoi(argv[1]);
+//  char dir = (methodKey1==0 ? 'L' : 'U');
+  char dir = 'U';
+  INTTYPE globalMatrixSize = atoi(argv[1]);
+  size_t blockSizeMultiplier = atoi(argv[2]);
+  size_t inverseCutOffMultiplier = atoi(argv[3]); // multiplies baseCase dimension by sucessive 2
+  size_t panelDimensionMultiplier = atoi(argv[4]);
+  size_t numIterations = atoi(argv[5]);
 
-  string fileStr = argv[7];
+  string fileStr = argv[6];
   string fileStrTotal=fileStr;
   #ifdef PROFILE
   fileStrTotal += "_timer.txt";
@@ -144,8 +138,8 @@ int main(int argc, char** argv){
   DATATYPE totalError = 0;
   double totalTime = 0;
   #endif
-  int numFuncs=0;
-  for (int i=0; i<numIterations; i++){
+  size_t numFuncs=0;
+  for (size_t i=0; i<numIterations; i++){
     pair<DATATYPE,double> info = runTestCF(matA, matT, dir, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, pCoordX, pCoordY, pGridDimensionSize,
       fptrTotal,
       #ifdef PERFORMANCE

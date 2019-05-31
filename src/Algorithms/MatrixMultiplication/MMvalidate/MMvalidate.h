@@ -18,7 +18,7 @@ public:
   static void validateLocal(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, MPI_Comm commWorld, const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage);
 
   template<typename MatrixAType, typename MatrixBinType, typename MatrixBoutType>
-  static void validateLocal(MatrixAType& matrixA, MatrixBinType& matrixBin, MatrixBoutType& matrixBout, MPI_Comm commWorld, const blasEngineArgumentPackage_trmm<T>& srcPackage);
+  static void validateLocal(MatrixAType& matrixA, MatrixBinType& matrixBin, MatrixBoutType& matrixBout, MPI_Comm commWorld, const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage);
 
 private:
   template<typename T, typename U>

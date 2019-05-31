@@ -41,7 +41,7 @@ extern "C" void zgeqrf_(int*, int*, std::complex<double>*, int*, std::complex<do
 #define LAPACK_COL_MAJOR 0
 #endif
 
-#ifdef PORTER // Try this for LAPACKE interface
+#if 0// Try this for LAPACKE interface
 extern "C" void LAPACKE_spotrf(char, char, int, float*, int);
 extern "C" void LAPACKE_strtri(char, char, char, int, float*, int);
 extern "C" void LAPACKE_sgeqrf(char, int, int, float*, int, float*);

@@ -29,9 +29,13 @@ then
   if [ "${mpiType}" == "mpi" ];
   then
     export MPITYPE=MPI_TYPE
+    minPEcountPerNode=1
+    maxPEcountPerNode=16
   elif [ "${mpiType}" == "ampi" ];
   then
     export MPITYPE=AMPI_TYPE
+    minPEcountPerNode=1
+    maxPEcountPerNode=512
   fi
 elif [ "$(hostname |grep "mira")" != "" ] || [ "$(hostname |grep "cetus")" != "" ];
 then
@@ -197,7 +201,10 @@ read -p "Do you want to analyze these tests with Critter? Yes[1], No[0]: " analy
 read -p "Do you want to analyze these tests with TAU? Yes[1], No[0]: " analyzeDecision2
 make -C./.. clean
 export PROFTYPE=PERFORMANCE
-make -C./.. cqr2_${mpiType}
+
+read -p "QR factorization [cqr2], Cholesky factorization [cfr3d], or Matrix multiplication [mm3d]: " makebinarytag
+
+make -C./.. ${makebinarytag}_${mpiType}
 profType=P
 # If GPU-accelerated, we might want to run the non-accelerated binary as well
 if [ "${testAccel_NoAccel}" == "y" ];
@@ -205,7 +212,7 @@ then
   module unload cudatoolkit
   module load cblas
   export GPU=NOGPU
-  make -C./.. cqr2_${mpiType}
+  make -C./.. ${makebinarytag}_${mpiType}
 fi
 if [ ${analyzeDecision1} == 1 ];
 then
@@ -218,14 +225,14 @@ then
   fi
   profType=${profType}C
   export PROFTYPE=CRITTER
-  make -C./.. cqr2_${mpiType}
+  make -C./.. ${makebinarytag}_${mpiType}
   # If GPU-accelerated, we might want to run the non-accelerated binary as well
   if [ "${testAccel_NoAccel}" == "y" ];
   then
     module unload cudatoolkit
     module load cblas
     export GPU=NOGPU
-    make -C./.. cqr2_${mpiType}
+    make -C./.. ${makebinarytag}_${mpiType}
   fi
 fi
 if [ ${analyzeDecision2} == 1 ];
@@ -239,14 +246,14 @@ then
   fi
   profType=${profType}T
   export PROFTYPE=PROFILE
-  make -C./.. cqr2_${mpiType}
+  make -C./.. ${makebinarytag}_${mpiType}
   # If GPU-accelerated, we might want to run the non-accelerated binary as well
   if [ "${testAccel_NoAccel}" == "y" ];
   then
     module unload cudatoolkit
     module load cblas
     export GPU=NOGPU
-    make -C./.. cqr2_${mpiType}
+    make -C./.. ${makebinarytag}_${mpiType}
   fi
 fi
 
@@ -393,7 +400,7 @@ do
             #fi
 	    echo "#PBS -l nodes=\${curNumNodes}:ppn=\${numPEsPerNode}:xe" >> \${scriptName}
 	    echo "#PBS -l walltime=${numHours}:${numMinutes}:${numSeconds}" >> \${scriptName}
-	    echo "#PBS -N ca-cqr2" >> \${scriptName}
+	    echo "#PBS -N camfs" >> \${scriptName}
 	    echo "#PBS -e ${fileName}_\${curNumNodes}_\${curPPN}.err" >> \${scriptName}
 	    echo "#PBS -o ${fileName}_\${curNumNodes}_\${curPPN}.out" >> \${scriptName}
 	    echo "##PBS -m Ed" >> \${scriptName}
@@ -931,7 +938,8 @@ launch$tag3 () {
 
     WriteMethodDataForCollectingStage1 ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics \${PostFile} \${PostFile}_perf \${PostFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage2.sh
-    launchJobsPortal \${binaryPath} ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${cubeDim} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    # Don't pass in 'cubeDim', because this is inferred based on the number of processes, as its just the cube root
+    launchJobsPortal \${binaryPath} ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done

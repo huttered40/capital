@@ -45,11 +45,12 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t> util::build
 std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util::buildTunableTopology(MPI_Comm commWorld, size_t pGridDimensionD, size_t pGridDimensionC){
   TAU_FSTART(getTunableCommunicators);
 
-  int worldRank, worldSize, columnRank, cubeRank;
+  int worldRank, worldSize, columnRank;
   MPI_Comm_rank(commWorld, &worldRank);
   MPI_Comm_size(commWorld, &worldSize);
 
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
+  int cubeRank;
   size_t SubCubeSize = pGridDimensionC*pGridDimensionC*pGridDimensionC;
   size_t SubCubeSliceSize = pGridDimensionC*pGridDimensionC;
   MPI_Comm sliceComm, rowComm, columnComm, columnContigComm, columnAltComm, depthComm, miniCubeComm;
@@ -66,6 +67,7 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util::buildTun
   MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
   MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
   #else
+  int sliceRank;
   size_t sliceSize = pGridDimensionD*pGridDimensionC;
   MPI_Comm sliceComm, rowComm, columnComm, columnContigComm, columnAltComm, depthComm, miniCubeComm;
   MPI_Comm_split(commWorld, worldRank/sliceSize, worldRank, &sliceComm);

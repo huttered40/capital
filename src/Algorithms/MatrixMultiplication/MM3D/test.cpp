@@ -7,20 +7,10 @@ using namespace std;
 
 // Idea: We calculate 3D Summa as usual, and then we pass it into the MMvalidate solo class
 
-template<
-		typename T, typename U,
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
-  		template<typename,typename, template<typename,typename,int> class> class StructureC = MatrixStructureSquare,
-  		template<typename,typename,int> class Distribution
-	>
-static double runTestGemm(
-                        Matrix<T,U,StructureA,Distribution>& matA,
-                        Matrix<T,U,StructureB,Distribution>& matB,
-                        Matrix<T,U,StructureC,Distribution>& matC,
-			blasEngineArgumentPackage_gemm<T>& blasArgs,
-			int methodKey3, int pCoordX, int pCoordY, int pGridDimensionSize,
-			ofstream& fptrTotal, int iterNum, int numIter, int rank, int size, int& numFuncs){
+template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
+static double runTestGemm(MatrixAType& matA, MatrixBType& matB, MatrixCType& matC, blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& blasArgs,
+                          size_t methodKey3, size_t pCoordX, size_t pCoordY, size_t pGridDimensionSize,
+			  ofstream& fptrTotal, size_t iterNum, size_t numIter, size_t rank, size_t size, size_t& numFuncs){
   double iterTimeGlobal;
   // Note: I think these calls below are still ok given the new topology mapping on Blue Waters/Stampede2
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
@@ -50,18 +40,10 @@ static double runTestGemm(
   return iterTimeGlobal;
 }
 
-template<
-		typename T, typename U,
-		template<typename,typename, template<typename,typename,int> class> class StructureA,
-  		template<typename,typename, template<typename,typename,int> class> class StructureB,
-  		template<typename,typename,int> class Distribution
-	>
-static double runTestTrmm(
-                        Matrix<T,U,StructureA,Distribution>& matA,
-                        Matrix<T,U,StructureB,Distribution>& matB,
-			blasEngineArgumentPackage_trmm<T>& blasArgs,
-			int methodKey3, int pCoordX, int pCoordY, int pGridDimensionSize,
-			ofstream& fptrTotal, int iterNum, int numIter, int rank, int size, int& numFuncs){
+template<typename MatrixAType, typename MatrixBType>
+static double runTestTrmm(MatrixAType& matA, MatrixBType& matB, blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& blasArgs,
+                          size_t methodKey3, size_t pCoordX, size_t pCoordY, size_t pGridDimensionSize,
+			  ofstream& fptrTotal, size_t iterNum, size_t numIter, size_t rank, size_t size, size_t& numFuncs){
   double iterTimeGlobal;
   matA.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize + pCoordY);
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
@@ -113,24 +95,24 @@ int main(int argc, char** argv){
     Choices for methodKey1: 0) Gemm
 			    1) TRMM
   */
-  int methodKey1 = atoi(argv[1]);
+  size_t methodKey1 = atoi(argv[1]);
   /*
     Choices for methodKey3: 0) Broadcast + Allreduce
 			    1) Allgather + Allreduce
   */
-  int methodKey3 = atoi(argv[2]);
+  size_t methodKey3 = atoi(argv[2]);
 
-  int pGridDimensionSize = std::nearbyint(pow(size,1./3.));
-  int helper = pGridDimensionSize;
+  size_t pGridDimensionSize = std::nearbyint(pow(size,1./3.));
+  size_t helper = pGridDimensionSize;
   helper *= helper;
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
-  int pCoordZ = rank%pGridDimensionSize;
-  int pCoordY = rank/helper;
-  int pCoordX = (rank%helper)/pGridDimensionSize;
+  size_t pCoordZ = rank%pGridDimensionSize;
+  size_t pCoordY = rank/helper;
+  size_t pCoordX = (rank%helper)/pGridDimensionSize;
   #else
-  int pCoordX = rank%pGridDimensionSize;
-  int pCoordY = (rank%helper)/pGridDimensionSize;
-  int pCoordZ = rank/helper;
+  size_t pCoordX = rank%pGridDimensionSize;
+  size_t pCoordY = (rank%helper)/pGridDimensionSize;
+  size_t pCoordZ = rank/helper;
   #endif
 
   INTTYPE globalMatrixSizeM = atoi(argv[3]);
@@ -166,11 +148,12 @@ int main(int argc, char** argv){
   
     // Loop for getting a good range of results.
     double totalTime = 0;
-    int numFuncs = 0;
-    for (int i=0; i<numIterations; i++){
+    size_t numFuncs = 0;
+    for (size_t i=0; i<numIterations; i++){
       double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
       totalTime += iterTime;
     }
+    MMvalidate::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
     if (rank == 0){
       fptrTotal.close();
     }
@@ -182,13 +165,13 @@ int main(int argc, char** argv){
       Choices for matrixUpLo: 0) Lower-triangular
 			      1) Upper-triangular
     */
-    int matrixUpLo = atoi(argv[5]);
+    size_t matrixUpLo = atoi(argv[5]);
     /*
       Choices for triangleSide: 0) Triangle * Rectangular (matrixA * matrixB)
 			        1) Rectangular * Triangle (matrixB * matrixA)
     */
-    int triangleSide = atoi(argv[6]);
-    int numIterations = atoi(argv[7]);
+    size_t triangleSide = atoi(argv[6]);
+    size_t numIterations = atoi(argv[7]);
     string fileStr = argv[8];
     string fileStrTotal=fileStr;
     #ifdef PROFILE
@@ -207,7 +190,7 @@ int main(int argc, char** argv){
 
     // I guess I will go through all cases. Ugh!
     double totalTime = 0;
-    int numFuncs = 0;
+    size_t numFuncs = 0;
     if ((matrixUpLo == 0) && (triangleSide == 0)){
       MatrixTypeLT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
@@ -215,7 +198,7 @@ int main(int argc, char** argv){
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
  
       // Loop for getting a good range of results.
-      for (int i=0; i<numIterations; i++){
+      for (size_t i=0; i<numIterations; i++){
         double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
@@ -227,7 +210,7 @@ int main(int argc, char** argv){
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
-      for (int i=0; i<numIterations; i++){
+      for (size_t i=0; i<numIterations; i++){
         double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
@@ -239,7 +222,7 @@ int main(int argc, char** argv){
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   
       // Loop for getting a good range of results.
-      for (int i=0; i<numIterations; i++){
+      for (size_t i=0; i<numIterations; i++){
         double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }
@@ -251,7 +234,7 @@ int main(int argc, char** argv){
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
-      for (int i=0; i<numIterations; i++){
+      for (size_t i=0; i<numIterations; i++){
         double iterTime = runTestTrmm(matA, matB, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
         totalTime += iterTime;
       }

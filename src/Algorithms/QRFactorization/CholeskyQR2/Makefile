@@ -24,7 +24,7 @@ ifneq ($(PORTER_machine),)
   MACHINE=PORTER
   CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
   CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
-  CFLAGS = -g -Wall -O0 -std=c++11
+  CFLAGS = -g -Wall -O0 -std=c++14
   LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/CRITTER/critter/lib
   LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread -lcritter
 

@@ -376,8 +376,8 @@ void CFR3D::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matrix
       }
     }
 
-    lapackEngineArgumentPackage_potrf potrfArgs(lapackEngineOrder::AlapackColumnMajor, lapackEngineUpLo::AlapackLower);
-    lapackEngineArgumentPackage_trtri trtriArgs(lapackEngineOrder::AlapackColumnMajor, lapackEngineUpLo::AlapackLower, lapackEngineDiag::AlapackNonUnit);
+    lapackEngineArgumentPackage_potrf potrfArgs(lapackEngineOrder::AlapackColumnMajor, (dir == 'L' ? lapackEngineUpLo::AlapackLower : lapackEngineUpLo::AlapackUpper));
+    lapackEngineArgumentPackage_trtri trtriArgs(lapackEngineOrder::AlapackColumnMajor, (dir == 'L' ? lapackEngineUpLo::AlapackLower : lapackEngineUpLo::AlapackUpper), lapackEngineDiag::AlapackNonUnit);
     lapackEngine::_potrf(&deepBaseCase[0],finalDim,finalDim,potrfArgs);
     std::vector<T> deepBaseCaseInv = deepBaseCase;              // true copy because we have to, unless we want to iterate (see below) two different times
     lapackEngine::_trtri(&deepBaseCaseInv[0],finalDim,finalDim,trtriArgs);
@@ -422,8 +422,8 @@ void CFR3D::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matrix
     size_t fTranDim1 = localDimension*pGridDimensionSize;
     std::vector<T>& storeMat = cyclicBaseCaseData;
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-    lapackEngineArgumentPackage_potrf potrfArgs(lapackEngineOrder::AlapackColumnMajor, lapackEngineUpLo::AlapackUpper);
-    lapackEngineArgumentPackage_trtri trtriArgs(lapackEngineOrder::AlapackColumnMajor, lapackEngineUpLo::AlapackUpper, lapackEngineDiag::AlapackNonUnit);
+    lapackEngineArgumentPackage_potrf potrfArgs(lapackEngineOrder::AlapackColumnMajor, (dir == 'L' ? lapackEngineUpLo::AlapackLower : lapackEngineUpLo::AlapackUpper));
+    lapackEngineArgumentPackage_trtri trtriArgs(lapackEngineOrder::AlapackColumnMajor, (dir == 'L' ? lapackEngineUpLo::AlapackLower : lapackEngineUpLo::AlapackUpper), lapackEngineDiag::AlapackNonUnit);
     lapackEngine::_potrf(&storeMat[0],fTranDim1,fTranDim1,potrfArgs);
     std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
     lapackEngine::_trtri(&storeMatInv[0],fTranDim1,fTranDim1,trtriArgs);

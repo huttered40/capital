@@ -15,7 +15,7 @@ public:
   static void validateLocal(MatrixAType& matrixA, MatrixSolType& matrixSol, char dir, MPI_Comm commWorld);
 
   template<typename MatrixAType, typename MatrixTriType>
-  static T validateParallel(MatrixAType& matrixA, MatrixTriType& matrixTri,
+  static typename MatrixAType::ScalarType validateParallel(MatrixAType& matrixA, MatrixTriType& matrixTri,
                             char dir, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D);
 
 private:

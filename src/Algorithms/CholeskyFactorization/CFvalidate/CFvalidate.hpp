@@ -32,10 +32,10 @@ void CFvalidate::validateLocal(MatrixAType& matrixA, MatrixSolType& matrixSol, c
   }
 
   if (dir == 'L'){
-    lapackEngineArgumentPackage_potrf<T> potrfArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasLower);
+    lapackEngineArgumentPackage_potrf potrfArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasLower);
     lapackEngine::_potrf(&globalMatrixA[0],globalDimension,globalDimension,potrfArgs);
   } else{
-    lapackEngineArgumentPackage_potrf<T> potrfArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper);
+    lapackEngineArgumentPackage_potrf potrfArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper);
     lapackEngine::_potrf(&globalMatrixA[0],globalDimension,globalDimension,potrfArgs);
   }
 
@@ -65,7 +65,7 @@ void CFvalidate::validateLocal(MatrixAType& matrixA, MatrixSolType& matrixSol, c
 }
 
 template<typename MatrixAType, typename MatrixTriType>
-T CFvalidate::validateParallel(MatrixAType& matrixA, MatrixTriType& matrixTri,
+typename MatrixAType::ScalarType CFvalidate::validateParallel(MatrixAType& matrixA, MatrixTriType& matrixTri,
                                char dir, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D){
   int rank,size;
   MPI_Comm_rank(commWorld, &rank);
