@@ -737,19 +737,19 @@ WriteMethodDataForCollectingStage2 () {
   fi
 }
 
-
 launchJobsPortal () {
   # Launch performance job always.
-  launchJobs \${@:2:\${#}}
+  echo "What is this?? - \${@:2:\${7}} \${1}_PERFORMANCE \${@:8:\${#}}"
+  launchJobs \${@:2:\${7}} \${1}_PERFORMANCE \${@:8:\${#}}
 
   # If analysis is turned on, launch Profiling job and Critter job.
   if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
   then
-    launchJobs \${@:2:\${7}} \${1}_CRITTER \${@:9:\${#}}
+    launchJobs \${@:2:\${7}} \${1}_CRITTER \${@:8:\${#}}
   fi
   if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
   then
-    launchJobs \${@:2:\${7}} \${1}_TIMER \${@:9:\${#}}
+    launchJobs \${@:2:\${7}} \${1}_TIMER \${@:8:\${#}}
   fi
 }
 
@@ -831,7 +831,7 @@ launch$tag1 () {
 
     WriteMethodDataForCollectingStage1 ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} ${tag1} \${PreFile} \${PreFile}_perf \${PreFile}_numerics \${PostFile} \${PostFile}_perf \${PostFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage2.sh
-    launchJobsPortal \${binaryPath} ${tag1} \${fileString} \${launchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    launchJobsPortal \${binaryPath} ${tag1} \${fileString} \${launchID} \${NumNodes} \${ppn} \${tpr} \${matrixDimM} \${matrixDimN} \${bcDim} \${curInverseCutOffMult} 0 \${pDimD} \${pDimC} \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done
@@ -881,7 +881,7 @@ launch$tag2 () {
 
     WriteMethodDataForCollectingStage1 \${binaryTag} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} \${binaryTag} \${PreFile} \${PreFile}_NoFormQ \${PreFile}_FormQ \${PostFile} \${PostFile}_NoFormQ \${PostFile}_FormQ $SCRATCH/${fileName}/collectInstructionsStage2.sh
-    launchJobsPortal \${binaryPath} \${binaryTag} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
+    launchJobsPortal \${binaryPath} \${binaryTag} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${matrixDimM} \${matrixDimN} \${k} \${numIterations} 0 \${numProws} 1 0 $SCRATCH/${fileName}/\${fileString}
     writePlotFileNameScalapackQR \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
   done
 }
@@ -939,7 +939,7 @@ launch$tag3 () {
     WriteMethodDataForCollectingStage1 ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} ${tag3} \${PreFile} \${PreFile}_perf \${PreFile}_numerics \${PostFile} \${PostFile}_perf \${PostFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage2.sh
     # Don't pass in 'cubeDim', because this is inferred based on the number of processes, as its just the cube root
-    launchJobsPortal \${binaryPath} ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    launchJobsPortal \${binaryPath} ${tag3} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${matrixDimM} \${bcDim} \${curInverseCutOffMult} 0 \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done
@@ -981,7 +981,7 @@ launch$tag4 () {
 
     WriteMethodDataForCollectingStage1 ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah $SCRATCH/${fileName}/collectInstructionsStage1.sh
     WriteMethodDataForCollectingStage2 \${launchID} ${tag4} \${PreFile} \${PreFile} \${PreFile}_blah \${PostFile} \${PostFile} \${PostFile} $SCRATCH/${fileName}/collectInstructionsStage2.sh
-    launchJobsPortal \${binaryPath} ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${binaryPath}_PERFORMANCE \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+    launchJobsPortal \${binaryPath} ${tag4} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${matrixDimM} \${k} \${numIterations} $SCRATCH/${fileName}/\${fileString}
     writePlotFileNameScalapackCholesky \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
   done
 }
@@ -1364,7 +1364,7 @@ then
               qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
             else
               chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
-              sbatch --mail-user=${MyEmail} --mail-type=all ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+              #sbatch --mail-user=${MyEmail} --mail-type=all ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
             fi
           fi
           curTPR=$(( ${curTPR} * ${ppnScaleFactor} ))
