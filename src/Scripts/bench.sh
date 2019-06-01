@@ -91,16 +91,30 @@ ppnMinList=()
 ppnMaxList=()
 tprMinList=()
 tprMaxList=()
-
+ppnMin=""
+ppnMax=""
+tprMin=""
+tprMax=""
+read -p "Will ppn/tpr be the same for all tested node counts across all tests? yes[1] or no[0]: " skipHardwareSpec
+if [ ${skipHardwareSpec} == 1 ];
+then
+  read -p "Enter min ppn: " ppnMin
+  read -p "Enter max ppn: " ppnMax
+  # Only revelant for non-GPU
+  read -p "Enter min tpr: " tprMin
+  read -p "Enter max tpr: " tprMax
+fi
 curNumNodes=${minNumNodes}
 while [ ${curNumNodes} -le ${maxNumNodes} ];
 do
-  read -p "Enter min ppn for node count ${curNumNodes}: " ppnMin
-  read -p "Enter max ppn for node count ${curNumNodes}: " ppnMax
-  # Only revelant for non-GPU
-  read -p "Enter min tpr for node count ${curNumNodes}: " tprMin
-  read -p "Enter max tpr for node count ${curNumNodes}: " tprMax
-
+  if [ ${skipHardwareSpec} == 0 ];
+  then
+    read -p "Enter min ppn for node count ${curNumNodes}: " ppnMin
+    read -p "Enter max ppn for node count ${curNumNodes}: " ppnMax
+    # Only revelant for non-GPU
+    read -p "Enter min tpr for node count ${curNumNodes}: " tprMin
+    read -p "Enter max tpr for node count ${curNumNodes}: " tprMax
+  fi
   ppnMinList+=(${ppnMin})
   ppnMaxList+=(${ppnMax})
   tprMinList+=(${tprMin})
@@ -108,6 +122,12 @@ do
 
   curNumNodes=$(( ${curNumNodes} * ${nodeScaleFactor} ))   # So far, only use cases for nodeScaleFactor are 2 and 16.
 done
+
+# test echo
+echo "ppn min list - ${ppnMinList[@]}"
+echo "ppn max list - ${ppnMaxList[@]}"
+echo "tpr min list - ${tprMinList[@]}"
+echo "tpr max list ${tprMaxList[@]}"
 
 read -p "Enter number of tests (equal to number of strong scaling or weak scaling tests that will be run): " numTests
 
@@ -339,15 +359,30 @@ ppnMaxListRunTime=()
 tprMinListRunTime=()
 tprMaxListRunTime=()
 
+ppnMin=""
+ppnMax=""
+tprMin=""
+tprMax=""
+read -p "Will ppn/tpr be the same for all tested node counts across all tests? yes[1] or no[0]: " skipHardwareSpec
+if [ \${skipHardwareSpec} == 1 ];
+then
+  read -p "Enter min ppn: " ppnMin
+  read -p "Enter max ppn: " ppnMax
+  # Only revelant for non-GPU
+  read -p "Enter min tpr: " tprMin
+  read -p "Enter max tpr: " tprMax
+fi
 curNumNodes=${minNumNodes}
 while [ \${curNumNodes} -le ${maxNumNodes} ];
 do
-  read -p "Enter min ppn for node count \${curNumNodes}: " ppnMin
-  read -p "Enter max ppn for node count \${curNumNodes}: " ppnMax
-  # Only revelant for non-GPU
-  read -p "Enter min tpr for node count \${curNumNodes}: " tprMin
-  read -p "Enter max tpr for node count \${curNumNodes}: " tprMax
-
+  if [ \${skipHardwareSpec} == 0 ];
+  then
+    read -p "Enter min ppn for node count \${curNumNodes}: " ppnMin
+    read -p "Enter max ppn for node count \${curNumNodes}: " ppnMax
+    # Only revelant for non-GPU
+    read -p "Enter min tpr for node count \${curNumNodes}: " tprMin
+    read -p "Enter max tpr for node count \${curNumNodes}: " tprMax
+  fi
   ppnMinListRunTime+=(\${ppnMin})
   ppnMaxListRunTime+=(\${ppnMax})
   tprMinListRunTime+=(\${tprMin})
@@ -602,6 +637,7 @@ launchJobs () {
   local tpr=\${6}
   local numProcesses=\$((\${numNodes} * \${ppn}))
   local scriptName=script_${fileID}id_${roundID}round_\${launchID}launchID_\${numNodes}nodes_\${ppn}ppn_\${tpr}tpr
+  echo "What is scriptName - \${scriptName}"
   if [ "$machineName" == "BGQ" ];
   then
     echo "runjob --np \${numProcesses} -p \${ppn} --block \$COBALT_PARTNAME --verbose=INFO : \${@:7:\$#}" >> $SCRATCH/${fileName}/\${scriptName}.sh
@@ -739,17 +775,16 @@ WriteMethodDataForCollectingStage2 () {
 
 launchJobsPortal () {
   # Launch performance job always.
-  echo "What is this?? - \${@:2:\${7}} \${1}_PERFORMANCE \${@:8:\${#}}"
-  launchJobs \${@:2:\${7}} \${1}_PERFORMANCE \${@:8:\${#}}
+  launchJobs \${@:2:6} \${1}_PERFORMANCE \${@:8:\${#}}
 
   # If analysis is turned on, launch Profiling job and Critter job.
   if [ "${profType}" == "PC" ] || [ "${profType}" == "PCT" ];
   then
-    launchJobs \${@:2:\${7}} \${1}_CRITTER \${@:8:\${#}}
+    launchJobs \${@:2:6} \${1}_CRITTER \${@:8:\${#}}
   fi
   if [ "${profType}" == "PT" ] || [ "${profType}" == "PCT" ];
   then
-    launchJobs \${@:2:\${7}} \${1}_TIMER \${@:8:\${#}}
+    launchJobs \${@:2:6} \${1}_TIMER \${@:8:\${#}}
   fi
 }
 
@@ -1364,7 +1399,7 @@ then
               qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
             else
               chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
-              #sbatch --mail-user=${MyEmail} --mail-type=all ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
+              sbatch --mail-user=${MyEmail} --mail-type=all ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
             fi
           fi
           curTPR=$(( ${curTPR} * ${ppnScaleFactor} ))
