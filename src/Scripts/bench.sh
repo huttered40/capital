@@ -814,20 +814,25 @@ launch$tag1 () {
   local scaleRegime=\${17}
   local nodeCount=\${18}
   local WScounterOffset=\${19}
+  local tuneInvCutOff=\${20}
   local bcDim=0
 
   # Next: Based on pDimC, decide on invCutOff parameter, which will range from 0 to a max of 2 for now
   invCutOffLoopMax=0
-  if [ \${pDimC} -le 2 ];
+  # Note: I am just not seeing enough performance boost at the moment to warrant launching the varying invCutOff runs, especially for Critter
+  if [ "\${tuneInvCutOff}" == "y" ];
   then
-    invCutOffLoopMax=0
-  elif [ \${pDimC} -eq 4 ];
-  then
-    invCutOffLoopMax=1
-  else
-    invCutOffLoopMax=2
-    #invCutOffLoopMax=\$(( \${pDimC} / 2 ))
-    #invCutOffLoopMax=\$(( \${invCutOffLoopMax} - 1 ))
+    if [ \${pDimC} -le 2 ];
+    then
+      invCutOffLoopMax=0
+    elif [ \${pDimC} -eq 4 ];
+    then
+      invCutOffLoopMax=1
+    else
+      invCutOffLoopMax=2
+      #invCutOffLoopMax=\$(( \${pDimC} / 2 ))
+      #invCutOffLoopMax=\$(( \${invCutOffLoopMax} - 1 ))
+    fi
   fi
 
   curInverseCutOffMult=0
@@ -1129,6 +1134,7 @@ do
       read -p "Enter start range of starting tunable processor grid dimension c: " startStartPdimC
       read -p "Enter end range of starting tunable processor grid dimension c (for any node count * ppn pairing): " endStartPdimC
       # invCutOff shouldn't be asked for. It should, for now, range up to 2 from 0, unless I am seeing a pattern in performance.
+      read -p "Do you want to vary the invCutOff? yes[y] or no[n]: " invCutOffDec
     elif [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
     then
       read -p "Enter the starting number of processor grid columns: " startStartNumPcols
@@ -1220,7 +1226,7 @@ do
 		    originalPdimC=\${pDimCArrayOrig[\${w}]}
 		    originalPdimCsquared=\$(( \${originalPdimC} * \${originalPdimC} ))
 		    originalPdDimD=\$(( \${StartingNumProcesses} / \${originalPdimCsquared} ))
-		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount} \${WShelpcounter}
+		    launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${curMatrixDimN} \${matrixDimM} \${matrixDimN} \${originalPdDimD} \${originalPdimC} \${pDimD} \${pDimC} \${nodeIndex} \${scaleRegime} \${nodeCount} \${WShelpcounter} \${invCutOffDec}
 		  fi
 		done
 	      elif [ \${binaryTag} == 'bsqr' ] || [ \${binaryTag} == 'rsqr' ];
