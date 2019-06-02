@@ -15,6 +15,7 @@ int main(int argc, char** argv)
 // Strings
   string outputFileDirStr = argv[1];
   string outputFileStr = argv[2];
+  string saveoutputFileStr = outputFileStr;	// for critter breakdown
   string inputFileStr = argv[3];
   string binaryTag = argv[4];
   int order = atoi(argv[5]);
@@ -209,31 +210,31 @@ int main(int argc, char** argv)
   }
   else if (order == 3)
   {
-    // Files
-    ofstream outputFile1;		// true critter
-    ofstream outputFile2;		// critter breakdown
+    // Streams
+    string outputFileStrBreakdown = outputFileDirStr + "Stats/" + saveoutputFileStr + "_breakdown.txt";
+    // test echo
+    std::cout << "Where is breakdown?? - " << outputFileStrBreakdown << std::endl;
+    ofstream outputFile,outputFileStats,outputFileBreakdown;
     ifstream inputFile;
     inputFile.open(inputFileStr.c_str());
-    outputFile1.open(outputFileStr.c_str(), ofstream::app);
-    string outputFileStr2 = argv[1];
-    outputFileStr2 += "_breakdown.txt";
-    outputFile2.open(outputFileStr2.c_str(), ofstream::app);
+    outputFile.open(outputFileStr.c_str(), ofstream::app);
+    outputFileStats.open(outputFileStrStats.c_str(), ofstream::app);
+    outputFileBreakdown.open(outputFileStrBreakdown.c_str(), ofstream::app);
+
     string inputLine;
     int counter=1;
-
     // Treat the first three input lines separately
-    getline(inputFile,inputLine);			// Input Computation Communication column headers. Only the smallest node count and the 1st iteration needs it
-    if (curIter == 0)
-    {
-      outputFile2 << inputLine << endl;
+    getline(inputFile,inputLine);			// Input Computation Communication Overlap column headers. Only the smallest node count and the 1st iteration needs it
+    if (curIter == 0){
+      outputFileBreakdown << inputLine << endl;	// Reason for comment out: I only want the last iteration, as its more representative
     }
     getline(inputFile, inputLine);			// First breakdown of iteration #, computation time, communication time
     // Keep each iteration's breakdown data for now. I don't have averages for these anyways.
-    outputFile2 << inputLine << endl;
+    // outputFileBreakdown << inputLine << endl;	// Reason for comment out: I only want the last iteration, as its more representative
     getline(inputFile, inputLine);			// Critter routine column headers. Again, only first iteration of smallest node count needs to write it.
     if (curIter == 0)
     {
-      outputFile1 << inputLine << endl;			// critter
+      outputFileStats << inputLine << endl;			// critter
     }
 
     // iterationCount is the current count on what iteration's data we are reading in. Its not the same as the 'counter' variable above
@@ -243,19 +244,22 @@ int main(int argc, char** argv)
     {
       // 5 critter lines followed 3 critter average lines followed by a breakdown line
       getline(inputFile,inputLine);
-      iterationCount = (counter-1)%18;		// Tells me whether I should write this data down or not. We only want the 2nd iteration
-      if (counter % 9 == 0)
-      {
-        outputFile2 << inputLine << endl;
+      iterationCount = (counter-1)%27;		// Tells me whether I should write this data down or not. We only want the 2nd iteration
+      // Note: we only want the LAST iteration. Here we assume numIter=3
+      if (counter == 18){
+        outputFileBreakdown << inputLine << endl;
       }
-      else if (iterationCount >= 9)
+      else if ((iterationCount >= 18) && (iterationCount <= 24))
       {
-        outputFile1 << inputLine << endl;		// lines 1-5 for every 9 are the critical path numbers
+        std::cout << "What is this?? - " << inputLine << std::endl;
+        outputFileStats << inputLine << endl;		// lines 1-5 for every 9 are the critical path numbers
       }
       counter++;
     }
-    outputFile1.close();
-    outputFile2.close();
+
+    outputFile.close();
+    outputFileStats.close();
+    outputFileBreakdown.close();
     inputFile.close();
     return 0;
   }

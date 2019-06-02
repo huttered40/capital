@@ -1,5 +1,23 @@
 #!/bin/bash
 
+
+CheckRepeatTags () {
+  local arr=${1}
+  local candidate=${2}
+  local arrLen=${#arr[@]}
+  local info=0	# assume not in list
+  echo "What is length?? - ${#arr[@]}"
+  for i in "${arr[@]}"
+  do
+#    if [ "$i" == "$candidate" ] ; then
+#      echo "1"
+#    fi
+    echo "compare these two - $i and $candidate"
+  done
+#  echo "0"
+}
+
+
 if [ "$(hostname |grep "porter")" != "" ]
 then
   export SCRATCH=../../../CAMFS_data
@@ -42,6 +60,7 @@ do
   while [ 1 -eq 1 ];
   do
     read -p "Enter method ID: " methodID
+    CheckFileTagArray=()
     # break-case is methodID == 4, otherwise methodID is valid. Read it in
     if [ ${methodID} -ne 4 ];
     then
@@ -53,6 +72,23 @@ do
         then
           read -p "Enter binary tag: " binaryTag
           read -p "Enter performance/NoFormQ file to write to: " postFilePerf
+
+          # randomly use postFilePerf, but could have used any of postFilePerf, postFileNumerics, postFileCritter, etc
+          IsRepeat=0
+          for i in "${CheckFileTagArray[@]}"
+          do
+            if [ "$i" == "$postFilePerf" ];
+            then
+              IsRepeat=1
+            fi
+          done
+          if [ ${IsRepeat} == 0 ];
+          then
+            CheckFileTagArray+=(${postFilePerf})
+          fi
+
+          echo "check array length and isRepeat - ${#CheckFileTagArray[@]} and $IsRepeat"
+
           preFileNumerics=""
           if [ "${binaryTag}" != "bench_scala_cholesky" ];
           then
@@ -73,26 +109,26 @@ do
 	  # First, performance
 	  # Currently, every other input file will be performance (if profType=="P", if =="A", then every 4 is performance), so that is how this inner-loop code will be structured
 	  read -p "Enter file to read from: " InputFile
-	  ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFilePerf} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 1 0
+	  ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFilePerf} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 1 ${IsRepeat}
 
 	  if [ "${binaryTag}" != "bench_scala_cholesky" ];
 	  then 
 	    # Second, numerics
 	    read -p "Enter file to read from: " InputFile
-	    ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFileNumerics} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 2 0
+	    ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFileNumerics} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 2 ${IsRepeat}
 	  fi
 
 	  if [ "${profType}" == "PC"  ] || [ "${profType}" == "PCT" ];
 	  then
 	    # Third, critter
 	    read -p "Enter file to read from: " InputFile
-	    ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFileCritter} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 3 0
+	    ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFileCritter} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 3 ${IsRepeat}
 	  fi
 	  if [ "${profType}" == "PT"  ] || [ "${profType}" == "PCT" ];
 	  then
 	    # Fourth, timer
 	    read -p "Enter file to read from: " InputFile
-	    ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFileTimer} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 4 0
+	    ./RunStats ${RESULTSPATH}/${destDir}/Post/ ${postFileTimer} ${RESULTSPATH}/${destDir}/Pre/${InputFile} ${binaryTag} 4 ${IsRepeat}
 	  fi
         else
           break
