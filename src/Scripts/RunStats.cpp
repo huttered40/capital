@@ -22,6 +22,7 @@ int main(int argc, char** argv)
   int curIter = atoi(argv[6]);
 
   string outputFileStrStats = outputFileDirStr + "Stats/" + outputFileStr + "_stats.txt";
+  string outputFileStrCritter = outputFileDirStr + outputFileStr + ".txt";
   outputFileStr = outputFileDirStr + "Raw/" + outputFileStr + ".txt";
   inputFileStr += ".txt";
 
@@ -211,14 +212,14 @@ int main(int argc, char** argv)
   else if (order == 3)
   {
     // Streams
-    string outputFileStrBreakdown = outputFileDirStr + "Stats/" + saveoutputFileStr + "_breakdown.txt";
+    string outputFileStrBreakdown = outputFileDirStr + saveoutputFileStr + "_breakdown.txt";
     // test echo
     std::cout << "Where is breakdown?? - " << outputFileStrBreakdown << std::endl;
     ofstream outputFile,outputFileStats,outputFileBreakdown;
     ifstream inputFile;
     inputFile.open(inputFileStr.c_str());
     outputFile.open(outputFileStr.c_str(), ofstream::app);
-    outputFileStats.open(outputFileStrStats.c_str(), ofstream::app);
+    outputFileStats.open(outputFileStrCritter.c_str(), ofstream::app);
     outputFileBreakdown.open(outputFileStrBreakdown.c_str(), ofstream::app);
 
     string inputLine;
