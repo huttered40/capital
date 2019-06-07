@@ -16,11 +16,9 @@ validator::validateResidualParallel(MatrixAType& matrixA, MatrixBType& matrixB, 
   auto commInfo = util::getCommunicatorSlice(commWorld);
   MatrixCType saveMatC = matrixC;
 
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
   MPI_Comm sliceComm = std::get<0>(commInfo);
   size_t pGridCoordX = std::get<1>(commInfo);
   size_t pGridCoordY = std::get<2>(commInfo);
-  size_t pGridCoordZ = std::get<3>(commInfo);
   size_t pGridDimensionSize = std::get<4>(commInfo);
   size_t helper = pGridDimensionSize;
   helper *= helper;

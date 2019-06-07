@@ -64,7 +64,6 @@ std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
 QRvalidate::validateParallel3D(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, MPI_Comm commWorld,
                                std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D){
   using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
 
   // generate A_computed = matrixQ*matrixR and compare against original A
   int size; MPI_Comm_size(commWorld, &size);
@@ -84,7 +83,6 @@ std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
 QRvalidate::validateParallelTunable(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, size_t gridDimensionD, size_t gridDimensionC, MPI_Comm commWorld,
                                     std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable){
   using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
 
   MPI_Comm miniCubeComm = std::get<5>(commInfoTunable);
   auto commInfo3D = util::build3DTopology(miniCubeComm);

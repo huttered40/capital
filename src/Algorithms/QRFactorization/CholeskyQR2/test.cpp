@@ -10,8 +10,6 @@ using namespace std;
 int main(int argc, char** argv){
   using MatrixTypeS = Matrix<DATATYPE,INTTYPE,Square,Cyclic>;
   using MatrixTypeR = Matrix<DATATYPE,INTTYPE,Rectangular,Cyclic>;
-  using MatrixTypeLT = Matrix<DATATYPE,INTTYPE,LowerTriangular,Cyclic>;
-  using MatrixTypeUT = Matrix<DATATYPE,INTTYPE,Square,Cyclic>;
 
 #ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
@@ -49,9 +47,6 @@ int main(int argc, char** argv){
   size_t pCoordY = (rank%sliceSize)/dimensionC;
   size_t pCoordZ = rank/sliceSize;
   #endif
-
-  INTTYPE localMatrixDimensionM = globalMatrixDimensionM/dimensionD;
-  INTTYPE localMatrixDimensionN = globalMatrixDimensionN/dimensionC;
 
   size_t numIterations=atoi(argv[8]);
   string fileStr = argv[9];
@@ -96,7 +91,6 @@ int main(int argc, char** argv){
   size_t numFuncs = 0;				// For figuring out how many functions are being profiled (smart way to find average over all iterations)
   size_t i;
   for (i=0; i<numIterations; i++){
-    double saveTime;
     // reset the matrix before timer starts
     #if defined(BLUEWATERS) || defined(STAMPEDE2)
     matA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);

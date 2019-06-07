@@ -80,8 +80,6 @@ void Serializer<Square,Square>::Serialize(BigType& big, SmallType& small, typena
 */
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
-  U smallNumRows = small.getNumRowsLocal();
-  U smallNumColumns = small.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();
   std::vector<T*>& bigMatrixData = big.getMatrixData();
@@ -150,11 +148,8 @@ void Serializer<Square,UpperTriangular>::Serialize(SrcType& src, DestType& dest)
   using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
-  U destNumRows = dest.getNumRowsLocal();
-  U destNumColumns = dest.getNumColumnsLocal();
 
   std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T*>& srcMatrixData = src.getMatrixData();
   std::vector<T>& destVectorData = dest.getVectorData();
   std::vector<T*>& destMatrixData = dest.getMatrixData();
 
@@ -244,8 +239,6 @@ void Serializer<Square,UpperTriangular>::Serialize(BigType& big, SmallType& smal
 
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
-  U smallNumRows = small.getNumRowsLocal();
-  U smallNumColumns = small.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();
   std::vector<T*>& bigMatrixData = big.getMatrixData();
@@ -434,8 +427,6 @@ void Serializer<Square,LowerTriangular>::Serialize(BigType& big, SmallType& smal
 
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
-  U smallNumRows = small.getNumRowsLocal();
-  U smallNumColumns = small.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();
   std::vector<T*>& bigMatrixData = big.getMatrixData();
@@ -601,8 +592,6 @@ void Serializer<Rectangular,Rectangular>::Serialize(BigType& big, SmallType& sma
 */
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
-  U smallNumRows = small.getNumRowsLocal();
-  U smallNumColumns = small.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();
   std::vector<T*>& bigMatrixData = big.getMatrixData();
@@ -744,8 +733,6 @@ void Serializer<UpperTriangular, Square>::Serialize(BigType& big, SmallType& sma
 
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
-  U smallNumRows = small.getNumRowsLocal();
-  U smallNumColumns = small.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();
   std::vector<T*>& bigMatrixData = big.getMatrixData();
@@ -847,11 +834,8 @@ void Serializer<UpperTriangular,Rectangular>::Serialize(SrcType& src, DestType& 
   using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
-  U destNumRows = dest.getNumRowsLocal();
-  U destNumColumns = dest.getNumColumnsLocal();
 
   std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T*>& srcMatrixData = src.getMatrixData();
   std::vector<T>& destVectorData = dest.getVectorData();
   std::vector<T*>& destMatrixData = dest.getMatrixData();
 
@@ -906,8 +890,6 @@ void Serializer<UpperTriangular,Rectangular>::Serialize(BigType& big, SmallType&
 
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
-  U smallNumRows = small.getNumRowsLocal();
-  U smallNumColumns = small.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();
   std::vector<T*>& bigMatrixData = big.getMatrixData();
@@ -1005,10 +987,7 @@ void Serializer<UpperTriangular,UpperTriangular>::Serialize(BigType& big, SmallT
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
 
-  U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
-  U smallNumRows = small.getNumRowsLocal();
-  U smallNumColumns = small.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();
   std::vector<T*>& bigMatrixData = big.getMatrixData();
@@ -1125,8 +1104,6 @@ void Serializer<LowerTriangular,Square>::Serialize(BigType& big, SmallType& smal
 
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
-  U smallNumRows = small.getNumRowsLocal();
-  U smallNumColumns = small.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();
   std::vector<T*>& bigMatrixData = big.getMatrixData();
@@ -1230,11 +1207,8 @@ void Serializer<LowerTriangular,Rectangular>::Serialize(SrcType& src, DestType& 
   using U = typename SrcType::DimensionType;
   U srcNumRows = src.getNumRowsLocal();
   U srcNumColumns = src.getNumColumnsLocal();
-  U destNumRows = dest.getNumRowsLocal();
-  U destNumColumns = dest.getNumColumnsLocal();
 
   std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T*>& srcMatrixData = src.getMatrixData();
   std::vector<T>& destVectorData = dest.getVectorData();
   std::vector<T*>& destMatrixData = dest.getMatrixData();
 
@@ -1252,7 +1226,6 @@ void Serializer<LowerTriangular,Rectangular>::Serialize(SrcType& src, DestType& 
   U counter{srcNumRows};
   U srcOffset{0};
   U destOffset{0};
-  U counter2{srcNumColumns};
   for (U i=0; i<srcNumColumns; i++){
     fillZerosContig(&destVectorData[destOffset], i);
     memcpy(&destVectorData[destOffset+i], &srcVectorData[srcOffset], counter*sizeof(T));
@@ -1288,8 +1261,6 @@ void Serializer<LowerTriangular,Rectangular>::Serialize(BigType& big, SmallType&
 
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
-  U smallNumRows = small.getNumRowsLocal();
-  U smallNumColumns = small.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();
   std::vector<T*>& bigMatrixData = big.getMatrixData();
@@ -1392,8 +1363,6 @@ void Serializer<LowerTriangular,LowerTriangular>::Serialize(BigType& big, SmallT
 
   U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
-  U smallNumRows = small.getNumRowsLocal();
-  U smallNumColumns = small.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();
   std::vector<T*>& bigMatrixData = big.getMatrixData();

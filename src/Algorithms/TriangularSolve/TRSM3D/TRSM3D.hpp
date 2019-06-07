@@ -44,7 +44,6 @@ void TRSM3D::iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, Matri
   U matAendX = matrixA.getNumColumnsLocal();
   U matAendY = matrixA.getNumRowsLocal();
   U matUendX = matrixU.getNumColumnsLocal();
-  U matUendY = matrixU.getNumRowsLocal();
 
   U offset1 = 0;
   U offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]);
@@ -119,7 +118,6 @@ void TRSM3D::iSolveLowerRight(MatrixTriType& matrixL, MatrixTriType& matrixLI, M
   U matAendX = matrixA.getNumColumnsLocal();
   U matAendY = matrixA.getNumRowsLocal();
   U matLendX = matrixL.getNumColumnsLocal();
-  U matLendY = matrixL.getNumRowsLocal();
 
   U offset1 = 0;
   U offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]);

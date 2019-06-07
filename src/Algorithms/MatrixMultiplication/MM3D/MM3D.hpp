@@ -28,7 +28,6 @@ void MM3D::Multiply(typename MatrixBType::ScalarType* matrixA, MatrixBType& matr
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
   MPI_Comm depthComm = std::get<3>(commInfo3D);
   int pGridCoordX = std::get<4>(commInfo3D);
   int pGridCoordY = std::get<5>(commInfo3D);
@@ -220,15 +219,12 @@ void MM3D::Multiply(MatrixAType& matrixA, typename MatrixAType::ScalarType* matr
   T* matrixBEnginePtr;
   std::vector<T> foreignA;
   T* foreignB;
-  bool serializeKeyA = false;
-  bool serializeKeyB = false;
   U localDimensionM = matrixBnumRows;
   U localDimensionN = matrixBnumColumns;
 
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
   MPI_Comm depthComm = std::get<3>(commInfo3D);
   int pGridCoordX = std::get<4>(commInfo3D);
   int pGridCoordY = std::get<5>(commInfo3D);
@@ -387,22 +383,9 @@ void MM3D::Multiply(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& mat
   TAU_FSTART(MM3D::MultiplyCut);
   // We will set up 3 matrices and call the method above.
 
-  using T = typename MatrixCType::ScalarType;
-  using U = typename MatrixCType::DimensionType;
   using StructureC = typename MatrixCType::StructureType;
 
-  U rangeA_x = matrixAcutXend-matrixAcutXstart;
-  U rangeA_y = matrixAcutYend-matrixAcutYstart;
-  U rangeB_z = matrixBcutZend-matrixBcutZstart;
-  U rangeB_x = matrixBcutXend-matrixBcutXstart;
-  U rangeC_z = matrixCcutZend - matrixCcutZstart;
-  U rangeC_y = matrixCcutYend - matrixCcutYstart; 
-
-  U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
-  U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
-  U sizeC = matrixC.getNumElems(rangeC_y, rangeC_z);
-
-  int size, pGridDimensionSize;
+  int pGridDimensionSize;
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
@@ -431,20 +414,10 @@ void MM3D::Multiply(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixA
   TAU_FSTART(MM3D::MultiplyCut);
   // We will set up 2 matrices and call the method above.
 
-  using T = typename MatrixBType::ScalarType;
-  using U = typename MatrixBType::DimensionType;
   using StructureB = typename MatrixBType::StructureType;
-
-  U rangeA_x = matrixAcutXend-matrixAcutXstart;
-  U rangeA_y = matrixAcutYend-matrixAcutYstart;
-  U rangeB_x = matrixBcutXend-matrixBcutXstart;
-  U rangeB_z = matrixBcutZend-matrixBcutZstart;
 
   int pGridDimensionSize;
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
-
-  U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
-  U sizeB = matrixB.getNumElems(rangeB_z, rangeB_x);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
   MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
@@ -469,19 +442,9 @@ void MM3D::Multiply(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixA
   TAU_FSTART(MM3D::MultiplyCut);
   // We will set up 2 matrices and call the method above.
 
-  using T = typename MatrixCType::ScalarType;
-  using U = typename MatrixCType::DimensionType;
   using StructureC = typename MatrixCType::StructureType;
 
-  U rangeA_x = matrixAcutXend-matrixAcutXstart;
-  U rangeA_y = matrixAcutYend-matrixAcutYstart;
-  U rangeC_z = matrixCcutZend - matrixCcutZstart;
-  U rangeC_x = matrixCcutXend - matrixCcutXstart; 
-
-  U sizeA = matrixA.getNumElems(rangeA_x, rangeA_y);
-  U sizeC = matrixC.getNumElems(rangeC_x, rangeC_z);
-
-  int size, pGridDimensionSize;
+  int pGridDimensionSize;
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
@@ -515,8 +478,6 @@ void MM3D::_start1(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& c
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
   size_t pGridCoordX = std::get<4>(commInfo3D);
   size_t pGridCoordY = std::get<5>(commInfo3D);
   size_t pGridCoordZ = std::get<6>(commInfo3D);
@@ -558,12 +519,8 @@ template<typename MatrixType, typename tupleStructure>
 void MM3D::_end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, tupleStructure& commInfo3D, size_t dir){
   TAU_FSTART(MM3D::_end1);
 
-  using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
 
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
   MPI_Comm depthComm = std::get<3>(commInfo3D);
 
   U numElems = matrix.getNumElems();
@@ -589,7 +546,6 @@ void MM3D::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& c
   // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
   MPI_Comm depthComm = std::get<3>(commInfo3D);
   size_t pGridCoordX = std::get<4>(commInfo3D);
   size_t pGridCoordY = std::get<5>(commInfo3D);
@@ -604,11 +560,7 @@ void MM3D::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& c
     in that case obviously, but I also need to make sure that things are still in order, which I think is harder now than it was in _start1( method )
 */
 
-  U localDimensionM = matrixA.getNumRowsLocal();
-  U localDimensionN = matrixB.getNumColumnsLocal();
-  U localDimensionK = matrixA.getNumColumnsLocal();
   std::vector<T>& dataA = matrixA.getVectorData(); 
-  std::vector<T>& dataB = matrixB.getVectorData();
   U sizeA = matrixA.getNumElems();
   U sizeB = matrixB.getNumElems();
 
@@ -616,16 +568,16 @@ void MM3D::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& c
   // Note: using rowCommSize here instead of rowCommSize shouldn't matter for a 3D grid with uniform 2D slices
   U localNumRowsA = matrixA.getNumRowsLocal();
   U localNumColumnsA = matrixA.getNumColumnsLocal();
-  U modA = localNumColumnsA%rowCommSize;
-  U divA = localNumColumnsA/rowCommSize;
+  int modA = localNumColumnsA%rowCommSize;
+  int divA = localNumColumnsA/rowCommSize;
   U gatherSizeA = (modA == 0 ? sizeA : (divA+1)*rowCommSize*localNumRowsA);
   std::vector<T> collectMatrixA(gatherSizeA);
-  U shift = (pGridCoordZ + pGridCoordX) % rowCommSize;
+  int shift = (pGridCoordZ + pGridCoordX) % rowCommSize;
   U dataAOffset = localNumRowsA*divA*shift;
   dataAOffset += std::min(shift,modA)*localNumRowsA;
   // matrixAEngineVector can stay with sizeA elements, because when we move data into it, we will get rid of the zeros.
   matrixAEngineVector.resize(sizeA);			// will need to change upon Serialize changes
-  U messageSizeA = gatherSizeA/rowCommSize;
+  int messageSizeA = gatherSizeA/rowCommSize;
 
   // Some processors will need to serialize
   if (modA && (shift >= modA)){
@@ -649,7 +601,7 @@ void MM3D::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& c
       // Later optimizaion: avoid copying unless writeIndex < readInde
       U readIndex = 0;
       U writeIndex = 0;
-      for (U i=0; i<rowCommSize; i++){
+      for (int i=0; i<rowCommSize; i++){
         U writeSize = (((modA == 0) || (i < modA)) ? messageSizeA : divA*localNumRowsA);
         memcpy(&collectMatrixA[writeIndex], &collectMatrixA[readIndex], writeSize*sizeof(T));
         writeIndex += writeSize;
@@ -663,7 +615,7 @@ void MM3D::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& c
     matrixAEngineVector.resize(sizeA);
     U shuffleAoffset = messageSizeA*((rowCommSize - pGridCoordZ)%rowCommSize);
     U stepA = 0;
-    for (U i=0; i<rowCommSize; i++){
+    for (int i=0; i<rowCommSize; i++){
       // Don't really need the 2nd if statement condition like the one above. Actually, neither do
       U writeSize = (((i % rowCommSize) < modA) ? messageSizeA : divA*localNumRowsA);
       memcpy(&matrixAEngineVector[stepA], &collectMatrixA[shuffleAoffset], writeSize*sizeof(T));
@@ -676,14 +628,14 @@ void MM3D::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& c
   // Now we Allgather partitions of matrix B
   U localNumRowsB = matrixB.getNumRowsLocal();
   U localNumColumnsB = matrixB.getNumColumnsLocal();
-  U modB = localNumRowsB%columnCommSize;
-  U divB = localNumRowsB/columnCommSize;
-  U blockLengthB = (modB == 0 ? divB : divB +1);
+  int modB = localNumRowsB%columnCommSize;
+  int divB = localNumRowsB/columnCommSize;
+  int blockLengthB = (modB == 0 ? divB : divB +1);
   shift = (pGridCoordZ + pGridCoordY) % columnCommSize;
   U dataBOffset = divB*shift;
   dataBOffset += std::min(shift, modB);       // WATCH: could be wrong
   U gatherSizeB = blockLengthB*columnCommSize*localNumColumnsB;
-  U messageSizeB = gatherSizeB/columnCommSize;
+  int messageSizeB = gatherSizeB/columnCommSize;
   std::vector<T> collectMatrixB(gatherSizeB);			// will need to change upon Serialize changes
   std::vector<T> partitionMatrixB(messageSizeB,0);			// Important to fill with zeros first
   // Special serialize. Can't use my MatrixSerializer here.
@@ -713,7 +665,7 @@ void MM3D::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& c
       // We always start in the same offset in the gatherBuffer
       U shuffleBoffset = messageSizeB*((columnCommSize - pGridCoordZ)%columnCommSize);
       U saveStepB = i*localNumRowsB;
-      for (U j=0; j<columnCommSize; j++){
+      for (int j=0; j<columnCommSize; j++){
         U writeSize = (((modB == 0) || ((j % columnCommSize) < modB)) ? blockLengthB : blockLengthB-1);
         U saveOffsetB = shuffleBoffset + i*blockLengthB;
 /*

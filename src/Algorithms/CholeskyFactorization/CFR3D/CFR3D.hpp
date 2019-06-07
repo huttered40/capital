@@ -7,7 +7,6 @@ CFR3D::Factor(MatrixAType& matrixA, MatrixTIType& matrixTI, typename MatrixAType
               char dir, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D){
   TAU_FSTART(CFR3D::Factor);
 
-  using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
 
   // Need to split up the commWorld communicator into a 3D grid similar to Summa3D
@@ -352,10 +351,10 @@ void CFR3D::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matrix
   // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
   // Fourth: Save the data that each processor owns according to the cyclic rule.
 
-  int rankSlice,sizeSlice,pGridDimensionSize;
+  int rankSlice,pGridDimensionSize;
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
   MPI_Comm_rank(std::get<2>(commInfo3D), &rankSlice);
-  sizeSlice = pGridDimensionSize*pGridDimensionSize;
+  int sizeSlice = pGridDimensionSize*pGridDimensionSize;
 
   // Should be fast pass-by-value via move semantics
   std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(

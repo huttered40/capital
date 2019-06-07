@@ -9,9 +9,7 @@ void CholeskyQR2::Factor1D(MatrixAType& matrixA, MatrixRType& matrixR, MPI_Comm 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
 
-  U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
-  U localDimensionM = matrixA.getNumRowsLocal();
   U localDimensionN = matrixA.getNumColumnsLocal();
 
   MatrixRType matrixR2(std::vector<T>(localDimensionN*localDimensionN), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
@@ -42,10 +40,8 @@ void CholeskyQR2::Factor3D(MatrixAType& matrixA, MatrixRType& matrixR, MPI_Comm 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
 
-  U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
   U localDimensionN = matrixA.getNumColumnsLocal();		// no error check here, but hopefully 
-  U localDimensionM = matrixA.getNumRowsLocal();		// no error check here, but hopefully 
 
   MatrixRType matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
   Factor3D_cqr(matrixA, matrixR, commWorld, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
@@ -78,9 +74,7 @@ void CholeskyQR2::FactorTunable(MatrixAType& matrixA, MatrixRType& matrixR, size
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
 
-  U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
-  U localDimensionM = matrixA.getNumRowsLocal();//globalDimensionM/gridDimensionD;
   U localDimensionN = matrixA.getNumColumnsLocal();//globalDimensionN/gridDimensionC;
 
   // Need to get the right global dimensions here, use a tunable package struct or something
@@ -152,7 +146,6 @@ void CholeskyQR2::Factor3D_cqr(MatrixAType& matrixA, MatrixRType& matrixR, MPI_C
   U localDimensionN = matrixA.getNumColumnsLocal();		// no error check here, but hopefully 
   U localDimensionM = matrixA.getNumRowsLocal();		// no error check here, but hopefully 
   U globalDimensionN = matrixA.getNumColumnsGlobal();		// no error check here, but hopefully 
-  U globalDimensionM = matrixA.getNumRowsGlobal();		// no error check here, but hopefully 
   std::vector<T>& dataA = matrixA.getVectorData();
   U sizeA = matrixA.getNumElems();
   std::vector<T> foreignA;	// dont fill with data first, because if root its a waste,
@@ -226,11 +219,9 @@ void CholeskyQR2::FactorTunable_cqr(MatrixAType& matrixA, MatrixRType& matrixR,
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t helper = gridDimensionC*gridDimensionC;
   size_t pCoordZ = worldRank%gridDimensionC;
-  size_t pCoordY = worldRank/helper;
   size_t pCoordX = (worldRank%helper)/gridDimensionC;
   #else
   size_t pCoordX = worldRank%gridDimensionC;
-  size_t pCoordY = (worldRank%sliceSize)/gridDimensionC;
   size_t pCoordZ = worldRank/sliceSize;
   #endif
 
@@ -238,7 +229,6 @@ void CholeskyQR2::FactorTunable_cqr(MatrixAType& matrixA, MatrixRType& matrixR,
   MPI_Comm_rank(columnContigComm, &columnContigRank);
 
   // Need to perform the multiple steps to get our partition of matrixA
-  U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixA.getNumColumnsGlobal();
   U localDimensionM = matrixA.getNumRowsLocal();//globalDimensionM/gridDimensionD;
   U localDimensionN = matrixA.getNumColumnsLocal();//globalDimensionN/gridDimensionC;
