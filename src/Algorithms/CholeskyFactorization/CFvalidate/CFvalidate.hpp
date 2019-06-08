@@ -72,7 +72,6 @@ typename MatrixAType::ScalarType CFvalidate::validateParallel(MatrixAType& matri
   MPI_Comm_size(commWorld, &size);
 
   auto commInfo = util::getCommunicatorSlice(commWorld);
-  MPI_Comm sliceComm = std::get<0>(commInfo);
   size_t pGridCoordX = std::get<1>(commInfo);
   size_t pGridCoordY = std::get<2>(commInfo);
   size_t pGridCoordZ = std::get<3>(commInfo);

@@ -65,8 +65,6 @@ static pair<typename MatrixAType::ScalarType,double>
 
 int main(int argc, char** argv){
   using MatrixTypeA = Matrix<DATATYPE,INTTYPE,Square,Cyclic>;
-  using MatrixTypeL = Matrix<DATATYPE,INTTYPE,Square,Cyclic>;
-  using MatrixTypeR = Matrix<DATATYPE,INTTYPE,Square,Cyclic>;
 
   #ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
@@ -87,13 +85,11 @@ int main(int argc, char** argv){
   size_t helper = pGridDimensionSize;
   helper *= helper;
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
-  size_t pCoordZ = rank%pGridDimensionSize;
   size_t pCoordY = rank/helper;
   size_t pCoordX = (rank%helper)/pGridDimensionSize;
   #else
   size_t pCoordX = rank%pGridDimensionSize;
   size_t pCoordY = (rank%helper)/pGridDimensionSize;
-  size_t pCoordZ = rank/helper;
   #endif
 
   /*

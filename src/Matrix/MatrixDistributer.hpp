@@ -102,7 +102,6 @@ void Cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensio
   srand48(key);
   U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   size_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
-  size_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
   U counter{1};
   U startIter;
   U endIter;
@@ -157,7 +156,6 @@ void Cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensio
         matrix[i][j] = 1.;
       }
       else{
-        U globalPos = saveGlobalPosY + saveGlobalPosX*globalDimensionY;
         matrix[i][j] = drand48();			// Change this later.
       }
       // check padding

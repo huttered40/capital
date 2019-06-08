@@ -39,13 +39,11 @@ int main(int argc, char** argv){
   size_t sliceSize = dimensionD*dimensionC;
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t helper = dimensionC*dimensionC;
-  size_t pCoordZ = rank%dimensionC;
   size_t pCoordY = rank/helper;
   size_t pCoordX = (rank%helper)/dimensionC;
   #else
   size_t pCoordX = rank%dimensionC;
   size_t pCoordY = (rank%sliceSize)/dimensionC;
-  size_t pCoordZ = rank/sliceSize;
   #endif
 
   size_t numIterations=atoi(argv[8]);

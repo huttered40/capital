@@ -542,7 +542,6 @@ void Serializer<Rectangular,Rectangular>::Serialize(SrcType& src, DestType& dest
   U srcNumElems = srcNumRows*srcNumColumns;
 
   std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T*>& srcMatrixData = src.getMatrixData();
   std::vector<T>& destVectorData = dest.getVectorData();
   std::vector<T*>& destMatrixData = dest.getMatrixData();
 
@@ -888,7 +887,6 @@ void Serializer<UpperTriangular,Rectangular>::Serialize(BigType& big, SmallType&
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
-  U bigNumRows = big.getNumRowsLocal();
   U bigNumColumns = big.getNumColumnsLocal();
 
   std::vector<T>& bigVectorData = big.getVectorData();

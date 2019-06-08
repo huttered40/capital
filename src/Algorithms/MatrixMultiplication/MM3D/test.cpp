@@ -22,13 +22,13 @@ static double runTestGemm(MatrixAType& matA, MatrixBType& matB, MatrixCType& mat
   #endif
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
-  volatile double startTime=MPI_Wtime();
+  double startTime=MPI_Wtime();
   #endif
   auto commInfo3D = util::build3DTopology(MPI_COMM_WORLD);
   MM3D::Multiply(matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
-  volatile double iterTimeLocal=MPI_Wtime();
+  double iterTimeLocal=MPI_Wtime();
   iterTimeLocal -= startTime;
   MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   if (rank == 0) { fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
@@ -60,7 +60,7 @@ static double runTestTrmm(MatrixAType& matA, MatrixBType& matB, blasEngineArgume
   MM3D::Multiply(matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
-  volatile double iterTimeLocal=MPI_Wtime();
+  double iterTimeLocal=MPI_Wtime();
   iterTimeLocal -= startTime;
   MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   if (rank == 0) { fptrTotal << size << "\t" << iterNum << "\t" << iterTimeGlobal << endl; }
@@ -74,7 +74,6 @@ static double runTestTrmm(MatrixAType& matA, MatrixBType& matB, blasEngineArgume
 
 
 int main(int argc, char** argv){
-  using MatrixTypeS = Matrix<DATATYPE,INTTYPE,Square,Cyclic>;
   using MatrixTypeR = Matrix<DATATYPE,INTTYPE,Rectangular,Cyclic>;
   using MatrixTypeLT = Matrix<DATATYPE,INTTYPE,LowerTriangular,Cyclic>;
   using MatrixTypeUT = Matrix<DATATYPE,INTTYPE,UpperTriangular,Cyclic>;
@@ -106,24 +105,19 @@ int main(int argc, char** argv){
   size_t helper = pGridDimensionSize;
   helper *= helper;
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
-  size_t pCoordZ = rank%pGridDimensionSize;
   size_t pCoordY = rank/helper;
   size_t pCoordX = (rank%helper)/pGridDimensionSize;
   #else
   size_t pCoordX = rank%pGridDimensionSize;
   size_t pCoordY = (rank%helper)/pGridDimensionSize;
-  size_t pCoordZ = rank/helper;
   #endif
 
   INTTYPE globalMatrixSizeM = atoi(argv[3]);
-  INTTYPE localMatrixSizeM = globalMatrixSizeM/pGridDimensionSize;
   INTTYPE globalMatrixSizeN = atoi(argv[4]);
-  INTTYPE localMatrixSizeN = globalMatrixSizeN/pGridDimensionSize;
 
   if (methodKey1 == 0){
     // GEMM
     INTTYPE globalMatrixSizeK = atoi(argv[5]);
-    INTTYPE localMatrixSizeK = globalMatrixSizeK/pGridDimensionSize;
     int numIterations = atoi(argv[6]);
     string fileStr = argv[7];
     string fileStrTotal=fileStr;

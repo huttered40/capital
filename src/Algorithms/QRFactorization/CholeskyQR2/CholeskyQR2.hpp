@@ -136,7 +136,6 @@ void CholeskyQR2::Factor3D_cqr(MatrixAType& matrixA, MatrixRType& matrixR, MPI_C
 
   MPI_Comm rowComm = std::get<0>(commInfo3D);
   MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm sliceComm = std::get<2>(commInfo3D);
   MPI_Comm depthComm = std::get<3>(commInfo3D);
   size_t pGridCoordX = std::get<4>(commInfo3D);
   size_t pGridCoordY = std::get<5>(commInfo3D);
@@ -218,11 +217,11 @@ void CholeskyQR2::FactorTunable_cqr(MatrixAType& matrixA, MatrixRType& matrixR,
   size_t sliceSize = gridDimensionD*gridDimensionC;
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t helper = gridDimensionC*gridDimensionC;
-  size_t pCoordZ = worldRank%gridDimensionC;
-  size_t pCoordX = (worldRank%helper)/gridDimensionC;
+  int pCoordZ = worldRank%gridDimensionC;
+  int pCoordX = (worldRank%helper)/gridDimensionC;
   #else
-  size_t pCoordX = worldRank%gridDimensionC;
-  size_t pCoordZ = worldRank/sliceSize;
+  int pCoordX = worldRank%gridDimensionC;
+  int pCoordZ = worldRank/sliceSize;
   #endif
 
   int columnContigRank;

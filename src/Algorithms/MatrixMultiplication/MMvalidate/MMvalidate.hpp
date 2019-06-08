@@ -18,14 +18,12 @@ void MMvalidate::validateLocal(MatrixAType& matrixA, MatrixBType& matrixB, Matri
   MPI_Comm_rank(sliceComm, &sliceRank);
   size_t pGridCoordX = std::get<1>(commInfo);
   size_t pGridCoordY = std::get<2>(commInfo);
-  size_t pGridCoordZ = std::get<3>(commInfo);
   size_t pGridDimensionSize = std::get<4>(commInfo);
 
   // Locally generate each matrix, then AllGather along the slice communicator. Buid the entire matrix. Only then can we feed into LAPACK/BLAS routines
   // Fast pass-by-value via modern C++ move semantics
   U localDimensionM = matrixA.getNumRowsLocal();
   U localDimensionN = matrixB.getNumColumnsLocal();
-  U localDimensionK = matrixA.getNumColumnsLocal();
   U globalDimensionM = matrixA.getNumRowsGlobal();
   U globalDimensionN = matrixB.getNumColumnsGlobal();
   U globalDimensionK = matrixA.getNumColumnsGlobal();
@@ -103,7 +101,6 @@ T MMvalidate::getResidual(std::vector<T>& myValues, std::vector<T>& blasValues,
   T error = 0;
   size_t pCoordX = std::get<1>(commInfo);
   size_t pCoordY = std::get<2>(commInfo);
-  size_t pCoordZ = std::get<3>(commInfo);
   size_t pGridDimensionSize = std::get<4>(commInfo);
   U myIndex = 0;
   U solIndex = pCoordX *globalDimensionM + pCoordY;

@@ -237,9 +237,6 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, std::tuple<MPI_Comm,s
   using Offload = typename MatrixType::OffloadType;
 
   MPI_Comm sliceComm = std::get<0>(commInfo);
-  size_t pGridCoordX = std::get<1>(commInfo);
-  size_t pGridCoordY = std::get<2>(commInfo);
-  size_t pGridCoordZ = std::get<3>(commInfo);
   size_t pGridDimensionSize = std::get<4>(commInfo);
 
   U localNumColumns = myMatrix.getNumColumnsLocal();

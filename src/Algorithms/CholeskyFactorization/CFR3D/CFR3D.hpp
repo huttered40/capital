@@ -354,7 +354,6 @@ void CFR3D::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matrix
   int rankSlice,pGridDimensionSize;
   MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
   MPI_Comm_rank(std::get<2>(commInfo3D), &rankSlice);
-  int sizeSlice = pGridDimensionSize*pGridDimensionSize;
 
   // Should be fast pass-by-value via move semantics
   std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
