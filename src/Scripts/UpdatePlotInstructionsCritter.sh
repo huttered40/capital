@@ -5,7 +5,7 @@ cp plotInstructions.sh plotInstructionsCopy.sh
 sed -i 's/echo "//g' plotInstructionsCopy.sh
 sed -i 's/"//g' plotInstructionsCopy.sh
 
-WriteFile="plotInstructionsNodeUsage.sh"
+WriteFile="plotInstructionsCritter.sh"
 
 numTestsTotal=0
 numPlotTagsTotal=0	# Does not have to be unique
@@ -63,6 +63,7 @@ do
           read binaryID
           if [ ${binaryID} -ne 1 ];
           then
+            read GarbagePlotTag
             read PlotTag
             numPlotTagsTotal=$(( ${numPlotTagsTotal} + 1 ))
             # Check to see if this PlotTag is new
@@ -182,7 +183,7 @@ do
   echo "echo \"${NewTestInfo[${NewTestInfoIndex}]}\"" >> ${WriteFile}	# ScaleType
   NewTestInfoIndex=$(( ${NewTestInfoIndex} + 1 ))
   NodeCount=${NewTestInfo[${NewTestInfoIndex}]}
-  echo "echo \"${NodeCount}\"" >> ${WriteFile}
+  echo "echo \"${NodeCount}\"" >> ${WriteFile}				# Number of unique nodecounts Ex. : 4 for {16,32,64,128}
   NewTestInfoIndex=$(( ${NewTestInfoIndex} + 1 ))
   for ((j=0;j<${NodeCount};j++));
   do
@@ -242,4 +243,4 @@ rm ${3}.tar
 tar -cvf ${3}.tar ${3}/*
 cd -
 
-rm updatePlotScript.sh
+rm updatePlotScriptCritter.sh

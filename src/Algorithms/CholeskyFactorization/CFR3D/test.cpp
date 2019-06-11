@@ -12,7 +12,7 @@ static pair<typename MatrixAType::ScalarType,double>
                  #ifdef PERFORMANCE
                  ofstream& fptrNumericsTotal,
                  #endif
-                 size_t iterNum, size_t numIter, size_t rank, size_t size, size_t& numFuncs){
+                 size_t iterNum, size_t numIter, size_t rank, size_t size, size_t pGridDimensionSize, size_t& numFuncs){
   using T = typename MatrixAType::ScalarType;
   double iterTimeGlobal=-1;
   T iterErrorGlobal;		// define this out here so that compilation doesn't fail with Critter/Analysis runs
@@ -38,7 +38,7 @@ static pair<typename MatrixAType::ScalarType,double>
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter_Print(fptrTotal, iterNum);
+  Critter_Print(fptrTotal, iterNum, size, pGridDimensionSize, pGridDimensionSize);
   #endif
 
   #ifdef PERFORMANCE
@@ -141,7 +141,7 @@ int main(int argc, char** argv){
       #ifdef PERFORMANCE
       fptrNumericsTotal,
       #endif
-      i, numIterations, rank, size, numFuncs);
+      i, numIterations, rank, size, pGridDimensionSize, numFuncs);
     
     #ifdef PERFORMANCE
     if (rank == 0){

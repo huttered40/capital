@@ -35,7 +35,7 @@ static double runTestGemm(MatrixAType& matA, MatrixBType& matB, MatrixCType& mat
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter_Print(fptrTotal, iterNum);
+  Critter_Print(fptrTotal, iterNum, size, pGridDimensionSize, pGridDimensionSize);
   #endif
   return iterTimeGlobal;
 }

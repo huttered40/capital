@@ -141,8 +141,10 @@ do
 done
 
 # Write to a new file that will offer opportunity to mutate plotInstructions in order to analyze the node usage in scaling studies.
-echo "cp ${RESULTSPATH}/${destDir}/plotInstructions.sh plotInstructions.sh" > updatePlotScript.sh
-echo "bash UpdatePlotInstructions.sh ${RESULTSPATH} ${RESULTSPATH}/${destDir}/ ${destDir} \${1}" >> updatePlotScript.sh
+echo "cp ${RESULTSPATH}/${destDir}/plotInstructions.sh plotInstructions.sh" > updatePlotScriptNodeUsage.sh
+echo "bash UpdatePlotInstructionsNodeUsage.sh ${RESULTSPATH} ${RESULTSPATH}/${destDir}/ ${destDir} \${1}" >> updatePlotScriptNodeUsage.sh
+echo "cp ${RESULTSPATH}/${destDir}/plotInstructions.sh plotInstructions.sh" > updatePlotScriptCritter.sh
+echo "bash UpdatePlotInstructionsCritter.sh ${RESULTSPATH} ${RESULTSPATH}/${destDir}/ ${destDir} \${1}" >> updatePlotScriptCritter.sh
 
 cd ${RESULTSPATH}
 tar -cvf ${destDir}.tar ${destDir}/*
@@ -151,4 +153,5 @@ rm RunStats
 rm collectDataStage2.sh
 
 # Start stage 3
-bash updatePlotScript.sh
+bash updatePlotScriptNodeUsage.sh
+bash updatePlotScriptCritter.sh

@@ -843,7 +843,8 @@ launch$tag1 () {
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag1}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${curInverseCutOffMult}_\${pDimD}_\${pDimC}_\${ppn}_\${tpr}_\${NumNodes}nodes"
     local PostFile="${tag1}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${curInverseCutOffMult}_\${pDimDorig}_\${pDimCorig}_\${ppn}_\${tpr}"
-    local UpdatePlotFile="${tag1}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${curInverseCutOffMult}_\${pDimCorig}"
+    local UpdatePlotFile1="${tag1}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${curInverseCutOffMult}_\${pDimCorig}"
+    local UpdatePlotFile2="${tag1}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${ppn}_\${tpr}"
 
     # Special corner case that only occurs for weak scaling, where invCutOff can increment abruptly to a value its never been before.
     isUniqueTag=1
@@ -864,7 +865,7 @@ launch$tag1 () {
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ] || [ \${isUniqueTag} -eq 1 ];
     then
-      WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag1} \${PostFile} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
+      WriteMethodDataForPlotting 0 \${UpdatePlotFile1} \${UpdatePlotFile2} ${tag1} \${PostFile} \${pDimD} \${pDimC} \${curInverseCutOffMult} \${ppn} \${tpr}
       TemporaryDCplotInfo \${scaleRegime} \${nodeIndex} \${nodeCount} \${pDimDorig} \${pDimCorig} \${WScounterOffset}
       writePlotFileName \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1  
     fi
@@ -910,12 +911,13 @@ launch$tag2 () {
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="\${binaryTag}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${numProws}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
     local PostFile="\${binaryTag}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${numProwsorig}_\${k}_\${ppn}_\${tpr}"
-    local UpdatePlotFile="\${binaryTag}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${numPcolsorig}_\${k}"
+    local UpdatePlotFile1="\${binaryTag}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${numPcolsorig}_\${k}"
+    local UpdatePlotFile2="\${binaryTag}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${ppn}_\${tpr}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      WriteMethodDataForPlotting 0 \${UpdatePlotFile} \${binaryTag} \${PostFile} \${numProws} \${k} \${ppn} \${tpr}
+      WriteMethodDataForPlotting 0 \${UpdatePlotFile1} \${UpdatePlotFile2} \${binaryTag} \${PostFile} \${numProws} \${k} \${ppn} \${tpr}
       writePlotFileNameScalapackQR \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
@@ -967,12 +969,13 @@ launch$tag3 () {
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag3}_\${scale}_\${matrixDimM}_\${curInverseCutOffMult}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes"
     local PostFile="${tag3}_\${scale}_\${matrixDimMorig}_\${curInverseCutOffMult}_\${cubeDimorig}_\${ppn}_\${tpr}"
-    local UpdatePlotFile="${tag3}_\${scale}_\${matrixDimMorig}_\${curInverseCutOffMult}_\${cubeDimorig}"
+    local UpdatePlotFile1="${tag3}_\${scale}_\${matrixDimMorig}_\${curInverseCutOffMult}_\${cubeDimorig}"
+    local UpdatePlotFile2="${tag3}_\${scale}_\${matrixDimMorig}_\${ppn}_\${tpr}"
 
     # Plot instructions only need a single output per scaling study
     if [ \${nodeIndex} == 0 ];
     then
-      WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag3} \${PostFile} \${cubeDim} \${curInverseCutOffMult} \${ppn} \${tpr}
+      WriteMethodDataForPlotting 0 \${UpdatePlotFile1} \${UpdatePlotFile2} ${tag3} \${PostFile} \${cubeDim} \${curInverseCutOffMult} \${ppn} \${tpr}
       writePlotFileName \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
@@ -1010,12 +1013,13 @@ launch$tag4 () {
     # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
     local PreFile="${tag4}_\${scale}_\${matrixDimM}_\${k}_\${ppn}_\${tpr}_\${NumNodes}nodes"
     local PostFile="${tag4}_\${scale}_\${matrixDimMorig}_\${k}_\${ppn}_\${tpr}"
-    local UpdatePlotFile="${tag4}_\${scale}_\${matrixDimMorig}_\${k}"
+    local UpdatePlotFile1="${tag4}_\${scale}_\${matrixDimMorig}_\${k}"
+    local UpdatePlotFile2="${tag4}_\${scale}_\${ppn}_\${tpr}"
 
     if [ \${nodeIndex} == 0 ];
     then
       # Write to plotInstructions file
-      WriteMethodDataForPlotting 0 \${UpdatePlotFile} ${tag4} \${PostFile} \${k} \${ppn} \${tpr}
+      WriteMethodDataForPlotting 0 \${UpdatePlotFile1} \${UpdatePlotFile2} ${tag4} \${PostFile} \${k} \${ppn} \${tpr}
       writePlotFileNameScalapackCholesky \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
     fi
 
@@ -1402,7 +1406,8 @@ then
               qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
             elif [ "${machineName}" == "BLUEWATERS" ];
             then
-              qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
+              echo "hello"
+              #qsub ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.pbs
             else
               chmod +x ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh
               sbatch --mail-user=${MyEmail} --mail-type=all ${fileName}/script_${fileID}id_${roundID}round_${curLaunchID}launchID_${curNumNodes}nodes_${curPPN}ppn_${curTPR}tpr.sh

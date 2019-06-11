@@ -33,5 +33,7 @@ scaplotDir=../../../scaplot/
 scriptDir=$(pwd)
 
 # Generate the Makefile for Scaplot
-cd ${scaplotDir}/CAMFS
-bash ../../../ResearchData/TemporaryData/${resultsDir}/plotInstructions.sh | bash MakePlotScript.sh
+# Now that there are 3 different options of plotInstructions, manually pick one after running this script.
+# We leave the form below so that its understood how to perform the call.
+#cd ${scaplotDir}/CAMFS
+#bash ../../../ResearchData/TemporaryData/${resultsDir}/plotInstructions.sh | bash MakePlotScript.sh

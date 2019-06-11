@@ -117,7 +117,7 @@ int main(int argc, char** argv){
     #endif
     TAU_FSTOP_FILE(Total, fptrTotal, i, numFuncs);
     #ifdef CRITTER
-    Critter_Print(fptrTotal, i);
+    Critter_Print(fptrTotal, i, size, dimensionD, dimensionC);
     #endif
 
     #ifdef PERFORMANCE
