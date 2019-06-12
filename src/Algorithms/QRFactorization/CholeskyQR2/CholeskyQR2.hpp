@@ -17,13 +17,6 @@ void CholeskyQR2::Factor1D(MatrixAType& matrixA, MatrixRType& matrixR, MPI_Comm 
   Factor1D_cqr(matrixA, matrixR, commWorld);
   Factor1D_cqr(matrixA, matrixR2, commWorld);
 
-  // Remove all zeros from LT part of only matrixR, since we are using TRMM
-  // TODO: motivation for policy class design decision. Is this cost worth it just to use TRMM instead of GEMM?
-  for (U i=0; i<localDimensionN; i++){
-    for (U j=i+1; j<localDimensionN; j++){
-      matrixR.getRawData()[i*localDimensionN+j] = 0;
-    }
-  }
   blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
     blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   blasEngine::_trmm(matrixR2.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionN,
