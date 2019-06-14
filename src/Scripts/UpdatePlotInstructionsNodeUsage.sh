@@ -130,6 +130,11 @@ do
               fi
             fi
 
+            if [ "${profType}" == "PC" ];	# Not worrying about Timer now
+            then
+              numGarbageReads=$(( ${numGarbageReads} + 2 ))	# for two critter files
+            fi
+
             if [ "${binaryTag}" == "cqr2" ] && [ "${scaleType}" == "WS" ];
             then
               incrAmount=$(( ${NodeCount} * 3 ))
