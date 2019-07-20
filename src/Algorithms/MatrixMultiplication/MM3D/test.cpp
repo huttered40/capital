@@ -35,7 +35,7 @@ static double runTestGemm(MatrixAType& matA, MatrixBType& matB, MatrixCType& mat
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter::print(fptrTotal, iterNum, size, pGridDimensionSize, pGridDimensionSize);
+  Critter::print(fptrTotal, "MatrixMultiplication", size, pGridDimensionSize, pGridDimensionSize);
   #endif
   return iterTimeGlobal;
 }
@@ -67,7 +67,7 @@ static double runTestTrmm(MatrixAType& matA, MatrixBType& matB, blasEngineArgume
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter::print(fptrTotal, iterNum);
+  Critter::print(fptrTotal, "MatrixMultiplication");
   #endif
   return iterTimeGlobal;
 }

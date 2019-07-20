@@ -5,8 +5,6 @@
 
 using namespace std;
 
-// Idea: We calculate 3D Summa as usual, and then we pass it into the MMvalidate solo class
-
 int main(int argc, char** argv){
   using MatrixTypeS = Matrix<DATATYPE,INTTYPE,Square,Cyclic>;
   using MatrixTypeR = Matrix<DATATYPE,INTTYPE,Rectangular,Cyclic>;
@@ -79,12 +77,10 @@ int main(int argc, char** argv){
   double totalTime = 0;
   #endif
 
-  // Critter debugging
-//  #ifdef CRITTER
-//  cout << "I am rank " << rank << " of " << size << endl;
-//  MPI_Finalize();
-//  return 0;
-//  #endif
+  #ifdef CRITTER
+  std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionD,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
+  std::vector<const char*> InputNames{"m","n","d","c","bcm","icm","pdm"};
+  #endif
 
   size_t numFuncs = 0;				// For figuring out how many functions are being profiled (smart way to find average over all iterations)
   size_t i;
@@ -117,7 +113,7 @@ int main(int argc, char** argv){
     #endif
     TAU_FSTOP_FILE(Total, fptrTotal, i, numFuncs);
     #ifdef CRITTER
-    Critter::print(fptrTotal, i, size, dimensionD, dimensionC);
+    Critter::print(fptrTotal, "QR", size, Inputs.size(), &Inputs[0], &InputNames[0]);
     #endif
 
     #ifdef PERFORMANCE

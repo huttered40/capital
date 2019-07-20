@@ -38,7 +38,7 @@ static pair<typename MatrixAType::ScalarType,double>
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter::print(fptrTotal, iterNum, size, pGridDimensionSize, pGridDimensionSize);
+  Critter::print(fptrTotal, "Cholesky", size, pGridDimensionSize, pGridDimensionSize);
   #endif
 
   #ifdef PERFORMANCE
