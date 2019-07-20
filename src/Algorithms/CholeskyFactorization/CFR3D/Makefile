@@ -25,7 +25,7 @@ ifneq ($(PORTER_machine),)
   CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
   CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/multicore-linux-x86_64/bin/ampicxx
   CFLAGS = -g -Wall -O3 -std=c++14
-  LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/CRITTER/critter/lib
+  LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/critter/lib
   LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/liblapacke.a /home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/liblapack.a -lgfortran -lpthread -lcritter
 
   OBJS1 = cfr3d_$(MACHINE)_mpi_$(PROFTYPE)
