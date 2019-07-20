@@ -100,33 +100,18 @@ do
             numGarbageReads=0
             if [ "${binaryTag}" == "cqr2" ];
             then
-              numGarbageReads=10
+              numGarbageReads=12	# includes two critter files
               if [ ${isUnique} -eq 1 ];
               then
                 saveMethodID+=(0)
               fi
-            elif [ "${binaryTag}" == "bsqr" ] || [ "${binaryTag}" == "rsqr" ];
-            then
-              numGarbageReads=9
-              if [ ${isUnique} -eq 1 ];
-              then
-                saveMethodID+=(1)
-              fi
             elif [ "${binaryTag}" == "cfr3d" ];
             then
               # TODO: This isn't write. Fix when doing first Cholesky run
-              numGarbageReads=10
+              numGarbageReads=12	# includes two critter files
               if [ ${isUnique} -eq 1 ];
               then
                 saveMethodID+=(2)
-              fi
-            elif [ "${binaryTag}" == "bscf" ];
-            then
-              # TODO: This isn't write. Fix when doing first Cholesky run
-              numGarbageReads=10
-              if [ ${isUnique} -eq 1 ];
-              then
-                saveMethodID+=(3)
               fi
             fi
 
