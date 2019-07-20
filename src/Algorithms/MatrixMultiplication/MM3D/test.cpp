@@ -18,7 +18,7 @@ static double runTestGemm(MatrixAType& matA, MatrixBType& matB, MatrixCType& mat
   matC.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   #ifdef CRITTER
-  Critter_Clear();
+  Critter::reset();
   #endif
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
@@ -35,7 +35,7 @@ static double runTestGemm(MatrixAType& matA, MatrixBType& matB, MatrixCType& mat
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter_Print(fptrTotal, iterNum, size, pGridDimensionSize, pGridDimensionSize);
+  Critter::print(fptrTotal, iterNum, size, pGridDimensionSize, pGridDimensionSize);
   #endif
   return iterTimeGlobal;
 }
@@ -49,7 +49,7 @@ static double runTestTrmm(MatrixAType& matA, MatrixBType& matB, blasEngineArgume
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   #ifdef CRITTER
-  Critter_Clear();
+  Critter::clear();
   #endif
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
@@ -67,7 +67,7 @@ static double runTestTrmm(MatrixAType& matA, MatrixBType& matB, blasEngineArgume
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter_Print(fptrTotal, iterNum);
+  Critter::print(fptrTotal, iterNum);
   #endif
   return iterTimeGlobal;
 }

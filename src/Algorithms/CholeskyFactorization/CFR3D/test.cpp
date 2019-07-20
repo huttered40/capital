@@ -21,7 +21,7 @@ static pair<typename MatrixAType::ScalarType,double>
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   #ifdef CRITTER
-  Critter_Clear();
+  Critter::reset();
   #endif
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
@@ -38,7 +38,7 @@ static pair<typename MatrixAType::ScalarType,double>
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter_Print(fptrTotal, iterNum, size, pGridDimensionSize, pGridDimensionSize);
+  Critter::print(fptrTotal, iterNum, size, pGridDimensionSize, pGridDimensionSize);
   #endif
 
   #ifdef PERFORMANCE

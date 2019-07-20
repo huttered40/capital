@@ -97,7 +97,7 @@ int main(int argc, char** argv){
     #endif
     MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
     #ifdef CRITTER
-    Critter_Clear();
+    Critter::reset();
     #endif
     TAU_FSTART(Total);
     #ifdef PERFORMANCE
@@ -117,7 +117,7 @@ int main(int argc, char** argv){
     #endif
     TAU_FSTOP_FILE(Total, fptrTotal, i, numFuncs);
     #ifdef CRITTER
-    Critter_Print(fptrTotal, i, size, dimensionD, dimensionC);
+    Critter::print(fptrTotal, i, size, dimensionD, dimensionC);
     #endif
 
     #ifdef PERFORMANCE
