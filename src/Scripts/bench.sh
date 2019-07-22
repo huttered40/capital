@@ -4,6 +4,7 @@ tag1='cqr2'
 tag2='bsqr'
 tag3='cfr3d'
 tag4='bscf'
+tag5='mm3d'
 
 # Product of PPN and TPR. Tells me how each node is being used.
 minPEcountPerNode=""
@@ -984,7 +985,6 @@ launch$tag3 () {
     writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
     curInverseCutOffMult=\$(( \${curInverseCutOffMult} + 1 ))
   done
-
 }
 
 # For ScaLAPACK Cholesky Factorization --- DOESNT CURRENTLY WORK!
@@ -1028,6 +1028,52 @@ launch$tag4 () {
   done
 }
 
+# For MM3D
+launch$tag5 () {
+  # launch CFR3D
+  local scale=\${1}
+  local binaryPath=\${2}
+  local numIterations=\${3}
+  local launchID=\${4}
+  local NumNodes=\${5}
+  local ppn=\${6}
+  local tpr=\${7}
+  local gemmORtrmm=\${8}
+  local algChoice=\${9}
+  local matrixDimM=\${10}
+  local matrixDimN=\${11}
+  local matrixDimK=\${12}
+  local matrixDimMorig=\${13}
+  local matrixDimNorig=\${14}
+  local matrixDimKorig=\${15}
+  local cubeDimorig=\${16}
+  local cubeDim=\${17}
+  local nodeIndex=\${18}
+  local scaleRegime=\${19}
+  local nodeCount=\${20}
+
+  # Set up the file string that will store the local benchmarking results
+  local fileString="DataFiles/results_${tag5}_\${scale}_\${NumNodes}nodes_\${matrixDimM}dimM_\${matrixDimN}dimN_\${matrixDimK}dimK_\${cubeDim}cubeDim_\${numIterations}numIter_\${ppn}ppn_\${tpr}tpr_\${curLaunchID}launchID"
+  # 'PreFile' requires NumNodes specification because in the 'Pre' stage, we want to keep the data for different node counts separate.
+  local PreFile="${tag5}_\${scale}_\${matrixDimM}_\${matrixDimN}_\${matrixDimK}_\${cubeDim}_\${ppn}_\${tpr}_\${NumNodes}nodes"
+  local PostFile="${tag5}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${matrixDimKorig}_\${cubeDimorig}_\${ppn}_\${tpr}"
+  local UpdatePlotFile1="${tag5}_\${scale}_\${matrixDimMorig}_\${matrixDimNorig}_\${matrixDimKorig}_\${cubeDimorig}"
+  local UpdatePlotFile2="${tag5}_\${scale}_\${matrixDimMorig}__\${matrixDimNorig}_\${matrixDimKorig}\${ppn}_\${tpr}"
+
+  # Plot instructions only need a single output per scaling study
+  if [ \${nodeIndex} == 0 ];
+  then
+    WriteMethodDataForPlotting 0 \${UpdatePlotFile1} \${UpdatePlotFile2} ${tag5} \${PostFile} \${cubeDim} \${ppn} \${tpr}
+    writePlotFileName \${PostFile} $SCRATCH/${fileName}/plotInstructions.sh 1
+  fi
+
+  WriteMethodDataForCollectingStage1 ${tag5} \${PreFile} \${PreFile}_perf \${PreFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage1.sh
+  WriteMethodDataForCollectingStage2 \${launchID} ${tag5} \${PreFile} \${PreFile}_perf \${PreFile}_numerics \${PostFile} \${PostFile}_perf \${PostFile}_numerics $SCRATCH/${fileName}/collectInstructionsStage2.sh
+  # Don't pass in 'cubeDim', because this is inferred based on the number of processes, as its just the cube root
+  launchJobsPortal \${binaryPath} ${tag5} \${fileString} \${curLaunchID} \${NumNodes} \${ppn} \${tpr} \${gemmORtrmm} \${algChoice} \${matrixDimM} \${matrixDimN} \${matrixDimK} \${numIterations} $SCRATCH/${fileName}/\${fileString}
+  writePlotFileName \${fileString} $SCRATCH/${fileName}/collectInstructionsStage1.sh 0
+}
+
 
 # Note: in future, I may want to decouple numBinaries and numPlotTargets, but only when I find it necessary
 # Write to Plot Instructions file, for use by SCAPLOT makefile generator
@@ -1053,9 +1099,9 @@ do
 
   # Now allowing for WS and SS of any kind in a single bench job.
   read -p "Enter Scaling regime:\
-	   [0 -> Weak scaling with increasingly rectangular matrix/grid for QR (QR only)\
-	    1 -> Strong scaling with increasingly rectangular grid for QR, larger cubic grid for CF\
-            2 -> Weak scaling with alternating scaling scheme for QR, regular scaling scheme for CF]: " scaleRegime
+	   [0 -> Weak scaling with increasingly rectangular matrix/grid for QR, regular scaling scheme for CF,MM\
+	    1 -> Strong scaling with increasingly rectangular grid for QR, larger cubic grid for CF,MM\
+            2 -> Weak scaling with alternating scaling scheme for QR only]: " scaleRegime
 
   scale="WS"
   if [ \${scaleRegime} == "1" ];		# The rest are WS, which is it already set as
@@ -1088,7 +1134,7 @@ do
     echo -e "\nStage #\${j}"
 
     # Echo for SCAPLOT makefile generator
-    read -p "Enter binary tag [0 for CA-CQR2, 1 for bsqr, 2 for CFR3D, 3 for bscf, 4 for quit, 5 for rsqr]: " binaryTagChoice
+    read -p "Enter binary tag [0 for CA-CQR2, 1 for bsqr, 2 for CFR3D, 3 for bscf, 4 for quit, 5 for rsqr, 6 for mm3d]: " binaryTagChoice
     echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/collectInstructionsStage1.sh
     echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/collectInstructionsStage2.sh
     echo "echo \"\${binaryTagChoice}\"" >> $SCRATCH/${fileName}/plotInstructions.sh
@@ -1115,6 +1161,9 @@ do
     elif [ \${binaryTagChoice} == 5 ];
     then
       binaryTag=rsqr
+    elif [ \${binaryTagChoice} == 6 ];
+    then
+      binaryTag=mm3d
     fi
 
     binaryPath=${BINPATH}\${binaryTag}_${machineName}
@@ -1152,6 +1201,12 @@ do
       read -p "Enter the minimum block size: " minBlockSize
       read -p "Enter the maximum block size: " maxBlockSize
       # Anything else? Is above, sufficient?
+    elif [ \${binaryTag} == 'mm3d' ];
+    then
+      read -p "Gemm[0] or TRMM[1]: " gemmORtrmmChoice
+      read -p "Bcast+Allreduce[0] or Allgather+Allreduce[1]: " bcastORallgatherChoice
+      read -p "Enter matrix dimension k: " matrixDimK
+      read -p "Enter the starting (cubic) processor grid dimension: " cubeDim
     fi
 
     for ((curLaunchID=1; curLaunchID<=${NumLaunchesPerBinary}; curLaunchID+=1));
@@ -1161,6 +1216,10 @@ do
       nodeIndex=0
       curMatrixDimM=\${matrixDimM}
       curMatrixDimN=\${matrixDimN}
+      if [ \${binaryTag} == 'mm3d' ];
+      then
+        curMatrixDimK=\${matrixDimK}
+      fi
       WShelpcounter=0			# change if we want to start at node offset (rare)
       # cqr2
       pDimCArray=()
@@ -1255,6 +1314,9 @@ do
 	      elif [ \${binaryTag} == 'bscf' ];
 	      then
 		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${curMatrixDimM} \${matrixDimM} \${minBlockSize} \${maxBlockSize} \${nodeIndex} \${scaleRegime} \${nodeCount}
+	      elif [ \${binaryTag} == 'mm3d' ];
+	      then
+		launch\${binaryTag} \${scale} \${binaryPath} \${numIterations} \${curLaunchID} \${curNumNodes} \${curPPN} \${curTPR} \${gemmORtrmmChoice} \${bcastORallgatherChoice} \${curMatrixDimM} \${curMatrixDimN} \${curMatrixDimK} \${matrixDimM} \${matrixDimN} \${matrixDimK} \${cubeDim} \${curCubeDim} \${nodeIndex} \${scaleRegime} \${nodeCount}
 	      fi
             fi
           done
@@ -1277,9 +1339,14 @@ do
 	    echo "Do nothing"
 	  fi
 	  # below: cfr3d
-	  if [ \${binaryTag} == 'cfr3d' ];
+	  if [ \${binaryTag} == 'cfr3d' ] || [ \${binaryTag} == 'mm3d' ];
           then
             curCubeDim=\$(( \${curCubeDim} * 2 ))
+            if [ \${binaryTag} == 'mm3d' ];
+	    then
+	      curMatrixDimN=\$(( \${curMatrixDimN} * 2 ))
+	      curMatrixDimK=\$(( \${curMatrixDimK} * 2 ))
+	    fi
           fi
         elif [ \${scaleRegime} == 1 ];
 	then
@@ -1295,7 +1362,7 @@ do
 	    echo "Do nothing"
 	  fi
 	  # below: cfr3d
-	  if [ \${binaryTag} == 'cfr3d' ];
+	  if [ \${binaryTag} == 'cfr3d' ] || [ \${binaryTag} == 'mm3d' ];
           then
             curCubeDim=\$(( \${curCubeDim} * 2 ))
           fi
@@ -1340,11 +1407,6 @@ do
             then
 	      echo "Do nothing"
 	    fi
-          fi
-	  # below: cfr3d
-	  if [ \${binaryTag} == 'cfr3d' ];
-          then
-            curCubeDim=\$(( \${curCubeDim} * 2 ))
           fi
           WShelpcounter=\$(( \${WShelpcounter} + 1 ))
 	fi

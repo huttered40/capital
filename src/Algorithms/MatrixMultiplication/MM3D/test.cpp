@@ -19,6 +19,8 @@ static double runTestGemm(MatrixAType& matA, MatrixBType& matB, MatrixCType& mat
   MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   #ifdef CRITTER
   Critter::reset();
+  std::vector<size_t> Inputs{matA.getNumRowsGlobal(),matA.getNumColumnsGlobal(),matB.getNumColumnsGlobal(),pGridDimensionSize};
+  std::vector<const char*> InputNames{"m","n","k","c"};
   #endif
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
@@ -35,7 +37,7 @@ static double runTestGemm(MatrixAType& matA, MatrixBType& matB, MatrixCType& mat
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter::print(fptrTotal, "MatrixMultiplication", size, pGridDimensionSize, pGridDimensionSize);
+  Critter::print(fptrTotal, "MatrixMultiplication", size, Inputs.size(), &Inputs[0], &InputNames[0]);
   #endif
   return iterTimeGlobal;
 }
@@ -49,7 +51,9 @@ static double runTestTrmm(MatrixAType& matA, MatrixBType& matB, blasEngineArgume
   matB.DistributeRandom(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, (pCoordX*pGridDimensionSize + pCoordY)*(-1));
   MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   #ifdef CRITTER
-  Critter::clear();
+  Critter::reset();
+  std::vector<size_t> Inputs{matA.getNumRowsGlobal(),matA.getNumColumnsGlobal(),matB.getNumColumnsGlobal(),pGridDimensionSize};
+  std::vector<const char*> InputNames{"m","n","k","c"};
   #endif
   TAU_FSTART(Total);
   #ifdef PERFORMANCE
@@ -67,7 +71,7 @@ static double runTestTrmm(MatrixAType& matA, MatrixBType& matB, blasEngineArgume
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter::print(fptrTotal, "MatrixMultiplication");
+  Critter::print(fptrTotal, "MatrixMultiplication", size, Inputs.size(), &Inputs[0], &InputNames[0]);
   #endif
   return iterTimeGlobal;
 }
