@@ -12,7 +12,7 @@ static pair<typename MatrixAType::ScalarType,double>
                  #ifdef PERFORMANCE
                  ofstream& fptrNumericsTotal,
                  #endif
-                 size_t iterNum, size_t numIter, size_t rank, size_t size, size_t pGridDimensionSize, size_t& numFuncs){
+                 size_t iterNum, size_t numIter, size_t rank, size_t size, size_t& numFuncs){
   using T = typename MatrixAType::ScalarType;
   double iterTimeGlobal=-1;
   T iterErrorGlobal;		// define this out here so that compilation doesn't fail with Critter/Analysis runs
@@ -21,6 +21,8 @@ static pair<typename MatrixAType::ScalarType,double>
   matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
   #ifdef CRITTER
+  std::vector<size_t> Inputs{matA.getNumRowsGlobal(),pGridDimensionSize,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
+  std::vector<const char*> InputNames{"n","c","bcm","icm","pdm"};
   Critter::reset();
   #endif
   TAU_FSTART(Total);
@@ -38,7 +40,7 @@ static pair<typename MatrixAType::ScalarType,double>
   #endif
   TAU_FSTOP_FILE(Total, fptrTotal, iterNum, numFuncs);
   #ifdef CRITTER
-  Critter::print(fptrTotal, "Cholesky", size, pGridDimensionSize, pGridDimensionSize);
+  Critter::print(fptrTotal, "Cholesky", size, Inputs.size(), &Inputs[0], &InputNames[0]);
   #endif
 
   #ifdef PERFORMANCE
@@ -141,7 +143,7 @@ int main(int argc, char** argv){
       #ifdef PERFORMANCE
       fptrNumericsTotal,
       #endif
-      i, numIterations, rank, size, pGridDimensionSize, numFuncs);
+      i, numIterations, rank, size, numFuncs);
     
     #ifdef PERFORMANCE
     if (rank == 0){
