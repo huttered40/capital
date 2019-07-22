@@ -402,11 +402,10 @@ do
     minPPN=\${ppnMinListRunTime[\${ppnIndex}]}
     maxPPN=\${ppnMaxListRunTime[\${ppnIndex}]}
     curPPN=\${minPPN}
-    tprIndex=0
     while [ \${curPPN} -le \${maxPPN} ];
     do
-      minTPR=\${tprMinListRunTime[\${tprIndex}]}
-      maxTPR=\${tprMaxListRunTime[\${tprIndex}]}
+      minTPR=\${tprMinListRunTime[\${ppnIndex}]}
+      maxTPR=\${tprMaxListRunTime[\${ppnIndex}]}
       curTPR=\${minTPR}
       while [ \${curTPR} -le \${maxTPR} ];
       do
@@ -491,7 +490,6 @@ do
         curTPR=\$(( \${curTPR} * ${tprScaleFactor} ))
       done
       curPPN=\$(( \${curPPN} * ${ppnScaleFactor} ))
-      tprIndex=\$(( \${tprIndex} + 1 ))
     done
     curNumNodes=\$(( \${curNumNodes} * ${nodeScaleFactor} ))   # So far, only use cases for nodeScaleFactor are 2 and 16.
     ppnIndex=\$(( \${ppnIndex} + 1 ))
