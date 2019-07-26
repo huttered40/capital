@@ -1,4 +1,4 @@
-all_mpi:
+all:
 	make -C./Algorithms/QRFactorization/CholeskyQR2/ MPI
 	make -C./Algorithms/CholeskyFactorization/CFR3D/ MPI
 	make -C./Algorithms/MatrixMultiplication/MM3D/ MPI
@@ -8,13 +8,13 @@ all_ampi:
 	make -C./Algorithms/CholeskyFactorization/CFR3D/ AMPI
 	make -C./Algorithms/MatrixMultiplication/MM3D/ AMPI
 
-cqr2_mpi:
+cqr2:
 	make -C./Algorithms/QRFactorization/CholeskyQR2/ MPI
 
-cfr3d_mpi:
+cfr3d:
 	make -C./Algorithms/CholeskyFactorization/CFR3D/ MPI
 
-mm3d_mpi:
+mm3d:
 	make -C./Algorithms/MatrixMultiplication/MM3D/ MPI
 
 cqr2_ampi:
