@@ -28,8 +28,8 @@ ifneq ($(PORTER_machine),)
   LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/critter/lib
   LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread -lcritter
 
-  OBJS1 = cqr2_$(MACHINE)_mpi_$(PROFTYPE)
-  OBJS2 = cqr2_$(MACHINE)_ampi_$(PROFTYPE)
+  OBJS1 = cacqr2_$(MACHINE)_mpi_$(PROFTYPE)
+  OBJS2 = cacqr2_$(MACHINE)_ampi_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -61,7 +61,7 @@ ifneq ($(BGQ_machine),)
   LIB_PATH=-L../../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64
   LIBS=-llapack -lcblas -lblas -lesslbg -lgfortran -lxlopt -lxlf90_r -lxlfmath -lxl -lcritter
 
-  OBJS1 = cqr2_$(MACHINE)_$(PROFTYPE)
+  OBJS1 = cacqr2_$(MACHINE)_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -84,7 +84,7 @@ ifneq ($(THETA_machine),)
   LIB_PATH=-L../../../../../CritterXC40/critter/lib
   LIBS=-lcritter
 
-  OBJS1 = cqr2_$(MACHINE)_$(PROFTYPE)
+  OBJS1 = cacqr2_$(MACHINE)_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -106,7 +106,7 @@ ifneq ($(STAMPEDE2_machine),)
   LIB_PATH=-L../../../../../critter/lib
   LIBS=-lcritter
 
-  OBJS1 = cqr2_$(MACHINE)_$(PROFTYPE)
+  OBJS1 = cacqr2_$(MACHINE)_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -150,7 +150,7 @@ ifneq ($(BlueWaters_machine),)
     endif
   endif
 
-  OBJS1 = cqr2_$(MACHINE)_$(GPU)_$(PROFTYPE)
+  OBJS1 = cacqr2_$(MACHINE)_$(GPU)_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
