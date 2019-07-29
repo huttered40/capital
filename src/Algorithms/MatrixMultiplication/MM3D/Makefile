@@ -28,8 +28,8 @@ ifneq ($(PORTER_machine),)
   LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/critter/lib
   LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lcritter -lpthread
 
-  OBJS1 = mm3d_$(MACHINE)_mpi_$(PROFTYPE)
-  OBJS2 = mm3d_$(MACHINE)_ampi_$(PROFTYPE)
+  OBJS1 = mm3d_$(PROFTYPE)
+  OBJS2 = mm3d_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -61,7 +61,7 @@ ifneq ($(BGQ_machine),)
   LIB_PATH=-L/home/huttered/scratch/CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L$(IBM_MAIN_DIR)/xlf/bg/14.1/bglib64 -L$(IBM_MAIN_DIR)/xlsmp/bg/3.1/bglib64/ -L$(IBM_MAIN_DIR)/xlmass/bg/7.3/bglib64/
   LIBS=-lcblas -lblas -lgfortran -lesslbg -lxlf90_r -lxl -lxlopt -lxlfmath -lm -lcritter -Wl,--allow-multiple-definition
 
-  OBJS1 = mm3d_$(MACHINE)_$(PROFTYPE)
+  OBJS1 = mm3d_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -83,7 +83,7 @@ ifneq ($(THETA_machine),)
   LIB_PATH=-L../../../../../CritterXC40/critter/lib
   LIBS=-lcritter
 
-  OBJS1 = mm3d_$(MACHINE)_$(PROFTYPE)
+  OBJS1 = mm3d_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -106,7 +106,7 @@ ifneq ($(STAMPEDE2_machine),)
   LIB_PATH=-L../../../../../critter/lib
   LIBS=-lcritter
 
-  OBJS1 = mm3d_$(MACHINE)_$(PROFTYPE)
+  OBJS1 = mm3d_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -147,7 +147,7 @@ ifneq ($(BlueWaters_machine),)
     CFLAGS = -O3 -ffast-math -funroll-loops -std=gnu++1y
   endif
 
-  OBJS1 = mm3d_$(MACHINE)_$(GPU)_$(PROFTYPE)
+  OBJS1 = mm3d_$(GPU)_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
