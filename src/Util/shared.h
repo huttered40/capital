@@ -19,7 +19,7 @@
 
 #ifdef CRITTER
 #ifdef PORTER
-#include "../../../ExternalLibraries/critter/critter.h"
+#include "../../../ExternalLibraries/critter/src/critter.h"
 #endif /*PORTER*/
 #ifdef STAMPEDE2
 #include "../../../critter/critter.h"

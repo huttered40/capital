@@ -23,34 +23,34 @@ endif
 ifneq ($(PORTER_machine),)
   MACHINE=PORTER
   CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
-  CCAMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
+  ifeq ($(MPITYPE),"MPI_TYPE")
+    CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
+    echo "HERE??"
+  endif
+  ifeq ($(MPITYPE),"AMPI_TYPE")
+    CCMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
+    echo "HERE??"
+  endif
   CFLAGS = -g -Wall -O0 -std=c++14
   LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/critter/lib
   LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread -lcritter
 
-  OBJS1 = cacqr2_$(PROFTYPE)
-  OBJS2 = cacqr2_$(PROFTYPE)
+  OBJS = cacqr2_$(PROFTYPE)
 
-  MPI: $(OBJS1)
+  MPI: $(OBJS)
 	rm *.o
-  AMPI: $(OBJS2)
+  AMPI: $(OBJS)
 	rm *o; \
 	mv charmrun $(BIN)charmrun
 
-  $(OBJS1): $(OBJS1).o
-	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
+  $(OBJS): $(OBJS).o
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS) $(OBJS).o $(LIB_PATH) $(LIBS)
 
-  $(OBJS1).o: test.cpp CholeskyQR2.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
-
-  $(OBJS2): $(OBJS2).o
-	$(CCAMPI) $(CFLAGS) -o $(BIN)$(OBJS2) $(OBJS2).o $(LIB_PATH) $(LIBS)
-
-  $(OBJS2).o: test.cpp CholeskyQR2.h
-	$(CCAMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS2).o -c test.cpp
+  $(OBJS).o: test.cpp CholeskyQR2.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS).o -c test.cpp
 
   clean:
-	-rm -f *.o *.gch $(BIN)charmrun $(BIN)$(OBJS1) $(BIN)$(OBJS2)
+	-rm -f *.o *.gch $(BIN)charmrun $(BIN)$(OBJS)
 endif
 
 ifneq ($(BGQ_machine),)
