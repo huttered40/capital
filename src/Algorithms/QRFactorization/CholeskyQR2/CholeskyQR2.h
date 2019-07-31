@@ -19,7 +19,7 @@ public:
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, size_t inverseCutOffMultiplier = 0, size_t baseCaseMultiplier = 0, size_t panelDimensionMultiplier = 0);
 
   template<typename MatrixAType, typename MatrixRType>
-  static void FactorTunable(MatrixAType& matrixA, MatrixRType& matrixR, size_t gridDimensionD, size_t gridDimensionC,
+  static void FactorTunable(MatrixAType& matrixA, MatrixRType& matrixR, size_t gridDimensionC,
       MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable, size_t inverseCutOffMultiplier = 0, size_t baseCaseMultiplier = 0, size_t panelDimensionMultiplier = 0);
 
 private:

@@ -49,14 +49,17 @@ void CholeskyQR2::Factor3D(MatrixAType& matrixA, MatrixRType& matrixR, MPI_Comm 
 }
 
 template<typename MatrixAType, typename MatrixRType>
-void CholeskyQR2::FactorTunable(MatrixAType& matrixA, MatrixRType& matrixR, size_t gridDimensionD, size_t gridDimensionC, MPI_Comm commWorld,
+void CholeskyQR2::FactorTunable(MatrixAType& matrixA, MatrixRType& matrixR, size_t gridDimensionC, MPI_Comm commWorld,
       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable, size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
   TAU_FSTART(FactorTunable);
   if (gridDimensionC == 1){
     Factor1D(matrixA, matrixR, commWorld);  
     return;
   }
+  int worldSize;
   MPI_Comm miniCubeComm = std::get<5>(commInfoTunable);
+  MPI_Comm_size(commWorld, &worldSize);
+  size_t gridDimensionD = worldSize / (gridDimensionC*gridDimensionC);
   std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t> commInfo3D = util::build3DTopology(miniCubeComm);
   if (gridDimensionC == gridDimensionD){
     Factor3D(matrixA, matrixR, commWorld, commInfo3D, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);

@@ -32,8 +32,8 @@ int main(int argc, char** argv){
   size_t panelDimensionMultiplier = atoi(argv[5]);
  
   // Use the grid that the user specifies in the command line
-  size_t dimensionD = atoi(argv[6]);
-  size_t dimensionC = atoi(argv[7]);
+  size_t dimensionC = atoi(argv[6]);
+  size_t dimensionD = size / (dimensionC*dimensionC);
   size_t sliceSize = dimensionD*dimensionC;
   #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t helper = dimensionC*dimensionC;
@@ -44,8 +44,8 @@ int main(int argc, char** argv){
   size_t pCoordY = (rank%sliceSize)/dimensionC;
   #endif
 
-  size_t numIterations=atoi(argv[8]);
-  string fileStr = argv[9];
+  size_t numIterations=atoi(argv[7]);
+  string fileStr = argv[8];
   string fileStrTotal=fileStr;
   #ifdef PROFILE
   fileStrTotal += "_timer.txt";
@@ -78,8 +78,8 @@ int main(int argc, char** argv){
   #endif
 
   #ifdef CRITTER
-  std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionD,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
-  std::vector<const char*> InputNames{"m","n","d","c","bcm","icm","pdm"};
+  std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
+  std::vector<const char*> InputNames{"m","n","c","bcm","icm","pdm"};
   #endif
 
   size_t numFuncs = 0;				// For figuring out how many functions are being profiled (smart way to find average over all iterations)
@@ -100,7 +100,7 @@ int main(int argc, char** argv){
     volatile double startTime=MPI_Wtime();
     #endif
     auto commInfoTunable = util::buildTunableTopology(MPI_COMM_WORLD, dimensionD, dimensionC);
-    CholeskyQR2::FactorTunable(matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+    CholeskyQR2::FactorTunable(matA, matR, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
     util::destroyTunableTopology(commInfoTunable);
     #ifdef PERFORMANCE
     double iterTimeLocal = MPI_Wtime() - startTime;
