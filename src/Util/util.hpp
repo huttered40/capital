@@ -10,7 +10,6 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t> util::build
   size_t pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
   size_t helper = pGridDimensionSize;
   helper *= helper;
-  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t pGridCoordZ = rank%pGridDimensionSize;
   size_t pGridCoordY = rank/helper;
   size_t pGridCoordX = (rank%helper)/pGridDimensionSize;
@@ -23,20 +22,6 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t> util::build
   MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
   MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
   MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
-  #else
-  size_t pGridCoordX = rank%pGridDimensionSize;
-  size_t pGridCoordY = (rank%helper)/pGridDimensionSize;
-  size_t pGridCoordZ = rank/helper;
-
-  MPI_Comm rowComm, columnComm, sliceComm, depthComm;
-
-  // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
-  // Then, subdivide further into row groups and column groups
-  MPI_Comm_split(commWorld, pGridCoordY+pGridDimensionSize*pGridCoordX, rank, &depthComm);
-  MPI_Comm_split(commWorld, pGridCoordZ, rank, &sliceComm);
-  MPI_Comm_split(sliceComm, pGridCoordY, pGridCoordX, &rowComm);
-  MPI_Comm_split(sliceComm, pGridCoordX, pGridCoordY, &columnComm);
-  #endif
 
   TAU_FSTOP(setUpCommunicators);
   return std::make_tuple(rowComm, columnComm, sliceComm, depthComm, pGridCoordX, pGridCoordY, pGridCoordZ);
@@ -49,7 +34,6 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util::buildTun
   MPI_Comm_rank(commWorld, &worldRank);
   MPI_Comm_size(commWorld, &worldSize);
 
-  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   int cubeRank;
   size_t SubCubeSize = pGridDimensionC*pGridDimensionC*pGridDimensionC;
   size_t SubCubeSliceSize = pGridDimensionC*pGridDimensionC;
@@ -66,21 +50,6 @@ std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm> util::buildTun
   MPI_Comm_rank(columnComm, &columnRank);
   MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
   MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
-  #else
-  int sliceRank;
-  size_t sliceSize = pGridDimensionD*pGridDimensionC;
-  MPI_Comm sliceComm, rowComm, columnComm, columnContigComm, columnAltComm, depthComm, miniCubeComm;
-  MPI_Comm_split(commWorld, worldRank/sliceSize, worldRank, &sliceComm);
-  MPI_Comm_rank(sliceComm, &sliceRank);
-  MPI_Comm_split(sliceComm, sliceRank/pGridDimensionC, sliceRank, &rowComm);
-  size_t cubeInt = worldRank%sliceSize;
-  MPI_Comm_split(commWorld, cubeInt/(pGridDimensionC*pGridDimensionC), worldRank, &miniCubeComm);
-  MPI_Comm_split(commWorld, cubeInt, worldRank, &depthComm);
-  MPI_Comm_split(sliceComm, sliceRank%pGridDimensionC, sliceRank, &columnComm);
-  MPI_Comm_rank(columnComm, &columnRank);
-  MPI_Comm_split(columnComm, columnRank/pGridDimensionC, columnRank, &columnContigComm);
-  MPI_Comm_split(columnComm, columnRank%pGridDimensionC, columnRank, &columnAltComm); 
-  #endif
 
   MPI_Comm_free(&columnComm);
   TAU_FSTOP(getTunableCommunicators);
@@ -312,15 +281,9 @@ std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> util::getCommunicatorSlice(MPI_
   
   size_t helper = pGridDimensionSize;
   helper *= helper;
-  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t pCoordZ = rank%pGridDimensionSize;
   size_t pCoordY = rank/helper;
   size_t pCoordX = (rank%helper)/pGridDimensionSize;
-  #else
-  size_t pCoordX = rank%pGridDimensionSize;
-  size_t pCoordY = (rank%helper)/pGridDimensionSize;
-  size_t pCoordZ = rank/helper;
-  #endif
 
   MPI_Comm sliceComm;
   MPI_Comm_split(commWorld,pCoordZ,rank,&sliceComm);
