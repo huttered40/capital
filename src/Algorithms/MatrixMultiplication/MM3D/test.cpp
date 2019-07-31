@@ -27,7 +27,7 @@ static double runTestGemm(MatrixAType& matA, MatrixBType& matB, MatrixCType& mat
   double startTime=MPI_Wtime();
   #endif
   auto commInfo3D = util::build3DTopology(MPI_COMM_WORLD);
-  MM3D::Multiply(matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
+  matmult::MM3D::Multiply(matA, matB, matC, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   double iterTimeLocal=MPI_Wtime();
@@ -61,7 +61,7 @@ static double runTestTrmm(MatrixAType& matA, MatrixBType& matB, blasEngineArgume
   #endif
   auto commInfo3D = util::build3DTopology(
     MPI_COMM_WORLD);
-  MM3D::Multiply(matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
+  matmult::MM3D::Multiply(matA, matB, MPI_COMM_WORLD, commInfo3D, blasArgs, methodKey3);
   util::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   double iterTimeLocal=MPI_Wtime();
@@ -146,7 +146,7 @@ int main(int argc, char** argv){
       double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
       totalTime += iterTime;
     }
-    MMvalidate::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
+    matmult::MMvalidate::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
     if (rank == 0){
       fptrTotal.close();
     }

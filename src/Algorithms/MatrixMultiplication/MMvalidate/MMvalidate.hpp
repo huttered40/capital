@@ -1,5 +1,6 @@
 /* Author: Edward Hutter */
 
+namespace matmult{
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
 void MMvalidate::validateLocal(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, MPI_Comm commWorld,
                                const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage){
@@ -126,4 +127,5 @@ T MMvalidate::getResidual(std::vector<T>& myValues, std::vector<T>& blasValues,
   //error = std::sqrt(error);
   //std::cout << "Processor residual error - " << error << std::endl;
   return error;
+}
 }

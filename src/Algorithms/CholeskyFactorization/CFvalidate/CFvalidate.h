@@ -9,6 +9,7 @@
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
 
+namespace cholesky{
 class CFvalidate{
 public:
   template<typename MatrixAType, typename MatrixSolType>
@@ -25,6 +26,7 @@ private:
   template<typename T, typename U>
   static T getResidualTriangleUpper(std::vector<T>& myValues, std::vector<T>& lapackValues, U localDimension, U globalDimension, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo);
 };
+}
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)
 #include "CFvalidate.hpp"

@@ -8,6 +8,7 @@
 #include "./../../TriangularSolve/TRSM3D/TRSM3D.h"
 #include "./../../CholeskyFactorization/CFR3D/CFR3D.h"
 
+namespace qr{
 // Need template parameters for all 3 matrices (A,Q,R), as well as some other things, right?
 class CholeskyQR2{
 public:
@@ -39,6 +40,7 @@ private:
   template<typename T, typename U> 
   static void BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm);
 };
+}
 
 #include "CholeskyQR2.hpp"
 

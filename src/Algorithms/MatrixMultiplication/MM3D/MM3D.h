@@ -5,6 +5,7 @@
 
 #include "./../../Algorithms.h"
 
+namespace matmult{
 /*
   We can implement square MM for now, but soon, we will need triangular MM
     and triangular matrices, as well as Square-Triangular Multiplication and Triangular-Square Multiplication
@@ -102,6 +103,7 @@ private:
                                  typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd, size_t pGridDimensionSize, bool getSub);
 
 };
+}
 
 #include "MM3D.hpp"
 

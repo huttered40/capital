@@ -30,7 +30,7 @@ static pair<typename MatrixAType::ScalarType,double>
   double startTime=MPI_Wtime();
   #endif
   auto commInfo3D = util::build3DTopology(MPI_COMM_WORLD);
-  CFR3D::Factor(matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, MPI_COMM_WORLD, commInfo3D);
+  cholesky::CFR3D::Factor(matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, MPI_COMM_WORLD, commInfo3D);
   util::destroy3DTopology(commInfo3D);
   #ifdef PERFORMANCE
   double iterTimeLocal=MPI_Wtime();
@@ -58,7 +58,7 @@ static pair<typename MatrixAType::ScalarType,double>
   saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
   commInfo3D = util::build3DTopology(MPI_COMM_WORLD);
   T iterErrorLocal;
-  iterErrorLocal = CFvalidate::validateParallel(saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
+  iterErrorLocal = cholesky::CFvalidate::validateParallel(saveA, matA, dir, MPI_COMM_WORLD, commInfo3D);
   MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   util::destroy3DTopology(commInfo3D);
   #endif 

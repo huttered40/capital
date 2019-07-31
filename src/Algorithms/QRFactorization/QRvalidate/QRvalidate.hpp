@@ -1,4 +1,5 @@
 /* Author: Edward Hutter */
+namespace qr{
 
 /* Validation against sequential BLAS/LAPACK constructs */
 template<typename MatrixAType, typename MatrixQType, typename MatrixRType>
@@ -345,4 +346,5 @@ QRvalidate::getReferenceMatrix1D(MatrixType& myMatrix, typename MatrixType::Dime
   }
 
   return cyclicMatrix;
+}
 }

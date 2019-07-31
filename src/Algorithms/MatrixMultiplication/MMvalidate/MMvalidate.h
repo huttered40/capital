@@ -6,6 +6,7 @@
 #include "./../../Algorithms.h"
 #include "./../../../Util/validation.h"
 
+namespace matmult{
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
 
@@ -25,6 +26,7 @@ private:
   static T getResidual(std::vector<T>& myValues, std::vector<T>& blasValues,
                        U localDimensionM, U localDimensionN, U globalDimensionM, U globalDimensionN, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo);
 };
+}
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)
 #include "MMvalidate.hpp"

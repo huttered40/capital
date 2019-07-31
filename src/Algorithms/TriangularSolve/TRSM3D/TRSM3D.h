@@ -6,6 +6,8 @@
 #include "./../../Algorithms.h"
 #include "./../../MatrixMultiplication/MM3D/MM3D.h"
 
+namespace trsm{
+
 // Lets use partial template specialization
 // So only declare the fully templated class
 // Why not just use square? Because later on, I may want to experiment with LowerTriangular Structure.
@@ -34,6 +36,7 @@ public:
                                blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage, blasEngineArgumentPackage_trmm<typename MatrixTriType::ScalarType>& trmmPackage,
                                MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D);
 };
+}
 
 #include "TRSM3D.hpp"
 

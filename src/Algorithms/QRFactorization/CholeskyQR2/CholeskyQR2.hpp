@@ -1,5 +1,6 @@
 /* Author: Edward Hutter */
 
+namespace qr{
 template<typename MatrixAType, typename MatrixRType>
 void CholeskyQR2::Factor1D(MatrixAType& matrixA, MatrixRType& matrixR, MPI_Comm commWorld){
   TAU_FSTART(Factor1D);
@@ -44,7 +45,7 @@ void CholeskyQR2::Factor3D(MatrixAType& matrixA, MatrixRType& matrixR, MPI_Comm 
     blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
-  MM3D::Multiply(matrixR2, matrixR, commWorld, commInfo3D, trmmPack1);
+  matmult::MM3D::Multiply(matrixR2, matrixR, commWorld, commInfo3D, trmmPack1);
   TAU_FSTOP(Factor3D);
 }
 
@@ -82,7 +83,7 @@ void CholeskyQR2::FactorTunable(MatrixAType& matrixA, MatrixRType& matrixR, size
     blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
-  MM3D::Multiply(matrixR2, matrixR, miniCubeComm, commInfo3D, trmmPack1);
+  matmult::MM3D::Multiply(matrixR2, matrixR, miniCubeComm, commInfo3D, trmmPack1);
 
   util::destroy3DTopology(commInfo3D);
   TAU_FSTOP(FactorTunable);
@@ -162,7 +163,7 @@ void CholeskyQR2::Factor3D_cqr(MatrixAType& matrixA, MatrixRType& matrixR, MPI_C
   // Create an extra matrix for R-inverse
   MatrixRType matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, matrixA.getNumColumnsGlobal(), matrixA.getNumColumnsGlobal(), true);
 
-  std::pair<bool,std::vector<U>> baseCaseDimList = CFR3D::Factor(matrixR, matrixRI, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U', commWorld, commInfo3D);
+  std::pair<bool,std::vector<U>> baseCaseDimList = cholesky::CFR3D::Factor(matrixR, matrixRI, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U', commWorld, commInfo3D);
 
 // For now, comment this out, because I am experimenting with using TriangularSolve TRSM instead of MM3D
 //   But later on once it works, use an integer or something to have both available, important when benchmarking
@@ -171,7 +172,7 @@ void CholeskyQR2::Factor3D_cqr(MatrixAType& matrixA, MatrixRType& matrixR, MPI_C
   if (baseCaseDimList.first){
     blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    MM3D::Multiply(matrixRI, matrixA, commWorld, commInfo3D, trmmPack1);
+    matmult::MM3D::Multiply(matrixRI, matrixA, commWorld, commInfo3D, trmmPack1);
   }
   else{
     // Note: there are issues with serializing a square matrix into a rectangular. To bypass that,
@@ -186,7 +187,7 @@ void CholeskyQR2::Factor3D_cqr(MatrixAType& matrixA, MatrixRType& matrixR, MPI_C
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    TRSM3D::iSolveUpperLeft(matrixA, rectR, rectRI, baseCaseDimList.second, gemmPack1, trmmPackage, commWorld, commInfo3D);
+    trsm::TRSM3D::iSolveUpperLeft(matrixA, rectR, rectRI, baseCaseDimList.second, gemmPack1, trmmPackage, commWorld, commInfo3D);
   }
   TAU_FSTOP(Factor3D_cqr);
 }
@@ -244,12 +245,12 @@ void CholeskyQR2::FactorTunable_cqr(MatrixAType& matrixA, MatrixRType& matrixR,
   // Create an extra matrix for R-inverse
   MatrixRType matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
 
-  std::pair<bool,std::vector<U>> baseCaseDimList = CFR3D::Factor(matrixR, matrixRI, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U', miniCubeComm, commInfo3D);
+  std::pair<bool,std::vector<U>> baseCaseDimList = cholesky::CFR3D::Factor(matrixR, matrixRI, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U', miniCubeComm, commInfo3D);
 
   if (baseCaseDimList.first){
     blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    MM3D::Multiply(matrixRI, matrixA, miniCubeComm, commInfo3D, trmmPack1);
+    matmult::MM3D::Multiply(matrixRI, matrixA, miniCubeComm, commInfo3D, trmmPack1);
   }
   else{
     // Note: there are issues with serializing a square matrix into a rectangular. To bypass that,
@@ -264,7 +265,7 @@ void CholeskyQR2::FactorTunable_cqr(MatrixAType& matrixA, MatrixRType& matrixR,
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    TRSM3D::iSolveUpperLeft(matrixA, rectR, rectRI, baseCaseDimList.second, gemmPack1, trmmPackage, miniCubeComm, commInfo3D);
+    trsm::TRSM3D::iSolveUpperLeft(matrixA, rectR, rectRI, baseCaseDimList.second, gemmPack1, trmmPackage, miniCubeComm, commInfo3D);
   }
   TAU_FSTOP(FactorTunable_cqr);
 }
@@ -280,4 +281,5 @@ void CholeskyQR2::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, siz
     MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panelComm);
   }
   TAU_FSTOP(BroadcastPanels);
+}
 }

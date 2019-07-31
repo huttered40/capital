@@ -13,6 +13,7 @@
 // Also note, we do not need an extra template parameter for L-inverse. Presumably if the user wants L to be LowerTriangular, then he wants L-inverse
 //   to be LowerTriangular as well
 
+namespace cholesky{
 class CFR3D{
 public:
   template<typename MatrixAType, typename MatrixTIType>
@@ -65,6 +66,7 @@ private:
   template<typename U>
   static inline void updateInversePath(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension);
 };
+}
 
 #include "CFR3D.hpp"
 

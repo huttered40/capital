@@ -1,5 +1,6 @@
 /* Author: Edward Hutter */
 
+namespace cholesky{
 template<typename MatrixAType, typename MatrixSolType>
 void CFvalidate::validateLocal(MatrixAType& matrixA, MatrixSolType& matrixSol, char dir, MPI_Comm commWorld){
   // What I want to do here is generate a full matrix with the correct values
@@ -165,4 +166,5 @@ T CFvalidate::getResidualTriangleUpper(std::vector<T>& myValues, std::vector<T>&
   error = std::sqrt(error);
   //if (isRank1) std::cout << "Total error - " << error << "\n\n\n";
   return error;		// return 2-norm
+}
 }

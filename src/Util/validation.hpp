@@ -25,19 +25,19 @@ validator::validateResidualParallel(MatrixAType& matrixA, MatrixBType& matrixB, 
 
   if (dir == 'L'){
     blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, 1., -1.);
-    MM3D::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
+    matmult::MM3D::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
   else if (dir == 'U'){
     blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., -1.);
-    MM3D::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
+    matmult::MM3D::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
   else if (dir == 'F'){
     blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., -1.);
-    MM3D::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
+    matmult::MM3D::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
   }
   else if (dir == 'I'){
     blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
-    MM3D::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
+    matmult::MM3D::Multiply(matrixA, matrixB, matrixC, commWorld, commInfo3D, blasArgs);
     if (columnAltComm != MPI_COMM_WORLD){
       MPI_Allreduce(MPI_IN_PLACE, matrixC.getRawData(), matrixC.getNumElems(), MPI_DATATYPE, MPI_SUM, columnAltComm);
     }

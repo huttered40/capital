@@ -91,7 +91,7 @@ int main(int argc, char** argv){
     volatile double startTime=MPI_Wtime();
     #endif
     auto commInfoTunable = util::buildTunableTopology(MPI_COMM_WORLD, dimensionD, dimensionC);
-    CholeskyQR2::FactorTunable(matA, matR, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+    qr::CholeskyQR2::FactorTunable(matA, matR, dimensionC, MPI_COMM_WORLD, commInfoTunable, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
     util::destroyTunableTopology(commInfoTunable);
     #ifdef PERFORMANCE
     double iterTimeLocal = MPI_Wtime() - startTime;
@@ -111,7 +111,7 @@ int main(int argc, char** argv){
     MatrixTypeR saveA = matA;
     saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
     commInfoTunable = util::buildTunableTopology(MPI_COMM_WORLD, dimensionD, dimensionC);
-    pair<DATATYPE,DATATYPE> error = QRvalidate::validateParallelTunable(saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
+    pair<DATATYPE,DATATYPE> error = qr::QRvalidate::validateParallelTunable(saveA, matA, matR, dimensionD, dimensionC, MPI_COMM_WORLD, commInfoTunable);
     util::destroyTunableTopology(commInfoTunable);
     double residualErrorGlobal,orthogonalityErrorGlobal;
     MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);

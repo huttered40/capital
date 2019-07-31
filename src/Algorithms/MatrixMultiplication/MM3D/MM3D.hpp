@@ -1,5 +1,6 @@
 /* Author: Edward Hutter */
 
+namespace matmult{
 template<typename MatrixBType>
 void MM3D::Multiply(typename MatrixBType::ScalarType* matrixA, MatrixBType& matrixB, typename MatrixBType::ScalarType* matrixC,
                     typename MatrixBType::DimensionType matrixAnumColumns, typename MatrixBType::DimensionType matrixAnumRows,
@@ -774,4 +775,5 @@ MatrixType MM3D::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::Dimens
     TAU_FSTOP(MM3D::getSubMatrix);
     return MatrixType(0,0,1,1);
   }
+}
 }

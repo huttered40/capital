@@ -9,6 +9,7 @@
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
 
+namespace qr{
 class QRvalidate{
 public:
   // We require that for a 1D algorithm, Q is rectangular and R is square
@@ -47,6 +48,7 @@ private:
          getReferenceMatrix1D(MatrixType& myMatrix, typename MatrixType::DimensionType globalDimensionX, typename MatrixType::DimensionType globalDimensionY,
                               typename MatrixType::DimensionType localDimensionY, size_t key, MPI_Comm commWorld);
 };
+}
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)
 #include "QRvalidate.hpp"

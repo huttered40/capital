@@ -1,5 +1,6 @@
 /* Author: Edward Hutter */
 
+namespace cholesky{
 template<typename MatrixAType, typename MatrixTIType>
 std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
 CFR3D::Factor(MatrixAType& matrixA, MatrixTIType& matrixTI, typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
@@ -115,7 +116,7 @@ void CFR3D::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typename 
   // 2nd case: Extra optimization for the case when we only perform TRSM at the top level.
   if ((isInversePath) || (globalDimension == inverseCutoffGlobalDimension*2)){
     //std::cout << "tell me localDim and localshIFT - " << localDimension << " " << localShift << std::endl;
-    MM3D::Multiply(packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, commWorld, commInfo3D, trmmArgs, false, true);
+    matmult::MM3D::Multiply(packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, commWorld, commInfo3D, trmmArgs, false, true);
   }
   else{
     // Note: keep this a gemm package, because we still need to use gemm in TRSM3D in the update, which is just rectangular and non-triangular matrices.
@@ -142,7 +143,7 @@ void CFR3D::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typename 
 
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
       blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
-    TRSM3D::iSolveUpperLeft(matrixLcopy, packedMatrixL, packedMatrix, subBaseCaseDimList, trsmArgs, trmmPackage, commWorld, commInfo3D);
+    trsm::TRSM3D::iSolveUpperLeft(matrixLcopy, packedMatrixL, packedMatrix, subBaseCaseDimList, trsmArgs, trmmPackage, commWorld, commInfo3D);
 
     // inject matrixLcopy back into matrixA.
     // Future optimization: avoid copying matrixL here, and utilize leading dimension and the column vectors.
@@ -161,7 +162,7 @@ void CFR3D::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typename 
   U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
 
   blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasLower, blasEngineTranspose::AblasNoTrans, -1., 1.);
-  MM3D::Multiply(matrixA, matrixA, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+  matmult::MM3D::Multiply(matrixA, matrixA, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, syrkArgs, true, true);
 
   rFactorLower(matrixA, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
@@ -178,13 +179,13 @@ void CFR3D::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typename 
 
     blasEngineArgumentPackage_trmm<T> invPackage1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    MM3D::Multiply(matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY,
+    matmult::MM3D::Multiply(matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY,
         matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, commWorld, commInfo3D, invPackage1, true, false);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
     invPackage1.side = blasEngineSide::AblasLeft;
-    MM3D::Multiply(matrixLI, tempInverse, matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, 0, localShift, 0, reverseDimLocal,
+    matmult::MM3D::Multiply(matrixLI, tempInverse, matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, 0, localShift, 0, reverseDimLocal,
         commWorld, commInfo3D, invPackage1, true, false);
     // One final serialize of tempInverse into matrixLI
     Serializer<Square,Square>::Serialize(matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, true);
@@ -245,7 +246,7 @@ void CFR3D::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typename 
 
   // 2nd case: Extra optimization for the case when we only perform TRSM at the top level.
   if ((isInversePath) || (globalDimension == inverseCutoffGlobalDimension*2)){
-    MM3D::Multiply(packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
+    matmult::MM3D::Multiply(packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
       commWorld, commInfo3D, trmmArgs, false, true);
   }
   else{
@@ -271,7 +272,7 @@ void CFR3D::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typename 
 
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
-    TRSM3D::iSolveLowerRight(packedMatrixR, packedMatrix, matrixRcopy, subBaseCaseDimList, trsmArgs, trmmPackage, commWorld, commInfo3D);
+    trsm::TRSM3D::iSolveLowerRight(packedMatrixR, packedMatrix, matrixRcopy, subBaseCaseDimList, trsmArgs, trmmPackage, commWorld, commInfo3D);
 
     // Inject back into matrixR
     Serializer<Square,Square>::Serialize(matrixA, matrixRcopy, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift, true);
@@ -283,7 +284,7 @@ void CFR3D::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typename 
   U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
 
   blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineTranspose::AblasTrans, -1., 1.);
-  MM3D::Multiply(matrixA, matrixA, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
+  matmult::MM3D::Multiply(matrixA, matrixA, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, commWorld, commInfo3D, syrkArgs, true, true);
 
   rFactorUpper(matrixA, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
@@ -302,12 +303,12 @@ void CFR3D::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typename 
 
     blasEngineArgumentPackage_trmm<T> invPackage1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    MM3D::Multiply(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, commInfo3D, invPackage1, true, false);
+    matmult::MM3D::Multiply(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift, commWorld, commInfo3D, invPackage1, true, false);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
     invPackage1.side = blasEngineSide::AblasLeft;
-    MM3D::Multiply(matrixRI, tempInverse, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, 0, reverseDimLocal, 0, localShift,
+    matmult::MM3D::Multiply(matrixRI, tempInverse, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, 0, reverseDimLocal, 0, localShift,
       commWorld, commInfo3D, invPackage1, true, false);
     Serializer<Square,Square>::Serialize(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, true);
   }
@@ -542,4 +543,5 @@ void CFR3D::updateInversePath(U inverseCutoffGlobalDimension, U globalDimension,
     }
     isInversePath = true;
   }
+}
 }
