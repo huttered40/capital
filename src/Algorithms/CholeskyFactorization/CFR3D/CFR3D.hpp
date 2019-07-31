@@ -18,11 +18,7 @@ CFR3D::Factor(MatrixAType& matrixA, MatrixTIType& matrixTI, typename MatrixAType
   size_t pGridCoordX = std::get<4>(commInfo3D);
   size_t pGridCoordY = std::get<5>(commInfo3D);
   size_t pGridCoordZ = std::get<6>(commInfo3D);
-  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
-  #else
-  size_t transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
-  #endif
 
   U localDimension = matrixA.getNumRowsLocal();
   U globalDimension = matrixA.getNumRowsGlobal();

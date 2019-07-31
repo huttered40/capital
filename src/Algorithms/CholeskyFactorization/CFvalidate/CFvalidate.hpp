@@ -79,11 +79,7 @@ typename MatrixAType::ScalarType CFvalidate::validateParallel(MatrixAType& matri
   size_t helper = pGridDimensionSize;
   helper *= helper;
 
-  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
-  #else
-  size_t transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
-  #endif
   util::removeTriangle(matrixTri, pGridCoordX, pGridCoordY, pGridDimensionSize, dir);
   MatrixTriType matrixTriTrans = matrixTri;
   util::transposeSwap(matrixTriTrans, rank, transposePartner, MPI_COMM_WORLD);

@@ -86,13 +86,8 @@ int main(int argc, char** argv){
   size_t pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
   size_t helper = pGridDimensionSize;
   helper *= helper;
-  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t pCoordY = rank/helper;
   size_t pCoordX = (rank%helper)/pGridDimensionSize;
-  #else
-  size_t pCoordX = rank%pGridDimensionSize;
-  size_t pCoordY = (rank%helper)/pGridDimensionSize;
-  #endif
 
   /*
     methodKey1 -> 0) Lower

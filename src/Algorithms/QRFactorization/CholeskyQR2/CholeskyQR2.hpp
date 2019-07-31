@@ -211,14 +211,9 @@ void CholeskyQR2::FactorTunable_cqr(MatrixAType& matrixA, MatrixRType& matrixR,
   int worldRank;
   MPI_Comm_rank(commWorld, &worldRank);
   size_t sliceSize = gridDimensionD*gridDimensionC;
-  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t helper = gridDimensionC*gridDimensionC;
   int pCoordZ = worldRank%gridDimensionC;
   int pCoordX = (worldRank%helper)/gridDimensionC;
-  #else
-  int pCoordX = worldRank%gridDimensionC;
-  int pCoordZ = worldRank/sliceSize;
-  #endif
 
   int columnContigRank;
   MPI_Comm_rank(columnContigComm, &columnContigRank);

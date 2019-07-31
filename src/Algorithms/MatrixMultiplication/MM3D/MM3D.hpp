@@ -297,11 +297,7 @@ void MM3D::Multiply(MatrixAType& matrixA, MatrixCType& matrixC, MPI_Comm commWor
   size_t pGridCoordX = std::get<4>(commInfo3D);
   size_t pGridCoordY = std::get<5>(commInfo3D);
   size_t pGridCoordZ = std::get<6>(commInfo3D);
-  #if defined(BLUEWATERS) || defined(STAMPEDE2)
   size_t transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
-  #else
-  size_t transposePartner = pGridCoordZ*helper + pGridCoordX*pGridDimensionSize + pGridCoordY;
-  #endif
 
   // Note: The routine will be C <- BA or AB, depending on the order in the srcPackage. B will always be the transposed matrix
   T* matrixAEnginePtr;
