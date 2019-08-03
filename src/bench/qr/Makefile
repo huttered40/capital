@@ -7,17 +7,8 @@ BLUEWATERS=$(shell echo $(HOST) |grep 'h2o')
 BIN=./../../../bin/
 
 # If make is called outside of the batch script generator, a few environment variables need to be set by default (double,int)
-ifeq ($(DATATYPE),)
-  DATATYPE=DOUBLE_TYPE
-endif
-ifeq ($(INTTYPE),)
-  INTTYPE=INT_TYPE
-endif
 ifeq ($(MPITYPE),)
   MPITYPE=MPI_TYPE
-endif
-ifeq ($(PROFTYPE),)
-  PROFTYPE=PERFORMANCE
 endif
 
 ifneq ($(PORTER),)
@@ -35,7 +26,7 @@ ifneq ($(PORTER),)
   LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/critter/lib
   LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread -lcritter
 
-  OBJS = cacqr2_$(PROFTYPE)
+  OBJS = cacqr2
 
   MPI: $(OBJS)
 	rm *.o
@@ -61,7 +52,7 @@ ifneq ($(BGQ),)
   LIB_PATH=-L../../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64
   LIBS=-llapack -lcblas -lblas -lesslbg -lgfortran -lxlopt -lxlf90_r -lxlfmath -lxl -lcritter
 
-  OBJS1 = cacqr2_$(PROFTYPE)
+  OBJS1 = cacqr2
 
   MPI: $(OBJS1)
 	rm *.o
@@ -84,7 +75,7 @@ ifneq ($(THETA),)
   LIB_PATH=-L../../../../../CritterXC40/critter/lib
   LIBS=-lcritter
 
-  OBJS1 = cacqr2_$(PROFTYPE)
+  OBJS1 = cacqr2
 
   MPI: $(OBJS1)
 	rm *.o
@@ -106,7 +97,7 @@ ifneq ($(STAMPEDE2),)
   LIB_PATH=-L../../../../../critter/lib
   LIBS=-lcritter
 
-  OBJS1 = cacqr2_$(PROFTYPE)
+  OBJS1 = cacqr2
 
   MPI: $(OBJS1)
 	rm *.o
@@ -150,7 +141,7 @@ ifneq ($(BLUEWATERS),)
     endif
   endif
 
-  OBJS1 = cacqr2_$(GPU)_$(PROFTYPE)
+  OBJS1 = cacqr2_$(GPU)
 
   MPI: $(OBJS1)
 	rm *.o

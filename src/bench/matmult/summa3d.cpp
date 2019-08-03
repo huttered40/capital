@@ -78,9 +78,9 @@ static double runTestTrmm(MatrixAType& matA, MatrixBType& matB, blasEngineArgume
 
 
 int main(int argc, char** argv){
-  using MatrixTypeR = Matrix<DATATYPE,INTTYPE,Rectangular,Cyclic>;
-  using MatrixTypeLT = Matrix<DATATYPE,INTTYPE,LowerTriangular,Cyclic>;
-  using MatrixTypeUT = Matrix<DATATYPE,INTTYPE,UpperTriangular,Cyclic>;
+  using MatrixTypeR = Matrix<double,int64_t,Rectangular,Cyclic>;
+  using MatrixTypeLT = Matrix<double,int64_t,LowerTriangular,Cyclic>;
+  using MatrixTypeUT = Matrix<double,int64_t,UpperTriangular,Cyclic>;
 
   #ifdef PROFILE
   TAU_PROFILE_SET_CONTEXT(0)
@@ -92,7 +92,7 @@ int main(int argc, char** argv){
   // size -- total number of processors in the 3D grid
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  util::InitialGEMM<DATATYPE>();
+  util::InitialGEMM<double>();
 
   /*
     Choices for methodKey1: 0) Gemm
@@ -111,12 +111,12 @@ int main(int argc, char** argv){
   size_t pCoordY = rank/helper;
   size_t pCoordX = (rank%helper)/pGridDimensionSize;
 
-  INTTYPE globalMatrixSizeM = atoi(argv[3]);
-  INTTYPE globalMatrixSizeN = atoi(argv[4]);
+  int64_t globalMatrixSizeM = atoi(argv[3]);
+  int64_t globalMatrixSizeN = atoi(argv[4]);
 
   if (methodKey1 == 0){
     // GEMM
-    INTTYPE globalMatrixSizeK = atoi(argv[5]);
+    int64_t globalMatrixSizeK = atoi(argv[5]);
     int numIterations = atoi(argv[6]);
     string fileStr = argv[7];
     string fileStrTotal=fileStr;
@@ -137,7 +137,7 @@ int main(int argc, char** argv){
     MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,pGridDimensionSize,pGridDimensionSize);
     MatrixTypeR matC(globalMatrixSizeN,globalMatrixSizeM,pGridDimensionSize,pGridDimensionSize);
-    blasEngineArgumentPackage_gemm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
+    blasEngineArgumentPackage_gemm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
   
     // Loop for getting a good range of results.
     double totalTime = 0;
@@ -187,7 +187,7 @@ int main(int argc, char** argv){
     if ((matrixUpLo == 0) && (triangleSide == 0)){
       MatrixTypeLT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
-      blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasLower,
+      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasLower,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
  
       // Loop for getting a good range of results.
@@ -199,7 +199,7 @@ int main(int argc, char** argv){
     else if ((matrixUpLo == 0) && (triangleSide == 1)){
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeLT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
-      blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
+      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
@@ -211,7 +211,7 @@ int main(int argc, char** argv){
     else if ((matrixUpLo == 1) && (triangleSide == 0)){
       MatrixTypeUT matA(globalMatrixSizeM,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
-      blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
+      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   
       // Loop for getting a good range of results.
@@ -223,7 +223,7 @@ int main(int argc, char** argv){
     else if ((matrixUpLo == 1) && (triangleSide == 1)){
       MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
       MatrixTypeUT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
-      blasEngineArgumentPackage_trmm<DATATYPE> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
+      blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
 
       // Loop for getting a good range of results.
