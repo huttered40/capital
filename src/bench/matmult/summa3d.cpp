@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#include "summa3d.h"
-#include "../validate/validate.h"
+#include "../../alg/matmult/summa3d/summa3d.h"
+#include "validate/validate.h"
 
 using namespace std;
 

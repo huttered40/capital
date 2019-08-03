@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#include "cholinv.h"
-#include "../validate/validate.h"
+#include "../../alg/cholesky/cholinv/cholinv.h"
+#include "validate/validate.h"
 
 using namespace std;
 

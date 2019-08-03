@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#include "cacqr.h"
-#include "../validate/validate.h"
+#include "../../alg/qr/cacqr/cacqr.h"
+#include "validate/validate.h"
 
 using namespace std;
 

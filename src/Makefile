@@ -1,32 +1,18 @@
 all:
-	make -C./alg/qr/cacqr/ MPI
-	make -C./alg/cholesky/CFR3D/ MPI
-	make -C./alg/matmult/MM3D/ MPI
+	make -C./bench/qr/ cacqr2
+	make -C./bench/cholesky/ cholinv
+	make -C./bench/matmult/ summa3d
 
-all_ampi:
-	make -C./alg/qr/cacqr/ AMPI
-	make -C./alg/cholesky/CFR3D/ AMPI
-	make -C./alg/matmult/MM3D/ AMPI
+cacqr2:
+	make -C./bench/qr/ cacqr2
 
-caqr2:
-	make -C./alg/qr/cacqr/ MPI
+cholinv:
+	make -C./bench/cholesky/ cholinv
 
-cfr3d:
-	make -C./alg/cholesky/CFR3D/ MPI
-
-mm3d:
-	make -C./alg/matmult/MM3D/ MPI
-
-caqr2_ampi:
-	make -C./alg/qr/cacqr/ AMPI
-
-cfr3d_ampi:
-	make -C./alg/cholesky/CFR3D/ AMPI
-
-mm3d_ampi:
-	make -C./alg/matmult/MM3D/ AMPI
+summa3d:
+	make -C./bench/matmult/ summa3d
 
 clean:
-	make -C./alg/qr/cacqr/ clean
-	make -C./alg/cholesky/CFR3D/ clean
-	make -C./alg/matmult/MM3D/ clean
+	make -C./bench/qr/ clean
+	make -C./bench/cholesky/ clean
+	make -C./bench/matmult/ clean

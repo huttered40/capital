@@ -1,9 +1,9 @@
 HOST=$(shell hostname)
-PORTER_machine=$(shell echo $(HOST) |grep 'porter')
-BGQ_machine=$(shell echo $(HOST) |grep 'mira\|cetus')
-THETA_machine=$(shell echo $(HOST) |grep 'theta')
-STAMPEDE2_machine=$(shell echo $(HOST) |grep 'stampede2')
-BlueWaters_machine=$(shell echo $(HOST) |grep 'h2o')
+PORTER=$(shell echo $(HOST) |grep 'porter')
+BGQ=$(shell echo $(HOST) |grep 'mira\|cetus')
+THETA=$(shell echo $(HOST) |grep 'theta')
+STAMPEDE2=$(shell echo $(HOST) |grep 'stampede2')
+BLUEWATERS=$(shell echo $(HOST) |grep 'h2o')
 BIN = ./../../../bin/
 
 # If make is called outside of the batch script generator, a few environment variables need to be set by default (double,int)
@@ -17,10 +17,10 @@ ifeq ($(MPITYPE),)
   MPITYPE=MPI_TYPE
 endif
 ifeq ($(PROFTYPE),)
-  PROFTYPE=TIMER_TYPE
+  PROFTYPE=PERFORMANCE
 endif
 
-ifneq ($(PORTER_machine),)
+ifneq ($(PORTER),)
   MACHINE=PORTER
   CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
   ifeq ($(MPITYPE),"MPI_TYPE")
@@ -33,7 +33,7 @@ ifneq ($(PORTER_machine),)
   LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/critter/lib
   LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lcritter -lpthread
 
-  OBJS = mm3d_$(PROFTYPE)
+  OBJS = summa3d_$(PROFTYPE)
 
   MPI: $(OBJS)
 	rm *.o
@@ -51,7 +51,7 @@ ifneq ($(PORTER_machine),)
 	-rm -f *.o *.gch $(BIN)charmrun $(BIN)$(OBJS)
 endif
 
-ifneq ($(BGQ_machine),)
+ifneq ($(BGQ),)
   MACHINE=BGQ
   CCMPI = mpic++11
   CFLAGS = -std=c++11 -g -fopenmp
@@ -59,7 +59,7 @@ ifneq ($(BGQ_machine),)
   LIB_PATH=-L/home/huttered/scratch/CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L$(IBM_MAIN_DIR)/xlf/bg/14.1/bglib64 -L$(IBM_MAIN_DIR)/xlsmp/bg/3.1/bglib64/ -L$(IBM_MAIN_DIR)/xlmass/bg/7.3/bglib64/
   LIBS=-lcblas -lblas -lgfortran -lesslbg -lxlf90_r -lxl -lxlopt -lxlfmath -lm -lcritter -Wl,--allow-multiple-definition
 
-  OBJS1 = mm3d_$(PROFTYPE)
+  OBJS1 = summa3d_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -74,14 +74,14 @@ ifneq ($(BGQ_machine),)
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
 endif
 
-ifneq ($(THETA_machine),)
+ifneq ($(THETA),)
   MACHINE=THETA
   CCMPI = CC
   CFLAGS = -g -Wall -fast -std=c++11 -mkl=parallel -xMIC-AVX512
   LIB_PATH=-L../../../../../CritterXC40/critter/lib
   LIBS=-lcritter
 
-  OBJS1 = mm3d_$(PROFTYPE)
+  OBJS1 = summa3d_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -97,14 +97,14 @@ ifneq ($(THETA_machine),)
 
 endif
 
-ifneq ($(STAMPEDE2_machine),)
+ifneq ($(STAMPEDE2),)
   MACHINE=STAMPEDE2
   CCMPI = mpicxx
   CFLAGS = -g -Wall -O3 -std=c++14 -mkl=parallel -xMIC-AVX512
   LIB_PATH=-L../../../../../critter/lib
   LIBS=-lcritter
 
-  OBJS1 = mm3d_$(PROFTYPE)
+  OBJS1 = summa3d_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
@@ -120,7 +120,7 @@ ifneq ($(STAMPEDE2_machine),)
 
 endif
 
-ifneq ($(BlueWaters_machine),)
+ifneq ($(BLUEWATERS),)
   MACHINE=BLUEWATERS
   CCMPI = CC
   PRG_ENV_FLAG_INTEL=$(shell echo $(PE_ENV) |grep 'INTEL')
@@ -145,7 +145,7 @@ ifneq ($(BlueWaters_machine),)
     CFLAGS = -O3 -ffast-math -funroll-loops -std=gnu++1y
   endif
 
-  OBJS1 = mm3d_$(GPU)_$(PROFTYPE)
+  OBJS1 = summa3d_$(GPU)_$(PROFTYPE)
 
   MPI: $(OBJS1)
 	rm *.o
