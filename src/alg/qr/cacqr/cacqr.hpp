@@ -81,7 +81,7 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
   // Create an extra matrix for R-inverse
   MatrixRType matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, matrixA.getNumColumnsGlobal(), matrixA.getNumColumnsGlobal(), true);
 
-  std::pair<bool,std::vector<U>> baseCaseDimList = cholesky::CFR3D::Factor(matrixR, matrixRI, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U', CommInfo.world, commInfo3D);
+  std::pair<bool,std::vector<U>> baseCaseDimList = cholesky::cholinv::invoke(matrixR, matrixRI, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U', CommInfo.world, commInfo3D);
 
 // For now, comment this out, because I am experimenting with using TriangularSolve TRSM instead of MM3D
 //   But later on once it works, use an integer or something to have both available, important when benchmarking
@@ -90,7 +90,7 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
   if (baseCaseDimList.first){
     blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    matmult::MM3D::Multiply(matrixRI, matrixA, CommInfo.world, commInfo3D, trmmPack1);
+    matmult::summa3d::invoke(matrixRI, matrixA, CommInfo.world, commInfo3D, trmmPack1);
   }
   else{
     // Note: there are issues with serializing a square matrix into a rectangular. To bypass that,
@@ -98,14 +98,14 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
     Matrix<T,U,UpperTriangular,Distribution,Offload> rectR(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
     Matrix<T,U,UpperTriangular,Distribution,Offload> rectRI(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-    Serializer<Square,UpperTriangular>::Serialize(matrixR, rectR);
-    Serializer<Square,UpperTriangular>::Serialize(matrixRI, rectRI);
+    serialize<Square,UpperTriangular>::invoke(matrixR, rectR);
+    serialize<Square,UpperTriangular>::invoke(matrixRI, rectRI);
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    trsm::TRSM3D::iSolveUpperLeft(matrixA, rectR, rectRI, baseCaseDimList.second, gemmPack1, trmmPackage, CommInfo.world, commInfo3D);
+    trsm::diaginvert::iSolveUpperLeft(matrixA, rectR, rectRI, baseCaseDimList.second, gemmPack1, trmmPackage, CommInfo.world, commInfo3D);
   }
   TAU_FSTOP(cacqr::invoke_3d);
 }
@@ -149,12 +149,12 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommIn
   // Create an extra matrix for R-inverse
   MatrixRType matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
 
-  std::pair<bool,std::vector<U>> baseCaseDimList = cholesky::CFR3D::Factor(matrixR, matrixRI, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U', miniCubeComm, commInfo3D);
+  std::pair<bool,std::vector<U>> baseCaseDimList = cholesky::cholinv::invoke(matrixR, matrixRI, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U', miniCubeComm, commInfo3D);
 
   if (baseCaseDimList.first){
     blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    matmult::MM3D::Multiply(matrixRI, matrixA, CommInfo.cube, commInfo3D, trmmPack1);
+    matmult::summa3d::invoke(matrixRI, matrixA, CommInfo.cube, commInfo3D, trmmPack1);
   }
   else{
     // Note: there are issues with serializing a square matrix into a rectangular. To bypass that,
@@ -162,14 +162,14 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommIn
     Matrix<T,U,UpperTriangular,Distribution,Offload> rectR(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
     Matrix<T,U,UpperTriangular,Distribution,Offload> rectRI(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-    Serializer<Square,UpperTriangular>::Serialize(matrixR, rectR);
-    Serializer<Square,UpperTriangular>::Serialize(matrixRI, rectRI);
+    serialize<Square,UpperTriangular>::invoke(matrixR, rectR);
+    serialize<Square,UpperTriangular>::invoke(matrixRI, rectRI);
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    trsm::TRSM3D::iSolveUpperLeft(matrixA, rectR, rectRI, baseCaseDimList.second, gemmPack1, trmmPackage, CommInfo.cube, commInfo3D);
+    trsm::diaginvert::iSolveUpperLeft(matrixA, rectR, rectRI, baseCaseDimList.second, gemmPack1, trmmPackage, CommInfo.cube, commInfo3D);
   }
   TAU_FSTOP(cacqr::invoke);
 }
@@ -218,7 +218,7 @@ void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Co
     blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
-  matmult::MM3D::Multiply(matrixR2, matrixR, CommInfo.world, CommInfo, trmmPack1);
+  matmult::summa3d::invoke(matrixR2, matrixR, CommInfo.world, CommInfo, trmmPack1);
   TAU_FSTOP(cacqr2::invoke_3d);
 }
 
@@ -251,7 +251,7 @@ void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommI
     blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
-  matmult::MM3D::Multiply(matrixR2, matrixR, CommInfo.cube, CommInfo, trmmPack1);
+  matmult::summa3d:invoke(matrixR2, matrixR, CommInfo.cube, CommInfo, trmmPack1);
 
   TAU_FSTOP(cacqr2::invoke);
 }

@@ -16,39 +16,39 @@
 namespace cholesky{
 class cholinv{
 public:
-  template<typename MatrixAType, typename MatrixTIType>
+  template<typename MatrixAType, typename MatrixTIType, typename CommType>
   static std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
          invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
                 typename MatrixAType::DimensionType blockSizeMultiplier, typename MatrixAType::DimensionType panelDimensionMultiplier,
-                char dir, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D);
+                char dir, CommType&& CommInfo);
 
 private:
-  template<typename MatrixAType, typename MatrixLIType>
+  template<typename MatrixAType, typename MatrixLIType, typename CommType>
   static void rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimenion,
                            typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                            typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                            typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matLIstartX, typename MatrixAType::DimensionType matLIendX,
-                           typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY, size_t tranposePartner, MPI_Comm commWorld,
-                           std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                           typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY, size_t tranposePartner,
+                           CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                            typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension);
 
-  template<typename MatrixAType, typename MatrixRIType>
+  template<typename MatrixAType, typename MatrixRIType, typename CommType>
   static void rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                            typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                            typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                            typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matRIstartX, typename MatrixAType::DimensionType matRIendX,
-                           typename MatrixAType::DimensionType matRIstartY, typename MatrixAType::DimensionType matRIendY, size_t transposePartner, MPI_Comm commWorld,
-                           std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                           typename MatrixAType::DimensionType matRIstartY, typename MatrixAType::DimensionType matRIendY, size_t transposePartner,
+                           CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                            typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension);
 
   
-  template<typename MatrixAType, typename MatrixIType>
+  template<typename MatrixAType, typename MatrixIType, typename CommType>
   static void baseCase(MatrixAType& matrixA, MatrixIType& matrixLI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                        typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                        typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                        typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matIstartX, typename MatrixAType::DimensionType matIendX,
-                       typename MatrixAType::DimensionType matIstartY, typename MatrixAType::DimensionType matIendY, size_t transposePartner, MPI_Comm commWorld,
-                       std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                       typename MatrixAType::DimensionType matIstartY, typename MatrixAType::DimensionType matIendY, size_t transposePartner, CommType&& CommInfo,
+                       bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                        typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension, char dir);
 
   template<typename MatrixType>

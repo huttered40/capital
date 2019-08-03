@@ -1,12 +1,12 @@
 /* Author: Edward Hutter */
 
 namespace matmult{
-template<typename MatrixBType>
+template<typename MatrixBType, typename CommType>
 void summa3d::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matrixB, typename MatrixBType::ScalarType* matrixC,
                     typename MatrixBType::DimensionType matrixAnumColumns, typename MatrixBType::DimensionType matrixAnumRows,
                     typename MatrixBType::DimensionType matrixBnumColumns, typename MatrixBType::DimensionType matrixBnumRows,
-                    typename MatrixBType::DimensionType matrixCnumColumns, typename MatrixBType::DimensionType matrixCnumRows, MPI_Comm commWorld,
-                    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, const blasEngineArgumentPackage_gemm<typename MatrixBType::ScalarType>& srcPackage){
+                    typename MatrixBType::DimensionType matrixCnumColumns, typename MatrixBType::DimensionType matrixCnumRows,
+                    CommType&& CommInfo, const blasEngineArgumentPackage_gemm<typename MatrixBType::ScalarType>& srcPackage){
   TAU_FSTART(summa3d::invoke);
 
   // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
@@ -26,25 +26,16 @@ void summa3d::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& mat
   U localDimensionN = (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? matrixBnumColumns : matrixBnumRows);
   U localDimensionK = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixAnumColumns : matrixAnumRows);
 
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
-  int pGridCoordX = std::get<4>(commInfo3D);
-  int pGridCoordY = std::get<5>(commInfo3D);
-  int pGridCoordZ = std::get<6>(commInfo3D);
-
   U sizeA = matrixAnumRows*matrixAnumColumns;
   U sizeB = matrixB.getNumElems();
   U sizeC = matrixCnumRows*matrixCnumColumns;
-  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
-  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
+  bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
+  bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
 
-  BroadcastPanels((isRootRow ? matrixA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
+  BroadcastPanels((isRootRow ? matrixA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
   matrixAEnginePtr = (isRootRow ? matrixA : foreignA);
-  BroadcastPanels((isRootColumn ? matrixB.getVectorData() : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
-  if ((!std::is_same<StructureB,Rectangular>::value)
-    && (!std::is_same<StructureB,Square>::value)){
+  BroadcastPanels((isRootColumn ? matrixB.getVectorData() : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
+  if ((!std::is_same<StructureB,Rectangular>::value) && (!std::is_same<StructureB,Square>::value)){
     Matrix<T,U,Rectangular,Distribution,Offload> helperB(std::vector<T>(), matrixBnumColumns, matrixBnumRows, matrixBnumColumns, matrixBnumRows);
     getEnginePtr(matrixB, helperB, (isRootColumn ? matrixB.getVectorData() : foreignB), isRootColumn);
     matrixBEnginePtr = helperB.getRawData();
@@ -61,7 +52,7 @@ void summa3d::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& mat
       (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
       localDimensionM, srcPackage);
-    MPI_Allreduce(MPI_IN_PLACE,matrixCforEnginePtr, sizeC, MPI_DATATYPE, MPI_SUM, depthComm);
+    MPI_Allreduce(MPI_IN_PLACE,matrixCforEnginePtr, sizeC, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
   }
   else{
     // This cancels out any affect beta could have. Beta is just not compatable with summa3d and must be handled separately
@@ -70,7 +61,7 @@ void summa3d::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& mat
        (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
        (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
        localDimensionM, srcPackage); 
-    MPI_Allreduce(MPI_IN_PLACE, &holdProduct[0], sizeC, MPI_DATATYPE, MPI_SUM, depthComm);
+    MPI_Allreduce(MPI_IN_PLACE, &holdProduct[0], sizeC, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
     for (U i=0; i<sizeC; i++){
       matrixC[i] = srcPackage.beta*matrixC[i] + holdProduct[i];
     }
@@ -84,9 +75,9 @@ void summa3d::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& mat
 //   Of course we will serialize into Square Structure if not in Square Structure already in order to be compatible
 //   with BLAS-3 routines.
 
-template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
-void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
-                    const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
+template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
+void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, CommType&& CommInfo,
+                     const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
   TAU_FSTART(summa3d::invoke);
 
   // Use tuples so we don't have to pass multiple things by reference.
@@ -107,15 +98,15 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& ma
   U localDimensionK = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixA.getNumColumnsLocal() : matrixA.getNumRowsLocal());
 
   if (methodKey == 0){
-    _start1(matrixA,matrixB,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
+    _start1(matrixA,matrixB,std::forward<CommType>(CommInfo),matrixAEnginePtr,matrixBEnginePtr,matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
   }
   else if (methodKey == 1){
     serializeKeyA = true;
     serializeKeyB = true;
-    _start2(matrixA,matrixB,commInfo3D, matrixAEngineVector,matrixBEngineVector,serializeKeyA,serializeKeyB);
+    _start2(matrixA,matrixB,std::forward<CommType>(CommInfo), matrixAEngineVector,matrixBEngineVector,serializeKeyA,serializeKeyB);
   }
 
-  // Assume, for now, that matrixC has Rectangular Structure. In the future, we can always do the same procedure as above, and add a Serialize after the AllReduce
+  // Assume, for now, that matrixC has Rectangular Structure. In the future, we can always do the same procedure as above, and add a invoke after the AllReduce
 
   // Massive bug fix. Need to use a separate array if beta != 0
 
@@ -126,8 +117,7 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& ma
       (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
       localDimensionM, srcPackage);
-    _end1(
-      matrixCforEnginePtr,matrixC,commInfo3D);
+    _end1(matrixCforEnginePtr,matrixC,std::forward<CommType>(CommInfo));
    }
    else{
      // This cancels out any affect beta could have. Beta is just not compatable with summa3d and must be handled separately
@@ -137,7 +127,7 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& ma
        (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
        (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
        localDimensionM, srcPackage); 
-    _end1(&holdProduct[0],matrixC,commInfo3D,1);
+    _end1(&holdProduct[0],matrixC,std::forward<CommType>(CommInfo),1);
     for (U i=0; i<holdProduct.size(); i++){
       matrixC.getRawData()[i] = srcPackage.beta*matrixC.getRawData()[i] + holdProduct[i];
     }
@@ -145,9 +135,9 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& ma
   TAU_FSTOP(summa3d::invoke);
 }
 
-template<typename MatrixAType, typename MatrixBType>
-void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
-                       const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
+template<typename MatrixAType, typename MatrixBType, typename CommType>
+void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
+                     const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
   TAU_FSTART(summa3d::invoke);
 
   // Use tuples so we don't have to pass multiple things by reference.
@@ -169,13 +159,13 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MPI_Comm commWo
   // soon, we will need a methodKey for the different MM algs
   if (srcPackage.side == blasEngineSide::AblasLeft){
     if (methodKey == 0){
-      _start1(matrixA, matrixB, commInfo3D, matrixAEnginePtr, matrixBEnginePtr, matrixAEngineVector, matrixBEngineVector, foreignA, foreignB,
+      _start1(matrixA, matrixB, std::forward<CommType>(CommInfo), matrixAEnginePtr, matrixBEnginePtr, matrixAEngineVector, matrixBEngineVector, foreignA, foreignB,
         serializeKeyA, serializeKeyB);
     }
     else if (methodKey == 1){
       serializeKeyA = true;
       serializeKeyB = true;
-      _start2(matrixA, matrixB, commInfo3D, matrixAEngineVector, matrixBEngineVector,
+      _start2(matrixA, matrixB, std::forward<CommType>(CommInfo), matrixAEngineVector, matrixBEngineVector,
         serializeKeyA, serializeKeyB);
     }
     blasEngine::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
@@ -184,27 +174,27 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MPI_Comm commWo
   }
   else{
     if (methodKey == 0){
-      _start1(matrixB, matrixA, commInfo3D, matrixBEnginePtr, matrixAEnginePtr, matrixBEngineVector, matrixAEngineVector, foreignB, foreignA, serializeKeyB, serializeKeyA);
+      _start1(matrixB, matrixA, std::forward<CommType>(CommInfo), matrixBEnginePtr, matrixAEnginePtr, matrixBEngineVector, matrixAEngineVector, foreignB, foreignA, serializeKeyB, serializeKeyA);
     }
     else if (methodKey == 1){
       serializeKeyA = true;
       serializeKeyB = true;
-      _start2(matrixB, matrixA, commInfo3D, matrixBEngineVector, matrixAEngineVector, serializeKeyB, serializeKeyA);
+      _start2(matrixB, matrixA, std::forward<CommType>(CommInfo), matrixBEngineVector, matrixAEngineVector, serializeKeyB, serializeKeyA);
     }
     blasEngine::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
       localDimensionM, localDimensionN, localDimensionN, (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN),
       srcPackage);
   }
   // We will follow the standard here: matrixA is always the triangular matrix. matrixB is always the rectangular matrix
-  _end1((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),matrixB,commInfo3D);
+  _end1((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),matrixB,std::forward<CommType>(CommInfo));
   TAU_FSTOP(summa3d::invoke);
 }
 
-template<typename MatrixAType>
+template<typename MatrixAType, typename CommType>
 void summa3d::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matrixB, typename MatrixAType::DimensionType matrixAnumColumns,
                     typename MatrixAType::DimensionType matrixAnumRows, typename MatrixAType::DimensionType matrixBnumColumns,
-                    typename MatrixAType::DimensionType matrixBnumRows, MPI_Comm commWorld,
-                    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D, const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage){
+                    typename MatrixAType::DimensionType matrixBnumRows, CommType&& CommInfo,
+                    const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage){
   TAU_FSTART(summa3d::invoke);
   // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
   //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
@@ -223,25 +213,15 @@ void summa3d::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* mat
   U localDimensionM = matrixBnumRows;
   U localDimensionN = matrixBnumColumns;
 
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
-  int pGridCoordX = std::get<4>(commInfo3D);
-  int pGridCoordY = std::get<5>(commInfo3D);
-  int pGridCoordZ = std::get<6>(commInfo3D);
-
   U sizeA = matrixA.getNumElems();
   U sizeB = matrixBnumRows*matrixBnumColumns;
-  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
-  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
+  bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
+  bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
 
   // soon, we will need a methodKey for the different MM algs
   if (srcPackage.side == blasEngineSide::AblasLeft){
-    BroadcastPanels(
-      (isRootRow ? matrixA.getVectorData() : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
-    if ((!std::is_same<StructureA,Rectangular>::value)
-      && (!std::is_same<StructureA,Square>::value)){
+    BroadcastPanels((isRootRow ? matrixA.getVectorData() : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
+    if ((!std::is_same<StructureA,Rectangular>::value) && (!std::is_same<StructureA,Square>::value)){
       Matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
       getEnginePtr(matrixA, helperA, (isRootRow ? matrixA.getVectorData() : foreignA), isRootRow);
       matrixAEnginePtr = std::move(helperA.getVectorData());
@@ -249,15 +229,14 @@ void summa3d::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* mat
     else{
       matrixAEnginePtr = std::move((isRootRow ? matrixA.getVectorData() : foreignA));
     }
-    BroadcastPanels((isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+    BroadcastPanels((isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
     matrixBEnginePtr = (isRootColumn ? matrixB : foreignB);
     blasEngine::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionM,
       (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
   else{
-    BroadcastPanels((isRootColumn ? matrixA.getVectorData() : foreignA), sizeA, isRootColumn, pGridCoordZ, columnComm);
-    if ((!std::is_same<StructureA,Rectangular>::value)
-      && (!std::is_same<StructureA,Square>::value)){
+    BroadcastPanels((isRootColumn ? matrixA.getVectorData() : foreignA), sizeA, isRootColumn, CommInfo.z, CommInfo.column);
+    if ((!std::is_same<StructureA,Rectangular>::value) && (!std::is_same<StructureA,Square>::value)){
       Matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
       getEnginePtr(matrixA, helperA, (isRootColumn ? matrixA.getVectorData() : foreignA), isRootColumn);
       matrixAEnginePtr = std::move(helperA.getVectorData());
@@ -265,12 +244,12 @@ void summa3d::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* mat
     else{
       matrixAEnginePtr = std::move((isRootColumn ? matrixA.getVectorData() : foreignA));
     }
-    BroadcastPanels((isRootRow ? matrixB : foreignB), sizeB, isRootRow, pGridCoordZ, rowComm);
+    BroadcastPanels((isRootRow ? matrixB : foreignB), sizeB, isRootRow, CommInfo.z, CommInfo.row);
     matrixBEnginePtr = (isRootRow ? matrixB : foreignB);
     blasEngine::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionN,
       (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
-  MPI_Allreduce(MPI_IN_PLACE,matrixBEnginePtr, sizeB, MPI_DATATYPE, MPI_SUM, depthComm);
+  MPI_Allreduce(MPI_IN_PLACE,matrixBEnginePtr, sizeB, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
   std::memcpy(matrixB, matrixBEnginePtr, sizeB*sizeof(T));
   if ((srcPackage.side == blasEngineSide::AblasLeft) && (!isRootColumn)) delete[] foreignB;
   if ((srcPackage.side == blasEngineSide::AblasRight) && (!isRootRow)) delete[] foreignB;
@@ -278,9 +257,9 @@ void summa3d::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* mat
 }
 
 
-template<typename MatrixAType, typename MatrixCType>
-void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
-                    const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
+template<typename MatrixAType, typename MatrixCType, typename CommType>
+void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
+                     const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
   TAU_FSTART(summa3d::invoke);
   // Note: Internally, this routine uses gemm, not syrk, as its not possible for each processor to perform local MM with symmetric matrices
   //         given the data layout over the processor grid.
@@ -291,14 +270,11 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, MPI_Comm commWo
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
   int rank, pGridDimensionSize;
-  MPI_Comm_rank(commWorld, &rank);
-  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
+  MPI_Comm_rank(CommInfo.world, &rank);
+  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
   size_t helper = pGridDimensionSize;
   helper *= helper;
-  size_t pGridCoordX = std::get<4>(commInfo3D);
-  size_t pGridCoordY = std::get<5>(commInfo3D);
-  size_t pGridCoordZ = std::get<6>(commInfo3D);
-  size_t transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
+  size_t transposePartner = CommInfo.x*helper + CommInfo.y*pGridDimensionSize + CommInfo.z;
 
   // Note: The routine will be C <- BA or AB, depending on the order in the srcPackage. B will always be the transposed matrix
   T* matrixAEnginePtr;
@@ -313,15 +289,15 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, MPI_Comm commWo
   U localDimensionK = (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? matrixA.getNumColumnsLocal() : matrixA.getNumRowsLocal());
 
   MatrixAType matrixB = matrixA;
-  util::transposeSwap(matrixB, rank, transposePartner, commWorld);
+  util::transposeSwap(matrixB, rank, transposePartner, CommInfo.world);
 
   if (methodKey == 0){
     if (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans){
-      _start1(matrixA,matrixB,commInfo3D,matrixAEnginePtr,matrixBEnginePtr,
+      _start1(matrixA,matrixB,std::forward<CommType>(CommInfo),matrixAEnginePtr,matrixBEnginePtr,
         matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
     }
     else{
-      _start1(matrixB,matrixA,commInfo3D,matrixBEnginePtr,matrixAEnginePtr,
+      _start1(matrixB,matrixA,std::forward<CommType>(CommInfo),matrixBEnginePtr,matrixAEnginePtr,
         matrixBEngineVector,matrixAEngineVector,foreignB,foreignA,serializeKeyB,serializeKeyA);
     }
   }
@@ -341,7 +317,7 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, MPI_Comm commWo
         matrixCforEnginePtr, localDimensionN, localDimensionN, localDimensionK,
         localDimensionK, localDimensionK, localDimensionN, gemmArgs);
     }
-    _end1(matrixCforEnginePtr,matrixC,commInfo3D);
+    _end1(matrixCforEnginePtr,matrixC,std::forward<CommType>(CommInfo));
   }
   else{
     // This cancels out any affect beta could have. Beta is just not compatable with summa3d and must be handled separately
@@ -358,7 +334,7 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, MPI_Comm commWo
         &holdProduct[0], localDimensionN, localDimensionN, localDimensionK,
         localDimensionK, localDimensionK, localDimensionN, gemmArgs);
     }
-    _end1(&holdProduct[0],matrixC,commInfo3D,1);
+    _end1(&holdProduct[0],matrixC,std::forward<CommType>(CommInfo),1);
 
     // Future optimization: Reduce loop length by half since the update will be a symmetric matrix and only half will be used going forward.
     for (U i=0; i<holdProduct.size(); i++){
@@ -368,14 +344,14 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, MPI_Comm commWo
   TAU_FSTOP(summa3d::invoke);
 }
 
-template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
+template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
 void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
                     typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
                     typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
                     typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
                     typename MatrixBType::DimensionType matrixBcutXend, typename MatrixCType::DimensionType matrixCcutZstart,
                     typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutYstart,
-                    typename MatrixCType::DimensionType matrixCcutYend, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                    typename MatrixCType::DimensionType matrixCcutYend, CommType&& CommInfo,
                     const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC, size_t methodKey){
   TAU_FSTART(summa3d::invokeCut);
   // We will set up 3 matrices and call the method above.
@@ -383,30 +359,29 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& ma
   using StructureC = typename MatrixCType::StructureType;
 
   int pGridDimensionSize;
-  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
+  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
   MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
   MatrixBType matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
   MatrixCType matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, pGridDimensionSize, cutC);
 
-  invoke((cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), commWorld, commInfo3D, srcPackage, methodKey);
+  invoke((cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), std::forward<CommType>(CommInfo), srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC){
-    Serializer<StructureC,StructureC>::Serialize(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
+    serialize<StructureC,StructureC>::invoke(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
   }
   TAU_FSTOP(summa3d::invokeCut);
 }
 
 
-template<typename MatrixAType, typename MatrixBType>
+template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAType::DimensionType matrixAcutXstart,
                     typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
                     typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
                     typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
-                    typename MatrixBType::DimensionType matrixBcutXend, MPI_Comm commWorld,
-                    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                    typename MatrixBType::DimensionType matrixBcutXend, CommType&& CommInfo,
                     const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, size_t methodKey){
   TAU_FSTART(summa3d::invokeCut);
   // We will set up 2 matrices and call the method above.
@@ -414,27 +389,27 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename Matrix
   using StructureB = typename MatrixBType::StructureType;
 
   int pGridDimensionSize;
-  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
+  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
   MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
   MatrixBType matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
-  invoke((cutA ? matA : matrixA), (cutB ? matB : matrixB), commWorld, commInfo3D, srcPackage, methodKey);
+  invoke((cutA ? matA : matrixA), (cutB ? matB : matrixB), std::forward<CommType>(CommInfo), srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
   if (cutB){
-    Serializer<StructureB,StructureB>::Serialize(matrixB, matB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
+    serialize<StructureB,StructureB>::invoke(matrixB, matB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
   }
   TAU_FSTOP(summa3d::invokeCut);
 }
 
 
-template<typename MatrixAType, typename MatrixCType>
+template<typename MatrixAType, typename MatrixCType, typename CommType>
 void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
                     typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
                     typename MatrixAType::DimensionType matrixAcutYend, typename MatrixCType::DimensionType matrixCcutZstart,
                     typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutXstart,
-                    typename MatrixCType::DimensionType matrixCcutXend, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D,
+                    typename MatrixCType::DimensionType matrixCcutXend, CommType&& CommInfo,
                     const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutC, size_t methodKey){
   TAU_FSTART(summa3d::invokeCut);
   // We will set up 2 matrices and call the method above.
@@ -442,24 +417,24 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename Matrix
   using StructureC = typename MatrixCType::StructureType;
 
   int pGridDimensionSize;
-  MPI_Comm_size(std::get<0>(commInfo3D), &pGridDimensionSize);
+  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
   MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
   MatrixAType matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, pGridDimensionSize, cutC);
 
-  invoke((cutA ? matA : matrixA), (cutC ? matC : matrixC), commWorld, commInfo3D, srcPackage, methodKey);
+  invoke((cutA ? matA : matrixA), (cutC ? matC : matrixC), std::forward<CommType>(CommInfo), srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go.
   if (cutC){
-    Serializer<StructureC,StructureC>::Serialize(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, true);
+    serialize<StructureC,StructureC>::invoke(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, true);
   }
   TAU_FSTOP(summa3d::invokeCut);
 }
 
 
-template<typename MatrixAType, typename MatrixBType, typename tupleStructure>
-void summa3d::_start1(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& commInfo3D, typename MatrixAType::ScalarType*& matrixAEnginePtr,
+template<typename MatrixAType, typename MatrixBType, typename CommType>
+void summa3d::_start1(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo, typename MatrixAType::ScalarType*& matrixAEnginePtr,
                    typename MatrixBType::ScalarType*& matrixBEnginePtr, std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector,
                    std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector, std::vector<typename MatrixAType::ScalarType>& foreignA,
                    std::vector<typename MatrixBType::ScalarType>& foreignB, bool& serializeKeyA, bool& serializeKeyB){
@@ -472,13 +447,6 @@ void summa3d::_start1(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure
   using Distribution = typename MatrixAType::DistributionType;
   using Offload = typename MatrixAType::OffloadType;
 
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm columnComm = std::get<1>(commInfo3D);
-  size_t pGridCoordX = std::get<4>(commInfo3D);
-  size_t pGridCoordY = std::get<5>(commInfo3D);
-  size_t pGridCoordZ = std::get<6>(commInfo3D);
-
   U localDimensionM = matrixA.getNumRowsLocal();
   U localDimensionN = matrixB.getNumColumnsLocal();
   U localDimensionK = matrixA.getNumColumnsLocal();
@@ -486,23 +454,21 @@ void summa3d::_start1(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure
   std::vector<T>& dataB = matrixB.getVectorData();
   U sizeA = matrixA.getNumElems();
   U sizeB = matrixB.getNumElems();
-  bool isRootRow = ((pGridCoordX == pGridCoordZ) ? true : false);
-  bool isRootColumn = ((pGridCoordY == pGridCoordZ) ? true : false);
+  bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
+  bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
 
-  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, pGridCoordZ, rowComm);
-  BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, pGridCoordZ, columnComm);
+  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
+  BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
 
   matrixAEnginePtr = (isRootRow ? &dataA[0] : &foreignA[0]);
   matrixBEnginePtr = (isRootColumn ? &dataB[0] : &foreignB[0]);
-  if ((!std::is_same<StructureA,Rectangular>::value)
-    && (!std::is_same<StructureA,Square>::value)){
+  if ((!std::is_same<StructureA,Rectangular>::value) && (!std::is_same<StructureA,Square>::value)){
     serializeKeyA = true;
     Matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
     getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
     matrixAEngineVector = std::move(helperA.getVectorData());
   }
-  if ((!std::is_same<StructureB,Rectangular>::value)
-    && (!std::is_same<StructureB,Square>::value)){
+  if ((!std::is_same<StructureB,Rectangular>::value) && (!std::is_same<StructureB,Square>::value)){
     serializeKeyB = true;
     Matrix<T,U,Rectangular,Distribution,Offload> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
     getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
@@ -512,45 +478,36 @@ void summa3d::_start1(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure
 }
 
 
-template<typename MatrixType, typename tupleStructure>
-void summa3d::_end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, tupleStructure& commInfo3D, size_t dir){
+template<typename MatrixType, typename CommType>
+void summa3d::_end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, size_t dir){
   TAU_FSTART(summa3d::_end1);
 
   using U = typename MatrixType::DimensionType;
 
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
-
   U numElems = matrix.getNumElems();
   // Prevents buffer aliasing, which MPI does not like.
   if ((dir) || (matrixEnginePtr == matrix.getRawData())){
-    MPI_Allreduce(MPI_IN_PLACE,matrixEnginePtr, numElems, MPI_DATATYPE, MPI_SUM, depthComm);
+    MPI_Allreduce(MPI_IN_PLACE,matrixEnginePtr, numElems, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
   }
   else{
-    MPI_Allreduce(matrixEnginePtr, matrix.getRawData(), numElems, MPI_DATATYPE, MPI_SUM, depthComm);
+    MPI_Allreduce(matrixEnginePtr, matrix.getRawData(), numElems, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
   }
   TAU_FSTOP(summa3d::_end1);
 }
 
-template<typename MatrixAType, typename MatrixBType, typename tupleStructure>
-void summa3d::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& commInfo3D,
-                   std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector, std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector,
-	           bool& serializeKeyA, bool& serializeKeyB){
+template<typename MatrixAType, typename MatrixBType, typename CommType>
+void summa3d::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
+                      std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector, std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector,
+	              bool& serializeKeyA, bool& serializeKeyB){
   TAU_FSTART(summa3d::_start2);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
 
-  // Simple asignments like these don't need pass-by-reference. Remember the new pass-by-value semantics are efficient anyways
-  MPI_Comm rowComm = std::get<0>(commInfo3D);
-  MPI_Comm columnComm = std::get<1>(commInfo3D);
-  MPI_Comm depthComm = std::get<3>(commInfo3D);
-  size_t pGridCoordX = std::get<4>(commInfo3D);
-  size_t pGridCoordY = std::get<5>(commInfo3D);
-  size_t pGridCoordZ = std::get<6>(commInfo3D);
   int rowCommSize,columnCommSize,depthCommSize;
-  MPI_Comm_size(rowComm, &rowCommSize);
-  MPI_Comm_size(columnComm, &columnCommSize);
-  MPI_Comm_size(depthComm, &depthCommSize);
+  MPI_Comm_size(CommInfo.row, &rowCommSize);
+  MPI_Comm_size(CommInfo.column, &columnCommSize);
+  MPI_Comm_size(CommInfo.depth, &depthCommSize);
 
 /* Debugging notes
   How do I deal with serialization? Like, what if matrixA or B is a UT or LT? I do not want to communicate more than the packed data
@@ -569,21 +526,21 @@ void summa3d::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure
   int divA = localNumColumnsA/rowCommSize;
   U gatherSizeA = (modA == 0 ? sizeA : (divA+1)*rowCommSize*localNumRowsA);
   std::vector<T> collectMatrixA(gatherSizeA);
-  int shift = (pGridCoordZ + pGridCoordX) % rowCommSize;
+  int shift = (CommInfo.z + CommInfo.x) % rowCommSize;
   U dataAOffset = localNumRowsA*divA*shift;
   dataAOffset += std::min(shift,modA)*localNumRowsA;
   // matrixAEngineVector can stay with sizeA elements, because when we move data into it, we will get rid of the zeros.
-  matrixAEngineVector.resize(sizeA);			// will need to change upon Serialize changes
+  matrixAEngineVector.resize(sizeA);			// will need to change upon invoke changes
   int messageSizeA = gatherSizeA/rowCommSize;
 
   // Some processors will need to serialize
   if (modA && (shift >= modA)){
     std::vector<T> partitionMatrixA(messageSizeA,0);
     memcpy(&partitionMatrixA[0], &dataA[dataAOffset], (messageSizeA - localNumRowsA)*sizeof(T));  // truncation should be fine here. Rest is zeros
-    MPI_Allgather(&partitionMatrixA[0], messageSizeA, MPI_DATATYPE, &collectMatrixA[0], messageSizeA, MPI_DATATYPE, rowComm);
+    MPI_Allgather(&partitionMatrixA[0], messageSizeA, MPI_DATATYPE, &collectMatrixA[0], messageSizeA, MPI_DATATYPE, CommInfo.row);
   }
   else{
-    MPI_Allgather(&dataA[dataAOffset], messageSizeA, MPI_DATATYPE, &collectMatrixA[0], messageSizeA, MPI_DATATYPE, rowComm);
+    MPI_Allgather(&dataA[dataAOffset], messageSizeA, MPI_DATATYPE, &collectMatrixA[0], messageSizeA, MPI_DATATYPE, CommInfo.row);
   }
 
 
@@ -610,7 +567,7 @@ void summa3d::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure
   }
   else{
     matrixAEngineVector.resize(sizeA);
-    U shuffleAoffset = messageSizeA*((rowCommSize - pGridCoordZ)%rowCommSize);
+    U shuffleAoffset = messageSizeA*((rowCommSize - CommInfo.z)%rowCommSize);
     U stepA = 0;
     for (int i=0; i<rowCommSize; i++){
       // Don't really need the 2nd if statement condition like the one above. Actually, neither do
@@ -628,19 +585,19 @@ void summa3d::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure
   int modB = localNumRowsB%columnCommSize;
   int divB = localNumRowsB/columnCommSize;
   int blockLengthB = (modB == 0 ? divB : divB +1);
-  shift = (pGridCoordZ + pGridCoordY) % columnCommSize;
+  shift = (CommInfo.x + CommInfo.y) % columnCommSize;
   U dataBOffset = divB*shift;
   dataBOffset += std::min(shift, modB);       // WATCH: could be wrong
   U gatherSizeB = blockLengthB*columnCommSize*localNumColumnsB;
   int messageSizeB = gatherSizeB/columnCommSize;
-  std::vector<T> collectMatrixB(gatherSizeB);			// will need to change upon Serialize changes
+  std::vector<T> collectMatrixB(gatherSizeB);			// will need to change upon invoke changes
   std::vector<T> partitionMatrixB(messageSizeB,0);			// Important to fill with zeros first
-  // Special serialize. Can't use my MatrixSerializer here.
+  // Special serialize. Can't use my Matrixserialize here.
   U writeSize = (((modB == 0)) || (shift < modB) ? blockLengthB : blockLengthB-1);
   for (U i=0; i<localNumColumnsB; i++){
     memcpy(&partitionMatrixB[i*blockLengthB], &matrixB.getRawData()[dataBOffset + i*localNumRowsB], writeSize*sizeof(T));
   }
-  MPI_Allgather(&partitionMatrixB[0], partitionMatrixB.size(), MPI_DATATYPE, &collectMatrixB[0], partitionMatrixB.size(), MPI_DATATYPE, columnComm);
+  MPI_Allgather(&partitionMatrixB[0], partitionMatrixB.size(), MPI_DATATYPE, &collectMatrixB[0], partitionMatrixB.size(), MPI_DATATYPE, CommInfo.column);
 /*
   // Allgathering matrixB is a problem for AMPI when using derived datatypes
   MPI_Datatype matrixBcolumnData;
@@ -656,11 +613,11 @@ void summa3d::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure
     matrixBEngineVector = std::move(collectMatrixB);
   }
   else{
-    matrixBEngineVector.resize(sizeB);			// will need to change upon Serialize changes
+    matrixBEngineVector.resize(sizeB);			// will need to change upon invoke changes
     // Open question: Is this the most cache-efficient way to reshuffle the data?
     for (U i=0; i<localNumColumnsB; i++){
       // We always start in the same offset in the gatherBuffer
-      U shuffleBoffset = messageSizeB*((columnCommSize - pGridCoordZ)%columnCommSize);
+      U shuffleBoffset = messageSizeB*((columnCommSize - CommInfo.z)%columnCommSize);
       U saveStepB = i*localNumRowsB;
       for (int j=0; j<columnCommSize; j++){
         U writeSize = (((modB == 0) || ((j % columnCommSize) < modB)) ? blockLengthB : blockLengthB-1);
@@ -701,31 +658,31 @@ void summa3d::_start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure
 
 
 template<typename T, typename U>
-void summa3d::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm){
+void summa3d::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
   TAU_FSTART(summa3d::BroadcastPanels);
 
   if (isRoot){
-    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panel);
   }
   else{
     data.resize(size);
-    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panel);
   }
   TAU_FSTOP(summa3d::BroadcastPanels);
 }
 
 template<typename T, typename U>
-void summa3d::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm){
+void summa3d::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
   TAU_FSTART(summa3d::BroadcastPanels);
 
   if (isRoot){
-    MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panelComm);
+    MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panel);
   }
   else{
     // TODO: Is this causing a memory leak? Usually I would be overwriting vector allocated memory. Not sure if this will cause issues or if
     //         the vector will still delete itself.
     data = new T[size];
-    MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panelComm);
+    MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panel);
   }
   TAU_FSTOP(summa3d::BroadcastPanels);
 }
@@ -741,12 +698,12 @@ void summa3d::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest,
   // Need to separate the below out into its own function that will not get instantied into object code
   //   unless it passes the test above. This avoids template-enduced template compiler errors
   if (!isRoot){
-    MatrixSrcType matrixToSerialize(std::move(data), matrixSrc.getNumColumnsLocal(), matrixSrc.getNumRowsLocal(), matrixSrc.getNumColumnsGlobal(), matrixSrc.getNumRowsGlobal(), true);
-    Serializer<StructureSrc,StructureDest>::Serialize(matrixToSerialize, matrixDest);
+    MatrixSrcType matrixToinvoke(std::move(data), matrixSrc.getNumColumnsLocal(), matrixSrc.getNumRowsLocal(), matrixSrc.getNumColumnsGlobal(), matrixSrc.getNumRowsGlobal(), true);
+    serialize<StructureSrc,StructureDest>::invoke(matrixToinvoke, matrixDest);
   }
   else{
     // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangular
-    Serializer<StructureSrc,StructureDest>::Serialize(matrixSrc, matrixDest);
+    serialize<StructureSrc,StructureDest>::invoke(matrixSrc, matrixDest);
   }
   TAU_FSTOP(summa3d::getEnginePtr);
 }
@@ -766,7 +723,7 @@ MatrixType summa3d::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::Dim
     U numColumns = matrixArgColumnEnd - matrixArgColumnStart;
     U numRows = matrixArgRowEnd - matrixArgRowStart;
     MatrixType fillMatrix(std::vector<T>(), numColumns, numRows, numColumns*pGridDimensionSize, numRows*pGridDimensionSize);
-    Serializer<Structure,Structure>::Serialize(srcMatrix, fillMatrix, matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
+    serialize<Structure,Structure>::invoke(srcMatrix, fillMatrix, matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
     TAU_FSTOP(summa3d::getSubMatrix);
     return fillMatrix;			// I am returning an rvalue
   }
