@@ -1,8 +1,10 @@
 /* Author: Edward Hutter */
 
 namespace cholesky{
+
+template<typename AlgType>
 template<typename MatrixAType, typename MatrixSolType>
-void validate::validateLocal(MatrixAType& matrixA, MatrixSolType& matrixSol, char dir, MPI_Comm commWorld){
+void validate<AlgType>::validateLocal(MatrixAType& matrixA, MatrixSolType& matrixSol, char dir, MPI_Comm commWorld){
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
   //   Finally, we can AllReduce the residuals.
@@ -65,12 +67,14 @@ void validate::validateLocal(MatrixAType& matrixA, MatrixSolType& matrixSol, cha
   MPI_Comm_free(&sliceComm);
 }
 
-template<typename MatrixAType, typename MatrixTriType>
-typename MatrixAType::ScalarType validate::invoke(MatrixAType& matrixA, MatrixTriType& matrixTri,
-                               char dir, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D){
+template<typename AlgType>
+template<typename MatrixAType, typename MatrixTriType, typename CommType>
+typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA, MatrixTriType& matrixTri, char dir, CommType&& CommInfo){
   int rank,size;
   MPI_Comm_rank(commWorld, &rank);
   MPI_Comm_size(commWorld, &size);
+
+  .. is CommInfo arg not used then? I feel like it should be...
 
   auto commInfo = util::getCommunicatorSlice(commWorld);
   size_t pGridCoordX = std::get<1>(commInfo);
@@ -89,8 +93,9 @@ typename MatrixAType::ScalarType validate::invoke(MatrixAType& matrixA, MatrixTr
 }
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
-template<typename T, typename U>
-T validate::getResidualTriangleLower(std::vector<T>& myValues, std::vector<T>& lapackValues, U localDimension, U globalDimension, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo){
+template<typename AlgType>
+template<typename T, typename U, typename CommType>
+T validate<AlgType>::getResidualTriangleLower(std::vector<T>& myValues, std::vector<T>& lapackValues, U localDimension, U globalDimension, CommType&& CommInfo){
   T error = 0;
   size_t pCoordX = std::get<1>(commInfo);
   size_t pCoordY = std::get<2>(commInfo);
@@ -129,8 +134,9 @@ T validate::getResidualTriangleLower(std::vector<T>& myValues, std::vector<T>& l
 }
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
-template<typename T, typename U>
-T validate::getResidualTriangleUpper(std::vector<T>& myValues, std::vector<T>& lapackValues, U localDimension, U globalDimension, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo){
+template<typename AlgType>
+template<typename T, typename U, typename CommType>
+T validate<AlgType>::getResidualTriangleUpper(std::vector<T>& myValues, std::vector<T>& lapackValues, U localDimension, U globalDimension, CommType&& CommInfo){
   T error = 0;
   size_t pCoordX = std::get<1>(commInfo);
   size_t pCoordY = std::get<2>(commInfo);

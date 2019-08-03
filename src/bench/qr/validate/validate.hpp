@@ -2,23 +2,20 @@
 namespace qr{
 
 /* Validation against sequential BLAS/LAPACK constructs */
-template<typename MatrixAType, typename MatrixQType, typename MatrixRType>
+template<AlgType>
+template<typename MatrixAType, typename MatrixQType, typename MatrixRType, typename CommType>
 std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
-validate::invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, size_t gridDimensionD, size_t gridDimensionC, MPI_Comm commWorld,
-                                    std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable){
+validate<AlgType>::invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, CommType&& CommInfo){
   using T = typename MatrixAType::ScalarType;
 
-  MPI_Comm miniCubeComm = std::get<5>(commInfoTunable);
-  auto commInfo3D = util::build3DTopology(miniCubeComm);
-  MPI_Comm columnAltComm = std::get<2>(commInfoTunable);
-  int size; MPI_Comm_size(miniCubeComm, &size);
-  size_t pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
+  auto commInfo3D = ... Square/Rect (?) util::build3DTopology(CommInfo.cube);
+  int pGridDimensionSize;
+  MPI_Comm_size(CommInfo.row,&pGridDimensionSize);
   util::removeTriangle(matrixR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
   std::string str1 = "Residual: ";
   T error1 = validator::validateResidualParallel(matrixQ, matrixR, matrixA, 'F', miniCubeComm, commInfo3D, MPI_COMM_WORLD, str1);
   std::string str2 = "Deviation from orthogonality: ";
   T error2 = validator::validateOrthogonalityParallel(matrixQ, miniCubeComm, commInfo3D, columnAltComm, str2);
-  util::destroy3DTopology(commInfo3D);
   return std::make_pair(error1,error2);
 }
 

@@ -10,12 +10,12 @@
 //   and use them to calculate the residual or error.
 
 namespace qr{
+template<typename AlgType>
 class validate{
 public:
-  template<typename MatrixAType, typename MatrixQType, typename MatrixRType>
+  template<typename MatrixAType, typename MatrixQType, typename MatrixRType, typename CommType>
   static std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
-         invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& myR,
-                                 size_t gridDimensionD, size_t gridDimensionC, MPI_Comm commWorld, std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm>& commInfoTunable);
+           invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& myR, CommType&& CommInfo);
 private:
 /*
   // We require that for a 1D algorithm, Q is rectangular and R is square

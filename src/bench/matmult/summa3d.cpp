@@ -146,7 +146,7 @@ int main(int argc, char** argv){
       double iterTime = runTestGemm(matA, matB, matC, blasArgs, methodKey3, pCoordX, pCoordY, pGridDimensionSize, fptrTotal, i, numIterations, rank, size, numFuncs);
       totalTime += iterTime;
     }
-    matmult::MMvalidate::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
+    matmult::validate<summa3d>::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
     if (rank == 0){
       fptrTotal.close();
     }

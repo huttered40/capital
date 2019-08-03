@@ -7,14 +7,16 @@
   Note: topology does not quite serve as a policy. Algorithms have a specific topology that is needed,
         as usually these algorithm class templates are not written in such a way that a summa3d/2d is performed
 	if a Square3d/2d instance is passed as an argument. That would be interesting, but that is not needed now.
+
+  Note: Square/Rect refers to the shape of the face of the processor grid
 */
 
 namespace topology{
 
-class Rect3D{
+class Rect{
 public:
-  Rect3D(MPI_Comm comm, size_t c){
-    TAU_FSTART(topology::Rect3D);
+  Rect(MPI_Comm comm, size_t c){
+    TAU_FSTART(topology::Rect);
 
     int rank, size, columnRank, cubeRank;
     MPI_Comm_rank(comm, &rank);
@@ -37,75 +39,64 @@ public:
     this->c = c;
     this->d = size / (this->c*this->c);
     this->z = rank%this->c;
+    this->y = rank/SubCubeSliceSize;
     this->x = (rank%SubCubeSliceSize)/c;
     MPI_Comm_free(&this->column);
-    TAU_FSTOP(topology::Rect3D);
+    TAU_FSTOP(topology::Rect);
   }
-  ~Rect3D(){
-    TAU_FSTART(topology::~Rect3D);
-    MPI_Comm_free(&std::get<0>(commInfoTunable));
-    MPI_Comm_free(&std::get<1>(commInfoTunable));
-    MPI_Comm_free(&std::get<2>(commInfoTunable));
-    MPI_Comm_free(&std::get<3>(commInfoTunable));
-    MPI_Comm_free(&std::get<4>(commInfoTunable));
-    MPI_Comm_free(&std::get<5>(commInfoTunable));
-    TAU_FSTOP(topology::~Rect3D);
+  ~Rect(){
+    TAU_FSTART(topology::~Rect);
+    MPI_Comm_free(&this->row);
+    MPI_Comm_free(&this->column_contig);
+    MPI_Comm_free(&this->column_alt);
+    MPI_Comm_free(&this->depth);
+    MPI_Comm_free(&this->slice);
+    MPI_Comm_free(&this->cube);
+    TAU_FSTOP(topology::~Rect);
   }
 
   MPI_Comm world,row,column_contig,column_alt,depth,slice,cube;
-  size_t c,d,x,z; // 'y' not included because that dimension is partitioned
+  size_t c,d,x,y,z;
 };
 
-class Square3D{
+class Square{
 public:
-  Square3D(MPI_Comm comm){
-    TAU_FSTART(topology::Square3D);
+  Square(MPI_Comm comm, size_t c){
+    TAU_FSTART(topology::Square);
 
     int rank,size;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
 
-    size_t pGridDimensionSize = std::nearbyint(std::ceil(pow(size,1./3.)));
-    size_t helper = pGridDimensionSize;
-    helper *= helper;
-    this->z = rank%pGridDimensionSize;
-    this->y = rank/helper;
-    this->x = (rank%helper)/pGridDimensionSize;
+    this->c = c;
+    this->d = std::nearbyint(std::ceil(pow(size/c,1./2.)));
+    size_t TopFaceSize = this->d*this->d;
+    this->z = rank%c;
+    this->y = rank/TopFaceSize;
+    this->x = (rank%TopFaceSize)/this->c;
 
     // First, split the 3D Cube processor grid communicator into groups based on what 2D slice they are located on.
     // Then, subdivide further into row groups and column groups
-    MPI_Comm_split(comm, rank/pGridDimensionSize, rank, &this->depth);
+    MPI_Comm_split(comm, rank/this->c, rank, &this->depth);
     MPI_Comm_split(comm, this->z, rank, &this->slice);
     MPI_Comm_split(this->slice, this->y, this->x, &this->row);
     MPI_Comm_split(this->slice, this->x, this->y, &this->column);
     this->world=comm;
 
-    TAU_FSTOP(topology::Square3D);
+    TAU_FSTOP(topology::Square);
   }
-  ~Square3D(){
-    TAU_FSTART(topology::~Square3D);
+  ~Square(){
+    TAU_FSTART(topology::~Square);
     MPI_Comm_free(&this->row);
     MPI_Comm_free(&this->column);
     MPI_Comm_free(&this->slice);
     MPI_Comm_free(&this->depth);
-    TAU_FSTOP(topology::~Square3D);
+    TAU_FSTOP(topology::~Square);
   }
 
   MPI_Comm world,row,column,slice,depth;
-  size_t x,y,z;
-};
-
-class Square2D{
-public:
-  Square2D(MPI_Comm comm){
-  }
-  ~Square2D(){
-  }
-
-  MPI_Comm row,column;
-  size_t x,y;
+  size_t c,d,x,y,z;
 };
 }
 
-#include "topology.hpp"
 #endif /*TOPOLOGY_H_*/

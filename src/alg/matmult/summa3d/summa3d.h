@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#ifndef SUMMA3D_H_
-#define SUMMA3D_H_
+#ifndef MATMULT__SUMMA3D_H_
+#define MATMULT__SUMMA3D_H_
 
 #include "./../../alg.h"
 
@@ -106,4 +106,4 @@ private:
 
 #include "summa3d.hpp"
 
-#endif /* SUMMA3D_H_ */
+#endif /* MATMULT__SUMMA3D_H_ */

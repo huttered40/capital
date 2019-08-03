@@ -10,6 +10,7 @@ namespace matmult{
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
 
+template<typename AlgType>
 class validate{
 public:
   // This method does not depend on the structures. There are situations where have square structured matrices,

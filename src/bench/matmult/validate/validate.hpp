@@ -1,8 +1,10 @@
 /* Author: Edward Hutter */
 
 namespace matmult{
+
+template<typename AlgType>
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
-void validate::validateLocal(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, MPI_Comm commWorld,
+void validate<AlgType>::validateLocal(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, MPI_Comm commWorld,
                                const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage){
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
@@ -48,8 +50,9 @@ void validate::validateLocal(MatrixAType& matrixA, MatrixBType& matrixB, MatrixC
   MPI_Comm_free(&sliceComm);
 }
 
+template<typename AlgType>
 template<typename MatrixAType, typename MatrixBinType, typename MatrixBoutType>
-void validate::validateLocal(MatrixAType& matrixA, MatrixBinType& matrixBin, MatrixBoutType& matrixBout,
+void validate<AlgType>::validateLocal(MatrixAType& matrixA, MatrixBinType& matrixBin, MatrixBoutType& matrixBout,
                                MPI_Comm commWorld, const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage){
   // What I want to do here is generate a full matrix with the correct values
   //   and then compare with the local part of matrixSol.
@@ -95,9 +98,9 @@ void validate::validateLocal(MatrixAType& matrixA, MatrixBinType& matrixBin, Mat
   MPI_Comm_free(&sliceComm);
 }
 
-  
+template<typename AlgType>
 template<typename T, typename U>
-T validate::getResidual(std::vector<T>& myValues, std::vector<T>& blasValues,
+T validate<AlgType>::getResidual(std::vector<T>& myValues, std::vector<T>& blasValues,
                           U localDimensionM, U localDimensionN, U globalDimensionM, U globalDimensionN, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo){
   T error = 0;
   size_t pCoordX = std::get<1>(commInfo);

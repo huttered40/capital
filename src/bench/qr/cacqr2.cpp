@@ -90,7 +90,7 @@ int main(int argc, char** argv){
     #ifdef PERFORMANCE
     volatile double startTime=MPI_Wtime();
     #endif
-    qr::cacqr2::invoke(matA, matR, topology::Rect3D(MPI_COMM_WORLD,dimensionC), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+    qr::cacqr2::invoke(matA, matR, topology::Rect(MPI_COMM_WORLD,dimensionC), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
     #ifdef PERFORMANCE
     double iterTimeLocal = MPI_Wtime() - startTime;
     double iterTimeGlobal = 0;
@@ -108,7 +108,7 @@ int main(int argc, char** argv){
     #ifdef PERFORMANCE
     MatrixTypeR saveA = matA;
     saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
-    pair<DATATYPE,DATATYPE> error = qr::validate::invoke(saveA, matA, matR, topology::Rect3D(MPI_COMM_WORLD,dimensionC));
+    pair<DATATYPE,DATATYPE> error = qr::validate<cacqr>::invoke(saveA, matA, matR, topology::Rect(MPI_COMM_WORLD,dimensionC));
     double residualErrorGlobal,orthogonalityErrorGlobal;
     MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);

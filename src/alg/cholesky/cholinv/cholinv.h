@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#ifndef CHOLINV_H_
-#define CHOLINV_H_
+#ifndef CHOLESKY__CHOLINV_H_
+#define CHOLESKY__CHOLINV_H_
 
 #include "./../../alg.h"
 #include "./../../matmult/summa3d/summa3d.h"
@@ -70,4 +70,4 @@ private:
 
 #include "cholinv.hpp"
 
-#endif /* CHOLINV_H_ */
+#endif /* CHOLESKY__CHOLINV_H_ */
