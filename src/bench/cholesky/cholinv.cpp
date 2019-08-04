@@ -15,12 +15,6 @@ int main(int argc, char** argv){
 
   util::InitialGEMM<double>();
 
-  size_t pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  size_t helper = pGridDimensionSize;
-  helper *= helper;
-  size_t pCoordY = rank/helper;
-  size_t pCoordX = (rank%helper)/pGridDimensionSize;
-
   char dir = 'U';
   int64_t globalMatrixSize = atoi(argv[1]);
   int64_t pGridDimensionC = atoi(argv[2]);
@@ -30,6 +24,11 @@ int main(int argc, char** argv){
   size_t numIterations = atoi(argv[6]);
   std::string fileStr1 = argv[7];	// Critter
   std::string fileStr2 = argv[8];	// Performance/Residual/DevOrth
+
+  size_t CubeFaceDim = std::nearbyint(std::pow(size/pGridDimensionC,1./2.));
+  size_t CubeTopFaceSize = pGridDimensionC*CubeFaceDim;
+  size_t pCoordY = rank/CubeTopFaceSize;
+  size_t pCoordX = (rank%CubeTopFaceSize)/pGridDimensionC;
 
   std::vector<size_t> Inputs{matA.getNumRowsGlobal(),pGridDimensionC,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
   std::vector<const char*> InputNames{"n","c","bcm","icm","pdm"};
@@ -44,26 +43,33 @@ int main(int argc, char** argv){
 
     for (size_t i=0; i<numIterations; i++){
       // Reset matrixA
-      MatrixTypeA matA(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
-      MatrixTypeA matT(globalMatrixSize,globalMatrixSize, pGridDimensionSize, pGridDimensionSize);
+      MatrixTypeA matA(globalMatrixSize,globalMatrixSize, CubeFaceDim, CubeFaceDim);
+      MatrixTypeA matT(globalMatrixSize,globalMatrixSize, CubeFaceDim, CubeFaceDim);
       double iterTimeGlobal,iterErrorGlobal;
-      matA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
+      matA.DistributeSymmetric(pCoordX, pCoordY, CubeFaceDim, CubeFaceDim, pCoordX*CubeFaceDim+CubeFaceDim, true);
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
-      std::vector<size_t> Inputs{matA.getNumRowsGlobal(),pGridDimensionSize,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
-      std::vector<const char*> InputNames{"n","c","bcm","icm","pdm"};
-      Critter::reset();
+      critter::reset();
       double startTime=MPI_Wtime();
-      cholesky::cholinv::invoke(matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, Square(MPI_COMM_WORLD,pGridDimensionSize));
+      cholesky::cholinv::invoke(matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, Square(MPI_COMM_WORLD,pGridDimensionC));
       double iterTimeLocal=MPI_Wtime() - startTime;
-      MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-      Critter::print("Cholesky", size, Inputs.size(), &Inputs[0], &InputNames[0]);
 
-      MatrixAType saveA = matA;
-      // Note: I think this call below is still ok given the new topology mapping on Blue Waters/Stampede2
-      saveA.DistributeSymmetric(pCoordX, pCoordY, pGridDimensionSize, pGridDimensionSize, pCoordX*pGridDimensionSize+pCoordY, true);
-      double iterErrorLocal;
-      iterErrorLocal = cholesky::validate::invoke<cholinv>(saveA, matA, dir, Square(MPI_COMM_WORLD,pGridDimensionSize));
-      MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+      switch(test){
+        case 0:{
+          critter::print("Cholesky", size, Inputs.size(), &Inputs[0], &InputNames[0]);
+	  break;
+	}
+        case 1:{
+          MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+          MatrixTypeR saveA = matA;
+          saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
+          double iterErrorLocal = cholesky::validate::invoke<cholinv>(saveA, matA, dir, Square(MPI_COMM_WORLD,pGridDimensionC));
+          MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+          std::vector<double> Outputs(2);
+	  Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;
+          critter::print("Cholesky", size, Inputs.size(), &Inputs[0], &InputNames[0], Outputs.size(), &Outputs[0]);
+	  break;
+	}
+      }
     }
     critter::finalize();
   }

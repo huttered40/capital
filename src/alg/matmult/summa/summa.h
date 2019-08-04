@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
-#ifndef MATMULT__SUMMA3D_H_
-#define MATMULT__SUMMA3D_H_
+#ifndef MATMULT__SUMMA_H_
+#define MATMULT__SUMMA_H_
 
 #include "./../../alg.h"
 
@@ -12,7 +12,7 @@ namespace matmult{
   Also, we need to figure out what to do with Rectangular.
 */
 
-class summa3d{
+class summa{
 public:
   // Format: matrixA is M x K
   //         matrixB is K x N
@@ -104,6 +104,6 @@ private:
 };
 }
 
-#include "summa3d.hpp"
+#include "summa.hpp"
 
-#endif /* MATMULT__SUMMA3D_H_ */
+#endif /* MATMULT__SUMMA_H_ */

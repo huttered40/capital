@@ -2,12 +2,12 @@
 
 namespace matmult{
 template<typename MatrixBType, typename CommType>
-void summa3d::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matrixB, typename MatrixBType::ScalarType* matrixC,
+void summa::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matrixB, typename MatrixBType::ScalarType* matrixC,
                     typename MatrixBType::DimensionType matrixAnumColumns, typename MatrixBType::DimensionType matrixAnumRows,
                     typename MatrixBType::DimensionType matrixBnumColumns, typename MatrixBType::DimensionType matrixBnumRows,
                     typename MatrixBType::DimensionType matrixCnumColumns, typename MatrixBType::DimensionType matrixCnumRows,
                     CommType&& CommInfo, const blasEngineArgumentPackage_gemm<typename MatrixBType::ScalarType>& srcPackage){
-  TAU_FSTART(summa3d::invoke);
+  TAU_FSTART(summa::invoke);
 
   // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
   //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
@@ -55,7 +55,7 @@ void summa3d::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& mat
     MPI_Allreduce(MPI_IN_PLACE,matrixCforEnginePtr, sizeC, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
   }
   else{
-    // This cancels out any affect beta could have. Beta is just not compatable with summa3d and must be handled separately
+    // This cancels out any affect beta could have. Beta is just not compatable with summa and must be handled separately
      std::vector<T> holdProduct(sizeC,0);
      blasEngine::_gemm(matrixAEnginePtr, matrixBEnginePtr, &holdProduct[0], localDimensionM, localDimensionN, localDimensionK,
        (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
@@ -67,7 +67,7 @@ void summa3d::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& mat
     }
   }
   if (!isRootRow) delete[] foreignA;
-  TAU_FSTOP(summa3d::invoke);
+  TAU_FSTOP(summa::invoke);
 }
 
 
@@ -76,9 +76,9 @@ void summa3d::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& mat
 //   with BLAS-3 routines.
 
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
-void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, CommType&& CommInfo,
+void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, CommType&& CommInfo,
                      const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
-  TAU_FSTART(summa3d::invoke);
+  TAU_FSTART(summa::invoke);
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -120,7 +120,7 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& ma
     _end1(matrixCforEnginePtr,matrixC,std::forward<CommType>(CommInfo));
    }
    else{
-     // This cancels out any affect beta could have. Beta is just not compatable with summa3d and must be handled separately
+     // This cancels out any affect beta could have. Beta is just not compatable with summa and must be handled separately
      std::vector<T> holdProduct(matrixC.getNumElems(),0);
      blasEngine::_gemm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
        &holdProduct[0], localDimensionM, localDimensionN, localDimensionK,
@@ -132,13 +132,13 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& ma
       matrixC.getRawData()[i] = srcPackage.beta*matrixC.getRawData()[i] + holdProduct[i];
     }
   }
-  TAU_FSTOP(summa3d::invoke);
+  TAU_FSTOP(summa::invoke);
 }
 
 template<typename MatrixAType, typename MatrixBType, typename CommType>
-void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
+void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
                      const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
-  TAU_FSTART(summa3d::invoke);
+  TAU_FSTART(summa::invoke);
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -187,15 +187,15 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& Comm
   }
   // We will follow the standard here: matrixA is always the triangular matrix. matrixB is always the rectangular matrix
   _end1((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),matrixB,std::forward<CommType>(CommInfo));
-  TAU_FSTOP(summa3d::invoke);
+  TAU_FSTOP(summa::invoke);
 }
 
 template<typename MatrixAType, typename CommType>
-void summa3d::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matrixB, typename MatrixAType::DimensionType matrixAnumColumns,
+void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matrixB, typename MatrixAType::DimensionType matrixAnumColumns,
                     typename MatrixAType::DimensionType matrixAnumRows, typename MatrixAType::DimensionType matrixBnumColumns,
                     typename MatrixAType::DimensionType matrixBnumRows, CommType&& CommInfo,
                     const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage){
-  TAU_FSTART(summa3d::invoke);
+  TAU_FSTART(summa::invoke);
   // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
   //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
   //       Also, I only allow method1, not Allgather-based method2
@@ -253,14 +253,14 @@ void summa3d::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* mat
   std::memcpy(matrixB, matrixBEnginePtr, sizeB*sizeof(T));
   if ((srcPackage.side == blasEngineSide::AblasLeft) && (!isRootColumn)) delete[] foreignB;
   if ((srcPackage.side == blasEngineSide::AblasRight) && (!isRootRow)) delete[] foreignB;
-  TAU_FSTOP(summa3d::invoke);
+  TAU_FSTOP(summa::invoke);
 }
 
 
 template<typename MatrixAType, typename MatrixCType, typename CommType>
-void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
+void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
                      const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
-  TAU_FSTART(summa3d::invoke);
+  TAU_FSTART(summa::invoke);
   // Note: Internally, this routine uses gemm, not syrk, as its not possible for each processor to perform local MM with symmetric matrices
   //         given the data layout over the processor grid.
 
@@ -320,7 +320,7 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& Comm
     _end1(matrixCforEnginePtr,matrixC,std::forward<CommType>(CommInfo));
   }
   else{
-    // This cancels out any affect beta could have. Beta is just not compatable with summa3d and must be handled separately
+    // This cancels out any affect beta could have. Beta is just not compatable with summa and must be handled separately
     std::vector<T> holdProduct(matrixC.getNumElems(),0);
     if (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans){
       blasEngineArgumentPackage_gemm<T> gemmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, -1., 1.);
@@ -341,11 +341,11 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& Comm
       matrixC.getRawData()[i] = srcPackage.beta*matrixC.getRawData()[i] + holdProduct[i];
     }
   }
-  TAU_FSTOP(summa3d::invoke);
+  TAU_FSTOP(summa::invoke);
 }
 
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
-void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
+void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
                     typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
                     typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
                     typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
@@ -353,7 +353,7 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& ma
                     typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutYstart,
                     typename MatrixCType::DimensionType matrixCcutYend, CommType&& CommInfo,
                     const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC, size_t methodKey){
-  TAU_FSTART(summa3d::invokeCut);
+  TAU_FSTART(summa::invokeCut);
   // We will set up 3 matrices and call the method above.
 
   using StructureC = typename MatrixCType::StructureType;
@@ -372,18 +372,18 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& ma
   if (cutC){
     serialize<StructureC,StructureC>::invoke(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
   }
-  TAU_FSTOP(summa3d::invokeCut);
+  TAU_FSTOP(summa::invokeCut);
 }
 
 
 template<typename MatrixAType, typename MatrixBType, typename CommType>
-void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAType::DimensionType matrixAcutXstart,
+void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAType::DimensionType matrixAcutXstart,
                     typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
                     typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
                     typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
                     typename MatrixBType::DimensionType matrixBcutXend, CommType&& CommInfo,
                     const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, size_t methodKey){
-  TAU_FSTART(summa3d::invokeCut);
+  TAU_FSTART(summa::invokeCut);
   // We will set up 2 matrices and call the method above.
 
   using StructureB = typename MatrixBType::StructureType;
@@ -400,18 +400,18 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename Matrix
   if (cutB){
     serialize<StructureB,StructureB>::invoke(matrixB, matB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
   }
-  TAU_FSTOP(summa3d::invokeCut);
+  TAU_FSTOP(summa::invokeCut);
 }
 
 
 template<typename MatrixAType, typename MatrixCType, typename CommType>
-void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
+void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
                     typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
                     typename MatrixAType::DimensionType matrixAcutYend, typename MatrixCType::DimensionType matrixCcutZstart,
                     typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutXstart,
                     typename MatrixCType::DimensionType matrixCcutXend, CommType&& CommInfo,
                     const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutC, size_t methodKey){
-  TAU_FSTART(summa3d::invokeCut);
+  TAU_FSTART(summa::invokeCut);
   // We will set up 2 matrices and call the method above.
 
   using StructureC = typename MatrixCType::StructureType;
@@ -429,16 +429,16 @@ void summa3d::invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename Matrix
   if (cutC){
     serialize<StructureC,StructureC>::invoke(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, true);
   }
-  TAU_FSTOP(summa3d::invokeCut);
+  TAU_FSTOP(summa::invokeCut);
 }
 
 
 template<typename MatrixAType, typename MatrixBType, typename CommType>
-void summa3d::_start1(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo, typename MatrixAType::ScalarType*& matrixAEnginePtr,
+void summa::_start1(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo, typename MatrixAType::ScalarType*& matrixAEnginePtr,
                    typename MatrixBType::ScalarType*& matrixBEnginePtr, std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector,
                    std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector, std::vector<typename MatrixAType::ScalarType>& foreignA,
                    std::vector<typename MatrixBType::ScalarType>& foreignB, bool& serializeKeyA, bool& serializeKeyB){
-  TAU_FSTART(summa3d::_start1);
+  TAU_FSTART(summa::_start1);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -474,13 +474,13 @@ void summa3d::_start1(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& Com
     getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
-  TAU_FSTOP(summa3d::_start1);
+  TAU_FSTOP(summa::_start1);
 }
 
 
 template<typename MatrixType, typename CommType>
-void summa3d::_end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, size_t dir){
-  TAU_FSTART(summa3d::_end1);
+void summa::_end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, size_t dir){
+  TAU_FSTART(summa::_end1);
 
   using U = typename MatrixType::DimensionType;
 
@@ -492,14 +492,14 @@ void summa3d::_end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType
   else{
     MPI_Allreduce(matrixEnginePtr, matrix.getRawData(), numElems, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
   }
-  TAU_FSTOP(summa3d::_end1);
+  TAU_FSTOP(summa::_end1);
 }
 
 template<typename MatrixAType, typename MatrixBType, typename CommType>
-void summa3d::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
+void summa::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
                       std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector, std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector,
 	              bool& serializeKeyA, bool& serializeKeyB){
-  TAU_FSTART(summa3d::_start2);
+  TAU_FSTART(summa::_start2);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -653,13 +653,13 @@ void summa3d::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& Com
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
 */
-  TAU_FSTOP(summa3d::_start2);
+  TAU_FSTOP(summa::_start2);
 }
 
 
 template<typename T, typename U>
-void summa3d::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
-  TAU_FSTART(summa3d::BroadcastPanels);
+void summa::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
+  TAU_FSTART(summa::BroadcastPanels);
 
   if (isRoot){
     MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panel);
@@ -668,12 +668,12 @@ void summa3d::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t 
     data.resize(size);
     MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panel);
   }
-  TAU_FSTOP(summa3d::BroadcastPanels);
+  TAU_FSTOP(summa::BroadcastPanels);
 }
 
 template<typename T, typename U>
-void summa3d::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
-  TAU_FSTART(summa3d::BroadcastPanels);
+void summa::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
+  TAU_FSTART(summa::BroadcastPanels);
 
   if (isRoot){
     MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panel);
@@ -684,13 +684,13 @@ void summa3d::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ,
     data = new T[size];
     MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panel);
   }
-  TAU_FSTOP(summa3d::BroadcastPanels);
+  TAU_FSTOP(summa::BroadcastPanels);
 }
 
 
 template<typename MatrixSrcType, typename MatrixDestType>
-void summa3d::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest, std::vector<typename MatrixSrcType::ScalarType>& data, bool isRoot){
-  TAU_FSTART(summa3d::getEnginePtr);
+void summa::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest, std::vector<typename MatrixSrcType::ScalarType>& data, bool isRoot){
+  TAU_FSTART(summa::getEnginePtr);
 
   using StructureSrc = typename MatrixSrcType::StructureType;
   using StructureDest = typename MatrixDestType::StructureType;
@@ -705,15 +705,15 @@ void summa3d::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest,
     // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangular
     serialize<StructureSrc,StructureDest>::invoke(matrixSrc, matrixDest);
   }
-  TAU_FSTOP(summa3d::getEnginePtr);
+  TAU_FSTOP(summa::getEnginePtr);
 }
 
 
 template<typename MatrixType>
-MatrixType summa3d::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
+MatrixType summa::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
                               typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd,
 		              size_t  pGridDimensionSize, bool getSub){
-  TAU_FSTART(summa3d::getSubMatrix);
+  TAU_FSTART(summa::getSubMatrix);
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -724,12 +724,12 @@ MatrixType summa3d::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::Dim
     U numRows = matrixArgRowEnd - matrixArgRowStart;
     MatrixType fillMatrix(std::vector<T>(), numColumns, numRows, numColumns*pGridDimensionSize, numRows*pGridDimensionSize);
     serialize<Structure,Structure>::invoke(srcMatrix, fillMatrix, matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
-    TAU_FSTOP(summa3d::getSubMatrix);
+    TAU_FSTOP(summa::getSubMatrix);
     return fillMatrix;			// I am returning an rvalue
   }
   else{
     // return cheap garbage.
-    TAU_FSTOP(summa3d::getSubMatrix);
+    TAU_FSTOP(summa::getSubMatrix);
     return MatrixType(0,0,1,1);
   }
 }
