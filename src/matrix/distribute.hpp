@@ -2,7 +2,7 @@
 
 template<typename T, typename U>
 void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX,
-    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, Square){
+    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, square){
 
   srand48(key);
   U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
@@ -72,7 +72,7 @@ void cyclic::_DistributeSymmetric(std::vector<T*>& matrix, U dimensionX, U dimen
 
 template<typename T, typename U>
 void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, size_t globalDimensionY, size_t localPgridDimX,
-    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, Rectangular){
+    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, rect){
   srand48(key);
   U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   size_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
@@ -98,7 +98,7 @@ void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensio
 
 template<typename T, typename U>
 void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, size_t globalDimensionY, size_t localPgridDimX, size_t localPgridDimY,
-    size_t globalPgridDimX, size_t globalPgridDimY, size_t key, UpperTriangular){
+    size_t globalPgridDimX, size_t globalPgridDimY, size_t key, uppertri){
   srand48(key);
   U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   size_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
@@ -131,7 +131,7 @@ void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensio
 
 template<typename T, typename U>
 void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX, size_t localPgridDimY,
-    size_t globalPgridDimX, size_t globalPgridDimY, size_t key, LowerTriangular){
+    size_t globalPgridDimX, size_t globalPgridDimY, size_t key, lowertri){
   srand48(key);
   size_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
   size_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
@@ -152,7 +152,7 @@ void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensio
       // Maybe in the future, get rid of this inner if statementand try something else? If statements in inner
       //   nested loops can be very expensive.
       if (saveGlobalPosX == saveGlobalPosY){
-        // Set the first position in row to a 1 -> special only to LowerTriangular matrices.
+        // Set the first position in row to a 1 -> special only to lowertri matrices.
         matrix[i][j] = 1.;
       }
       else{

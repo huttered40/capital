@@ -104,50 +104,50 @@ auto GetSYRKroutine(BType<double>){
 }
 
 // ************************************************************************************************************************************************************
-class blasHelper{
+class helper{
 public:
-  blasHelper() = delete;
-  blasHelper(const blasHelper& rhs) = delete;
-  blasHelper(blasHelper&& rhs) = delete;
-  blasHelper& operator=(const blasHelper& rhs) = delete;
-  blasHelper& operator=(blasHelper&& rhs) = delete;
+  helper() = delete;
+  helper(const helper& rhs) = delete;
+  helper(helper&& rhs) = delete;
+  helper& operator=(const helper& rhs) = delete;
+  helper& operator=(helper&& rhs) = delete;
 
 // Make these methods protected so that only the derived classes can access them.
 protected:
   template<typename T>
-  static void setInfoParameters_gemm(const blasEngineArgumentPackage_gemm<T>& srcPackage, CBLAS_ORDER& destArg1, CBLAS_TRANSPOSE& destArg2, CBLAS_TRANSPOSE& destArg3);
+  static void setInfoParameters_gemm(const ArgPack_gemm<T>& srcPackage, CBLAS_ORDER& destArg1, CBLAS_TRANSPOSE& destArg2, CBLAS_TRANSPOSE& destArg3);
 
   template<typename T>
-  static void setInfoParameters_trmm(const blasEngineArgumentPackage_trmm<T>& srcPackage, CBLAS_ORDER& destArg1, CBLAS_SIDE& destArg2, CBLAS_UPLO& destArg3, CBLAS_TRANSPOSE& destArg4, CBLAS_DIAG& destArg5);
+  static void setInfoParameters_trmm(const ArgPack_trmm<T>& srcPackage, CBLAS_ORDER& destArg1, CBLAS_SIDE& destArg2, CBLAS_UPLO& destArg3, CBLAS_TRANSPOSE& destArg4, CBLAS_DIAG& destArg5);
 
   template<typename T>
-  static void setInfoParameters_syrk(const blasEngineArgumentPackage_syrk<T>& srcPackage, CBLAS_ORDER& destArg1, CBLAS_UPLO& destArg2, CBLAS_TRANSPOSE& destArg3);
+  static void setInfoParameters_syrk(const ArgPack_syrk<T>& srcPackage, CBLAS_ORDER& destArg1, CBLAS_UPLO& destArg2, CBLAS_TRANSPOSE& destArg3);
 };
 
 
 // ************************************************************************************************************************************************************
 // Declare this fully templated "base" class but do not define it. This prevents users from using this class, but
 //   allows partially specialized template classes to specialize it.
-class blasEngine : blasHelper{
+class engine : helper{
   // Lets prevent any instances of this class from being created.
 public:
-  blasEngine() = delete;
-  blasEngine(const blasEngine& rhs) = delete;
-  blasEngine(blasEngine&& rhs) = delete;
-  blasEngine& operator=(const blasEngine& rhs) = delete;
-  blasEngine& operator=(blasEngine&& rhs) = delete;
-  ~blasEngine() = delete;
+  engine() = delete;
+  engine(const engine& rhs) = delete;
+  engine(engine&& rhs) = delete;
+  engine& operator=(const engine& rhs) = delete;
+  engine& operator=(engine&& rhs) = delete;
+  ~engine() = delete;
 
   // Engine methods
   template<typename T, typename U>
   static void _gemm(T* matrixA, T* matrixB, T* matrixC, U m, U n, U k,
-                      U lda, U ldb, U ldc, const blasEngineArgumentPackage_gemm<T>& srcPackage);
+                      U lda, U ldb, U ldc, const ArgPack_gemm<T>& srcPackage);
 
   template<typename T, typename U>
-  static void _trmm(T* matrixA, T* matrixB, U m, U n, U lda, U ldb, const blasEngineArgumentPackage_trmm<T>& srcPackage);
+  static void _trmm(T* matrixA, T* matrixB, U m, U n, U lda, U ldb, const ArgPack_trmm<T>& srcPackage);
 
   template<typename T, typename U>
-  static void _syrk(T* matrixA, T* matrixC, U n, U k, U lda, U ldc, const blasEngineArgumentPackage_syrk<T>& srcPackage);
+  static void _syrk(T* matrixA, T* matrixC, U n, U k, U lda, U ldc, const ArgPack_syrk<T>& srcPackage);
 };
 }
 

@@ -17,17 +17,17 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
       auto info = Lambda(Matrix, RefMatrix, i*localNumColumns+j,globalX, globalY);
       error += std::abs(info.first*info.first);
       control += std::abs(info.control*info.control);
-      globalY += SquareCommInfo.d;
+      globalY += sliceDim;
       //if (rank == 0) std::cout << val << " " << i << " " << j << std::endl;
     }
-    globalX += SquareCommInfo.d;
+    globalX += sliceDim;
   }
-  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DATATYPE, MPI_SUM, slice);
-  MPI_Allreduce(MPI_IN_PLACE, &control, 1, MPI_DATATYPE, MPI_SUM, slice);
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, typename mpi_type<T>::type, MPI_SUM, slice);
+  MPI_Allreduce(MPI_IN_PLACE, &control, 1, typename mpi_type<T>::type, MPI_SUM, slice);
   error = std::sqrt(error) / std::sqrt(control);
-  //MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DATATYPE, MPI_SUM, depthComm);
+  //MPI_Allreduce(MPI_IN_PLACE, &error, 1, typename mpi_type<T>::type, MPI_SUM, depthComm);
   return error;
-
+}
 
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename T, typename U>
@@ -155,8 +155,6 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_
   using Distribution = typename MatrixType::DistributionType;
   using Offload = typename MatrixType::OffloadType;
 
-  size_t commDim = std::get<4>(commInfo);
-
   U localNumColumns = myMatrix.getNumColumnsLocal();
   U localNumRows = myMatrix.getNumRowsLocal();
   U globalNumColumns = myMatrix.getNumColumnsGlobal();
@@ -169,10 +167,10 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_
   // I first want to check whether or not I want to serialize into a rectangular buffer (I don't care too much about efficiency here,
   //   if I did, I would serialize after the AllGather, but whatever)
   T* matrixPtr = myMatrix.getRawData();
-  Matrix<T,U,Rectangular,Distribution,Offload> matrixDest(std::vector<T>(), localNumColumns, localNumRows, globalNumColumns, globalNumRows);
-  if ((!std::is_same<Structure,Rectangular>::value)
-    && (!std::is_same<Structure,Square>::value)){
-    Serializer<Structure,Rectangular>::Serialize(myMatrix, matrixDest);
+  matrix<T,U,rect,Distribution,Offload> matrixDest(std::vector<T>(), localNumColumns, localNumRows, globalNumColumns, globalNumRows);
+  if ((!std::is_same<Structure,rect>::value)
+    && (!std::is_same<Structure,square>::value)){
+    Serializer<Structure,rect>::Serialize(myMatrix, matrixDest);
     matrixPtr = matrixDest.getRawData();
   }
 
@@ -183,7 +181,7 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_
   U aggregSize = aggregNumRows*aggregNumColumns;
   std::vector<T> blockedMatrix(aggregSize);
 //  std::vector<T> cyclicMatrix(aggregSize);
-  MPI_Allgather(matrixPtr, localSize, MPI_DATATYPE, &blockedMatrix[0], localSize, MPI_DATATYPE, slice);
+  MPI_Allgather(matrixPtr, localSize, typename mpi_type<T>::type, &blockedMatrix[0], localSize, typename mpi_type<T>::type, slice);
 
   std::vector<T> cyclicMatrix = util::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, commDim);
 
@@ -211,7 +209,7 @@ void util::transposeSwap(MatrixType& mat, CommType&& CommInfo){
   //if (myRank != transposeRank)
   //{
     // Transfer with transpose rank
-    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), MPI_DATATYPE, transposeRank, 0, transposeRank, 0, comm, MPI_STATUS_IGNORE);
+    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), typename mpi_type<T>::type, transposeRank, 0, transposeRank, 0, comm, MPI_STATUS_IGNORE);
 
     // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
     //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,

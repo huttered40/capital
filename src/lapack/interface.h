@@ -172,20 +172,20 @@ auto GetORGQRroutine(LType<double>){
 }
 
 // ************************************************************************************************************************************************************
-class lapackHelper{
+class helper{
 public:
-  lapackHelper() = delete;
-  lapackHelper(const lapackHelper& rhs) = delete;
-  lapackHelper(lapackHelper&& rhs) = delete;
-  lapackHelper& operator=(const lapackHelper& rhs) = delete;
-  lapackHelper& operator=(lapackHelper&& rhs) = delete;
+  helper() = delete;
+  helper(const helper& rhs) = delete;
+  helper(helper&& rhs) = delete;
+  helper& operator=(const helper& rhs) = delete;
+  helper& operator=(helper&& rhs) = delete;
 
 // Make these methods protected so that only the derived classes can access them.
 protected:
-  static void setInfoParameters_potrf(const lapackEngineArgumentPackage_potrf& srcPackage, int& destArg1, char& destArg2);
-  static void setInfoParameters_trtri(const lapackEngineArgumentPackage_trtri& srcPackage, int& destArg1, char& destArg2, char& destArg3);
-  static void setInfoParameters_geqrf(const lapackEngineArgumentPackage_geqrf& srcPackage, int& destArg1);
-  static void setInfoParameters_orgqr(const lapackEngineArgumentPackage_orgqr& srcPackage, int& destArg1);
+  static void setInfoParameters_potrf(const ArgPack_potrf& srcPackage, int& destArg1, char& destArg2);
+  static void setInfoParameters_trtri(const ArgPack_trtri& srcPackage, int& destArg1, char& destArg2, char& destArg3);
+  static void setInfoParameters_geqrf(const ArgPack_geqrf& srcPackage, int& destArg1);
+  static void setInfoParameters_orgqr(const ArgPack_orgqr& srcPackage, int& destArg1);
 };
 
 
@@ -194,28 +194,28 @@ protected:
 //   allows partially specialized template classes to specialize it.
 
 // Note: each method below could also parameterize itself on the int-type (32/64 bit), but current FORTRAN libraries only have 32-bit
-class lapackEngine : public lapackHelper{
+class engine : public lapackHelper{
   // Lets prevent any instances of this class from being created.
 public:
-  lapackEngine() = delete;
-  lapackEngine(const lapackEngine& rhs) = delete;
-  lapackEngine(lapackEngine&& rhs) = delete;
-  lapackEngine& operator=(const lapackEngine& rhs) = delete;
-  lapackEngine& operator=(lapackEngine&& rhs) = delete;
-  ~lapackEngine() = delete;
+  engine() = delete;
+  engine(const engine& rhs) = delete;
+  engine(engine&& rhs) = delete;
+  engine& operator=(const engine& rhs) = delete;
+  engine& operator=(engine&& rhs) = delete;
+  ~engine() = delete;
 
   // Engine methods
   template<typename T>
-  static void _potrf(T* matrixA, int n, int lda, const lapackEngineArgumentPackage_potrf& srcPackage);
+  static void _potrf(T* matrixA, int n, int lda, const ArgPack_potrf& srcPackage);
 
   template<typename T>
-  static void _trtri(T* matrixA, int n, int lda, const lapackEngineArgumentPackage_trtri& srcPackage);
+  static void _trtri(T* matrixA, int n, int lda, const ArgPack_trtri& srcPackage);
 
   template<typename T>
-  static void _geqrf(T* matrixA, T* tau, int m, int n, int lda, const lapackEngineArgumentPackage_geqrf& srcPackage);
+  static void _geqrf(T* matrixA, T* tau, int m, int n, int lda, const ArgPack_geqrf& srcPackage);
 
   template<typename T>
-  static void _orgqr(T* matrixA, T* tau, int m, int n, int k, int lda, const lapackEngineArgumentPackage_orgqr& srcPackage);
+  static void _orgqr(T* matrixA, T* tau, int m, int n, int k, int lda, const ArgPack_orgqr& srcPackage);
 };
 }
 

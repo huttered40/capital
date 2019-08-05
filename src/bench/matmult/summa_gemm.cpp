@@ -6,9 +6,9 @@
 using namespace std;
 
 int main(int argc, char** argv){
-  using MatrixTypeR = Matrix<double,int64_t,Rectangular,Cyclic>;
-  using MatrixTypeLT = Matrix<double,int64_t,LowerTriangular,Cyclic>;
-  using MatrixTypeUT = Matrix<double,int64_t,UpperTriangular,Cyclic>;
+  using MatrixTypeR = matrix<double,int64_t,rectangular,cyclic>;
+  using MatrixTypeLT = matrix<double,int64_t,lowertri,cyclic>;
+  using MatrixTypeUT = matrix<double,int64_t,uppertri,cyclic>;
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);

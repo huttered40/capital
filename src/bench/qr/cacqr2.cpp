@@ -6,8 +6,8 @@
 using namespace std;
 
 int main(int argc, char** argv){
-  using MatrixTypeS = Matrix<double,INTTYPE,Square,Cyclic>;
-  using MatrixTypeR = Matrix<double,INTTYPE,Rectangular,Cyclic>;
+  using MatrixTypeS = matrix<double,int64_t,square,cyclic>;
+  using MatrixTypeR = matrix<double,int64_t,rect,cyclic>;
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);

@@ -6,11 +6,11 @@ template<typename T, typename U>
 void cacqr::broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm){
   TAU_FSTART(cacqr::broadcast_panels);
   if (isRoot){
-    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, typename mpi_type<T>::type, pGridCoordZ, panelComm);
   }
   else{
     data.resize(size);
-    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, typename mpi_type<T>::type, pGridCoordZ, panelComm);
   }
   TAU_FSTOP(cacqr::broadcast_panels);
 }
@@ -31,7 +31,7 @@ void cacqr::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
   // MPI_Allreduce to replicate the dimensionY x dimensionY matrix on each processor
   // Optimization potential: only Allreduce half of this matrix because its symmetric
   //   but only try this later to see if it actually helps, because to do this, I will have to serialize and re-serialize. Would only make sense if dimensionX is huge.
-  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, MPI_SUM, CommInfo.world);
+  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type, MPI_SUM, CommInfo.world);
 
   lapackEngineArgumentPackage_potrf potrfArgs(lapackEngineOrder::AlapackColumnMajor, lapackEngineUpLo::AlapackUpper);
   lapackEngineArgumentPackage_trtri trtriArgs(lapackEngineOrder::AlapackColumnMajor, lapackEngineUpLo::AlapackUpper, lapackEngineDiag::AlapackNonUnit);
@@ -75,8 +75,8 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
   blasEngine::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
 
-  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, MPI_SUM, CommInfo.z, CommInfo.column);
-  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, CommInfo.y, CommInfo.depth);
+  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type, MPI_SUM, CommInfo.z, CommInfo.column);
+  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type, CommInfo.y, CommInfo.depth);
 
   // Create an extra matrix for R-inverse
   MatrixRType matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, matrixA.getNumColumnsGlobal(), matrixA.getNumColumnsGlobal(), true);
@@ -96,11 +96,11 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
   else{
     // Note: there are issues with serializing a square matrix into a rectangular. To bypass that,
     //        and also to communicate only the nonzeros, I will serialize into packed triangular buffers before calling TRSM
-    Matrix<T,U,UpperTriangular,Distribution,Offload> rectR(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
-    Matrix<T,U,UpperTriangular,Distribution,Offload> rectRI(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
+    matrix<T,U,uppertri,Distribution,Offload> rectR(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
+    matrix<T,U,uppertri,Distribution,Offload> rectRI(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-    serialize<Square,UpperTriangular>::invoke(matrixR, rectR);
-    serialize<Square,UpperTriangular>::invoke(matrixRI, rectRI);
+    serialize<square,uppertri>::invoke(matrixR, rectR);
+    serialize<square,uppertri>::invoke(matrixRI, rectRI);
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
@@ -149,9 +149,9 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& Re
   blasEngine::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
 
-  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, MPI_SUM, CommInfo.z, CommInfo.column_contig);
-  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE,MPI_SUM, CommInfo.column_alt);
-  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, MPI_DATATYPE, columnContigRank, CommInfo.depth);
+  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type, MPI_SUM, CommInfo.z, CommInfo.column_contig);
+  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type,MPI_SUM, CommInfo.column_alt);
+  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type, columnContigRank, CommInfo.depth);
 
   // Create an extra matrix for R-inverse
   MatrixRType matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
@@ -167,11 +167,11 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& Re
   else{
     // Note: there are issues with serializing a square matrix into a rectangular. To bypass that,
     //        and also to communicate only the nonzeros, I will serialize into packed triangular buffers before calling TRSM
-    Matrix<T,U,UpperTriangular,Distribution,Offload> rectR(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
-    Matrix<T,U,UpperTriangular,Distribution,Offload> rectRI(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
+    matrix<T,U,uppertri,Distribution,Offload> rectR(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
+    matrix<T,U,uppertri,Distribution,Offload> rectRI(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-    serialize<Square,UpperTriangular>::invoke(matrixR, rectR);
-    serialize<Square,UpperTriangular>::invoke(matrixRI, rectRI);
+    serialize<square,uppertri>::invoke(matrixR, rectR);
+    serialize<square,uppertri>::invoke(matrixRI, rectRI);
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
     gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
     gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;

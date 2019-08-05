@@ -32,7 +32,7 @@ validate::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, SquareCommType&
       control = 1;
     }
     else{
-      val = matrix.getRawData()[i*localNumRows+j];
+      val = matrix.getRawData()[index];
       control = 0;
     }
     return std::make_pair(val,control);

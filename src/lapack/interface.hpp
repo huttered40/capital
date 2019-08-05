@@ -1,42 +1,38 @@
 /* Author: Edward Hutter */
 
 namespace lapack{
-void lapackHelper::setInfoParameters_potrf(
-                                          const lapackEngineArgumentPackage_potrf& srcPackage,
-                                          int& destArg1,
-                                          char& destArg2){
-  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
-  destArg2 = (srcPackage.uplo == lapackEngineUpLo::AlapackUpper ? 'U' : 'L');
+void helper::setInfoParameters_potrf(const ArgumentPackage_potrf& srcPackage,
+                                     int& destArg1,
+                                     char& destArg2){
+  destArg1 = (srcPackage.order == Order::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
+  destArg2 = (srcPackage.uplo == UpLo::AlapackUpper ? 'U' : 'L');
 }
 
-void lapackHelper::setInfoParameters_trtri(
-                                          const lapackEngineArgumentPackage_trtri& srcPackage,
-                                          int& destArg1,
-                                          char& destArg2,
-                                          char& destArg3){
-  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
-  destArg2 = (srcPackage.uplo == lapackEngineUpLo::AlapackUpper ? 'U' : 'L');
-  destArg3 = (srcPackage.diag == lapackEngineDiag::AlapackUnit ? 'U' : 'N');
+void helper::setInfoParameters_trtri(const ArgumentPackage_trtri& srcPackage,
+                                     int& destArg1,
+                                     char& destArg2,
+                                     char& destArg3){
+  destArg1 = (srcPackage.order == Order::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
+  destArg2 = (srcPackage.uplo == UpLo::AlapackUpper ? 'U' : 'L');
+  destArg3 = (srcPackage.diag == Diag::AlapackUnit ? 'U' : 'N');
 }
 
-void lapackHelper::setInfoParameters_geqrf(
-                                          const lapackEngineArgumentPackage_geqrf& srcPackage,
-                                          int& destArg1){
-  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
+void helper::setInfoParameters_geqrf(const ArgumentPackage_geqrf& srcPackage,
+                                     int& destArg1){
+  destArg1 = (srcPackage.order == Order::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
 }
 
-void lapackHelper::setInfoParameters_orgqr(
-                                          const lapackEngineArgumentPackage_orgqr& srcPackage,
-                                          int& destArg1){
-  destArg1 = (srcPackage.order == lapackEngineOrder::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
+void helper::setInfoParameters_orgqr(const ArgumentPackage_orgqr& srcPackage,
+                                     int& destArg1){
+  destArg1 = (srcPackage.order == Order::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
 }
 
 template<typename T>
-void lapackEngine::_potrf(
+void engine::_potrf(
             T* matrixA,
             int n,
             int lda,
-            const lapackEngineArgumentPackage_potrf& srcPackage){
+            const ArgPack_potrf& srcPackage){
   TAU_FSTART(potrf);
   // First, unpack the info parameter
   int arg1; char arg2;
@@ -53,11 +49,11 @@ void lapackEngine::_potrf(
 }
 
 template<typename T>
-void lapackEngine::_trtri(
+void engine::_trtri(
             T* matrixA,
             int n,
             int lda,
-            const lapackEngineArgumentPackage_trtri& srcPackage){
+            const ArgPack_trtri& srcPackage){
   TAU_FSTART(trtri);
   // First, unpack the info parameter
   int arg1; char arg2; char arg3;
@@ -74,13 +70,13 @@ void lapackEngine::_trtri(
 }
 
 template<typename T>
-void lapackEngine::_geqrf(
+void engine::_geqrf(
             T* matrixA,
             T* tau,
             int m,
             int n,
             int lda,
-            const lapackEngineArgumentPackage_geqrf& srcPackage){
+            const ArgPack_geqrf& srcPackage){
   TAU_FSTART(geqrf);
   // First, unpack the info parameter
   int arg1;
@@ -97,14 +93,14 @@ void lapackEngine::_geqrf(
 }
 
 template<typename T>
-void lapackEngine::_orgqr(
+void engine::_orgqr(
             T* matrixA,
             T* tau,
             int m,
             int n,
             int k,
             int lda,
-            const lapackEngineArgumentPackage_orgqr& srcPackage){
+            const ArgPack_orgqr& srcPackage){
   TAU_FSTART(orgqr);
   // First, unpack the info parameter
   int arg1;

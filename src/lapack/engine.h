@@ -20,22 +20,22 @@ namespace lapack{
 
 // Enum definitions for the user
 
-enum class lapackEngineOrder : unsigned char{
+enum class Order : unsigned char{
   AlapackRowMajor = 0x0,
   AlapackColumnMajor = 0x1
 };
 
-enum class lapackEngineUpLo : unsigned char{
+enum class UpLo : unsigned char{
   AlapackLower = 0x0,
   AlapackUpper = 0x1
 };
 
-enum class lapackEngineDiag : unsigned char{
+enum class Diag : unsigned char{
   AlapackNonUnit = 0x0,
   AlapackUnit = 0x1
 };
 
-enum class lapackEngineMethod : unsigned char{
+enum class Method : unsigned char{
   AlapackPotrf = 0x0,
   AlapackTrtri = 0x1,
   AlapackGeqrf = 0x10,
@@ -46,59 +46,59 @@ enum class lapackEngineMethod : unsigned char{
 
 // We need to template this because we use the base class as the "type" of derived class memory in places like MatrixMultiplication
   // so that we don't need multiple functions for using gemm or dtrmm, etc.
-class lapackEngineArgumentPackage{
+class ArgPack{
 public:
   // Base class contains a single member variable that can be used by its derived classes without explicitely casting
-  lapackEngineMethod method;
+  Method method;
 };
 
-// Now we have the derived classes that inherit from lapackEngineArgumentPackage and contain the necessary arguments for the LAPACK method
+// Now we have the derived classes that inherit from ArgPack and contain the necessary arguments for the LAPACK method
 //   specified by the user
 
-class lapackEngineArgumentPackage_potrf : public lapackEngineArgumentPackage{
+class ArgPack_potrf : public ArgPack{
 public:
-  lapackEngineArgumentPackage_potrf(lapackEngineOrder orderArg, lapackEngineUpLo uploArg){
-    this->method = lapackEngineMethod::AlapackPotrf;
+  ArgPack_potrf(Order orderArg, UpLo uploArg){
+    this->method = Method::AlapackPotrf;
     this->order = orderArg;
     this->uplo = uploArg;
   }
 
-  lapackEngineOrder order;
-  lapackEngineUpLo uplo;
+  Order order;
+  UpLo uplo;
 };
 
-class lapackEngineArgumentPackage_trtri : public lapackEngineArgumentPackage{
+class ArgPack_trtri : public ArgPack{
 public:
-  lapackEngineArgumentPackage_trtri(lapackEngineOrder orderArg, lapackEngineUpLo uploArg, lapackEngineDiag diagArg){
-    this->method = lapackEngineMethod::AlapackTrtri;
+  ArgPack_trtri(Order orderArg, UpLo uploArg, Diag diagArg){
+    this->method = Method::AlapackTrtri;
     this->order = orderArg;
     this->uplo = uploArg;
     this->diag = diagArg;
   }
 
-  lapackEngineOrder order;
-  lapackEngineUpLo uplo;
-  lapackEngineDiag diag;
+  Order order;
+  UpLo uplo;
+  Diag diag;
 };
 
-class lapackEngineArgumentPackage_geqrf : public lapackEngineArgumentPackage{
+class ArgPack_geqrf : public ArgPack{
 public:
-  lapackEngineArgumentPackage_geqrf(lapackEngineOrder orderArg){
-    this->method = lapackEngineMethod::AlapackGeqrf;
+  ArgPack_geqrf(Order orderArg){
+    this->method = Method::AlapackGeqrf;
     this->order = orderArg;
   }
 
-  lapackEngineOrder order;
+  Order order;
 };
 
-class lapackEngineArgumentPackage_orgqr : public lapackEngineArgumentPackage{
+class ArgPack_orgqr : public ArgPack{
 public:
-  lapackEngineArgumentPackage_orgqr(lapackEngineOrder orderArg){
-    this->method = lapackEngineMethod::AlapackOrgqr;
+  ArgPack_orgqr(Order orderArg){
+    this->method = Method::AlapackOrgqr;
     this->order = orderArg;
   }
 
-  lapackEngineOrder order;
+  Order order;
 };
 }
 

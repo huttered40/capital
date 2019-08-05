@@ -20,38 +20,32 @@ namespace blas{
 
 // Enum definitions for the user
 
-enum class blasEngineOrder : unsigned char
-{
+enum class Order : unsigned char{
   AblasRowMajor = 0x0,
   AblasColumnMajor = 0x1
 };
 
-enum class blasEngineTranspose : unsigned char
-{
+enum class Transpose : unsigned char{
   AblasNoTrans = 0x0,
   AblasTrans = 0x1
 };
 
-enum class blasEngineSide : unsigned char
-{
+enum class Side : unsigned char{
   AblasLeft = 0x0,
   AblasRight = 0x1
 };
 
-enum class blasEngineUpLo : unsigned char
-{
+enum class UpLo : unsigned char{
   AblasLower = 0x0,
   AblasUpper = 0x1
 };
 
-enum class blasEngineDiag : unsigned char
-{
+enum class Diag : unsigned char{
   AblasNonUnit = 0x0,
   AblasUnit = 0x1
 };
 
-enum class blasEngineMethod : unsigned char
-{
+enum class Method : unsigned char{
   AblasGemm = 0x0,
   AblasTrmm = 0x1,
   AblasSyrk = 0x10
@@ -62,11 +56,10 @@ enum class blasEngineMethod : unsigned char
 // We need to template this because we use the base class as the "type" of derived class memory in places like MatrixMultiplication
   // so that we don't need multiple functions for using gemm or dtrmm, etc.
 template<typename T>
-class blasEngineArgumentPackage
-{
+class ArgPack{
 public:
   // Base class contains a single member variable that can be used by its derived classes without explicitely casting
-  blasEngineMethod method;
+  Method method;
 };
 
 // Now we have the derived classes that inherit from blasEngineArgumentPackage and contain the necessary arguments for the BLAS method
@@ -77,13 +70,10 @@ public:
 	// We could declare this template class, and then use full template specialization to just implement
 	// those 4 cases, but the BLAS compiler will catch it anyways, but the first option is always on the table
 template<typename T>
-class blasEngineArgumentPackage_gemm : public blasEngineArgumentPackage<T>
-{
+class ArgPack_gemm : public ArgPack<T>{
 public:
-  blasEngineArgumentPackage_gemm(blasEngineOrder orderArg, blasEngineTranspose transposeAArg, blasEngineTranspose transposeBArg,
-    T alphaArg, T betaArg)
-  {
-    this->method = blasEngineMethod::AblasGemm;
+  ArgPack_gemm(Order orderArg, Transpose transposeAArg, Transpose transposeBArg, T alphaArg, T betaArg){
+    this->method = Method::AblasGemm;
     this->order = orderArg;
     this->transposeA = transposeAArg;
     this->transposeB = transposeBArg;
@@ -91,21 +81,19 @@ public:
     this->beta = betaArg;
   }
 
-  blasEngineOrder order;
-  blasEngineTranspose transposeA;
-  blasEngineTranspose transposeB;
+  Order order;
+  Transpose transposeA;
+  Transpose transposeB;
   T alpha;					// Added these two constants, alpha and beta
   T beta;
 };
 
 template<typename T>
-class blasEngineArgumentPackage_trmm : public blasEngineArgumentPackage<T>
-{
+class ArgPack_trmm : public ArgPack<T>{
 public:
-  blasEngineArgumentPackage_trmm(blasEngineOrder orderArg, blasEngineSide sideArg, blasEngineUpLo uploArg, blasEngineTranspose transposeAArg,
-    blasEngineDiag diagArg, T alphaArg)
-  {
-    this->method = blasEngineMethod::AblasTrmm;
+  ArgPack_trmm(Order orderArg, Side sideArg, UpLo uploArg, Transpose transposeAArg,
+    Diag diagArg, T alphaArg){
+    this->method = Method::AblasTrmm;
     this->order = orderArg;
     this->side = sideArg;
     this->uplo = uploArg;
@@ -114,21 +102,19 @@ public:
     this->alpha = alphaArg;
   }
 
-  blasEngineOrder order;
-  blasEngineSide side;
-  blasEngineUpLo uplo;
-  blasEngineTranspose transposeA;
-  blasEngineDiag diag;
+  Order order;
+  Side side;
+  UpLo uplo;
+  Transpose transposeA;
+  Diag diag;
   T alpha;					// Added this constant
 };
 
 template<typename T>
-class blasEngineArgumentPackage_syrk : public blasEngineArgumentPackage<T>
-{
+class ArgPack_syrk : public ArgPack<T>{
 public:
-  blasEngineArgumentPackage_syrk(blasEngineOrder orderArg, blasEngineUpLo uploArg, blasEngineTranspose transposeAArg, T alphaArg, T betaArg)
-  {
-    this->method = blasEngineMethod::AblasSyrk;
+  ArgPack_syrk(Order orderArg, UpLo uploArg, Transpose transposeAArg, T alphaArg, T betaArg){
+    this->method = Method::AblasSyrk;
     this->order = orderArg;
     this->uplo = uploArg;
     this->transposeA = transposeAArg;
@@ -136,9 +122,9 @@ public:
     this->beta = betaArg;
   }
 
-  blasEngineOrder order;
-  blasEngineUpLo uplo;
-  blasEngineTranspose transposeA;
+  Order order;
+  UpLo uplo;
+  Transpose transposeA;
   T alpha;					// Added this constant
   T beta;					// Added this constant
 };

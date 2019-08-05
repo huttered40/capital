@@ -35,8 +35,8 @@ void summa::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matri
   BroadcastPanels((isRootRow ? matrixA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
   matrixAEnginePtr = (isRootRow ? matrixA : foreignA);
   BroadcastPanels((isRootColumn ? matrixB.getVectorData() : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
-  if ((!std::is_same<StructureB,Rectangular>::value) && (!std::is_same<StructureB,Square>::value)){
-    Matrix<T,U,Rectangular,Distribution,Offload> helperB(std::vector<T>(), matrixBnumColumns, matrixBnumRows, matrixBnumColumns, matrixBnumRows);
+  if ((!std::is_same<StructureB,Rectangular>::value) && (!std::is_same<StructureB,square>::value)){
+    matrix<T,U,Rectangular,Distribution,Offload> helperB(std::vector<T>(), matrixBnumColumns, matrixBnumRows, matrixBnumColumns, matrixBnumRows);
     getEnginePtr(matrixB, helperB, (isRootColumn ? matrixB.getVectorData() : foreignB), isRootColumn);
     matrixBEnginePtr = helperB.getRawData();
   }
@@ -52,7 +52,7 @@ void summa::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matri
       (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
       (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
       localDimensionM, srcPackage);
-    MPI_Allreduce(MPI_IN_PLACE,matrixCforEnginePtr, sizeC, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
+    MPI_Allreduce(MPI_IN_PLACE,matrixCforEnginePtr, sizeC, typename mpi_type<T>::type, MPI_SUM, CommInfo.depth);
   }
   else{
     // This cancels out any affect beta could have. Beta is just not compatable with summa and must be handled separately
@@ -61,7 +61,7 @@ void summa::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matri
        (srcPackage.transposeA == blasEngineTranspose::AblasNoTrans ? localDimensionM : localDimensionK),
        (srcPackage.transposeB == blasEngineTranspose::AblasNoTrans ? localDimensionK : localDimensionN),
        localDimensionM, srcPackage); 
-    MPI_Allreduce(MPI_IN_PLACE, &holdProduct[0], sizeC, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
+    MPI_Allreduce(MPI_IN_PLACE, &holdProduct[0], sizeC, typename mpi_type<T>::type, MPI_SUM, CommInfo.depth);
     for (U i=0; i<sizeC; i++){
       matrixC[i] = srcPackage.beta*matrixC[i] + holdProduct[i];
     }
@@ -221,8 +221,8 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
   // soon, we will need a methodKey for the different MM algs
   if (srcPackage.side == blasEngineSide::AblasLeft){
     BroadcastPanels((isRootRow ? matrixA.getVectorData() : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
-    if ((!std::is_same<StructureA,Rectangular>::value) && (!std::is_same<StructureA,Square>::value)){
-      Matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
+    if ((!std::is_same<StructureA,Rectangular>::value) && (!std::is_same<StructureA,square>::value)){
+      matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
       getEnginePtr(matrixA, helperA, (isRootRow ? matrixA.getVectorData() : foreignA), isRootRow);
       matrixAEnginePtr = std::move(helperA.getVectorData());
     }
@@ -236,8 +236,8 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
   }
   else{
     BroadcastPanels((isRootColumn ? matrixA.getVectorData() : foreignA), sizeA, isRootColumn, CommInfo.z, CommInfo.column);
-    if ((!std::is_same<StructureA,Rectangular>::value) && (!std::is_same<StructureA,Square>::value)){
-      Matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
+    if ((!std::is_same<StructureA,Rectangular>::value) && (!std::is_same<StructureA,square>::value)){
+      matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
       getEnginePtr(matrixA, helperA, (isRootColumn ? matrixA.getVectorData() : foreignA), isRootColumn);
       matrixAEnginePtr = std::move(helperA.getVectorData());
     }
@@ -249,7 +249,7 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
     blasEngine::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionN,
       (srcPackage.order == blasEngineOrder::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
-  MPI_Allreduce(MPI_IN_PLACE,matrixBEnginePtr, sizeB, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
+  MPI_Allreduce(MPI_IN_PLACE,matrixBEnginePtr, sizeB, typename mpi_type<T>::type, MPI_SUM, CommInfo.depth);
   std::memcpy(matrixB, matrixBEnginePtr, sizeB*sizeof(T));
   if ((srcPackage.side == blasEngineSide::AblasLeft) && (!isRootColumn)) delete[] foreignB;
   if ((srcPackage.side == blasEngineSide::AblasRight) && (!isRootRow)) delete[] foreignB;
@@ -454,15 +454,15 @@ void summa::_start1(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
 
   matrixAEnginePtr = (isRootRow ? &dataA[0] : &foreignA[0]);
   matrixBEnginePtr = (isRootColumn ? &dataB[0] : &foreignB[0]);
-  if ((!std::is_same<StructureA,Rectangular>::value) && (!std::is_same<StructureA,Square>::value)){
+  if ((!std::is_same<StructureA,Rectangular>::value) && (!std::is_same<StructureA,square>::value)){
     serializeKeyA = true;
-    Matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
+    matrix<T,U,Rectangular,Distribution,Offload> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
     getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
     matrixAEngineVector = std::move(helperA.getVectorData());
   }
-  if ((!std::is_same<StructureB,Rectangular>::value) && (!std::is_same<StructureB,Square>::value)){
+  if ((!std::is_same<StructureB,Rectangular>::value) && (!std::is_same<StructureB,square>::value)){
     serializeKeyB = true;
-    Matrix<T,U,Rectangular,Distribution,Offload> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
+    matrix<T,U,Rectangular,Distribution,Offload> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
     getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
@@ -474,15 +474,16 @@ template<typename MatrixType, typename CommType>
 void summa::_end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, size_t dir){
   TAU_FSTART(summa::_end1);
 
+  using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
 
   U numElems = matrix.getNumElems();
   // Prevents buffer aliasing, which MPI does not like.
   if ((dir) || (matrixEnginePtr == matrix.getRawData())){
-    MPI_Allreduce(MPI_IN_PLACE,matrixEnginePtr, numElems, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
+    MPI_Allreduce(MPI_IN_PLACE,matrixEnginePtr, numElems, typename mpi_type<T>::type, MPI_SUM, CommInfo.depth);
   }
   else{
-    MPI_Allreduce(matrixEnginePtr, matrix.getRawData(), numElems, MPI_DATATYPE, MPI_SUM, CommInfo.depth);
+    MPI_Allreduce(matrixEnginePtr, matrix.getRawData(), numElems, typename mpi_type<T>::type, MPI_SUM, CommInfo.depth);
   }
   TAU_FSTOP(summa::_end1);
 }
@@ -529,10 +530,10 @@ void summa::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
   if (modA && (shift >= modA)){
     std::vector<T> partitionMatrixA(messageSizeA,0);
     memcpy(&partitionMatrixA[0], &dataA[dataAOffset], (messageSizeA - localNumRowsA)*sizeof(T));  // truncation should be fine here. Rest is zeros
-    MPI_Allgather(&partitionMatrixA[0], messageSizeA, MPI_DATATYPE, &collectMatrixA[0], messageSizeA, MPI_DATATYPE, CommInfo.row);
+    MPI_Allgather(&partitionMatrixA[0], messageSizeA, typename mpi_type<T>::type, &collectMatrixA[0], messageSizeA, typename mpi_type<T>::type, CommInfo.row);
   }
   else{
-    MPI_Allgather(&dataA[dataAOffset], messageSizeA, MPI_DATATYPE, &collectMatrixA[0], messageSizeA, MPI_DATATYPE, CommInfo.row);
+    MPI_Allgather(&dataA[dataAOffset], messageSizeA, typename mpi_type<T>::type, &collectMatrixA[0], messageSizeA, typename mpi_type<T>::type, CommInfo.row);
   }
 
 
@@ -589,14 +590,14 @@ void summa::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
   for (U i=0; i<localNumColumnsB; i++){
     memcpy(&partitionMatrixB[i*blockLengthB], &matrixB.getRawData()[dataBOffset + i*localNumRowsB], writeSize*sizeof(T));
   }
-  MPI_Allgather(&partitionMatrixB[0], partitionMatrixB.size(), MPI_DATATYPE, &collectMatrixB[0], partitionMatrixB.size(), MPI_DATATYPE, CommInfo.column);
+  MPI_Allgather(&partitionMatrixB[0], partitionMatrixB.size(), typename mpi_type<T>::type, &collectMatrixB[0], partitionMatrixB.size(), typename mpi_type<T>::type, CommInfo.column);
 /*
   // Allgathering matrixB is a problem for AMPI when using derived datatypes
   MPI_Datatype matrixBcolumnData;
-  MPI_Type_vector(localNumColumnsB,blockLengthB,localNumRowsB,MPI_DATATYPE,&matrixBcolumnData);
+  MPI_Type_vector(localNumColumnsB,blockLengthB,localNumRowsB,typename mpi_type<T>::type,&matrixBcolumnData);
   MPI_Type_commit(&matrixBcolumnData);
   U messageSizeB = sizeB/columnCommSize;
-  MPI_Allgather(&dataB[dataBOffset], 1, matrixBcolumnData, &collectMatrixB[0], messageSizeB, MPI_DATATYPE, columnComm);
+  MPI_Allgather(&dataB[dataBOffset], 1, matrixBcolumnData, &collectMatrixB[0], messageSizeB, typename mpi_type<T>::type, columnComm);
 */
   // Then need to re-shuffle the data in collectMatrixB because of the format Allgather puts the received data in 
   // Note: there is a particular order to it beyond the AllGather order. Depends what z coordinate we are on (that determines the shift)
@@ -631,16 +632,16 @@ void summa::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
 
 /*
   if ((!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureRectangular<T,U,Distribution>>::value)
-    && (!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+    && (!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructuresquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
-    Matrix<T,U,MatrixStructureRectangular,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
+    matrix<T,U,MatrixStructureRectangular,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
     getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
     matrixAEngineVector = std::move(helperA.getVectorData());
   }
   if ((!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureRectangular<T,U,Distribution>>::value)
-    && (!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureSquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
+    && (!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructuresquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
-    Matrix<T,U,MatrixStructureRectangular,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
+    matrix<T,U,MatrixStructureRectangular,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
     getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
@@ -654,11 +655,11 @@ void summa::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pG
   TAU_FSTART(summa::BroadcastPanels);
 
   if (isRoot){
-    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panel);
+    MPI_Bcast(&data[0], size, typename mpi_type<T>::type, pGridCoordZ, panel);
   }
   else{
     data.resize(size);
-    MPI_Bcast(&data[0], size, MPI_DATATYPE, pGridCoordZ, panel);
+    MPI_Bcast(&data[0], size, typename mpi_type<T>::type, pGridCoordZ, panel);
   }
   TAU_FSTOP(summa::BroadcastPanels);
 }
@@ -668,13 +669,13 @@ void summa::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, M
   TAU_FSTART(summa::BroadcastPanels);
 
   if (isRoot){
-    MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panel);
+    MPI_Bcast(data, size, typename mpi_type<T>::type, pGridCoordZ, panel);
   }
   else{
     // TODO: Is this causing a memory leak? Usually I would be overwriting vector allocated memory. Not sure if this will cause issues or if
     //         the vector will still delete itself.
     data = new T[size];
-    MPI_Bcast(data, size, MPI_DATATYPE, pGridCoordZ, panel);
+    MPI_Bcast(data, size, typename mpi_type<T>::type, pGridCoordZ, panel);
   }
   TAU_FSTOP(summa::BroadcastPanels);
 }

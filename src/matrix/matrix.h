@@ -7,7 +7,7 @@
 #include "structure.h"
 #include "distribute.h"
 
-template<typename T, typename U = size_t , typename StructurePolicy = Rectangular, typename DistributionPolicy = Cyclic, typename OffloadPolicy = OffloadEachGemm>
+template<typename T, typename U = size_t , typename StructurePolicy = rect, typename DistributionPolicy = cyclic, typename OffloadPolicy = OffloadEachGemm>
 class matrix : public StructurePolicy, DistributionPolicy{
 public:
   // Type traits (some inherited from matrixBase)

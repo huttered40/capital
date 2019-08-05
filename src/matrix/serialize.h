@@ -5,7 +5,7 @@
 
 /*
   Note: Serialize is an engine that can take any Structure combo
-  Example: Source is a (cyclically distributed) Upper-triangular matrix and Dest must be a Square (cyclically distributed) matrix
+  Example: Source is a (cyclically distributed) Upper-triangular matrix and Dest must be a square (cyclically distributed) matrix
   TODO: Future: Do we need to deal with changing between distributions? Maybe add this to the Distributer Policy?
 */
 
@@ -14,7 +14,7 @@ template<typename Structure1, typename Structure2>
 class serialize;
 
 template<>
-class serialize<Square,Square>{
+class serialize<square,square>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -25,7 +25,7 @@ public:
 };
 
 template<>
-class serialize<Square,Rectangular>{
+class serialize<square,rect>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -36,7 +36,7 @@ public:
 };
 
 template<>
-class serialize<Square,UpperTriangular>{
+class serialize<square,uppertri>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -47,7 +47,7 @@ public:
 };
 
 template<>
-class serialize<Square,LowerTriangular>{
+class serialize<square,lowertri>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -58,7 +58,7 @@ public:
 };
 
 template<>
-class serialize<Rectangular,Square>{
+class serialize<rect,square>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -69,7 +69,7 @@ public:
 };
 
 template<>
-class serialize<Rectangular,Rectangular>{
+class serialize<rect,rect>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -80,7 +80,7 @@ public:
 };
 
 template<>
-class serialize<Rectangular,UpperTriangular>{
+class serialize<rect,uppertri>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -91,7 +91,7 @@ public:
 };
 
 template<>
-class serialize<Rectangular,LowerTriangular>{
+class serialize<rect,lowertri>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -102,7 +102,7 @@ public:
 };
 
 template<>
-class serialize<UpperTriangular,Square>{
+class serialize<uppertri,square>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -113,7 +113,7 @@ public:
 };
 
 template<>
-class serialize<UpperTriangular,Rectangular>{
+class serialize<uppertri,rect>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -124,7 +124,7 @@ public:
 };
 
 template<>
-class serialize<UpperTriangular,UpperTriangular>{
+class serialize<uppertri,uppertri>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -135,7 +135,7 @@ public:
 };
 
 template<>
-class serialize<LowerTriangular,Square>{
+class serialize<lowertri,square>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -146,7 +146,7 @@ public:
 };
 
 template<>
-class serialize<LowerTriangular,Rectangular>{
+class serialize<lowertri,rect>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
@@ -157,7 +157,7 @@ public:
 };
 
 template<>
-class serialize<LowerTriangular,LowerTriangular>{
+class serialize<lowertri,lowertri>{
 public:
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);

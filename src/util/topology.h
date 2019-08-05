@@ -18,30 +18,31 @@ public:
   rect(MPI_Comm comm, size_t c){
     TAU_FSTART(topo::rect);
 
+    MPI_Comm column;
     int rank, size, columnRank, cubeRank;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
     size_t SubCubeSize = c*c*c;
     size_t SubCubeSliceSize = c*c;
-    MPI_Comm_split(comm, worldRank/SubCubeSize, worldRank, &this->cube);
-    MPI_Comm_rank(miniCubeComm, &cubeRank);
+    MPI_Comm_split(comm, rank/SubCubeSize, rank, &this->cube);
+    MPI_Comm_rank(this->cube, &cubeRank);
     size_t temp1 = (cubeRank%c) + c*(cubeRank/SubCubeSliceSize);
-    size_t temp2 = worldRank % SubCubeSliceSize;
+    size_t temp2 = rank % SubCubeSliceSize;
     MPI_Comm_split(this->cube, cubeRank/c, cubeRank, &this->depth);
     MPI_Comm_split(this->cube, temp1, cubeRank, &this->row);
     // Note: columnComm in the tunable grid is of size d, not size c like in the 3D grid
-    MPI_Comm_split(comm, temp2, worldRank, &this->column);
-    MPI_Comm_split(comm, worldRank%c, worldRank, &this->slice);
-    MPI_Comm_rank(this->column, &columnRank);
-    MPI_Comm_split(this->column, columnRank/c, columnRank, &this->column_contig);
-    MPI_Comm_split(this->column, columnRank%c, columnRank, &this->column_alt); 
+    MPI_Comm_split(comm, temp2, rank, &column);
+    MPI_Comm_split(comm, rank%c, rank, &this->slice);
+    MPI_Comm_rank(column, &columnRank);
+    MPI_Comm_split(column, columnRank/c, columnRank, &this->column_contig);
+    MPI_Comm_split(column, columnRank%c, columnRank, &this->column_alt); 
     this->world=comm;
     this->c = c;
     this->d = size / (this->c*this->c);
     this->z = rank%this->c;
     this->y = rank/SubCubeSliceSize;
     this->x = (rank%SubCubeSliceSize)/c;
-    MPI_Comm_free(&this->column);
+    MPI_Comm_free(&column);
     TAU_FSTOP(topo::rect);
   }
   ~rect(){

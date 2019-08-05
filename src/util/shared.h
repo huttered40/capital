@@ -17,7 +17,6 @@
 #include <cmath>
 #include <string>
 
-#ifdef CRITTER
 #ifdef PORTER
 #include "../../../ExternalLibraries/critter/src/critter.h"
 #endif /*PORTER*/
@@ -27,9 +26,23 @@
 #ifdef BLUEWATERS
 #include "../../../critter/critter.h"
 #endif /*BLUEWATERS*/
-#endif /*CRITTER*/
 
 // Note: no need to include mpi header file when using critter
 // #include <mpi.h>
+
+template<typename ScalarType>
+class mpi_type;
+
+template<>
+class mpi_type<float>{
+public:
+  using type = MPI_FLOAT;
+};
+template<>
+class mpi_type<double>{
+public:
+  using type = MPI_DOUBLE;
+};
+
 
 #endif /*SHARED*/
