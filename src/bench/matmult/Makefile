@@ -24,7 +24,7 @@ ifneq ($(PORTER),)
   LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/critter/lib
   LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lcritter -lpthread
 
-  OBJS = summa3d_gemm
+  OBJS = summa_gemm
 
   $(OBJS): $(OBJS).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS) $(OBJS).o $(LIB_PATH) $(LIBS)
@@ -32,7 +32,7 @@ ifneq ($(PORTER),)
 	mv charmrun $(BIN)charmrun
 
   $(OBJS).o: MM3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) $(OBJS).o -c summa_gemm.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)charmrun $(BIN)$(OBJS)
@@ -46,14 +46,14 @@ ifneq ($(BGQ),)
   LIB_PATH=-L/home/huttered/scratch/CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L$(IBM_MAIN_DIR)/xlf/bg/14.1/bglib64 -L$(IBM_MAIN_DIR)/xlsmp/bg/3.1/bglib64/ -L$(IBM_MAIN_DIR)/xlmass/bg/7.3/bglib64/
   LIBS=-lcblas -lblas -lgfortran -lesslbg -lxlf90_r -lxl -lxlopt -lxlfmath -lm -lcritter -Wl,--allow-multiple-definition
 
-  OBJS1 = summa3d_gemm
+  OBJS1 = summa_gemm
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(INCLUDES) $(LIB_PATH) $(LIBS)
 	rm *.o
 
   $(OBJS1).o: MM3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -66,14 +66,14 @@ ifneq ($(THETA),)
   LIB_PATH=-L../../../../../CritterXC40/critter/lib
   LIBS=-lcritter
 
-  OBJS1 = summa3d_gemm
+  OBJS1 = summa_gemm
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
   $(OBJS1).o: MM3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -87,14 +87,14 @@ ifneq ($(STAMPEDE2),)
   LIB_PATH=-L../../../../../critter/lib
   LIBS=-lcritter
 
-  OBJS1 = summa3d_gemm
+  OBJS1 = summa_gemm
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
   $(OBJS1).o: MM3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -126,14 +126,14 @@ ifneq ($(BLUEWATERS),)
     CFLAGS = -O3 -ffast-math -funroll-loops -std=gnu++1y
   endif
 
-  OBJS1 = summa3d_gemm
+  OBJS1 = summa_gemm
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
   $(OBJS1).o: MM3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)

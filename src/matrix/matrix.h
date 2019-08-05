@@ -5,7 +5,7 @@
 
 // Local includes -- the policy classes
 #include "structure.h"
-#include "distributer.h"
+#include "distribute.h"
 
 template<typename T, typename U = size_t , typename StructurePolicy = Rectangular, typename DistributionPolicy = Cyclic, typename OffloadPolicy = OffloadEachGemm>
 class matrix : public StructurePolicy, DistributionPolicy{

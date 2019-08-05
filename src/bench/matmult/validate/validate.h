@@ -3,7 +3,7 @@
 #ifndef MATMULT__VALIDATE_H_
 #define MATMULT__VALIDATE_H_
 
-#include "./../../alg.h"
+#include "../../../alg/alg.h"
 
 namespace matmult{
 // These static methods will take the matrix in question, distributed in some fashion across the processors

@@ -31,8 +31,8 @@ ifneq ($(PORTER),)
 	rm *.o; \
 	mv charmrun $(BIN)charmrun
 
-  $(OBJS).o: test.cpp CFR3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS).o -c test.cpp
+  $(OBJS).o: cholinv.cpp CFR3D.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS).o -c cholinv.cpp
 
   clean:
 	-rm -f *.o *.err *.out *.gch $(BIN)charmrun $(BIN)$(OBJS1)
@@ -52,8 +52,8 @@ ifneq ($(BGQ),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(INCLUDES) $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: test.cpp CFR3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+  $(OBJS1).o: cholinv.cpp CFR3D.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cholinv.cpp
 
   clean:
 	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)
@@ -72,8 +72,8 @@ ifneq ($(THETA),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: test.cpp CFR3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+  $(OBJS1).o: cholinv.cpp CFR3D.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cholinv.cpp
 
   clean:
 	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)
@@ -92,8 +92,8 @@ ifneq ($(STAMPEDE2),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: test.cpp CFR3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+  $(OBJS1).o: cholinv.cpp CFR3D.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cholinv.cpp
 
   clean:
 	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)
@@ -130,8 +130,8 @@ ifneq ($(BLUEWATERS),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: test.cpp CFR3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+  $(OBJS1).o: cholinv.cpp CFR3D.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cholinv.cpp
 
   clean:
 	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)

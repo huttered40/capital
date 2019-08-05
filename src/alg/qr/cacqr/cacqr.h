@@ -4,9 +4,9 @@
 #define QR__CACQR_H_
 
 #include "./../../alg.h"
-#include "./../../MatrixMultiplication/MM3D/MM3D.h"
-#include "./../../TriangularSolve/TRSM3D/TRSM3D.h"
-#include "./../../CholeskyFactorization/CFR3D/CFR3D.h"
+#include "./../../matmult/summa/summa.h"
+#include "./../../trsm/diaginvert/diaginvert.h"
+#include "./../../cholesky/cholinv/cholinv.h"
 
 namespace qr{
 

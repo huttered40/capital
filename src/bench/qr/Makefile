@@ -29,12 +29,12 @@ ifneq ($(PORTER),)
   OBJS = cacqr2
 
   $(OBJS): $(OBJS).o
-        $(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS) $(OBJS).o $(LIB_PATH) $(LIBS)
+	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS) $(OBJS).o $(LIB_PATH) $(LIBS)
 	rm *.o
 	mv charmrun $(BIN)charmrun	# Note: this will just not work for MPI, but that shouldn't cause a problem
 
-  $(OBJS).o: test.cpp cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS).o -c test.cpp
+  $(OBJS).o:
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS).o -c cacqr2.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)charmrun $(BIN)$(OBJS)
@@ -55,7 +55,7 @@ ifneq ($(BGQ),)
 	rm *.o
 
   $(OBJS1).o: test.cpp cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -76,7 +76,7 @@ ifneq ($(THETA),)
 	rm *.o
 
   $(OBJS1).o: test.cpp cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -96,7 +96,7 @@ ifneq ($(STAMPEDE2),)
 	rm *.o
 
   $(OBJS1).o: test.cpp cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -112,7 +112,7 @@ ifneq ($(BLUEWATERS),)
   LIBS=-lcritter
   CCMPI=CC
   CCGPU=CC	# default unless overwritten
-  ENVS=-D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -D$(GPU)
+  ENVS=-D$(MACHINE) -D$(MPITYPE) -D$(GPU)
 
   ifneq ($(GPU_ACCEL),)
     LIBS=$(LIBS) -lcublas -lcusolver

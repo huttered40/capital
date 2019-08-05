@@ -29,31 +29,7 @@
 #endif /*BLUEWATERS*/
 #endif /*CRITTER*/
 
-#ifndef CRITTER
-#include <mpi.h>
-#endif /*CRITTER*/
-
-#ifdef FLOAT_TYPE
-  #define DATATYPE float
-  #define MPI_DATATYPE MPI_FLOAT
-#endif
-#ifdef DOUBLE_TYPE
-  #define DATATYPE double
-  #define MPI_DATATYPE MPI_DOUBLE
-#endif
-#ifdef COMPLEX_FLOAT_TYPE
-  #define DATATYPE std::complex<float>
-  #define MPI_DATATYPE MPI_C_FLOAT_COMPLEX
-#endif
-#ifdef COMPLEX_DOUBLE_TYPE
-  #define DATATYPE std::complex<double>
-  #define MPI_DATATYPE MPI_C_DOUBLE_COMPLEX
-#endif
-#ifdef INT_TYPE
-  #define INTTYPE size_t
-#endif
-#ifdef INT64_T_TYPE
-  #define INTTYPE uint64_t
-#endif
+// Note: no need to include mpi header file when using critter
+// #include <mpi.h>
 
 #endif /*SHARED*/
