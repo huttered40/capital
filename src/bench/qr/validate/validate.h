@@ -4,7 +4,6 @@
 #define QR__VALIDATE_H_
 
 #include "./../../alg.h"
-#include "./../../../util/validation.h"
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
@@ -17,6 +16,14 @@ public:
   static std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
            invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& myR, CommType&& CommInfo);
 private:
+  template<typename MatrixType, typename RectCommType, typename SquareCommType>
+  typename MatrixType::ScalarType
+  orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
+  
+  template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommInfo>
+  typename MatrixAType::ScalarType
+  residual(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, char dir, ..){
+
 /*
   // We require that for a 1D algorithm, Q is rectangular and R is square
   template<typename MatrixAType, typename MatrixQType, typename MatrixRType>

@@ -1,5 +1,34 @@
 /* Author: Edward Hutter */
 
+template<typename MatrixType, typename RefMatrixType, typename LambdaType>
+std::pair<typename MatrixType::ScalarType, typename MatrixType::ScalarType>
+util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, size_t sliceX, size_t sliceY, size_t sliceDim){
+  using T = typename MatrixType::ScalarType;
+  using U = typename MatrixType::DimensionType;
+  T error = 0;
+  T control = 0;
+  U localNumRows = Matrix.getNumRowsLocal();
+  U localNumColumns = Matrix.getNumColumnsLocal();
+  U globalX = sliceX;
+  U globalY = sliceY;
+  for (U i=0; i<localNumColumns; i++){
+    globalY = sliceY;    // reset
+    for (size_t j=0; j<localNumRows; j++){
+      auto info = Lambda(Matrix, RefMatrix, i*localNumColumns+j,globalX, globalY);
+      error += std::abs(info.first*info.first);
+      control += std::abs(info.control*info.control);
+      globalY += SquareCommInfo.d;
+      //if (rank == 0) std::cout << val << " " << i << " " << j << std::endl;
+    }
+    globalX += SquareCommInfo.d;
+  }
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DATATYPE, MPI_SUM, slice);
+  MPI_Allreduce(MPI_IN_PLACE, &control, 1, MPI_DATATYPE, MPI_SUM, slice);
+  error = std::sqrt(error) / std::sqrt(control);
+  //MPI_Allreduce(MPI_IN_PLACE, &error, 1, MPI_DATATYPE, MPI_SUM, depthComm);
+  return error;
+
+
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename T, typename U>
 std::vector<T> util::blockedToCyclicSpecial(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t pGridDimensionSize, char dir){
@@ -118,7 +147,7 @@ std::vector<T> util::blockedToCyclic(std::vector<T>& blockedData, U localDimensi
 
 template<typename MatrixType>
 std::vector<typename MatrixType::ScalarType>
-util::getReferenceMatrix(MatrixType& myMatrix, size_t key, std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> commInfo){
+util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_t commDim){
   TAU_FSTART(Util::getReferenceMatrix);
 
   using T = typename MatrixType::ScalarType;
@@ -127,8 +156,7 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, std::tuple<MPI_Comm,s
   using Distribution = typename MatrixType::DistributionType;
   using Offload = typename MatrixType::OffloadType;
 
-  MPI_Comm sliceComm = std::get<0>(commInfo);
-  size_t pGridDimensionSize = std::get<4>(commInfo);
+  size_t commDim = std::get<4>(commInfo);
 
   U localNumColumns = myMatrix.getNumColumnsLocal();
   U localNumRows = myMatrix.getNumRowsLocal();
@@ -136,8 +164,8 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, std::tuple<MPI_Comm,s
   U globalNumRows = myMatrix.getNumRowsGlobal();
 /*
   using MatrixType = Matrix<T,U,Square,Distribution>;
-  MatrixType localMatrix(globalNumColumns, globalNumRows, pGridDimensionSize, pGridDimensionSize);
-  localMatrix.DistributeSymmetric(pGridCoordX, pGridCoordY, pGridDimensionSize, pGridDimensionSize, key, true);
+  MatrixType localMatrix(globalNumColumns, globalNumRows, commDim, commDim);
+  localMatrix.DistributeSymmetric(pGridCoordX, pGridCoordY, commDim, commDim, key, true);
 */
   // I first want to check whether or not I want to serialize into a rectangular buffer (I don't care too much about efficiency here,
   //   if I did, I would serialize after the AllGather, but whatever)
@@ -149,19 +177,19 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, std::tuple<MPI_Comm,s
     matrixPtr = matrixDest.getRawData();
   }
 
-  U aggregNumRows = localNumRows*pGridDimensionSize;
-  U aggregNumColumns = localNumColumns*pGridDimensionSize;
+  U aggregNumRows = localNumRows*commDim;
+  U aggregNumColumns = localNumColumns*commDim;
   U localSize = localNumColumns*localNumRows;
   U globalSize = globalNumColumns*globalNumRows;
   U aggregSize = aggregNumRows*aggregNumColumns;
   std::vector<T> blockedMatrix(aggregSize);
 //  std::vector<T> cyclicMatrix(aggregSize);
-  MPI_Allgather(matrixPtr, localSize, MPI_DATATYPE, &blockedMatrix[0], localSize, MPI_DATATYPE, sliceComm);
+  MPI_Allgather(matrixPtr, localSize, MPI_DATATYPE, &blockedMatrix[0], localSize, MPI_DATATYPE, slice);
 
-  std::vector<T> cyclicMatrix = util::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, pGridDimensionSize);
+  std::vector<T> cyclicMatrix = util::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, commDim);
 
   // In case there are hidden zeros, we will recopy
-  if ((globalNumRows%pGridDimensionSize) || (globalNumColumns%pGridDimensionSize)){
+  if ((globalNumRows%commDim) || (globalNumColumns%commDim)){
     U index = 0;
     for (U i=0; i<globalNumColumns; i++){
       for (U j=0; j<globalNumRows; j++){
@@ -175,14 +203,16 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, std::tuple<MPI_Comm,s
   return cyclicMatrix;
 }
 
-template<typename MatrixType>
-void util::transposeSwap(MatrixType& mat, size_t myRank, size_t transposeRank, MPI_Comm commWorld){
+template<typename MatrixType, typename CommType>
+void util::transposeSwap(MatrixType& mat, CommType&& CommInfo){
   TAU_FSTART(Util::transposeSwap);
 
+  size_t SquareFaceSize = CommInfo.c*CommInfo.d;
+  size_t transposePartner = CommInfo.x*SquareFaceSize + CommInfo.y*CommInfo.c + CommInfo.z;
   //if (myRank != transposeRank)
   //{
     // Transfer with transpose rank
-    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), MPI_DATATYPE, transposeRank, 0, transposeRank, 0, commWorld, MPI_STATUS_IGNORE);
+    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), MPI_DATATYPE, transposeRank, 0, transposeRank, 0, comm, MPI_STATUS_IGNORE);
 
     // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
     //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
@@ -213,17 +243,17 @@ U util::getNextPowerOf2(U localShift){
 }
 
 template<typename MatrixType>
-void util::removeTriangle(MatrixType& matrix, size_t pGridCoordX, size_t pGridCoordY, size_t pGridDimensionSize, char dir){
+void util::removeTriangle(MatrixType& matrix, size_t sliceX, size_t sliceY, size_t sliceDim, char dir){
   TAU_FSTART(Util::removeTriangle);
 
   using U = typename MatrixType::DimensionType;
 
-  U globalDimVert = pGridCoordY;
-  U globalDimHoriz = pGridCoordX;
+  U globalDimVert = sliceY;
+  U globalDimHoriz = sliceX;
   U localVert = matrix.getNumRowsLocal();
   U localHoriz = matrix.getNumColumnsLocal();
   for (U i=0; i<localHoriz; i++){
-    globalDimVert = pGridCoordY;    //   reset
+    globalDimVert = sliceY;    //   reset
     for (U j=0; j<localVert; j++){
       if ((globalDimVert < globalDimHoriz) && (dir == 'L')){
         matrix.getRawData()[i*localVert + j] = 0;
@@ -231,9 +261,9 @@ void util::removeTriangle(MatrixType& matrix, size_t pGridCoordX, size_t pGridCo
       if ((globalDimVert > globalDimHoriz) && (dir == 'U')){
         matrix.getRawData()[i*localVert + j] = 0;
       }
-      globalDimVert += pGridDimensionSize;
+      globalDimVert += sliceDim;
     }
-    globalDimHoriz += pGridDimensionSize;
+    globalDimHoriz += sliceDim;
   }
   TAU_FSTOP(Util::removeTriangle);
 }

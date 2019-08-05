@@ -2,6 +2,7 @@
 
 namespace matmult{
 
+/*
 template<typename AlgType>
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType>
 void validate<AlgType>::validateLocal(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, MPI_Comm commWorld,
@@ -131,4 +132,5 @@ T validate<AlgType>::getResidual(std::vector<T>& myValues, std::vector<T>& blasV
   //std::cout << "Processor residual error - " << error << std::endl;
   return error;
 }
+*/
 }

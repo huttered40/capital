@@ -8,14 +8,6 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
   TAU_FSTART(cholinv::invoke);
 
   using U = typename MatrixAType::DimensionType;
-
-  int pGridDimensionSize;
-  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
-
-  size_t helper = pGridDimensionSize;
-  helper *= helper;
-  size_t transposePartner = CommInfo.x*helper + CommInfo.y*pGridDimensionSize + CommInfo.z;
-
   U localDimension = matrixA.getNumRowsLocal();
   U globalDimension = matrixA.getNumRowsGlobal();
   // the division below may have a remainder, but I think integer division will be ok, as long as we change the base case condition to be <= and not just ==
@@ -44,14 +36,14 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
     baseCaseDimList.first = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
 //    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
     rFactorLower(matrixA, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, std::forward<CommType>(CommInfo),
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
       baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension, panelDimensionMultiplier);
   }
   else if (dir == 'U'){
     baseCaseDimList.first = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
 //    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
     rFactorUpper(matrixA, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, transposePartner, std::forward<CommType>(CommInfo),
+      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
       baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension, panelDimensionMultiplier);
   }
   TAU_FSTOP(cholinv::invoke);
@@ -63,14 +55,14 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
                          typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                          typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                          typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matLIstartX, typename MatrixAType::DimensionType matLIendX,
-                         typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY, size_t transposePartner,
+                         typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY,
                          CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                          typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension){
   TAU_FSTART(cholinv::rFactorLower);
 
   if (globalDimension <= bcDimension){
     baseCase(matrixA, matrixLI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
-      matAstartX, matAendX, matAstartY, matAendY, matLIstartX, matLIendX, matLIstartY, matLIendY, transposePartner,
+      matAstartX, matAendX, matAstartY, matAendY, matLIstartX, matLIendX, matLIstartY, matLIendY,
       std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension, 'L');
     return;
   }
@@ -94,7 +86,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   updateInversePath(inverseCutoffGlobalDimension, globalDimension, isInversePath, baseCaseDimList, localDimension);
   rFactorLower(matrixA, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
-    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift, transposePartner,
+    matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
 
   size_t saveIndexAfter = baseCaseDimList.size();
@@ -103,7 +95,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   Matrix<T,U,LowerTriangular,Distribution,Offload> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
   serialize<Square,LowerTriangular>::invoke(matrixLI, packedMatrix, matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
-  util::transposeSwap(packedMatrix, rank, transposePartner, CommInfo.world);
+  util::transposeSwap(packedMatrix, CommInfo.world);
 
   blasEngineArgumentPackage_trmm<T> trmmArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
     blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
@@ -134,7 +126,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
     serialize<Square,LowerTriangular>::invoke(matrixA, packedMatrixL, matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
     // Swap, same as we did with inverse
-    util::transposeSwap(packedMatrixL, rank, transposePartner, CommInfo.world);
+    util::transposeSwap(packedMatrixL, CommInfo.world);
 
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
       blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
@@ -160,7 +152,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
 
   rFactorLower(matrixA, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
-    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, transposePartner,
+    matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
 
   if (isInversePath){
@@ -193,14 +185,14 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
                          typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                          typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                          typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matRIstartX, typename MatrixAType::DimensionType matRIendX,
-                         typename MatrixAType::DimensionType matRIstartY, typename MatrixAType::DimensionType matRIendY, size_t transposePartner,
+                         typename MatrixAType::DimensionType matRIstartY, typename MatrixAType::DimensionType matRIendY,
                          CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                          typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension){
   TAU_FSTART(cholinv::rFactorUpper);
 
   if (globalDimension <= bcDimension){
     baseCase(matrixA, matrixRI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
-      matAstartX, matAendX, matAstartY, matAendY, matRIstartX, matRIendX, matRIstartY, matRIendY, transposePartner,
+      matAstartX, matAendX, matAstartY, matAendY, matRIstartX, matRIendX, matRIstartY, matRIendY,
       std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension, 'U');
     return;
   }
@@ -224,7 +216,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   updateInversePath(inverseCutoffGlobalDimension, globalDimension, isInversePath, baseCaseDimList, localDimension);
   rFactorUpper(matrixA, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
-    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, transposePartner,
+    matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
 
   size_t saveIndexAfter = baseCaseDimList.size();
@@ -233,7 +225,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   Matrix<T,U,UpperTriangular,Distribution,Offload> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
   serialize<Square,UpperTriangular>::invoke(matrixRI, packedMatrix, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
-  util::transposeSwap(packedMatrix, rank, transposePartner, CommInfo.world);
+  util::transposeSwap(packedMatrix, CommInfo.world);
   blasEngineArgumentPackage_trmm<T> trmmArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
     blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
 
@@ -261,7 +253,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
     serialize<Square,UpperTriangular>::invoke(matrixA, packedMatrixR, matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
     // Swap, same as we did with inverse
-    util::transposeSwap(packedMatrixR, rank, transposePartner, CommInfo.world);
+    util::transposeSwap(packedMatrixR, CommInfo.world);
 
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
@@ -280,7 +272,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
 
   rFactorUpper(matrixA, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
-    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, transposePartner,
+    matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
 
   // Next step : temp <- R_{12}*RI_{22}
@@ -314,7 +306,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
                      typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                      typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                      typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matIstartX, typename MatrixAType::DimensionType matIendX,
-                     typename MatrixAType::DimensionType matIstartY, typename MatrixAType::DimensionType matIendY, size_t transposePartner,
+                     typename MatrixAType::DimensionType matIstartY, typename MatrixAType::DimensionType matIendY,
                      CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                      typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension, char dir){
   TAU_FSTART(cholinv::baseCase);

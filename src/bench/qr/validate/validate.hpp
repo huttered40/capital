@@ -1,6 +1,65 @@
 /* Author: Edward Hutter */
 namespace qr{
 
+
+template<typename MatrixType, typename RectCommType, typename SquareCommType>
+typename MatrixType::ScalarType
+validate::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
+
+  using T = typename MatrixType::ScalarType;
+  using U = typename MatrixType::DimensionType;
+
+  MatrixType matrixQtrans = matrixQ;
+  util::transposeSwap(matrixQtrans, SquareCommInfo.world);
+  U localNumRows = matrixQtrans.getNumColumnsLocal();
+  U localNumColumns = matrixQ.getNumColumnsLocal();
+  U globalNumRows = matrixQtrans.getNumColumnsGlobal();
+  U globalNumColumns = matrixQ.getNumColumnsGlobal();
+  U numElems = localNumRows*localNumColumns;
+  MatrixType matrixI(std::vector<T>(numElems,0), localNumColumns, localNumRows, globalNumColumns, globalNumRows, true);
+
+  blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
+  matmult::summa::invoke(matrixQtrans, matrixQ, matrixI, std::forward<SquareCommType>(SquareCommInfo), blasArgs);
+  if (RectCommInfo.column_alt != MPI_COMM_WORLD){
+    MPI_Allreduce(MPI_IN_PLACE, matrixI.getRawData(), matrixI.getNumElems(), MPI_DATATYPE, MPI_SUM, RectCommInfo.column_alt);
+  }
+
+  auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
+    typename T = decltype(matrix)::ScalarType;
+    T val,control;
+    if (globalX == globalY){
+      val = std::abs(1. - matrix.getRawData()[index]);
+      control = 1;
+    }
+    else{
+      val = matrix.getRawData()[i*localNumRows+j];
+      control = 0;
+    }
+    return std::make_pair(val,control);
+  }
+  return util::residual_local(matrixI, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.d);
+}
+
+template<typename MatrixQType, typename MatrixRType, typename MatrixAType, typename RectCommType, typename SquareCommType>
+typename MatrixAType::ScalarType
+validate::residual(MatrixQType& matrixQ, MatrixRType& matrixR, MatrixAType& matrixA, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
+
+  using T = typename MatrixAType::ScalarType;
+  using U = typename MatrixAType::DimensionType;
+
+  MatrixAType saveMatA = matrixA;
+  blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., -1.);
+  matmult::summa::invoke(matrixQ, matrixR, saveMatA, std::forward<SquareCommType>(SquareCommInfo), blasArgs);
+
+  auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
+    typename T = decltype(matrix)::ScalarType;
+    T val = matrix.getRawData()[index];
+    T control = ref.getRawData()[index];
+    return std::make_pair(val,control);
+  }
+  return util::residual_local(matrixA, saveMatA, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.d);
+}
+
 /* Validation against sequential BLAS/LAPACK constructs */
 template<AlgType>
 template<typename MatrixAType, typename MatrixQType, typename MatrixRType, typename CommType>
@@ -8,14 +67,10 @@ std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
 validate<AlgType>::invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, CommType&& CommInfo){
   using T = typename MatrixAType::ScalarType;
 
-  auto commInfo3D = ... Square/Rect (?) util::build3DTopology(CommInfo.cube);
-  int pGridDimensionSize;
-  MPI_Comm_size(CommInfo.row,&pGridDimensionSize);
-  util::removeTriangle(matrixR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
-  std::string str1 = "Residual: ";
-  T error1 = validator::validateResidualParallel(matrixQ, matrixR, matrixA, 'F', miniCubeComm, commInfo3D, MPI_COMM_WORLD, str1);
-  std::string str2 = "Deviation from orthogonality: ";
-  T error2 = validator::validateOrthogonalityParallel(matrixQ, miniCubeComm, commInfo3D, columnAltComm, str2);
+  auto SquareTopo = topo::square(CommInfo.cube,CommInfo.c);
+  util::removeTriangle(matrixR, SquareTopo.x, SquareTopo.y, SquareTopo.d, 'U');
+  T error1 = residual(matrixQ, matrixR, matrixA, std::forward<CommType>(CommInfo), SquareTopo);
+  T error2 = orth(matrixQ, std::forward<CommType>(CommInfo), SquareTopo);
   return std::make_pair(error1,error2);
 }
 

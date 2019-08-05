@@ -3,6 +3,46 @@
 namespace cholesky{
 
 template<typename AlgType>
+template<typename MatrixAType, typename MatrixTriType, typename CommType>
+typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA, MatrixTriType& matrixTri, char dir, CommType&& CommInfo){
+  util::removeTriangle(matrixTri, CommInfo.x, CommInfo.y, CommInfo.d, dir);
+  MatrixTriType matrixTriTrans = matrixTri;
+  util::transposeSwap(matrixTriTrans, CommInfo.world);
+
+  if (dir == 'L'){
+    blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, 1., -1.);
+    matmult::summa::invoke(matrixTri, matrixTriTrans, matrixA, std::forward<CommType(CommInfo, blasArgs);
+    auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
+      typename T = decltype(matrix)::ScalarType;
+      T val=0;
+      T control=0;
+      if (sliceY >= sliceX){
+        val = matrix.getRawData()[index];
+        control = ref.getRawData()[index];
+      }
+      return std::make_pair(val,control);
+    }
+    return util::residual_local(matrixA, saveMatA, std::move(Lambda), CommInfo.slice, CommInfo.x, CommInfo.y, CommInfo.d);
+  }
+  else if (dir == 'U'){
+    blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., -1.);
+    matmult::summa::invoke(matrixTriTrans, matrixTri, matrixA, std::forward<CommType(CommInfo), blasArgs);
+    auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
+      typename T = decltype(matrix)::ScalarType;
+      T val=0;
+      T control=0;
+      if (sliceY <= sliceX){
+        val = matrix.getRawData()[index];
+        control = ref.getRawData()[index];
+      }
+      return std::make_pair(val,control);
+    }
+    return util::residual_local(matrixA, saveMatA, std::move(Lambda), CommInfo.slice, CommInfo.x, CommInfo.y, CommInfo.d);
+  }
+}
+
+/*
+template<typename AlgType>
 template<typename MatrixAType, typename MatrixSolType>
 void validate<AlgType>::validateLocal(MatrixAType& matrixA, MatrixSolType& matrixSol, char dir, MPI_Comm commWorld){
   // What I want to do here is generate a full matrix with the correct values
@@ -50,47 +90,23 @@ void validate<AlgType>::validateLocal(MatrixAType& matrixA, MatrixSolType& matri
   if (myRank == 0) {std::cout << "Total error = " << error << std::endl;}
 
 // Forget testing the inverse.
-/*
-  myTimer.setStartTime();
-  LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', globalDimension, &globalMatrixA[0], globalDimension);
-  myTimer.setEndTime();
-  myTimer.printParallelTime(1e-9, MPI_COMM_WORLD, "LAPACK Triangular Inverse (dtrtri)");
+//
+//  myTimer.setStartTime();
+//  LAPACKE_dtrtri(LAPACK_COL_MAJOR, dir, 'N', globalDimension, &globalMatrixA[0], globalDimension);
+//  myTimer.setEndTime();
+//  myTimer.printParallelTime(1e-9, MPI_COMM_WORLD, "LAPACK Triangular Inverse (dtrtri)");
+//
+//  // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
+//  T error2 = (dir == 'L' ? getResidualTriangleLower(matrixSol_TI.getVectorData(), globalMatrixA, localDimension, globalDimension, commInfo)
+//               : getResidualTriangleUpper(matrixSol_TI.getVectorData(), globalMatrixA, localDimension, globalDimension, commInfo));
+//
+//  // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
+//  MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DATATYPE, MPI_SUM, sliceComm);
+//  if (myRank == 0) {std::cout << "Total error = " << error2 << std::endl;}
 
-  // Now we need to iterate over both matrixCforEngine and matrixSol to find the local error.
-  T error2 = (dir == 'L' ? getResidualTriangleLower(matrixSol_TI.getVectorData(), globalMatrixA, localDimension, globalDimension, commInfo)
-               : getResidualTriangleUpper(matrixSol_TI.getVectorData(), globalMatrixA, localDimension, globalDimension, commInfo));
-
-  // Now, we need the AllReduce of the error. Very cheap operation in terms of bandwidth cost, since we are only communicating a single double primitive type.
-  MPI_Allreduce(MPI_IN_PLACE, &error2, 1, MPI_DATATYPE, MPI_SUM, sliceComm);
-  if (myRank == 0) {std::cout << "Total error = " << error2 << std::endl;}
-*/
   MPI_Comm_free(&sliceComm);
 }
 
-template<typename AlgType>
-template<typename MatrixAType, typename MatrixTriType, typename CommType>
-typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA, MatrixTriType& matrixTri, char dir, CommType&& CommInfo){
-  int rank,size;
-  MPI_Comm_rank(commWorld, &rank);
-  MPI_Comm_size(commWorld, &size);
-
-  .. is CommInfo arg not used then? I feel like it should be...
-
-  auto commInfo = util::getCommunicatorSlice(commWorld);
-  size_t pGridCoordX = std::get<1>(commInfo);
-  size_t pGridCoordY = std::get<2>(commInfo);
-  size_t pGridCoordZ = std::get<3>(commInfo);
-  size_t pGridDimensionSize = std::get<4>(commInfo);
-  size_t helper = pGridDimensionSize;
-  helper *= helper;
-
-  size_t transposePartner = pGridCoordX*helper + pGridCoordY*pGridDimensionSize + pGridCoordZ;
-  util::removeTriangle(matrixTri, pGridCoordX, pGridCoordY, pGridDimensionSize, dir);
-  MatrixTriType matrixTriTrans = matrixTri;
-  util::transposeSwap(matrixTriTrans, rank, transposePartner, MPI_COMM_WORLD);
-  std::string str = "Residual: ";
-  return validator::validateResidualParallel((dir == 'L' ? matrixTri : matrixTriTrans), (dir == 'L' ? matrixTriTrans : matrixTri), matrixA, dir, commWorld, commInfo3D, MPI_COMM_WORLD, str);
-}
 
 // We only test the lower triangular for now. The matrices are stored with square structure though.
 template<typename AlgType>
@@ -173,4 +189,5 @@ T validate<AlgType>::getResidualTriangleUpper(std::vector<T>& myValues, std::vec
   //if (isRank1) std::cout << "Total error - " << error << "\n\n\n";
   return error;		// return 2-norm
 }
+*/
 }
