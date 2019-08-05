@@ -26,14 +26,10 @@ ifneq ($(PORTER),)
 
   OBJS = cholinv
 
-  MPI: $(OBJS)
-	rm *.o
-  AMPI: $(OBJS)
-	rm *.o; \
-	mv charmrun $(BIN)charmrun
-
   $(OBJS): $(OBJS).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS) $(OBJS).o $(LIB_PATH) $(LIBS)
+	rm *.o; \
+	mv charmrun $(BIN)charmrun
 
   $(OBJS).o: test.cpp CFR3D.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS).o -c test.cpp
@@ -52,11 +48,9 @@ ifneq ($(BGQ),)
 
   OBJS1 = cholinv
 
-  MPI: $(OBJS1)
-	rm *.o
-
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(INCLUDES) $(LIB_PATH) $(LIBS)
+	rm *.o
 
   $(OBJS1).o: test.cpp CFR3D.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
@@ -74,11 +68,9 @@ ifneq ($(THETA),)
 
   OBJS1 = cholinv
 
-  MPI: $(OBJS1)
-	rm *.o
-
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
+	rm *.o
 
   $(OBJS1).o: test.cpp CFR3D.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
@@ -96,11 +88,9 @@ ifneq ($(STAMPEDE2),)
 
   OBJS1 = cholinv
 
-  MPI: $(OBJS1)
-	rm *.o
-
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
+	rm *.o
 
   $(OBJS1).o: test.cpp CFR3D.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
@@ -136,11 +126,9 @@ ifneq ($(BLUEWATERS),)
 
   OBJS1 = cholinv
 
-  MPI: $(OBJS1)
-	rm *.o
-
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
+	rm *.o
 
   $(OBJS1).o: test.cpp CFR3D.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(DATATYPE) -D$(INTTYPE) -D$(MPITYPE) -D$(PROFTYPE) -o $(OBJS1).o -c test.cpp
