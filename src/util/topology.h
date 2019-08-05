@@ -4,19 +4,19 @@
 #define TOPOLOGY_H_
 
 /*
-  Note: topology does not quite serve as a policy. Algorithms have a specific topology that is needed,
+  Note: topo does not quite serve as a policy. Algorithms have a specific topo that is needed,
         as usually these algorithm class templates are not written in such a way that a summa3d/2d is performed
-	if a Square3d/2d instance is passed as an argument. That would be interesting, but that is not needed now.
+	if a square3d/2d instance is passed as an argument. That would be interesting, but that is not needed now.
 
-  Note: Square/Rect refers to the shape of the face of the processor grid
+  Note: square/Rect refers to the shape of the face of the processor grid
 */
 
-namespace topology{
+namespace topo{
 
-class Rect{
+class rect{
 public:
-  Rect(MPI_Comm comm, size_t c){
-    TAU_FSTART(topology::Rect);
+  rect(MPI_Comm comm, size_t c){
+    TAU_FSTART(topo::rect);
 
     int rank, size, columnRank, cubeRank;
     MPI_Comm_rank(comm, &rank);
@@ -42,27 +42,27 @@ public:
     this->y = rank/SubCubeSliceSize;
     this->x = (rank%SubCubeSliceSize)/c;
     MPI_Comm_free(&this->column);
-    TAU_FSTOP(topology::Rect);
+    TAU_FSTOP(topo::rect);
   }
-  ~Rect(){
-    TAU_FSTART(topology::~Rect);
+  ~rect(){
+    TAU_FSTART(topo::~rect);
     MPI_Comm_free(&this->row);
     MPI_Comm_free(&this->column_contig);
     MPI_Comm_free(&this->column_alt);
     MPI_Comm_free(&this->depth);
     MPI_Comm_free(&this->slice);
     MPI_Comm_free(&this->cube);
-    TAU_FSTOP(topology::~Rect);
+    TAU_FSTOP(topo::~rect);
   }
 
   MPI_Comm world,row,column_contig,column_alt,depth,slice,cube;
   size_t c,d,x,y,z;
 };
 
-class Square{
+class square{
 public:
-  Square(MPI_Comm comm, size_t c){
-    TAU_FSTART(topology::Square);
+  square(MPI_Comm comm, size_t c){
+    TAU_FSTART(topo::square);
 
     int rank,size;
     MPI_Comm_rank(comm, &rank);
@@ -83,15 +83,15 @@ public:
     MPI_Comm_split(this->slice, this->x, this->y, &this->column);
     this->world=comm;
 
-    TAU_FSTOP(topology::Square);
+    TAU_FSTOP(topo::square);
   }
-  ~Square(){
-    TAU_FSTART(topology::~Square);
+  ~square(){
+    TAU_FSTART(topo::~square);
     MPI_Comm_free(&this->row);
     MPI_Comm_free(&this->column);
     MPI_Comm_free(&this->slice);
     MPI_Comm_free(&this->depth);
-    TAU_FSTOP(topology::~Square);
+    TAU_FSTOP(topo::~square);
   }
 
   MPI_Comm world,row,column,slice,depth;

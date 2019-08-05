@@ -53,7 +53,7 @@ int main(int argc, char** argv){
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
       critter::reset();
       volatile double startTime=MPI_Wtime();
-      qr::cacqr2::invoke(matA, matR, topology::Rect(MPI_COMM_WORLD,dimensionC), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+      qr::cacqr2::invoke(matA, matR, topo::rect(MPI_COMM_WORLD,dimensionC), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
       double iterTimeLocal = MPI_Wtime() - startTime;
 
       switch(test){
@@ -65,7 +65,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MatrixTypeR saveA = matA;
           saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
-          auto error = qr::validate<cacqr>::invoke(saveA, matA, matR, topology::Rect(MPI_COMM_WORLD,dimensionC));
+          auto error = qr::validate<cacqr>::invoke(saveA, matA, matR, topo::rect(MPI_COMM_WORLD,dimensionC));
           MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(3);

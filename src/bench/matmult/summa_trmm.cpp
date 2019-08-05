@@ -64,7 +64,7 @@ int main(int argc, char** argv){
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::reset();
       double startTime=MPI_Wtime();
-      matmult::summa3d::invoke(matA, matB, Square(MPI_COMM_WORLD,pGridDimensionC), blasArgs, methodKey2);
+      matmult::summa3d::invoke(matA, matB, topo::square(MPI_COMM_WORLD,pGridDimensionC), blasArgs, methodKey2);
       double iterTimeLocal=MPI_Wtime()-startTime;
       switch(test){
         case 0:{

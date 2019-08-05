@@ -50,7 +50,7 @@ int main(int argc, char** argv){
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::reset();
       double startTime=MPI_Wtime();
-      cholesky::cholinv::invoke(matA, matT, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir, Square(MPI_COMM_WORLD,pGridDimensionC));
+      cholesky::cholinv::invoke(matA, matT, topo::square(MPI_COMM_WORLD,pGridDimensionC), inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir);
       double iterTimeLocal=MPI_Wtime() - startTime;
 
       switch(test){
@@ -62,7 +62,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MatrixTypeR saveA = matA;
           saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
-          double iterErrorLocal = cholesky::validate::invoke<cholinv>(saveA, matA, dir, Square(MPI_COMM_WORLD,pGridDimensionC));
+          double iterErrorLocal = cholesky::validate::invoke<cholinv>(saveA, matA, dir, topo::square(MPI_COMM_WORLD,pGridDimensionC));
           MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(2);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;

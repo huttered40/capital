@@ -4,7 +4,7 @@
 #define CHOLESKY__CHOLINV_H_
 
 #include "./../../alg.h"
-#include "./../../matmult/summa3d/summa3d.h"
+#include "./../../matmult/summa/summa.h"
 #include "./../../trsm/diaginvert/diaginvert.h"
 
 // Lets use partial template specialization
@@ -18,9 +18,8 @@ class cholinv{
 public:
   template<typename MatrixAType, typename MatrixTIType, typename CommType>
   static std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-         invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
-                typename MatrixAType::DimensionType blockSizeMultiplier, typename MatrixAType::DimensionType panelDimensionMultiplier,
-                char dir, CommType&& CommInfo);
+         invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
+                typename MatrixAType::DimensionType blockSizeMultiplier, typename MatrixAType::DimensionType panelDimensionMultiplier, char dir);
 
 private:
   template<typename MatrixAType, typename MatrixLIType, typename CommType>

@@ -4,7 +4,7 @@
 #define TRSM3D_H_
 
 #include "./../../alg.h"
-#include "./../../matmult/summa3d/summa3d.h"
+#include "./../../matmult/summa/summa.h"
 
 namespace trsm{
 
@@ -16,25 +16,31 @@ namespace trsm{
 
 class diaginvert{
 public:
+  template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
+  static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, CommType&& CommInfo,
+                     char UpLo, char Dir, std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
+                     blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
+
+private:
   template<typename MatrixAType, typename MatrixTriType, typename CommType>
-  static void iSolveLowerLeft(MatrixAType& matrixA, MatrixTriType& matrixL, MatrixTriType& matrixLI, std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                               blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage, blasEngineArgumentPackage_trmm<typename MatrixTriType::ScalarType>& trmmPackage,
-                               CommType&& CommInfo);
+  static void iSolveLowerLeft(MatrixAType& matrixA, MatrixTriType& matrixL, MatrixTriType& matrixLI, CommType&& CommInfo,
+                              std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
+                              blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage);
 
   template<typename MatrixAType, typename MatrixTriType, typename CommType>
-  static void iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, MatrixTriType& matrixUI, std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                               blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage, blasEngineArgumentPackage_trmm<typename MatrixTriType::ScalarType>& trmmPackage,
-                               CommType&& CommInfo);
+  static void iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, MatrixTriType& matrixUI, CommType&& CommInfo,
+                              std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
+                              blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage);
   
   template<typename MatrixTriType, typename MatrixAType, typename CommType>
-  static void iSolveLowerRight(MatrixTriType& matrixL, MatrixTriType& matrixLI, MatrixAType& matrixA, std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                               blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage, blasEngineArgumentPackage_trmm<typename MatrixTriType::ScalarType>& trmmPackage,
-                               CommType&& CommInfo);
+  static void iSolveLowerRight(MatrixTriType& matrixL, MatrixTriType& matrixLI, MatrixAType& matrixA, CommType&& CommInfo,
+                               std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
+                               blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage);
 
   template<typename MatrixTriType, typename MatrixAType, typename CommType>
-  static void iSolveUpperRight(MatrixTriType& matrixU, MatrixTriType& matrixUI, MatrixAType& matrixA, std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                               blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage, blasEngineArgumentPackage_trmm<typename MatrixTriType::ScalarType>& trmmPackage,
-                               CommType&& CommInfo);
+  static void iSolveUpperRight(MatrixTriType& matrixU, MatrixTriType& matrixUI, MatrixAType& matrixA, CommType&& CommInfo,
+                               std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
+                               blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage);
 };
 }
 

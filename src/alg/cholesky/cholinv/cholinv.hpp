@@ -3,9 +3,8 @@
 namespace cholesky{
 template<typename MatrixAType, typename MatrixTIType, typename CommType>
 std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
-              typename MatrixAType::DimensionType blockSizeMultiplier, typename MatrixAType::DimensionType panelDimensionMultiplier,
-              char dir, CommType&& CommInfo){
+cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
+                typename MatrixAType::DimensionType blockSizeMultiplier, typename MatrixAType::DimensionType panelDimensionMultiplier, char dir){
   TAU_FSTART(cholinv::invoke);
 
   using U = typename MatrixAType::DimensionType;
@@ -112,7 +111,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   // 2nd case: Extra optimization for the case when we only perform TRSM at the top level.
   if ((isInversePath) || (globalDimension == inverseCutoffGlobalDimension*2)){
     //std::cout << "tell me localDim and localshIFT - " << localDimension << " " << localShift << std::endl;
-    matmult::summa3d::invoke(packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), trmmArgs, false, true);
+    matmult::summa::invoke(packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), trmmArgs, false, true);
   }
   else{
     // Note: keep this a gemm package, because we still need to use gemm in TRSM3D in the update, which is just rectangular and non-triangular matrices.
@@ -139,7 +138,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
 
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
       blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
-    trsm::diaginvert::iSolveUpperLeft(matrixLcopy, packedMatrixL, packedMatrix, subBaseCaseDimList, trsmArgs, trmmPackage, std::forward<CommType>(CommInfo));
+    trsm::diaginvert::invoke(matrixLcopy, packedMatrixL, packedMatrix, std::forward<CommType>(CommInfo) 'U', 'L', subBaseCaseDimList, trsmArgs);
 
     // inject matrixLcopy back into matrixA.
     // Future optimization: avoid copying matrixL here, and utilize leading dimension and the column vectors.
@@ -158,7 +157,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
 
   blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasLower, blasEngineTranspose::AblasNoTrans, -1., 1.);
-  matmult::summa3d::invoke(matrixA, matrixA, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+  matmult::summa::invoke(matrixA, matrixA, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), syrkArgs, true, true);
 
   rFactorLower(matrixA, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
@@ -168,20 +167,20 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
 
   if (isInversePath){
     // Next step : temp <- L_{21}*LI_{11}
-    // Tradeoff: By encapsulating the transpose/serialization of L21 in the syrk summa3d routine above, I can't reuse that buffer and must re-serialize L21
+    // Tradeoff: By encapsulating the transpose/serialization of L21 in the syrk summa routine above, I can't reuse that buffer and must re-serialize L21
     Matrix<T,U,Square,Distribution,Offload> tempInverse(std::vector<T>(), localShift, reverseDimLocal, globalShift, reverseDimGlobal);
     // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
     serialize<Square,Square>::invoke(matrixA, tempInverse, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
 
     blasEngineArgumentPackage_trmm<T> invPackage1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    matmult::summa3d::invoke(matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY,
+    matmult::summa::invoke(matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY,
         matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, std::forward<CommType>(CommInfo), invPackage1, true, false);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
     invPackage1.side = blasEngineSide::AblasLeft;
-    matmult::summa3d::invoke(matrixLI, tempInverse, matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, 0, localShift, 0, reverseDimLocal,
+    matmult::summa::invoke(matrixLI, tempInverse, matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, 0, localShift, 0, reverseDimLocal,
                              std::forward<CommType>(CommInfo), invPackage1, true, false);
     // One final serialize of tempInverse into matrixLI
     serialize<Square,Square>::invoke(matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, true);
@@ -242,7 +241,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
 
   // 2nd case: Extra optimization for the case when we only perform TRSM at the top level.
   if ((isInversePath) || (globalDimension == inverseCutoffGlobalDimension*2)){
-    matmult::summa3d::invoke(packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
+    matmult::summa::invoke(packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
       std::forward<CommType>(CommInfo), trmmArgs, false, true);
   }
   else{
@@ -268,7 +267,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
 
     blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
-    trsm::diaginvert::iSolveLowerRight(packedMatrixR, packedMatrix, matrixRcopy, subBaseCaseDimList, trsmArgs, trmmPackage, std::forward<CommType>(CommInfo));
+    trsm::diaginvert::invoke(packedMatrixR, packedMatrix, matrixRcopy, std::forward<CommType>(CommInfo), 'L', 'R', subBaseCaseDimList, trsmArgs);
 
     // Inject back into matrixR
     serialize<Square,Square>::invoke(matrixA, matrixRcopy, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift, true);
@@ -280,7 +279,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
 
   blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineTranspose::AblasTrans, -1., 1.);
-  matmult::summa3d::invoke(matrixA, matrixA, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
+  matmult::summa::invoke(matrixA, matrixA, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), syrkArgs, true, true);
 
   rFactorUpper(matrixA, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
@@ -292,20 +291,20 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   // We can re-use holdRsyrk as our temporary output matrix.
 
   if (isInversePath){
-    // Tradeoff: By encapsulating the transpose/serialization of L21 in the syrk summa3d routine above, I can't reuse that buffer and must re-serialize L21
+    // Tradeoff: By encapsulating the transpose/serialization of L21 in the syrk summa routine above, I can't reuse that buffer and must re-serialize L21
     Matrix<T,U,Square,Distribution,Offload> tempInverse(std::vector<T>(), reverseDimLocal, localShift, reverseDimGlobal, globalShift);
     // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
     serialize<Square,Square>::invoke(matrixA, tempInverse, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift);
 
     blasEngineArgumentPackage_trmm<T> invPackage1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
       blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    matmult::summa3d::invoke(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift,
+    matmult::summa::invoke(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift,
       std::forward<CommType>(CommInfo), invPackage1, true, false);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
     invPackage1.side = blasEngineSide::AblasLeft;
-    matmult::summa3d::invoke(matrixRI, tempInverse, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, 0, reverseDimLocal, 0, localShift,
+    matmult::summa::invoke(matrixRI, tempInverse, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, 0, reverseDimLocal, 0, localShift,
       std::forward<CommType>(CommInfo), invPackage1, true, false);
     serialize<Square,Square>::invoke(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, true);
   }

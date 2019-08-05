@@ -13,15 +13,20 @@ namespace qr{
 class cacqr{
 public:
   template<typename MatrixAType, typename MatrixRType, typename CommType>
-  static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& commInfo,
+  static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
                      size_t inverseCutOffMultiplier = 0, size_t baseCaseMultiplier = 0, size_t panelDimensionMultiplier = 0);
 
 protected:
+  // Special overload to avoid recreating MPI communicator topologies
+  template<typename MatrixAType, typename MatrixRType, typename RectCommType, typename SquareCommType>
+  static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo,
+                     size_t inverseCutOffMultiplier = 0, size_t baseCaseMultiplier = 0, size_t panelDimensionMultiplier = 0);
+
   template<typename MatrixAType, typename MatrixRType, typename CommType>
   static void invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo);
 
   template<typename MatrixAType, typename MatrixRType, typename CommType>
-  static void invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& commInfo,
+  static void invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
                         size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier);
 
   template<typename T, typename U> 
@@ -31,7 +36,7 @@ protected:
 class cacqr2 : public cacqr{
 public:
   template<typename MatrixAType, typename MatrixRType, typename CommType>
-  static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& commInfo,
+  static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
                      size_t inverseCutOffMultiplier = 0, size_t baseCaseMultiplier = 0, size_t panelDimensionMultiplier = 0);
 
 protected:
