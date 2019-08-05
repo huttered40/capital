@@ -21,8 +21,6 @@ void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, M
   using Distribution = typename MatrixAType::DistributionType;
   using Offload = typename MatrixAType::OffloadType;
 
-  int pGridDimensionSize;
-  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
 /*
   blasEngineArgumentPackage_trmm<T> trmmPackage;
   trmmPackage.order = blasEngineOrder::AblasColumnMajor;
@@ -65,7 +63,7 @@ void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, M
       U arg3 = (gemmPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset3 : offset1);
       U arg4 = (gemmPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset1 : matUendX);
 
-      Matrix<T,U,Rectangular,Distribution,Offload> matrixUpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*pGridDimensionSize, (arg4-arg3)*pGridDimensionSize);
+      Matrix<T,U,Rectangular,Distribution,Offload> matrixUpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*CommInfo.d, (arg4-arg3)*CommInfo.d);
       serialize<StructureTri,Rectangular>::invoke(matrixU, matrixUpartition, arg1, arg2, arg3, arg4);
       matmult::summa::invoke(matrixA.getRawData()+(offset3*matAendY), matrixUpartition, matrixA.getRawData()+(offset1*matAendY),
         offset1-offset3, matAendY, arg2-arg1, arg4-arg3, matAendX-offset1, matAendY, std::forward<CommType>(CommInfo), gemmPackage);
@@ -79,7 +77,7 @@ void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, M
       matmult::summa::invoke(matrixUI, matrixA.getRawData()+(offset1*matAendY), save1, save1, save1, matAendY, std::forward<CommType>(CommInfo), trmmPackage);
     }
     else{
-      Matrix<T,U,StructureTri,Distribution,Offload> matrixUIpartition(std::vector<T>(), save1, save1, save1*pGridDimensionSize, save1*pGridDimensionSize);
+      Matrix<T,U,StructureTri,Distribution,Offload> matrixUIpartition(std::vector<T>(), save1, save1, save1*CommInfo.d, save1*CommInfo.d);
       serialize<StructureTri,StructureTri>::invoke(matrixUI, matrixUIpartition, offset1, offset2, offset1, offset2);
       matmult::summa::invoke(matrixUIpartition, matrixA.getRawData()+(offset1*matAendY), save1, save1, save1, matAendY, std::forward<CommType>(CommInfo), trmmPackage);
     }
@@ -106,9 +104,6 @@ void diaginvert::iSolveLowerRight(MatrixTriType& matrixL, MatrixTriType& matrixL
   using StructureTri = typename MatrixTriType::StructureType;
   using Distribution = typename MatrixAType::DistributionType;
   using Offload = typename MatrixAType::OffloadType;
-
-  int pGridDimensionSize;
-  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
 
   // to catch debugging issues, assert that this has at least one size
   assert(baseCaseDimList.size());
@@ -142,7 +137,7 @@ void diaginvert::iSolveLowerRight(MatrixTriType& matrixL, MatrixTriType& matrixL
       U arg3 = (gemmPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset3 : offset3);
       U arg4 = (gemmPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset1 : offset1);
 
-      Matrix<T,U,Rectangular,Distribution,Offload> matrixLpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*pGridDimensionSize, (arg4-arg3)*pGridDimensionSize);
+      Matrix<T,U,Rectangular,Distribution,Offload> matrixLpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*CommInfo.d, (arg4-arg3)*CommInfo.d);
       serialize<StructureTri,Rectangular>::invoke(matrixL, matrixLpartition, arg1, arg2, arg3, arg4);
       U zero = 0;
       matmult::summa::invoke(matrixLpartition, matrixA, matrixA, zero, arg2-arg1, zero, arg4-arg3, zero, matAendX, offset3, offset1,

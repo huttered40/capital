@@ -6,9 +6,9 @@
 class util{
 public:
   template<typename T, typename U>
-  static std::vector<T> blockedToCyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t pGridDimensionSize);
+  static std::vector<T> blockedToCyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t sliceDim);
   template<typename T, typename U>
-  static std::vector<T> blockedToCyclicSpecial(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t pGridDimensionSize, char dir);
+  static std::vector<T> blockedToCyclicSpecial(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t sliceDim, char dir);
   template<typename MatrixType>
   static std::vector<typename MatrixType::ScalarType> getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_t commDim);
   template<typename MatrixType>

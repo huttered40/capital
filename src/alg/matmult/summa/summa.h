@@ -41,11 +41,11 @@ public:
                      typename MatrixAType::DimensionType matrixAnumRows, typename MatrixAType::DimensionType matrixBnumColumns,
                      typename MatrixAType::DimensionType matrixBnumRows, CommType&& CommInfo,
                      const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage);
-
+/*
   template<typename MatrixAType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
                      const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
-
+*/
   template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
                      typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
@@ -63,7 +63,7 @@ public:
                      typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
                      typename MatrixBType::DimensionType matrixBcutXend, CommType&& CommInfo,
                      const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, size_t methodKey = 0);
-
+/*
   template<typename MatrixAType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
                      typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
@@ -71,7 +71,7 @@ public:
                      typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutXstart,
                      typename MatrixCType::DimensionType matrixCcutXend, CommType&& CommInfo,
                      const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA = true, bool cutC = true, size_t methodKey = 0);
-
+*/
 private:
 
   template<typename MatrixAType, typename MatrixBType, typename CommType>
@@ -99,7 +99,7 @@ private:
 
   template<typename MatrixType>
   static MatrixType getSubMatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
-                                 typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd, size_t pGridDimensionSize, bool getSub);
+                                 typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd, size_t sliceDim, bool getSub);
 
 };
 }

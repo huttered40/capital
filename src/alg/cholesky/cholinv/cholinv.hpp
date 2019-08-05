@@ -439,7 +439,7 @@ template<typename MatrixType>
 std::vector<typename MatrixType::ScalarType>
 cholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
                                      typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType matAstartX, typename MatrixType::DimensionType matAendX,
-                                     typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, size_t pGridDimensionSize, MPI_Comm slice2Dcomm, char dir){
+                                     typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, size_t sliceDim, MPI_Comm slice2Dcomm, char dir){
   TAU_FSTART(cholinv::blockedToCyclicTransformation);
 
   using T = typename MatrixType::ScalarType;
@@ -450,28 +450,28 @@ cholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::Di
   if (dir == 'U'){
     Matrix<T,U,UpperTriangular,Distribution,Offload> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension, globalDimension, globalDimension);
     serialize<Square,UpperTriangular>::invoke(matA, baseCaseMatrixA, matAstartX, matAendX, matAstartY, matAendY);
-  //  U aggregDim = localDimension*pGridDimensionSize;
+  //  U aggregDim = localDimension*sliceDim;
   //  std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
-    U aggregSize = baseCaseMatrixA.getNumElems()*pGridDimensionSize*pGridDimensionSize;
+    U aggregSize = baseCaseMatrixA.getNumElems()*sliceDim*sliceDim;
     std::vector<T> blockedBaseCaseData(aggregSize);
-    // Note: recv buffer will be larger tha send buffer * pGridDimensionSize**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
+    // Note: recv buffer will be larger tha send buffer * sliceDim**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
     MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DATATYPE, &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DATATYPE, slice2Dcomm);
 
     TAU_FSTOP(cholinv::blockedToCyclicTransformation);
-    return util::blockedToCyclicSpecial(blockedBaseCaseData, localDimension, localDimension, pGridDimensionSize, dir);
+    return util::blockedToCyclicSpecial(blockedBaseCaseData, localDimension, localDimension, sliceDim, dir);
   }
   else{ // dir == 'L'
     Matrix<T,U,LowerTriangular,Distribution,Offload> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension, globalDimension, globalDimension);
     serialize<Square,LowerTriangular>::invoke(matA, baseCaseMatrixA, matAstartX, matAendX, matAstartY, matAendY);
-  //  U aggregDim = localDimension*pGridDimensionSize;
+  //  U aggregDim = localDimension*sliceDim;
   //  std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
-    U aggregSize = baseCaseMatrixA.getNumElems()*pGridDimensionSize*pGridDimensionSize;
+    U aggregSize = baseCaseMatrixA.getNumElems()*sliceDim*sliceDim;
     std::vector<T> blockedBaseCaseData(aggregSize);
-    // Note: recv buffer will be larger tha send buffer * pGridDimensionSize**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
+    // Note: recv buffer will be larger tha send buffer * sliceDim**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
     MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), MPI_DATATYPE, &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), MPI_DATATYPE, slice2Dcomm);
 
     TAU_FSTOP(cholinv::blockedToCyclicTransformation);
-    return util::blockedToCyclicSpecial(blockedBaseCaseData, localDimension, localDimension, pGridDimensionSize, dir);
+    return util::blockedToCyclicSpecial(blockedBaseCaseData, localDimension, localDimension, sliceDim, dir);
   }
 }
 
@@ -481,15 +481,15 @@ cholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::Di
 //   number of flops, but in terms of memory accesses and cache lines, not sure. Note that with this optimization,
 //   we may need to separate into two different functions
 template<typename T, typename U>
-void cholinv::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, size_t pGridDimensionSize, size_t rankSlice, char dir){
+void cholinv::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, size_t sliceDim, size_t rankSlice, char dir){
   TAU_FSTART(cholinv::cyclicToLocalTransformation);
 
   U writeIndex = 0;
-  U rowOffsetWithinBlock = rankSlice / pGridDimensionSize;
-  U columnOffsetWithinBlock = rankSlice % pGridDimensionSize;
-  U numCyclicBlocksPerRowCol = localDimension/*bcDimension/pGridDimensionSize*/;
+  U rowOffsetWithinBlock = rankSlice / sliceDim;
+  U columnOffsetWithinBlock = rankSlice % sliceDim;
+  U numCyclicBlocksPerRowCol = localDimension/*bcDimension/sliceDim*/;
   // modify bcDimension
-  bcDimension = localDimension*pGridDimensionSize;
+  bcDimension = localDimension*sliceDim;
   // MACRO loop over all cyclic "blocks"
   for (U i=0; i<numCyclicBlocksPerRowCol; i++){
     // We know which row corresponds to our processor in each cyclic "block"
@@ -499,8 +499,8 @@ void cholinv::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>
       // We know which column corresponds to our processor in each cyclic "block"
       // Future improvement: get rid of the inner if statement and separate out this inner loop into 2 loops
       // Further improvement: use only triangular matrices and then invoke into a square later?
-      U readIndexCol = i*pGridDimensionSize + columnOffsetWithinBlock;
-      U readIndexRow = j*pGridDimensionSize + rowOffsetWithinBlock;
+      U readIndexCol = i*sliceDim + columnOffsetWithinBlock;
+      U readIndexRow = j*sliceDim + rowOffsetWithinBlock;
       if (((dir == 'L') && (readIndexCol <= readIndexRow)) ||  ((dir == 'U') && (readIndexCol >= readIndexRow))){
         storeT[writeIndex] = storeT[readIndexCol*bcDimension + readIndexRow];
         storeTI[writeIndex] = storeTI[readIndexCol*bcDimension + readIndexRow];

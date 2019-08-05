@@ -256,7 +256,7 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
   TAU_FSTOP(summa::invoke);
 }
 
-
+/*
 template<typename MatrixAType, typename MatrixCType, typename CommType>
 void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
                      const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
@@ -343,6 +343,7 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommIn
   }
   TAU_FSTOP(summa::invoke);
 }
+*/
 
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
 void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
@@ -358,13 +359,10 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matr
 
   using StructureC = typename MatrixCType::StructureType;
 
-  int pGridDimensionSize;
-  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
-
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
-  MatrixBType matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
-  MatrixCType matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, pGridDimensionSize, cutC);
+  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, CommInfo.d, cutA);
+  MatrixBType matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, CommInfo.d, cutB);
+  MatrixCType matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, CommInfo.d, cutC);
 
   invoke((cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), std::forward<CommType>(CommInfo), srcPackage, methodKey);
 
@@ -388,12 +386,9 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAT
 
   using StructureB = typename MatrixBType::StructureType;
 
-  int pGridDimensionSize;
-  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
-
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
-  MatrixBType matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, pGridDimensionSize, cutB);
+  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, CommInfo.d, cutA);
+  MatrixBType matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, CommInfo.d, cutB);
   invoke((cutA ? matA : matrixA), (cutB ? matB : matrixB), std::forward<CommType>(CommInfo), srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
@@ -416,12 +411,9 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAT
 
   using StructureC = typename MatrixCType::StructureType;
 
-  int pGridDimensionSize;
-  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
-
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, pGridDimensionSize, cutA);
-  MatrixAType matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, pGridDimensionSize, cutC);
+  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, CommInfo.d, cutA);
+  MatrixAType matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, CommInfo.d, cutC);
 
   invoke((cutA ? matA : matrixA), (cutC ? matC : matrixC), std::forward<CommType>(CommInfo), srcPackage, methodKey);
 
@@ -712,7 +704,7 @@ void summa::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest, s
 template<typename MatrixType>
 MatrixType summa::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
                               typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd,
-		              size_t  pGridDimensionSize, bool getSub){
+		              size_t sliceDim, bool getSub){
   TAU_FSTART(summa::getSubMatrix);
 
   using T = typename MatrixType::ScalarType;
@@ -722,7 +714,7 @@ MatrixType summa::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::Dimen
   if (getSub){
     U numColumns = matrixArgColumnEnd - matrixArgColumnStart;
     U numRows = matrixArgRowEnd - matrixArgRowStart;
-    MatrixType fillMatrix(std::vector<T>(), numColumns, numRows, numColumns*pGridDimensionSize, numRows*pGridDimensionSize);
+    MatrixType fillMatrix(std::vector<T>(), numColumns, numRows, numColumns*sliceDim, numRows*sliceDim);
     serialize<Structure,Structure>::invoke(srcMatrix, fillMatrix, matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
     TAU_FSTOP(summa::getSubMatrix);
     return fillMatrix;			// I am returning an rvalue
