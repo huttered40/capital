@@ -192,27 +192,6 @@ void util::transposeSwap(MatrixType& mat, size_t myRank, size_t transposeRank, M
   TAU_FSTOP(Util::transposeSwap);
 }
 
-std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> util::getCommunicatorSlice(MPI_Comm commWorld){
-  TAU_FSTART(Util::getCommunicatorSlice);
-
-  int rank,size;
-  MPI_Comm_rank(commWorld, &rank);
-  MPI_Comm_size(commWorld, &size);
-
-  size_t pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  
-  size_t helper = pGridDimensionSize;
-  helper *= helper;
-  size_t pCoordZ = rank%pGridDimensionSize;
-  size_t pCoordY = rank/helper;
-  size_t pCoordX = (rank%helper)/pGridDimensionSize;
-
-  MPI_Comm sliceComm;
-  MPI_Comm_split(commWorld,pCoordZ,rank,&sliceComm);
-  TAU_FSTOP(Util::getCommunicatorSlice);
-  return std::make_tuple(sliceComm,pCoordX,pCoordY,pCoordZ,pGridDimensionSize); 
-}
-
 template<typename U>
 U util::getNextPowerOf2(U localShift){
   TAU_FSTART(Util::getNextPowerOf2);

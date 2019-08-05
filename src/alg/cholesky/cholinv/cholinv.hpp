@@ -151,10 +151,8 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   // As of January 2017, still having trouble with SYRK.
 
   // Later optimization: avoid this recalculation at each recursive level, since it will always be the same.
-  int pGridDimensionSize;
-  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
   U reverseDimLocal = localDimension-localShift;
-  U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
+  U reverseDimGlobal = reverseDimLocal*CommInfo.d;
 
   blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasLower, blasEngineTranspose::AblasNoTrans, -1., 1.);
   matmult::summa::invoke(matrixA, matrixA, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
@@ -273,10 +271,8 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
     serialize<Square,Square>::invoke(matrixA, matrixRcopy, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift, true);
   }
 
-  int pGridDimensionSize;
-  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
   U reverseDimLocal = localDimension-localShift;
-  U reverseDimGlobal = reverseDimLocal*pGridDimensionSize;
+  U reverseDimGlobal = reverseDimLocal*CommInfo.d;
 
   blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineTranspose::AblasTrans, -1., 1.);
   matmult::summa::invoke(matrixA, matrixA, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
@@ -344,20 +340,18 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
   // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
   // Fourth: Save the data that each processor owns according to the cyclic rule.
 
-  int rankSlice,pGridDimensionSize;
-  MPI_Comm_size(CommInfo.row, &pGridDimensionSize);
   MPI_Comm_rank(CommInfo.slice, &rankSlice);
 
   // Should be fast pass-by-value via move semantics
   std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
     matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
-    (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), pGridDimensionSize, CommInfo.slice, dir);
+    (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), CommInfo.d, CommInfo.slice, dir);
 
   // TODO: Note: with my new optimizations, this case might never pass, because A is serialized into. Watch out!
   if (((dir == 'L') && (matAendX == trueLocalDimension)) || ((dir == 'U') && (matAendY == trueLocalDimension))){
-    //U finalDim = trueLocalDimension*pGridDimensionSize - trueGlobalDimension;
-    U checkDim = localDimension*pGridDimensionSize;
-    U finalDim = (checkDim - (trueLocalDimension*pGridDimensionSize - trueGlobalDimension));
+    //U finalDim = trueLocalDimension*CommInfo.d - trueGlobalDimension;
+    U checkDim = localDimension*CommInfo.d;
+    U finalDim = (checkDim - (trueLocalDimension*CommInfo.d - trueGlobalDimension));
 
     std::vector<T> deepBaseCase(finalDim*finalDim,0);
     // manual serialize
@@ -395,7 +389,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
       }
     }
 
-    cyclicToLocalTransformation(deepBaseCaseFill, deepBaseCaseInvFill, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, dir);
+    cyclicToLocalTransformation(deepBaseCaseFill, deepBaseCaseInvFill, localDimension, globalDimension, globalDimension/*bcDimension*/, CommInfo.d, rankSlice, dir);
     // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
     //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member
     //    variables, this should be ok.
@@ -410,7 +404,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
     serialize<Square,Square>::invoke(matrixI, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
   }
   else{
-    size_t fTranDim1 = localDimension*pGridDimensionSize;
+    size_t fTranDim1 = localDimension*CommInfo.d;
     std::vector<T>& storeMat = cyclicBaseCaseData;
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
     lapackEngineArgumentPackage_potrf potrfArgs(lapackEngineOrder::AlapackColumnMajor, (dir == 'L' ? lapackEngineUpLo::AlapackLower : lapackEngineUpLo::AlapackUpper));
@@ -430,7 +424,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
     // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
     //   and then "move" them cheaply into new Matrix structures before I call invoke on them individually.
 
-    cyclicToLocalTransformation(storeMat, storeMatInv, localDimension, globalDimension, globalDimension/*bcDimension*/, pGridDimensionSize, rankSlice, dir);
+    cyclicToLocalTransformation(storeMat, storeMatInv, localDimension, globalDimension, globalDimension/*bcDimension*/, CommInfo.d, rankSlice, dir);
 
     // "Inject" the first part of these vectors into Matrices (Square Structure is the only option for now)
     //   This is a bit sneaky, since the vector we "move" into the Matrix has a larger size than the Matrix knows, but with the right member

@@ -18,8 +18,6 @@ public:
   template<typename MatrixType>
   static void transposeSwap(MatrixType& mat, size_t myRank, size_t transposeRank, MPI_Comm commWorld);
 
-  static std::tuple<MPI_Comm,size_t,size_t,size_t,size_t> getCommunicatorSlice(MPI_Comm commWorld);
-
   template<typename U>
   static U getNextPowerOf2(U localShift);
 
