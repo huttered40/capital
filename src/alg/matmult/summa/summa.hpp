@@ -279,7 +279,7 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommIn
   U localDimensionK = (srcPackage.transposeA == blas::Transpose::AblasNoTrans ? matrixA.getNumColumnsLocal() : matrixA.getNumRowsLocal());
 
   MatrixAType matrixB = matrixA;
-  util::transposeSwap(matrixB, CommInfo);
+  util::transposeSwap(matrixB, std::forward<CommType>(CommInfo));
 
   if (methodKey == 0){
     if (srcPackage.transposeA == blas::Transpose::AblasNoTrans){

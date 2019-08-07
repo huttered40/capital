@@ -10,15 +10,15 @@ void diaginvert::iSolveLowerLeft(MatrixAType& matrixA, MatrixTriType& matrixL, M
 */
 
 // For solving AU=B for A. But note that B is being modified in place and will turn into A
-template<typename MatrixAType, typename MatrixTriType, typename CommType>
-void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, MatrixTriType& matrixUI, CommType&& CommInfo,
-                                 std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                                 blas::ArgPack_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
+template<typename MatrixAType, typename MatrixUType, typename MatrixUIType, typename CommType>
+void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixUType& matrixU, MatrixUIType& matrixUI, CommType&& CommInfo,
+                                 std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                                 blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
   TAU_FSTART(diaginvert::iSolveUpperLeft);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
-  using StructureTri = typename MatrixTriType::StructureType;
+  using StructureTri = typename MatrixUType::StructureType;
   using Distribution = typename MatrixAType::DistributionType;
   using Offload = typename MatrixAType::OffloadType;
 
@@ -86,16 +86,16 @@ void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, M
 }
 
 
-// For solving RA=A for A
-template<typename MatrixTriType, typename MatrixAType, typename CommType>
-void diaginvert::iSolveLowerRight(MatrixTriType& matrixL, MatrixTriType& matrixLI, MatrixAType& matrixA, CommType&& CommInfo,
-                                  std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                                  blas::ArgPack_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
+// For solving LA=B for A. But note that B is being modified in place and will turn into A
+template<typename MatrixLType, typename MatrixLIType, typename MatrixAType, typename CommType>
+void diaginvert::iSolveLowerRight(MatrixLType& matrixL, MatrixLIType& matrixLI, MatrixAType& matrixA, CommType&& CommInfo,
+                                  std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                                  blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
   TAU_FSTART(diaginvert::iSolveLowerRight);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
-  using StructureTri = typename MatrixTriType::StructureType;
+  using StructureTri = typename MatrixLType::StructureType;
   using Distribution = typename MatrixAType::DistributionType;
   using Offload = typename MatrixAType::OffloadType;
 

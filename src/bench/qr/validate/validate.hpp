@@ -10,7 +10,7 @@ validate<AlgType>::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, Square
   using U = typename MatrixType::DimensionType;
 
   MatrixType matrixQtrans = matrixQ;
-  util::transposeSwap(matrixQtrans, SquareCommInfo.world);
+  util::transposeSwap(matrixQtrans, SquareCommInfo);
   U localNumRows = matrixQtrans.getNumColumnsLocal();
   U localNumColumns = matrixQ.getNumColumnsLocal();
   U globalNumRows = matrixQtrans.getNumColumnsGlobal();

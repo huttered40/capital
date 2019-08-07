@@ -95,7 +95,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   matrix<T,U,lowertri,Distribution,Offload> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
   serialize<square,lowertri>::invoke(matrixLI, packedMatrix, matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
-  util::transposeSwap(packedMatrix, CommInfo.world);
+  util::transposeSwap(packedMatrix, std::forward<CommType>(CommInfo));
 
   blas::ArgPack_trmm<T> trmmArgs(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasLower,
     blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
@@ -126,7 +126,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
     serialize<square,lowertri>::invoke(matrixA, packedMatrixL, matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
     // Swap, same as we did with inverse
-    util::transposeSwap(packedMatrixL, CommInfo.world);
+    util::transposeSwap(packedMatrixL, std::forward<CommType>(CommInfo));
 
     blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasLower,
       blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
@@ -225,7 +225,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   matrix<T,U,uppertri,Distribution,Offload> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
   serialize<square,uppertri>::invoke(matrixRI, packedMatrix, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
-  util::transposeSwap(packedMatrix, CommInfo.world);
+  util::transposeSwap(packedMatrix, std::forward<CommType>(CommInfo));
   blas::ArgPack_trmm<T> trmmArgs(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
     blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
 
@@ -253,7 +253,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
     serialize<square,uppertri>::invoke(matrixA, packedMatrixR, matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
     // Swap, same as we did with inverse
-    util::transposeSwap(packedMatrixR, CommInfo.world);
+    util::transposeSwap(packedMatrixR, std::forward<CommType>(CommInfo));
 
     blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
       blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);

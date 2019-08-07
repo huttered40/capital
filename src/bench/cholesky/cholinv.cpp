@@ -6,7 +6,7 @@
 using namespace std;
 
 int main(int argc, char** argv){
-  using MatrixTypeA = matrix<double,int64_t,square,cyclic>;
+  using MatrixTypeA = matrix<double,size_t,square,cyclic>;
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
@@ -16,8 +16,8 @@ int main(int argc, char** argv){
   util::InitialGEMM<double>();
 
   char dir = 'U';
-  int64_t globalMatrixSize = atoi(argv[1]);
-  int64_t pGridDimensionC = atoi(argv[2]);
+  size_t globalMatrixSize = atoi(argv[1]);
+  size_t pGridDimensionC = atoi(argv[2]);
   size_t blockSizeMultiplier = atoi(argv[3]);
   size_t inverseCutOffMultiplier = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
   size_t panelDimensionMultiplier = atoi(argv[5]);
@@ -25,12 +25,9 @@ int main(int argc, char** argv){
   std::string fileStr1 = argv[7];	// Critter
   std::string fileStr2 = argv[8];	// Performance/Residual/DevOrth
 
-  size_t CubeFaceDim = std::nearbyint(std::pow(size/pGridDimensionC,1./2.));
-  size_t CubeTopFaceSize = pGridDimensionC*CubeFaceDim;
-  size_t pCoordY = rank/CubeTopFaceSize;
-  size_t pCoordX = (rank%CubeTopFaceSize)/pGridDimensionC;
+  auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
 
-  std::vector<size_t> Inputs{matA.getNumRowsGlobal(),pGridDimensionC,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
+  std::vector<size_t> Inputs{globalMatrixSize,pGridDimensionC,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
   std::vector<const char*> InputNames{"n","c","bcm","icm","pdm"};
 
   for (size_t test=0; test<2; test++){
@@ -43,14 +40,14 @@ int main(int argc, char** argv){
 
     for (size_t i=0; i<numIterations; i++){
       // Reset matrixA
-      MatrixTypeA matA(globalMatrixSize,globalMatrixSize, CubeFaceDim, CubeFaceDim);
-      MatrixTypeA matT(globalMatrixSize,globalMatrixSize, CubeFaceDim, CubeFaceDim);
+      MatrixTypeA matA(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
+      MatrixTypeA matT(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
       double iterTimeGlobal,iterErrorGlobal;
-      matA.DistributeSymmetric(pCoordX, pCoordY, CubeFaceDim, CubeFaceDim, pCoordX*CubeFaceDim+CubeFaceDim, true);
+      matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::reset();
       double startTime=MPI_Wtime();
-      cholesky::cholinv::invoke(matA, matT, topo::square(MPI_COMM_WORLD,pGridDimensionC), inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir);
+      cholesky::cholinv::invoke(matA, matT, SquareTopo, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir);
       double iterTimeLocal=MPI_Wtime() - startTime;
 
       switch(test){
@@ -60,9 +57,9 @@ int main(int argc, char** argv){
 	}
         case 1:{
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-          MatrixTypeR saveA = matA;
-          saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
-          double iterErrorLocal = cholesky::validate::invoke<cholesky::cholinv>(saveA, matA, dir, topo::square(MPI_COMM_WORLD,pGridDimensionC));
+          MatrixTypeA saveA = matA;
+          saveA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
+          double iterErrorLocal = cholesky::validate<cholesky::cholinv>::invoke(saveA, matA, dir, SquareTopo);
           MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(2);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;

@@ -5,13 +5,17 @@ namespace cholesky{
 template<typename AlgType>
 template<typename MatrixAType, typename MatrixTriType, typename CommType>
 typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA, MatrixTriType& matrixTri, char dir, CommType&& CommInfo){
+
+  using T = typename MatrixAType::ScalarType;
+
   util::removeTriangle(matrixTri, CommInfo.x, CommInfo.y, CommInfo.d, dir);
   MatrixTriType matrixTriTrans = matrixTri;
-  util::transposeSwap(matrixTriTrans, CommInfo.world);
+  util::transposeSwap(matrixTriTrans, std::forward<CommType>(CommInfo));
+  MatrixAType saveMatA = matrixA;
 
   if (dir == 'L'){
-    blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, 1., -1.);
-    matmult::summa::invoke(matrixTri, matrixTriTrans, matrixA, std::forward<CommType(CommInfo, blasArgs);
+    blas::ArgPack_gemm<T> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasTrans, 1., -1.);
+    matmult::summa::invoke(matrixTri, matrixTriTrans, matrixA, std::forward<CommType>(CommInfo), blasArgs);
     auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
       using T = typename decltype(matrix)::ScalarType;
       T val=0;
@@ -25,8 +29,8 @@ typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA,
     return util::residual_local(matrixA, saveMatA, std::move(Lambda), CommInfo.slice, CommInfo.x, CommInfo.y, CommInfo.d);
   }
   else if (dir == 'U'){
-    blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., -1.);
-    matmult::summa::invoke(matrixTriTrans, matrixTri, matrixA, std::forward<CommType(CommInfo), blasArgs);
+    blas::ArgPack_gemm<T> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasTrans, blas::Transpose::AblasNoTrans, 1., -1.);
+    matmult::summa::invoke(matrixTriTrans, matrixTri, matrixA, std::forward<CommType>(CommInfo), blasArgs);
     auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
       using T = typename decltype(matrix)::ScalarType;
       T val=0;

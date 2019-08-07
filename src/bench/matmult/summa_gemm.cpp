@@ -1,14 +1,14 @@
 /* Author: Edward Hutter */
 
-#include "../../alg/matmult/summa3d/summa3d.h"
+#include "../../alg/matmult/summa/summa.h"
 #include "validate/validate.h"
 
 using namespace std;
 
 int main(int argc, char** argv){
-  using MatrixTypeR = matrix<double,int64_t,rectangular,cyclic>;
-  using MatrixTypeLT = matrix<double,int64_t,lowertri,cyclic>;
-  using MatrixTypeUT = matrix<double,int64_t,uppertri,cyclic>;
+  using MatrixTypeR = matrix<double,size_t,rect,cyclic>;
+  using MatrixTypeLT = matrix<double,size_t,lowertri,cyclic>;
+  using MatrixTypeUT = matrix<double,size_t,uppertri,cyclic>;
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
@@ -22,20 +22,18 @@ int main(int argc, char** argv){
     Choices for methodKey2: 0) Broadcast + Allreduce
 			    1) Allgather + Allreduce
   */
-  int64_t globalMatrixSizeM = atoi(argv[1]);
-  int64_t globalMatrixSizeN = atoi(argv[2]);
-  int64_t globalMatrixSizeK = atoi(argv[3]);
-  int64_t pGridDimensionC = atoi(argv[4]);
+  size_t globalMatrixSizeM = atoi(argv[1]);
+  size_t globalMatrixSizeN = atoi(argv[2]);
+  size_t globalMatrixSizeK = atoi(argv[3]);
+  size_t pGridDimensionC = atoi(argv[4]);
   size_t methodKey2 = atoi(argv[5]);
-  int64_t numIterations = atoi(argv[6]);
+  size_t numIterations = atoi(argv[6]);
   std::string fileStr1 = argv[7];	// Critter
   std::string fileStr2 = argv[8];	// Performance/Residual/DevOrth
 
-  size_t CubeFaceDim = std::nearbyint(std::pow(size/pGridDimensionC,1./2.));
-  size_t CubeTopFaceSize = pGridDimensionC*CubeFaceDim;
-  size_t pCoordY = rank/CubeTopFaceSize;
-  size_t pCoordX = (rank%CubeTopFaceSize)/pGridDimensionC;
-  std::vector<size_t> Inputs{matA.getNumRowsGlobal(),matA.getNumColumnsGlobal(),matB.getNumColumnsGlobal(),pGridDimensionC};
+  auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
+
+  std::vector<size_t> Inputs{globalMatrixSizeM,globalMatrixSizeN,globalMatrixSizeK,pGridDimensionC};
   std::vector<const char*> InputNames{"m","n","k","c"};
 
   for (size_t test=0; test<2; test++){
@@ -48,19 +46,19 @@ int main(int argc, char** argv){
 
     // Loop for getting a good range of results.
     for (size_t i=0; i<numIterations; i++){
-      MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,CubeFaceDim,CubeFaceDim);
-      MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,CubeFaceDim,CubeFaceDim);
-      MatrixTypeR matC(globalMatrixSizeN,globalMatrixSizeM,CubeFaceDim,CubeFaceDim);
-      blasEngineArgumentPackage_gemm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
+      MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,SquareTopo.d,SquareTopo.d);
+      MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,SquareTopo.d,SquareTopo.d);
+      MatrixTypeR matC(globalMatrixSizeN,globalMatrixSizeM,SquareTopo.d,SquareTopo.d);
+      blas::ArgPack_gemm<double> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., 0.);
       double iterTimeGlobal;
       // Note: I think these calls below are still ok given the new topology mapping on Blue Waters/Stampede2
-      matA.DistributeRandom(pCoordX, pCoordY, CubeFaceDim, CubeFaceDim, pCoordX*CubeFaceDim + pCoordY);
-      matB.DistributeRandom(pCoordX, pCoordY, CubeFaceDim, CubeFaceDim, (pCoordX*CubeFaceDim + pCoordY)*(-1));
-      matC.DistributeRandom(pCoordX, pCoordY, CubeFaceDim, CubeFaceDim, (pCoordX*CubeFaceDim + pCoordY)*(-1));
+      matA.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
+      matB.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
+      matC.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::reset();
       double startTime=MPI_Wtime();
-      matmult::summa3d::invoke(matA, matB, matC, topo::square(MPI_COMM_WORLD,pGridDimensionC), blasArgs, methodKey2);
+      matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs, methodKey2);
       double iterTimeLocal=MPI_Wtime()-startTime;
       switch(test){
         case 0:{

@@ -4,7 +4,8 @@ BGQ=$(shell echo $(HOST) |grep 'mira\|cetus')
 THETA=$(shell echo $(HOST) |grep 'theta')
 STAMPEDE2=$(shell echo $(HOST) |grep 'stampede2')
 BLUEWATERS=$(shell echo $(HOST) |grep 'h2o')
-BIN = ./../../../bin/
+BIN=./../../bin/
+ALG=./../../alg/matmult/summa/
 
 # If make is called outside of the batch script generator, a few environment variables need to be set by default (double,int)
 ifeq ($(MPITYPE),)
@@ -29,10 +30,10 @@ ifneq ($(PORTER),)
   $(OBJS): $(OBJS).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS) $(OBJS).o $(LIB_PATH) $(LIBS)
 	rm *.o
-	mv charmrun $(BIN)charmrun
+	#mv charmrun $(BIN)charmrun
 
-  $(OBJS).o: MM3D.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) $(OBJS).o -c summa_gemm.cpp
+  $(OBJS).o: summa_gemm.cpp $(ALG)summa.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS).o -c summa_gemm.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)charmrun $(BIN)$(OBJS)
@@ -52,7 +53,7 @@ ifneq ($(BGQ),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(INCLUDES) $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: MM3D.h
+  $(OBJS1).o: summa_gemm.cpp $(ALG)summa.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
 
   clean:
@@ -72,7 +73,7 @@ ifneq ($(THETA),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: MM3D.h
+  $(OBJS1).o: summa_gemm.cpp $(ALG)summa.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
 
   clean:
@@ -93,7 +94,7 @@ ifneq ($(STAMPEDE2),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: MM3D.h
+  $(OBJS1).o: summa_gemm.cpp $(ALG)summa.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
 
   clean:
@@ -132,7 +133,7 @@ ifneq ($(BLUEWATERS),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: MM3D.h
+  $(OBJS1).o: summa_gemm.cpp $(ALG)summa.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
 
   clean:

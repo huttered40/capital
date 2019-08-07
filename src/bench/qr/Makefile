@@ -4,7 +4,8 @@ BGQ=$(shell echo $(HOST) |grep 'mira\|cetus')
 THETA=$(shell echo $(HOST) |grep 'theta')
 STAMPEDE2=$(shell echo $(HOST) |grep 'stampede2')
 BLUEWATERS=$(shell echo $(HOST) |grep 'h2o')
-BIN=./../../../bin/
+BIN=./../../bin/
+ALG=./../../alg/qr/cacqr/
 
 # If make is called outside of the batch script generator, a few environment variables need to be set by default (double,int)
 ifeq ($(MPITYPE),)
@@ -31,9 +32,9 @@ ifneq ($(PORTER),)
   $(OBJS): $(OBJS).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS) $(OBJS).o $(LIB_PATH) $(LIBS)
 	rm *.o
-	mv charmrun $(BIN)charmrun	# Note: this will just not work for MPI, but that shouldn't cause a problem
+	#mv charmrun $(BIN)charmrun	# Note: this will just not work for MPI, but that shouldn't cause a problem
 
-  $(OBJS).o:
+  $(OBJS).o: cacqr2.cpp $(ALG)cacqr.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS).o -c cacqr2.cpp
 
   clean:
@@ -54,7 +55,7 @@ ifneq ($(BGQ),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(INCLUDES) $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: test.cpp cacqr.h
+  $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
 
   clean:
@@ -75,7 +76,7 @@ ifneq ($(THETA),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: test.cpp cacqr.h
+  $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
 
   clean:
@@ -95,7 +96,7 @@ ifneq ($(STAMPEDE2),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: test.cpp cacqr.h
+  $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
 
   clean:
@@ -137,7 +138,7 @@ ifneq ($(BLUEWATERS),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: test.cpp cacqr.h
+  $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
 	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c test.cpp
 
   offload.o: ../../../Offload/offload.h
