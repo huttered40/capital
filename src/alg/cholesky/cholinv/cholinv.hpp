@@ -11,7 +11,7 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
   U localDimension = matrixA.getNumRowsLocal();
   U globalDimension = matrixA.getNumRowsGlobal();
   // the division below may have a remainder, but I think integer division will be ok, as long as we change the base case condition to be <= and not just ==
-  U bcDimension = globalDimension/helper;
+  U bcDimension = globalDimension/(CommInfo.c*CommInfo.d);
 
   for (size_t i=0; i<blockSizeMultiplier; i++){
     bcDimension *= 2;
@@ -97,8 +97,8 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   serialize<square,lowertri>::invoke(matrixLI, packedMatrix, matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
   util::transposeSwap(packedMatrix, CommInfo.world);
 
-  blasEngineArgumentPackage_trmm<T> trmmArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
-    blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
+  blas::ArgPack_trmm<T> trmmArgs(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasLower,
+    blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
 
   // 2nd case: Extra optimization for the case when we only perform TRSM at the top level.
   if ((isInversePath) || (globalDimension == inverseCutoffGlobalDimension*2)){
@@ -107,7 +107,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   }
   else{
     // Note: keep this a gemm package, because we still need to use gemm in TRSM3D in the update, which is just rectangular and non-triangular matrices.
-    blasEngineArgumentPackage_gemm<T> trsmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, 1., 0.);
+    blas::ArgPack_gemm<T> trsmArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasTrans, 1., 0.);
 
     // create a new subvector
     U len = saveIndexAfter - saveIndexPrev;
@@ -128,9 +128,9 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
     // Swap, same as we did with inverse
     util::transposeSwap(packedMatrixL, CommInfo.world);
 
-    blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
-      blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
-    trsm::diaginvert::invoke(matrixLcopy, packedMatrixL, packedMatrix, std::forward<CommType>(CommInfo) 'U', 'L', subBaseCaseDimList, trsmArgs);
+    blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasLower,
+      blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
+    trsm::diaginvert::invoke(matrixLcopy, packedMatrixL, packedMatrix, std::forward<CommType>(CommInfo), 'U', 'L', subBaseCaseDimList, trsmArgs);
 
     // inject matrixLcopy back into matrixA.
     // Future optimization: avoid copying matrixL here, and utilize leading dimension and the column vectors.
@@ -146,7 +146,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   U reverseDimLocal = localDimension-localShift;
   U reverseDimGlobal = reverseDimLocal*CommInfo.d;
 
-  blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasLower, blasEngineTranspose::AblasNoTrans, -1., 1.);
+  blas::ArgPack_syrk<T> syrkArgs(blas::Order::AblasColumnMajor, blas::UpLo::AblasLower, blas::Transpose::AblasNoTrans, -1., 1.);
   matmult::summa::invoke(matrixA, matrixA, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), syrkArgs, true, true);
 
@@ -162,14 +162,14 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
     // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
     serialize<square,square>::invoke(matrixA, tempInverse, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
 
-    blasEngineArgumentPackage_trmm<T> invPackage1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasLower,
-      blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
+    blas::ArgPack_trmm<T> invPackage1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasLower,
+      blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     matmult::summa::invoke(matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY,
         matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, std::forward<CommType>(CommInfo), invPackage1, true, false);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
-    invPackage1.side = blasEngineSide::AblasLeft;
+    invPackage1.side = blas::Side::AblasLeft;
     matmult::summa::invoke(matrixLI, tempInverse, matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, 0, localShift, 0, reverseDimLocal,
                              std::forward<CommType>(CommInfo), invPackage1, true, false);
     // One final serialize of tempInverse into matrixLI
@@ -226,8 +226,8 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
   serialize<square,uppertri>::invoke(matrixRI, packedMatrix, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
   util::transposeSwap(packedMatrix, CommInfo.world);
-  blasEngineArgumentPackage_trmm<T> trmmArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
-    blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
+  blas::ArgPack_trmm<T> trmmArgs(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
+    blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
 
   // 2nd case: Extra optimization for the case when we only perform TRSM at the top level.
   if ((isInversePath) || (globalDimension == inverseCutoffGlobalDimension*2)){
@@ -235,7 +235,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
       std::forward<CommType>(CommInfo), trmmArgs, false, true);
   }
   else{
-    blasEngineArgumentPackage_gemm<T> trsmArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
+    blas::ArgPack_gemm<T> trsmArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasTrans, blas::Transpose::AblasNoTrans, 1., 0.);
 
     // create a new subvector
     U len = saveIndexAfter - saveIndexPrev;
@@ -249,14 +249,14 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
     matrix<T,U,square,Distribution,Offload> matrixRcopy(std::vector<T>(), matAendX-(matAstartX+localShift), localShift, globalShift, globalShift);
     serialize<square,square>::invoke(matrixA, matrixRcopy, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift);
     // Also need to serialize top-left quadrant of matrixL so that its size matches packedMatrix
-    Matrix<T,U,uppertri,Distribution,Offload> packedMatrixR(std::vector<T>(), localShift, localShift, globalShift, globalShift);
+    matrix<T,U,uppertri,Distribution,Offload> packedMatrixR(std::vector<T>(), localShift, localShift, globalShift, globalShift);
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
     serialize<square,uppertri>::invoke(matrixA, packedMatrixR, matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
     // Swap, same as we did with inverse
     util::transposeSwap(packedMatrixR, CommInfo.world);
 
-    blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
-      blasEngineTranspose::AblasTrans, blasEngineDiag::AblasNonUnit, 1.);
+    blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
+      blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
     trsm::diaginvert::invoke(packedMatrixR, packedMatrix, matrixRcopy, std::forward<CommType>(CommInfo), 'L', 'R', subBaseCaseDimList, trsmArgs);
 
     // Inject back into matrixR
@@ -266,7 +266,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   U reverseDimLocal = localDimension-localShift;
   U reverseDimGlobal = reverseDimLocal*CommInfo.d;
 
-  blasEngineArgumentPackage_syrk<T> syrkArgs(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineTranspose::AblasTrans, -1., 1.);
+  blas::ArgPack_syrk<T> syrkArgs(blas::Order::AblasColumnMajor, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, -1., 1.);
   matmult::summa::invoke(matrixA, matrixA, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), syrkArgs, true, true);
 
@@ -284,14 +284,14 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
     // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
     serialize<square,square>::invoke(matrixA, tempInverse, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift);
 
-    blasEngineArgumentPackage_trmm<T> invPackage1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
-      blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
+    blas::ArgPack_trmm<T> invPackage1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
+      blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     matmult::summa::invoke(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift,
       std::forward<CommType>(CommInfo), invPackage1, true, false);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
-    invPackage1.side = blasEngineSide::AblasLeft;
+    invPackage1.side = blas::Side::AblasLeft;
     matmult::summa::invoke(matrixRI, tempInverse, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, 0, reverseDimLocal, 0, localShift,
       std::forward<CommType>(CommInfo), invPackage1, true, false);
     serialize<square,square>::invoke(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, true);
@@ -332,6 +332,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
   // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
   // Fourth: Save the data that each processor owns according to the cyclic rule.
 
+  int rankSlice;
   MPI_Comm_rank(CommInfo.slice, &rankSlice);
 
   // Should be fast pass-by-value via move semantics
@@ -353,11 +354,11 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
       }
     }
 
-    lapackEngineArgumentPackage_potrf potrfArgs(lapackEngineOrder::AlapackColumnMajor, (dir == 'L' ? lapackEngineUpLo::AlapackLower : lapackEngineUpLo::AlapackUpper));
-    lapackEngineArgumentPackage_trtri trtriArgs(lapackEngineOrder::AlapackColumnMajor, (dir == 'L' ? lapackEngineUpLo::AlapackLower : lapackEngineUpLo::AlapackUpper), lapackEngineDiag::AlapackNonUnit);
-    lapackEngine::_potrf(&deepBaseCase[0],finalDim,finalDim,potrfArgs);
+    lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, (dir == 'L' ? lapack::UpLo::AlapackLower : lapack::UpLo::AlapackUpper));
+    lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, (dir == 'L' ? lapack::UpLo::AlapackLower : lapack::UpLo::AlapackUpper), lapack::Diag::AlapackNonUnit);
+    lapack::engine::_potrf(&deepBaseCase[0],finalDim,finalDim,potrfArgs);
     std::vector<T> deepBaseCaseInv = deepBaseCase;              // true copy because we have to, unless we want to iterate (see below) two different times
-    lapackEngine::_trtri(&deepBaseCaseInv[0],finalDim,finalDim,trtriArgs);
+    lapack::engine::_trtri(&deepBaseCaseInv[0],finalDim,finalDim,trtriArgs);
 
     // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 
@@ -399,11 +400,11 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
     size_t fTranDim1 = localDimension*CommInfo.d;
     std::vector<T>& storeMat = cyclicBaseCaseData;
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-    lapackEngineArgumentPackage_potrf potrfArgs(lapackEngineOrder::AlapackColumnMajor, (dir == 'L' ? lapackEngineUpLo::AlapackLower : lapackEngineUpLo::AlapackUpper));
-    lapackEngineArgumentPackage_trtri trtriArgs(lapackEngineOrder::AlapackColumnMajor, (dir == 'L' ? lapackEngineUpLo::AlapackLower : lapackEngineUpLo::AlapackUpper), lapackEngineDiag::AlapackNonUnit);
-    lapackEngine::_potrf(&storeMat[0],fTranDim1,fTranDim1,potrfArgs);
+    lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, (dir == 'L' ? lapack::UpLo::AlapackLower : lapack::UpLo::AlapackUpper));
+    lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, (dir == 'L' ? lapack::UpLo::AlapackLower : lapack::UpLo::AlapackUpper), lapack::Diag::AlapackNonUnit);
+    lapack::engine::_potrf(&storeMat[0],fTranDim1,fTranDim1,potrfArgs);
     std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
-    lapackEngine::_trtri(&storeMatInv[0],fTranDim1,fTranDim1,trtriArgs);
+    lapack::engine::_trtri(&storeMatInv[0],fTranDim1,fTranDim1,trtriArgs);
 
     // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
 
@@ -423,7 +424,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
     //    variables, this should be ok.
 
     matrix<T,U,square,Distribution,Offload> tempMat(std::move(storeMat), localDimension, localDimension, globalDimension, globalDimension, true);
-    Matrix<T,U,square,Distribution,Offload> tempMatInv(std::move(storeMatInv), localDimension, localDimension, globalDimension, globalDimension, true);
+    matrix<T,U,square,Distribution,Offload> tempMatInv(std::move(storeMatInv), localDimension, localDimension, globalDimension, globalDimension, true);
 
     // invoke into the existing Matrix data structures owned by the user
     serialize<square,square>::invoke(matrixA, tempMat, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
@@ -455,7 +456,7 @@ cholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::Di
     U aggregSize = baseCaseMatrixA.getNumElems()*sliceDim*sliceDim;
     std::vector<T> blockedBaseCaseData(aggregSize);
     // Note: recv buffer will be larger tha send buffer * sliceDim**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
-    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), typename mpi_type<T>::type, &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), typename mpi_type<T>::type, slice2Dcomm);
+    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), mpi_type<T>::type, &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), mpi_type<T>::type, slice2Dcomm);
 
     TAU_FSTOP(cholinv::blockedToCyclicTransformation);
     return util::blockedToCyclicSpecial(blockedBaseCaseData, localDimension, localDimension, sliceDim, dir);
@@ -468,7 +469,7 @@ cholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::Di
     U aggregSize = baseCaseMatrixA.getNumElems()*sliceDim*sliceDim;
     std::vector<T> blockedBaseCaseData(aggregSize);
     // Note: recv buffer will be larger tha send buffer * sliceDim**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
-    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), typename mpi_type<T>::type, &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), typename mpi_type<T>::type, slice2Dcomm);
+    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), mpi_type<T>::type, &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), mpi_type<T>::type, slice2Dcomm);
 
     TAU_FSTOP(cholinv::blockedToCyclicTransformation);
     return util::blockedToCyclicSpecial(blockedBaseCaseData, localDimension, localDimension, sliceDim, dir);

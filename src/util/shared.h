@@ -36,12 +36,12 @@ class mpi_type;
 template<>
 class mpi_type<float>{
 public:
-  using type = MPI_FLOAT;
+  constexpr static size_t type = MPI_FLOAT;
 };
 template<>
 class mpi_type<double>{
 public:
-  using type = MPI_DOUBLE;
+  constexpr static size_t type = MPI_DOUBLE;
 };
 
 

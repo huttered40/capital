@@ -1,18 +1,19 @@
 /* Author: Edward Hutter */
 
 namespace trsm{
+/*
 template<typename MatrixAType, typename MatrixTriType, typename CommType>
 void diaginvert::iSolveLowerLeft(MatrixAType& matrixA, MatrixTriType& matrixL, MatrixTriType& matrixLI, CommType&& CommInfo,
                                  std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                                 blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
-  static_assert(0,"Not implemented");
+                                 blas::ArgPack_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
 }
+*/
 
 // For solving AU=B for A. But note that B is being modified in place and will turn into A
 template<typename MatrixAType, typename MatrixTriType, typename CommType>
 void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, MatrixTriType& matrixUI, CommType&& CommInfo,
                                  std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                                 blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
+                                 blas::ArgPack_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
   TAU_FSTART(diaginvert::iSolveUpperLeft);
 
   using T = typename MatrixAType::ScalarType;
@@ -21,15 +22,8 @@ void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, M
   using Distribution = typename MatrixAType::DistributionType;
   using Offload = typename MatrixAType::OffloadType;
 
-/*
-  blasEngineArgumentPackage_trmm<T> trmmPackage;
-  trmmPackage.order = blasEngineOrder::AblasColumnMajor;
-  trmmPackage.side = blasEngineSide::AblasRight;
-  trmmPackage.uplo = blasEngineUpLo::AblasLower;
-  trmmPackage.diag = blasEngineDiag::AblasNonUnit;
-  trmmPackage.transposeA = blasEngineTranspose::AblasTrans;
-  trmmPackage.alpha = 1.;
-*/
+  blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasLower,
+      blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
   // to catch debugging issues, assert that this has at least one size
   assert(baseCaseDimList.size());
 
@@ -58,10 +52,10 @@ void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, M
     if (i>0){
       // As i increases, the size of these updates gets smaller.
       // Special handling. This might only work since the triangular matrix is square, which should be ok
-      U arg1 = (gemmPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset1 : offset3);
-      U arg2 = (gemmPackage.transposeB == blasEngineTranspose::AblasNoTrans ? matUendX : offset1);
-      U arg3 = (gemmPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset3 : offset1);
-      U arg4 = (gemmPackage.transposeB == blasEngineTranspose::AblasNoTrans ? offset1 : matUendX);
+      U arg1 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset1 : offset3);
+      U arg2 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? matUendX : offset1);
+      U arg3 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset3 : offset1);
+      U arg4 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset1 : matUendX);
 
       matrix<T,U,rect,Distribution,Offload> matrixUpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*CommInfo.d, (arg4-arg3)*CommInfo.d);
       serialize<StructureTri,rect>::invoke(matrixU, matrixUpartition, arg1, arg2, arg3, arg4);
@@ -96,7 +90,7 @@ void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixTriType& matrixU, M
 template<typename MatrixTriType, typename MatrixAType, typename CommType>
 void diaginvert::iSolveLowerRight(MatrixTriType& matrixL, MatrixTriType& matrixLI, MatrixAType& matrixA, CommType&& CommInfo,
                                   std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                                  blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
+                                  blas::ArgPack_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
   TAU_FSTART(diaginvert::iSolveLowerRight);
 
   using T = typename MatrixAType::ScalarType;
@@ -105,6 +99,8 @@ void diaginvert::iSolveLowerRight(MatrixTriType& matrixL, MatrixTriType& matrixL
   using Distribution = typename MatrixAType::DistributionType;
   using Offload = typename MatrixAType::OffloadType;
 
+  blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
+      blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
   // to catch debugging issues, assert that this has at least one size
   assert(baseCaseDimList.size());
 
@@ -132,10 +128,10 @@ void diaginvert::iSolveLowerRight(MatrixTriType& matrixL, MatrixTriType& matrixL
       // Special handling. This might only work since the triangular matrix is square, which should be ok
 
       // Note that the beginning cases might not be correct. They are not currently used for anything though.
-      U arg1 = (gemmPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset3 : offset1);
-      U arg2 = (gemmPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset1 : matLendX);
-      U arg3 = (gemmPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset3 : offset3);
-      U arg4 = (gemmPackage.transposeA == blasEngineTranspose::AblasNoTrans ? offset1 : offset1);
+      U arg1 = (gemmPackage.transposeA == blas::Transpose::AblasNoTrans ? offset3 : offset1);
+      U arg2 = (gemmPackage.transposeA == blas::Transpose::AblasNoTrans ? offset1 : matLendX);
+      U arg3 = (gemmPackage.transposeA == blas::Transpose::AblasNoTrans ? offset3 : offset3);
+      U arg4 = (gemmPackage.transposeA == blas::Transpose::AblasNoTrans ? offset1 : offset1);
 
       matrix<T,U,rect,Distribution,Offload> matrixLpartition(std::vector<T>(), arg2-arg1, arg4-arg3, (arg2-arg1)*CommInfo.d, (arg4-arg3)*CommInfo.d);
       serialize<StructureTri,rect>::invoke(matrixL, matrixLpartition, arg1, arg2, arg3, arg4);
@@ -157,20 +153,20 @@ void diaginvert::iSolveLowerRight(MatrixTriType& matrixL, MatrixTriType& matrixL
   TAU_FSTOP(diaginvert::iSolveLowerRight);
 }
 
-
+/*
 template<typename MatrixTriType, typename MatrixAType, typename CommType>
 void diaginvert::iSolveUpperRight(MatrixTriType& matrixU, MatrixTriType& matrixUI, MatrixAType& matrixA, CommType&& CommInfo,
                                   std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                                  blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
-  static_assert(0,"Not implemented");
+                                  blas::ArgPack_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
 }
+*/
 
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
 void diaginvert::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, CommType&& CommInfo,
-                         char UpLo, char Dir, std::vector<typename MatrixTriType::DimensionType>& baseCaseDimList,
-                         blasEngineArgumentPackage_gemm<typename MatrixTriType::ScalarType>& gemmPackage){
+                         char UpLo, char Dir, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                         blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
   if ((UpLo=='L') && (Dir=='L')){
-    iSolveLowerLeft(matrixA,matrixB,matrixC,std::forward<CommType>(CommInfo),baseCaseDimList,gemmPackage);
+    //iSolveLowerLeft(matrixA,matrixB,matrixC,std::forward<CommType>(CommInfo),baseCaseDimList,gemmPackage);
   }
   else if ((UpLo=='U') && (Dir=='L')){
     iSolveUpperLeft(matrixA,matrixB,matrixC,std::forward<CommType>(CommInfo),baseCaseDimList,gemmPackage);
@@ -179,6 +175,7 @@ void diaginvert::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType&
     iSolveLowerRight(matrixA,matrixB,matrixC,std::forward<CommType>(CommInfo),baseCaseDimList,gemmPackage);
   }
   else if ((UpLo=='U') && (Dir=='R')){
-    iSolveUpperRight(matrixA,matrixB,matrixC,std::forward<CommType>(CommInfo),baseCaseDimList,gemmPackage);
+    //iSolveUpperRight(matrixA,matrixB,matrixC,std::forward<CommType>(CommInfo),baseCaseDimList,gemmPackage);
   }
+}
 }

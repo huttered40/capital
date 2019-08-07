@@ -6,11 +6,11 @@ template<typename T, typename U>
 void cacqr::broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm){
   TAU_FSTART(cacqr::broadcast_panels);
   if (isRoot){
-    MPI_Bcast(&data[0], size, typename mpi_type<T>::type, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, mpi_type<T>::type, pGridCoordZ, panelComm);
   }
   else{
     data.resize(size);
-    MPI_Bcast(&data[0], size, typename mpi_type<T>::type, pGridCoordZ, panelComm);
+    MPI_Bcast(&data[0], size, mpi_type<T>::type, pGridCoordZ, panelComm);
   }
   TAU_FSTOP(cacqr::broadcast_panels);
 }
@@ -25,23 +25,23 @@ void cacqr::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
   U localDimensionM = matrixA.getNumRowsLocal();
   U localDimensionN = matrixA.getNumColumnsLocal();
   std::vector<T> localMMvec(localDimensionN*localDimensionN);
-  blasEngineArgumentPackage_syrk<T> syrkPack(blasEngineOrder::AblasColumnMajor, blasEngineUpLo::AblasUpper, blasEngineTranspose::AblasTrans, 1., 0.);
-  blasEngine::_syrk(matrixA.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionM, localDimensionM, localDimensionN, syrkPack);
+  blas::ArgPack_syrk<T> syrkPack(blas::Order::AblasColumnMajor, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, 1., 0.);
+  blas::engine::_syrk(matrixA.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionM, localDimensionM, localDimensionN, syrkPack);
 
   // MPI_Allreduce to replicate the dimensionY x dimensionY matrix on each processor
   // Optimization potential: only Allreduce half of this matrix because its symmetric
   //   but only try this later to see if it actually helps, because to do this, I will have to serialize and re-serialize. Would only make sense if dimensionX is huge.
-  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type, MPI_SUM, CommInfo.world);
+  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, mpi_type<T>::type, MPI_SUM, CommInfo.world);
 
-  lapackEngineArgumentPackage_potrf potrfArgs(lapackEngineOrder::AlapackColumnMajor, lapackEngineUpLo::AlapackUpper);
-  lapackEngineArgumentPackage_trtri trtriArgs(lapackEngineOrder::AlapackColumnMajor, lapackEngineUpLo::AlapackUpper, lapackEngineDiag::AlapackNonUnit);
-  lapackEngine::_potrf(matrixR.getRawData(), localDimensionN, localDimensionN, potrfArgs);
+  lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
+  lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
+  lapack::engine::_potrf(matrixR.getRawData(), localDimensionN, localDimensionN, potrfArgs);
   std::vector<T> RI = matrixR.getVectorData();
-  lapackEngine::_trtri(&RI[0], localDimensionN, localDimensionN, trtriArgs);
+  lapack::engine::_trtri(&RI[0], localDimensionN, localDimensionN, trtriArgs);
 
   // Finish by performing local matrix multiplication Q = A*R^{-1}
-  blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper, blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-  blasEngine::_trmm(&RI[0], matrixA.getRawData(), localDimensionM, localDimensionN, localDimensionN, localDimensionM, trmmPack1);
+  blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
+  blas::engine::_trmm(&RI[0], matrixA.getRawData(), localDimensionM, localDimensionN, localDimensionN, localDimensionM, trmmPack1);
   TAU_FSTOP(cacqr::invoke_1d);
 }
 
@@ -69,14 +69,14 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
 
   // No optimization here I am pretty sure due to final result being symmetric, as it is cyclic and transpose isnt true as I have painfully found out before.
   broadcast_panels((isRootRow ? dataA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
-  blasEngineArgumentPackage_gemm<T> gemmPack1(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
+  blas::ArgPack_gemm<T> gemmPack1(blas::Order::AblasColumnMajor, blas::Transpose::AblasTrans, blas::Transpose::AblasNoTrans, 1., 0.);
 
   // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
-  blasEngine::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
+  blas::engine::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
 
-  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type, MPI_SUM, CommInfo.z, CommInfo.column);
-  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type, CommInfo.y, CommInfo.depth);
+  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, mpi_type<T>::type, MPI_SUM, CommInfo.z, CommInfo.column);
+  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, mpi_type<T>::type, CommInfo.y, CommInfo.depth);
 
   // Create an extra matrix for R-inverse
   MatrixRType matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, matrixA.getNumColumnsGlobal(), matrixA.getNumColumnsGlobal(), true);
@@ -89,8 +89,8 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
   // Need to be careful here. matrixRI must be truly upper-triangular for this to be correct as I found out in 1D case.
 
   if (baseCaseDimList.first){
-    blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
-      blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
+    blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
+      blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     matmult::summa::invoke(matrixRI, matrixA, std::forward<CommType>(CommInfo), trmmPack1);
   }
   else{
@@ -102,10 +102,10 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
     serialize<square,uppertri>::invoke(matrixR, rectR);
     serialize<square,uppertri>::invoke(matrixRI, rectRI);
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
-    gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
-    gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
-    blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
-      blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
+    gemmPack1.transposeA = blas::Transpose::AblasNoTrans;
+    gemmPack1.transposeB = blas::Transpose::AblasNoTrans;
+    blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
+      blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     trsm::diaginvert::invoke(matrixA, rectR, rectRI, std::forward<CommType>(CommInfo), 'U', 'L', baseCaseDimList.second, gemmPack1);
   }
   TAU_FSTOP(cacqr::invoke_3d);
@@ -128,7 +128,7 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& Re
   using Offload = typename MatrixAType::OffloadType;
 
   int columnContigRank;
-  MPI_Comm_rank(CommInfo.column_contig, &columnContigRank);
+  MPI_Comm_rank(RectCommInfo.column_contig, &columnContigRank);
 
   // Need to perform the multiple steps to get our partition of matrixA
   U globalDimensionN = matrixA.getNumColumnsGlobal();
@@ -138,20 +138,20 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& Re
   U sizeA = matrixA.getNumElems();
   std::vector<T> foreignA;	// dont fill with data first, because if root its a waste,
                                 //   but need it to outside to get outside scope
-  bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
-  bool isRootColumn = ((columnContigRank == pCoordZ) ? true : false);
+  bool isRootRow = ((RectCommInfo.x == RectCommInfo.z) ? true : false);
+  bool isRootColumn = ((columnContigRank == RectCommInfo.z) ? true : false);
 
   // No optimization here I am pretty sure due to final result being symmetric, as it is cyclic and transpose isnt true as I have painfully found out before.
-  broadcast_panels((isRootRow ? dataA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
-  blasEngineArgumentPackage_gemm<T> gemmPack1(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
+  broadcast_panels((isRootRow ? dataA : foreignA), sizeA, isRootRow, RectCommInfo.z, RectCommInfo.row);
+  blas::ArgPack_gemm<T> gemmPack1(blas::Order::AblasColumnMajor, blas::Transpose::AblasTrans, blas::Transpose::AblasNoTrans, 1., 0.);
 
   // I don't think I can run syrk here, so I will use gemm. Maybe in the future after I have it correct I can experiment.
-  blasEngine::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
+  blas::engine::_gemm((isRootRow ? &dataA[0] : &foreignA[0]), &dataA[0], matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
 
-  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type, MPI_SUM, CommInfo.z, CommInfo.column_contig);
-  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type,MPI_SUM, CommInfo.column_alt);
-  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, typename mpi_type<T>::type, columnContigRank, CommInfo.depth);
+  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : matrixR.getRawData()), matrixR.getRawData(), localDimensionN*localDimensionN, mpi_type<T>::type, MPI_SUM, RectCommInfo.z, RectCommInfo.column_contig);
+  MPI_Allreduce(MPI_IN_PLACE, matrixR.getRawData(), localDimensionN*localDimensionN, mpi_type<T>::type,MPI_SUM, RectCommInfo.column_alt);
+  MPI_Bcast(matrixR.getRawData(), localDimensionN*localDimensionN, mpi_type<T>::type, columnContigRank, RectCommInfo.depth);
 
   // Create an extra matrix for R-inverse
   MatrixRType matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
@@ -160,8 +160,8 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& Re
                                                                              inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U');
 
   if (baseCaseDimList.first){
-    blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
-      blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
+    blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
+      blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     matmult::summa::invoke(matrixRI, matrixA, std::forward<SquareCommType>(SquareCommInfo), trmmPack1);
   }
   else{
@@ -173,11 +173,11 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& Re
     serialize<square,uppertri>::invoke(matrixR, rectR);
     serialize<square,uppertri>::invoke(matrixRI, rectRI);
     // alpha and beta fields don't matter. All I need from this struct are whether or not transposes are used.
-    gemmPack1.transposeA = blasEngineTranspose::AblasNoTrans;
-    gemmPack1.transposeB = blasEngineTranspose::AblasNoTrans;
-    blasEngineArgumentPackage_trmm<T> trmmPackage(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
-      blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-    trsm::diaginvert::invoke(matrixA, rectR, rectRI, std::forward<CommType>(SquareCommInfo), 'U', 'L', baseCaseDimList.second, gemmPack1);
+    gemmPack1.transposeA = blas::Transpose::AblasNoTrans;
+    gemmPack1.transposeB = blas::Transpose::AblasNoTrans;
+    blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
+      blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
+    trsm::diaginvert::invoke(matrixA, rectR, rectRI, std::forward<SquareCommType>(SquareCommInfo), 'U', 'L', baseCaseDimList.second, gemmPack1);
   }
   TAU_FSTOP(cacqr::invoke);
 }
@@ -199,9 +199,9 @@ void cacqr2::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Co
   cacqr::invoke_1d(matrixA, matrixR, std::forward<CommType>(CommInfo));
   cacqr::invoke_1d(matrixA, matrixR2, std::forward<CommType>(CommInfo));
 
-  blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
-    blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
-  blasEngine::_trmm(matrixR2.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionN,
+  blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
+    blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
+  blas::engine::_trmm(matrixR2.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionN, localDimensionN, trmmPack1);
   TAU_FSTOP(cacqr2::invoke_1d);
 }
@@ -221,8 +221,8 @@ void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Co
   cacqr::invoke_3d(matrixA, matrixR, std::forward<CommType>(CommInfo), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
   cacqr::invoke_3d(matrixA, matrixR2, std::forward<CommType>(CommInfo), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
 
-  blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
-    blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
+  blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
+    blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
   matmult::summa::invoke(matrixR2, matrixR, std::forward<CommType>(CommInfo), trmmPack1);
@@ -233,7 +233,7 @@ template<typename MatrixAType, typename MatrixRType, typename CommType>
 void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
                     size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
   TAU_FSTART(cacqr2::invoke);
-  if (CommType.c == 1){
+  if (CommInfo.c == 1){
     cacqr2::invoke_1d(matrixA, matrixR, std::forward<CommType>(CommInfo));
     return;
   }
@@ -255,12 +255,12 @@ void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommI
   cacqr::invoke(matrixA, matrixR, std::forward<CommType>(CommInfo), SquareTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
   cacqr::invoke(matrixA, matrixR2, std::forward<CommType>(CommInfo), SquareTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
 
-  blasEngineArgumentPackage_trmm<T> trmmPack1(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasLeft, blasEngineUpLo::AblasUpper,
-    blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
+  blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
+    blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
   // TODO: Any other way to avoid building .. without complicating the interface?
-  matmult::summa:invoke(matrixR2, matrixR, SquareTopo, trmmPack1);
+  matmult::summa::invoke(matrixR2, matrixR, SquareTopo, trmmPack1);
 
   TAU_FSTOP(cacqr2::invoke);
 }

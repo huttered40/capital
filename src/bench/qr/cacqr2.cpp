@@ -34,7 +34,7 @@ int main(int argc, char** argv){
   std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
   std::vector<const char*> InputNames{"m","n","c","bcm","icm","pdm"};
 
-  for (test=0; test<2; test++){
+  for (auto test=0; test<2; test++){
     switch(test){
       case 0:
         critter::init(1,fileStr1);
@@ -65,7 +65,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MatrixTypeR saveA = matA;
           saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
-          auto error = qr::validate<cacqr>::invoke(saveA, matA, matR, topo::rect(MPI_COMM_WORLD,dimensionC));
+          auto error = qr::validate<qr::cacqr>::invoke(saveA, matA, matR, topo::rect(MPI_COMM_WORLD,dimensionC));
           MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(3);

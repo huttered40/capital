@@ -17,12 +17,12 @@ public:
            invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& myR, CommType&& CommInfo);
 private:
   template<typename MatrixType, typename RectCommType, typename SquareCommType>
-  typename MatrixType::ScalarType
+  static typename MatrixType::ScalarType
   orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
   
-  template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommInfo>
-  typename MatrixAType::ScalarType
-  residual(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, char dir, ..){
+  template<typename MatrixQType, typename MatrixRType, typename MatrixAType, typename RectCommType, typename SquareCommType>
+  static typename MatrixAType::ScalarType
+  residual(MatrixQType& matrixQ, MatrixRType& matrixR, MatrixAType& matrixA, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
 
 /*
   // We require that for a 1D algorithm, Q is rectangular and R is square

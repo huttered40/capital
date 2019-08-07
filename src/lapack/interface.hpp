@@ -1,14 +1,14 @@
 /* Author: Edward Hutter */
 
 namespace lapack{
-void helper::setInfoParameters_potrf(const ArgumentPackage_potrf& srcPackage,
+void helper::setInfoParameters_potrf(const ArgPack_potrf& srcPackage,
                                      int& destArg1,
                                      char& destArg2){
   destArg1 = (srcPackage.order == Order::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
   destArg2 = (srcPackage.uplo == UpLo::AlapackUpper ? 'U' : 'L');
 }
 
-void helper::setInfoParameters_trtri(const ArgumentPackage_trtri& srcPackage,
+void helper::setInfoParameters_trtri(const ArgPack_trtri& srcPackage,
                                      int& destArg1,
                                      char& destArg2,
                                      char& destArg3){
@@ -17,12 +17,12 @@ void helper::setInfoParameters_trtri(const ArgumentPackage_trtri& srcPackage,
   destArg3 = (srcPackage.diag == Diag::AlapackUnit ? 'U' : 'N');
 }
 
-void helper::setInfoParameters_geqrf(const ArgumentPackage_geqrf& srcPackage,
+void helper::setInfoParameters_geqrf(const ArgPack_geqrf& srcPackage,
                                      int& destArg1){
   destArg1 = (srcPackage.order == Order::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
 }
 
-void helper::setInfoParameters_orgqr(const ArgumentPackage_orgqr& srcPackage,
+void helper::setInfoParameters_orgqr(const ArgPack_orgqr& srcPackage,
                                      int& destArg1){
   destArg1 = (srcPackage.order == Order::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
 }
@@ -36,7 +36,7 @@ void engine::_potrf(
   TAU_FSTART(potrf);
   // First, unpack the info parameter
   int arg1; char arg2;
-  setInfoParameters_potrf(srcPackage, arg1, arg2);
+  helper::setInfoParameters_potrf(srcPackage, arg1, arg2);
 
   auto _potrf_ = GetPOTRFroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
@@ -57,7 +57,7 @@ void engine::_trtri(
   TAU_FSTART(trtri);
   // First, unpack the info parameter
   int arg1; char arg2; char arg3;
-  setInfoParameters_trtri(srcPackage, arg1, arg2, arg3);
+  helper::setInfoParameters_trtri(srcPackage, arg1, arg2, arg3);
 
   static auto _trtri_ = GetTRTRIroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
@@ -80,7 +80,7 @@ void engine::_geqrf(
   TAU_FSTART(geqrf);
   // First, unpack the info parameter
   int arg1;
-  setInfoParameters_geqrf(srcPackage, arg1);
+  helper::setInfoParameters_geqrf(srcPackage, arg1);
 
   auto _geqrf_ = GetGEQRFroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
@@ -104,7 +104,7 @@ void engine::_orgqr(
   TAU_FSTART(orgqr);
   // First, unpack the info parameter
   int arg1;
-  setInfoParameters_orgqr(srcPackage, arg1);
+  helper::setInfoParameters_orgqr(srcPackage, arg1);
 
   auto _orgqr_ = GetORGQRroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)

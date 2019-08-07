@@ -62,7 +62,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MatrixTypeR saveA = matA;
           saveA.DistributeRandom(pCoordX, pCoordY, dimensionC, dimensionD, rank/dimensionC);
-          double iterErrorLocal = cholesky::validate::invoke<cholinv>(saveA, matA, dir, topo::square(MPI_COMM_WORLD,pGridDimensionC));
+          double iterErrorLocal = cholesky::validate::invoke<cholesky::cholinv>(saveA, matA, dir, topo::square(MPI_COMM_WORLD,pGridDimensionC));
           MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(2);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;

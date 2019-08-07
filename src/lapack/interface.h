@@ -194,7 +194,7 @@ protected:
 //   allows partially specialized template classes to specialize it.
 
 // Note: each method below could also parameterize itself on the int-type (32/64 bit), but current FORTRAN libraries only have 32-bit
-class engine : public lapackHelper{
+class engine : public helper{
   // Lets prevent any instances of this class from being created.
 public:
   engine() = delete;

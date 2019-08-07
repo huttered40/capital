@@ -105,5 +105,4 @@ public:
 // Local includes -- include the possible LAPACK libraries
 #include "interface.h"
 
-
 #endif /* LAPACKENGINE_H_ */

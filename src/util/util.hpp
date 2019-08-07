@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
 template<typename MatrixType, typename RefMatrixType, typename LambdaType>
-std::pair<typename MatrixType::ScalarType, typename MatrixType::ScalarType>
+typename MatrixType::ScalarType
 util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, size_t sliceX, size_t sliceY, size_t sliceDim){
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -16,16 +16,16 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
     for (size_t j=0; j<localNumRows; j++){
       auto info = Lambda(Matrix, RefMatrix, i*localNumColumns+j,globalX, globalY);
       error += std::abs(info.first*info.first);
-      control += std::abs(info.control*info.control);
+      control += std::abs(info.second*info.second);
       globalY += sliceDim;
       //if (rank == 0) std::cout << val << " " << i << " " << j << std::endl;
     }
     globalX += sliceDim;
   }
-  MPI_Allreduce(MPI_IN_PLACE, &error, 1, typename mpi_type<T>::type, MPI_SUM, slice);
-  MPI_Allreduce(MPI_IN_PLACE, &control, 1, typename mpi_type<T>::type, MPI_SUM, slice);
+  MPI_Allreduce(MPI_IN_PLACE, &error, 1, mpi_type<T>::type, MPI_SUM, slice);
+  MPI_Allreduce(MPI_IN_PLACE, &control, 1, mpi_type<T>::type, MPI_SUM, slice);
   error = std::sqrt(error) / std::sqrt(control);
-  //MPI_Allreduce(MPI_IN_PLACE, &error, 1, typename mpi_type<T>::type, MPI_SUM, depthComm);
+  //MPI_Allreduce(MPI_IN_PLACE, &error, 1, mpi_type<T>::type, MPI_SUM, depthComm);
   return error;
 }
 
@@ -170,7 +170,7 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_
   matrix<T,U,rect,Distribution,Offload> matrixDest(std::vector<T>(), localNumColumns, localNumRows, globalNumColumns, globalNumRows);
   if ((!std::is_same<Structure,rect>::value)
     && (!std::is_same<Structure,square>::value)){
-    Serializer<Structure,rect>::Serialize(myMatrix, matrixDest);
+    serialize<Structure,rect>::invoke(myMatrix, matrixDest);
     matrixPtr = matrixDest.getRawData();
   }
 
@@ -181,7 +181,7 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_
   U aggregSize = aggregNumRows*aggregNumColumns;
   std::vector<T> blockedMatrix(aggregSize);
 //  std::vector<T> cyclicMatrix(aggregSize);
-  MPI_Allgather(matrixPtr, localSize, typename mpi_type<T>::type, &blockedMatrix[0], localSize, typename mpi_type<T>::type, slice);
+  MPI_Allgather(matrixPtr, localSize, mpi_type<T>::type, &blockedMatrix[0], localSize, mpi_type<T>::type, slice);
 
   std::vector<T> cyclicMatrix = util::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, commDim);
 
@@ -204,12 +204,13 @@ template<typename MatrixType, typename CommType>
 void util::transposeSwap(MatrixType& mat, CommType&& CommInfo){
   TAU_FSTART(Util::transposeSwap);
 
+  using T = typename MatrixType::ScalarType;
   size_t SquareFaceSize = CommInfo.c*CommInfo.d;
   size_t transposePartner = CommInfo.x*SquareFaceSize + CommInfo.y*CommInfo.c + CommInfo.z;
   //if (myRank != transposeRank)
   //{
     // Transfer with transpose rank
-    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), typename mpi_type<T>::type, transposeRank, 0, transposeRank, 0, comm, MPI_STATUS_IGNORE);
+    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), mpi_type<T>::type, transposePartner, 0, transposePartner, 0, CommInfo.world, MPI_STATUS_IGNORE);
 
     // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
     //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
@@ -313,6 +314,6 @@ void util::InitialGEMM(){
   std::vector<T> matrixA(128*128,0.);
   std::vector<T> matrixB(128*128,0.);
   std::vector<T> matrixC(128*128,0.);
-  blasEngineArgumentPackage_gemm<T> gemmPack1(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
-  blasEngine::_gemm(&matrixA[0], &matrixB[0], &matrixC[0], 128, 128, 128, 128, 128, 128, gemmPack1);
+  blas::ArgPack_gemm<T> gemmPack1(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., 0.);
+  blas::engine::_gemm(&matrixA[0], &matrixB[0], &matrixC[0], 128, 128, 128, 128, 128, 128, gemmPack1);
 }

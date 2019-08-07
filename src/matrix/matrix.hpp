@@ -41,7 +41,7 @@ matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(std::vector
   if (assemble){
     // Now call the matrixAssemble method
     this->_matrix.resize(this->_dimensionX);
-    StructurePolicy::_Assemblematrix(this->_data, this->_matrix, dimensionX, dimensionY);
+    StructurePolicy::_AssembleMatrix(this->_data, this->_matrix, dimensionX, dimensionY);
   }
 }
 

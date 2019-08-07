@@ -13,7 +13,7 @@ typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA,
     blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasTrans, 1., -1.);
     matmult::summa::invoke(matrixTri, matrixTriTrans, matrixA, std::forward<CommType(CommInfo, blasArgs);
     auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
-      typename T = decltype(matrix)::ScalarType;
+      using T = typename decltype(matrix)::ScalarType;
       T val=0;
       T control=0;
       if (sliceY >= sliceX){
@@ -21,14 +21,14 @@ typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA,
         control = ref.getRawData()[index];
       }
       return std::make_pair(val,control);
-    }
+    };
     return util::residual_local(matrixA, saveMatA, std::move(Lambda), CommInfo.slice, CommInfo.x, CommInfo.y, CommInfo.d);
   }
   else if (dir == 'U'){
     blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., -1.);
     matmult::summa::invoke(matrixTriTrans, matrixTri, matrixA, std::forward<CommType(CommInfo), blasArgs);
     auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
-      typename T = decltype(matrix)::ScalarType;
+      using T = typename decltype(matrix)::ScalarType;
       T val=0;
       T control=0;
       if (sliceY <= sliceX){
@@ -36,7 +36,7 @@ typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA,
         control = ref.getRawData()[index];
       }
       return std::make_pair(val,control);
-    }
+    };
     return util::residual_local(matrixA, saveMatA, std::move(Lambda), CommInfo.slice, CommInfo.x, CommInfo.y, CommInfo.d);
   }
 }

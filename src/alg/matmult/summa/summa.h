@@ -26,26 +26,26 @@ public:
                      typename MatrixBType::DimensionType matrixAnumColumns, typename MatrixBType::DimensionType matrixAnumRows,
                      typename MatrixBType::DimensionType matrixBnumColumns, typename MatrixBType::DimensionType matrixBnumRows,
                      typename MatrixBType::DimensionType matrixCnumColumns, typename MatrixBType::DimensionType matrixCnumRows,
-                     CommType&& CommInfo, const blasEngineArgumentPackage_gemm<typename MatrixBType::ScalarType>& srcPackage);
+                     CommType&& CommInfo, const blas::ArgPack_gemm<typename MatrixBType::ScalarType>& srcPackage);
 
   template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, CommType&& CommInfo,
-                     const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
+                     const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
 
   template<typename MatrixAType, typename MatrixBType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
-                     const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
+                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
 
   template<typename MatrixAType, typename CommType>
   static void invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matrixB, typename MatrixAType::DimensionType matrixAnumColumns,
                      typename MatrixAType::DimensionType matrixAnumRows, typename MatrixAType::DimensionType matrixBnumColumns,
                      typename MatrixAType::DimensionType matrixBnumRows, CommType&& CommInfo,
-                     const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage);
-/*
+                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage);
+
   template<typename MatrixAType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
-                     const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
-*/
+                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
+
   template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
                      typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
@@ -54,7 +54,7 @@ public:
                      typename MatrixBType::DimensionType matrixBcutXend, typename MatrixCType::DimensionType matrixCcutZstart,
                      typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutYstart,
                      typename MatrixCType::DimensionType matrixCcutYend, CommType&& CommInfo,
-                     const blasEngineArgumentPackage_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC, size_t methodKey = 0);
+                     const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC, size_t methodKey = 0);
 
   template<typename MatrixAType, typename MatrixBType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAType::DimensionType matrixAcutXstart,
@@ -62,16 +62,16 @@ public:
                      typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
                      typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
                      typename MatrixBType::DimensionType matrixBcutXend, CommType&& CommInfo,
-                     const blasEngineArgumentPackage_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, size_t methodKey = 0);
-/*
+                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, size_t methodKey = 0);
+
   template<typename MatrixAType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
                      typename MatrixAType::DimensionType matrixAcutXend, typename MatrixAType::DimensionType matrixAcutYstart,
                      typename MatrixAType::DimensionType matrixAcutYend, typename MatrixCType::DimensionType matrixCcutZstart,
                      typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutXstart,
                      typename MatrixCType::DimensionType matrixCcutXend, CommType&& CommInfo,
-                     const blasEngineArgumentPackage_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA = true, bool cutC = true, size_t methodKey = 0);
-*/
+                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA = true, bool cutC = true, size_t methodKey = 0);
+
 private:
 
   template<typename MatrixAType, typename MatrixBType, typename CommType>
@@ -81,7 +81,7 @@ private:
                       std::vector<typename MatrixBType::ScalarType>& foreignB, bool& serializeKeyA, bool& serializeKeyB);
 
   template<typename MatrixAType, typename MatrixBType, typename CommType>
-  static void _start2(MatrixAType& matrixA, MatrixBType& matrixB, tupleStructure& commInfo3D,
+  static void _start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
                       std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector, std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector,
                       bool& serializeKeyA, bool& serializeKeyB);
 

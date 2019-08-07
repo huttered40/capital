@@ -1,10 +1,10 @@
 /* Author: Edward Hutter */
 namespace qr{
 
-
+template<typename AlgType>
 template<typename MatrixType, typename RectCommType, typename SquareCommType>
 typename MatrixType::ScalarType
-validate::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
+validate<AlgType>::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -18,16 +18,16 @@ validate::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, SquareCommType&
   U numElems = localNumRows*localNumColumns;
   MatrixType matrixI(std::vector<T>(numElems,0), localNumColumns, localNumRows, globalNumColumns, globalNumRows, true);
 
-  blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasTrans, blasEngineTranspose::AblasNoTrans, 1., 0.);
+  blas::ArgPack_gemm<T> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasTrans, blas::Transpose::AblasNoTrans, 1., 0.);
   matmult::summa::invoke(matrixQtrans, matrixQ, matrixI, std::forward<SquareCommType>(SquareCommInfo), blasArgs);
   if (RectCommInfo.column_alt != MPI_COMM_WORLD){
-    MPI_Allreduce(MPI_IN_PLACE, matrixI.getRawData(), matrixI.getNumElems(), MPI_DATATYPE, MPI_SUM, RectCommInfo.column_alt);
+    MPI_Allreduce(MPI_IN_PLACE, matrixI.getRawData(), matrixI.getNumElems(), mpi_type<T>::type, MPI_SUM, RectCommInfo.column_alt);
   }
 
   auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
-    typename T = decltype(matrix)::ScalarType;
+    using T = typename decltype(matrix)::ScalarType;
     T val,control;
-    if (globalX == globalY){
+    if (sliceX == sliceY){
       val = std::abs(1. - matrix.getRawData()[index]);
       control = 1;
     }
@@ -36,32 +36,33 @@ validate::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, SquareCommType&
       control = 0;
     }
     return std::make_pair(val,control);
-  }
-  return util::residual_local(matrixI, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.d);
+  };
+  return util::residual_local(matrixI, matrixI, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.d);
 }
 
+template<typename AlgType>
 template<typename MatrixQType, typename MatrixRType, typename MatrixAType, typename RectCommType, typename SquareCommType>
 typename MatrixAType::ScalarType
-validate::residual(MatrixQType& matrixQ, MatrixRType& matrixR, MatrixAType& matrixA, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
+validate<AlgType>::residual(MatrixQType& matrixQ, MatrixRType& matrixR, MatrixAType& matrixA, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
 
   MatrixAType saveMatA = matrixA;
-  blasEngineArgumentPackage_gemm<T> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineTranspose::AblasNoTrans, blasEngineTranspose::AblasNoTrans, 1., -1.);
+  blas::ArgPack_gemm<T> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., -1.);
   matmult::summa::invoke(matrixQ, matrixR, saveMatA, std::forward<SquareCommType>(SquareCommInfo), blasArgs);
 
   auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
-    typename T = decltype(matrix)::ScalarType;
+    using T = typename decltype(matrix)::ScalarType;
     T val = matrix.getRawData()[index];
     T control = ref.getRawData()[index];
     return std::make_pair(val,control);
-  }
-  return util::residual_local(matrixA, saveMatA, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.d);
+  };
+  return util::residual_local(saveMatA, matrixA, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.d);
 }
 
 /* Validation against sequential BLAS/LAPACK constructs */
-template<AlgType>
+template<typename AlgType>
 template<typename MatrixAType, typename MatrixQType, typename MatrixRType, typename CommType>
 std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
 validate<AlgType>::invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, CommType&& CommInfo){

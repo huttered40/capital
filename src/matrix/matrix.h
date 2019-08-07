@@ -30,7 +30,7 @@ public:
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
   inline T* getRawData() { return &this->_data[0]; }
   inline std::vector<T>& getVectorData() { return this->_data; }
-  inline std::vector<T*>& getmatrixData() { return this->_matrix;}
+  inline std::vector<T*>& getMatrixData() { return this->_matrix;}
   inline U getNumElems() { return this->_numElems; }
   inline U getNumElems(U rangeX, U rangeY) { return StructurePolicy::_getNumElems(rangeX, rangeY); }
   inline U getNumRowsLocal() { return this->_dimensionY; }
