@@ -36,14 +36,13 @@ int main(int argc, char** argv){
   std::string fileStr1 = argv[6];	// Critter
   std::string fileStr2 = argv[7];	// Performance/Residual/DevOrth
 
-  size_t CubeFaceDim = std::nearbyint(std::pow(size/pGridDimensionC,1./2.));
-  size_t CubeTopFaceSize = pGridDimensionC*CubeFaceDim;
-  size_t pCoordY = rank/CubeTopFaceSize;
-  size_t pCoordX = (rank%CubeTopFaceSize)/pGridDimensionC;
   std::vector<size_t> Inputs{matA.getNumRowsGlobal(),matA.getNumColumnsGlobal(),matB.getNumColumnsGlobal(),pGridDimensionC};
   std::vector<const char*> InputNames{"m","n","k","c"};
 
   for (size_t test=0; test<2; test++){
+    // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
+
     switch(test){
       case 0:
         critter::init(1,fileStr1);
@@ -53,18 +52,18 @@ int main(int argc, char** argv){
 
     // Loop for getting a good range of results.
     for (size_t i=0; i<numIterations; i++){
-      MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, pGridDimensionSize,pGridDimensionSize);
-      MatrixTypeUT matA(globalMatrixSizeN,globalMatrixSizeN, pGridDimensionSize,pGridDimensionSize);
+      MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, SquareTopo.d,SquareTopo.d);
+      MatrixTypeUT matA(globalMatrixSizeN,globalMatrixSizeN, SquareTopo.d,SquareTopo.d);
       blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
         blasEngineTranspose::AblasNoTrans, blasEngineDiag::AblasNonUnit, 1.);
       double iterTimeGlobal;
       // Note: I think these calls below are still ok given the new topology mapping on Blue Waters/Stampede2
-      matA.DistributeRandom(pCoordX, pCoordY, CubeFaceDim, CubeFaceDim, pCoordX*CubeFaceDim + pCoordY);
-      matB.DistributeRandom(pCoordX, pCoordY, CubeFaceDim, CubeFaceDim, (pCoordX*CubeFaceDim + pCoordY)*(-1));
+      matA.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
+      matB.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::reset();
       double startTime=MPI_Wtime();
-      matmult::summa3d::invoke(matA, matB, topo::square(MPI_COMM_WORLD,pGridDimensionC), blasArgs, methodKey2);
+      matmult::summa3d::invoke(matA, matB, SquareTopo, blasArgs, methodKey2);
       double iterTimeLocal=MPI_Wtime()-startTime;
       switch(test){
         case 0:{

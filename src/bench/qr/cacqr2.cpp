@@ -26,17 +26,20 @@ int main(int argc, char** argv){
   std::string fileStr1 = argv[8];	// Critter
   std::string fileStr2 = argv[9];	// Performance/Residual/DevOrth
 
-  auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC);
-
   std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
   std::vector<const char*> InputNames{"m","n","c","bcm","icm","pdm"};
 
   for (auto test=0; test<2; test++){
+    // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
+    auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC);
+
     switch(test){
       case 0:
         critter::init(1,fileStr1);
+	break;
       case 1:
         critter::init(0,fileStr2);
+	break;
     }
 
     for (size_t i=0; i<numIterations; i++){
@@ -74,6 +77,7 @@ int main(int argc, char** argv){
     }
     critter::finalize();
   }
+  cout << "Before finalize\n";
   MPI_Finalize();
   return 0;
 }

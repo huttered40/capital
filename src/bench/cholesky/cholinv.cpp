@@ -25,17 +25,20 @@ int main(int argc, char** argv){
   std::string fileStr1 = argv[7];	// Critter
   std::string fileStr2 = argv[8];	// Performance/Residual/DevOrth
 
-  auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
-
   std::vector<size_t> Inputs{globalMatrixSize,pGridDimensionC,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
   std::vector<const char*> InputNames{"n","c","bcm","icm","pdm"};
 
   for (size_t test=0; test<2; test++){
+    // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
+
     switch(test){
       case 0:
         critter::init(1,fileStr1);
+	break;
       case 1:
         critter::init(0,fileStr2);
+	break;
     }
 
     for (size_t i=0; i<numIterations; i++){

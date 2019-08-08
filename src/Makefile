@@ -2,7 +2,6 @@ all:
 	make -C./bench/qr/ cacqr2
 	make -C./bench/cholesky/ cholinv
 	make -C./bench/matmult/ summa_gemm
-	make -C./bench/matmult/ summa_trmm
 
 cacqr2:
 	make -C./bench/qr/ cacqr2
@@ -12,9 +11,6 @@ cholinv:
 
 summa_gemm:
 	make -C./bench/matmult/ summa_gemm
-
-summa_trmm:
-	make -C./bench/matmult/ summa_trmm
 
 clean:
 	make -C./bench/qr/ clean

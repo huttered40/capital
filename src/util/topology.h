@@ -36,7 +36,12 @@ public:
     MPI_Comm_rank(column, &columnRank);
     MPI_Comm_split(column, columnRank/c, columnRank, &this->column_contig);
     MPI_Comm_split(column, columnRank%c, columnRank, &this->column_alt); 
-    this->world=comm;
+    if (comm != MPI_COMM_WORLD){
+      MPI_Comm_dup(comm,&this->world);
+    }
+    else{
+      this->world=comm;
+    }
     this->c = c;
     this->d = size / (this->c*this->c);
     this->z = rank%this->c;
@@ -82,7 +87,13 @@ public:
     MPI_Comm_split(comm, this->z, rank, &this->slice);
     MPI_Comm_split(this->slice, this->y, this->x, &this->row);
     MPI_Comm_split(this->slice, this->x, this->y, &this->column);
-    this->world=comm;
+
+    if (comm != MPI_COMM_WORLD){
+      MPI_Comm_dup(comm,&this->world);
+    }
+    else{
+      this->world=comm;
+    }
 
     TAU_FSTOP(topo::square);
   }

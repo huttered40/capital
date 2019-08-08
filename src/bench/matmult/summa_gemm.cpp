@@ -31,17 +31,20 @@ int main(int argc, char** argv){
   std::string fileStr1 = argv[7];	// Critter
   std::string fileStr2 = argv[8];	// Performance/Residual/DevOrth
 
-  auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
-
   std::vector<size_t> Inputs{globalMatrixSizeM,globalMatrixSizeN,globalMatrixSizeK,pGridDimensionC};
   std::vector<const char*> InputNames{"m","n","k","c"};
 
   for (size_t test=0; test<2; test++){
+    // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
+
     switch(test){
       case 0:
         critter::init(1,fileStr1);
+	break;
       case 1:
         critter::init(0,fileStr2);
+	break;
     }
 
     // Loop for getting a good range of results.
