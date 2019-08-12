@@ -56,7 +56,7 @@ ifneq ($(BGQ),)
 	rm *.o
 
   $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cacqr2.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -77,7 +77,7 @@ ifneq ($(THETA),)
 	rm *.o
 
   $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cacqr2.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -97,7 +97,7 @@ ifneq ($(STAMPEDE2),)
 	rm *.o
 
   $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cacqr2.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -139,7 +139,7 @@ ifneq ($(BLUEWATERS),)
 	rm *.o
 
   $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
-	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c test.cpp
+	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c cacqr2.cpp
 
   offload.o: ../../../Offload/offload.h
 	$(CCGPU) $(CFLAGS) $(ENVS) -o offload.o
