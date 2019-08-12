@@ -21,10 +21,10 @@
 #include "../../../ExternalLibraries/critter/src/critter.h"
 #endif /*PORTER*/
 #ifdef STAMPEDE2
-#include "../../../critter/critter.h"
+#include "../../../critter/src/critter.h"
 #endif /*STAMPEDE2*/
 #ifdef BLUEWATERS
-#include "../../../critter/critter.h"
+#include "../../../critter/src/critter.h"
 #endif /*BLUEWATERS*/
 
 // Note: no need to include mpi header file when using critter
