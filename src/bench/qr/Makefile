@@ -46,7 +46,7 @@ ifneq ($(BGQ),)
   CCMPI = mpic++11
   CFLAGS = -std=c++11 -g
   INCLUDES=-I/soft/libraries/essl/current/essl/5.1/include/
-  LIB_PATH=-L../../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64
+  LIB_PATH=-L../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64
   LIBS=-llapack -lcblas -lblas -lesslbg -lgfortran -lxlopt -lxlf90_r -lxlfmath -lxl -lcritter
 
   OBJS1 = cacqr2
@@ -67,7 +67,7 @@ ifneq ($(THETA),)
   MACHINE=THETA
   CCMPI = CC
   CFLAGS = -g -Wall -fast -std=c++11 -mkl=parallel -xMIC-AVX512
-  LIB_PATH=-L../../../../../CritterXC40/critter/lib
+  LIB_PATH=-L../../../../CritterXC40/critter/lib
   LIBS=-lcritter
 
   OBJS1 = cacqr2
@@ -87,7 +87,7 @@ ifneq ($(STAMPEDE2),)
   MACHINE=STAMPEDE2
   CCMPI = mpicxx
   CFLAGS = -g -Wall -O3 -std=c++14 -mkl=parallel -xMIC-AVX512
-  LIB_PATH=-L../../../../../critter/lib
+  LIB_PATH=-L../../../../critter/lib
   LIBS=-lcritter
 
   OBJS1 = cacqr2
@@ -109,7 +109,7 @@ ifneq ($(BLUEWATERS),)
   PRG_ENV_FLAG_GNU=$(shell echo $(PE_ENV) |grep 'GNU')
   GPU_ACCEL=$(shell echo $(GPU) |grep 'GPUACCEL')
   GPU_NO_ACCEL=$(shell echo $(GPU) |grep 'NOGPU')
-  LIB_PATH=-L../../../../../critter/lib
+  LIB_PATH=-L../../../../critter/lib
   LIBS=-lcritter
   CCMPI=CC
   CCGPU=CC	# default unless overwritten

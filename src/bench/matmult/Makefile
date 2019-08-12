@@ -64,7 +64,7 @@ ifneq ($(THETA),)
   MACHINE=THETA
   CCMPI = CC
   CFLAGS = -g -Wall -fast -std=c++11 -mkl=parallel -xMIC-AVX512
-  LIB_PATH=-L../../../../../CritterXC40/critter/lib
+  LIB_PATH=-L../../../../CritterXC40/critter/lib
   LIBS=-lcritter
 
   OBJS1 = summa_gemm
@@ -85,7 +85,7 @@ ifneq ($(STAMPEDE2),)
   MACHINE=STAMPEDE2
   CCMPI = mpicxx
   CFLAGS = -g -Wall -O3 -std=c++14 -mkl=parallel -xMIC-AVX512
-  LIB_PATH=-L../../../../../critter/lib
+  LIB_PATH=-L../../../../critter/lib
   LIBS=-lcritter
 
   OBJS1 = summa_gemm
@@ -109,7 +109,7 @@ ifneq ($(BLUEWATERS),)
   PRG_ENV_FLAG_GNU=$(shell echo $(PE_ENV) |grep 'GNU')
   GPU_ACCEL=$(shell echo $(GPU) |grep 'GPUACCEL')
   GPU_NO_ACCEL=$(shell echo $(GPU) |grep 'NoGPUACCEL')
-  LIB_PATH=-L../../../../../critter/lib
+  LIB_PATH=-L../../../../critter/lib
   LIBS=-lcritter
 
   ifneq ($(GPU_ACCEL),)
