@@ -77,7 +77,6 @@ int main(int argc, char** argv){
     }
     critter::finalize();
   }
-  cout << "Before finalize\n";
   MPI_Finalize();
   return 0;
 }
