@@ -43,6 +43,7 @@ typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA,
     };
     return util::residual_local(matrixA, saveMatA, std::move(Lambda), CommInfo.slice, CommInfo.x, CommInfo.y, CommInfo.d);
   }
+  return 0.;	// prevent compiler complaints
 }
 
 /*
