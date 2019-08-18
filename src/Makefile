@@ -1,32 +1,18 @@
-all_mpi:
-	make -C./Algorithms/QRFactorization/CholeskyQR2/ MPI
-	make -C./Algorithms/CholeskyFactorization/CFR3D/ MPI
-	make -C./Algorithms/MatrixMultiplication/MM3D/ MPI
+all:
+	make -C./bench/qr/ cacqr2
+	make -C./bench/cholesky/ cholinv
+	make -C./bench/matmult/ summa_gemm
 
-all_ampi:
-	make -C./Algorithms/QRFactorization/CholeskyQR2/ AMPI
-	make -C./Algorithms/CholeskyFactorization/CFR3D/ AMPI
-	make -C./Algorithms/MatrixMultiplication/MM3D/ AMPI
+cacqr2:
+	make -C./bench/qr/ cacqr2
 
-cqr2_mpi:
-	make -C./Algorithms/QRFactorization/CholeskyQR2/ MPI
+cholinv:
+	make -C./bench/cholesky/ cholinv
 
-cfr3d_mpi:
-	make -C./Algorithms/CholeskyFactorization/CFR3D/ MPI
-
-mm3d_mpi:
-	make -C./Algorithms/MatrixMultiplication/MM3D/ MPI
-
-cqr2_ampi:
-	make -C./Algorithms/QRFactorization/CholeskyQR2/ AMPI
-
-cfr3d_ampi:
-	make -C./Algorithms/CholeskyFactorization/CFR3D/ AMPI
-
-mm3d_ampi:
-	make -C./Algorithms/MatrixMultiplication/MM3D/ AMPI
+summa_gemm:
+	make -C./bench/matmult/ summa_gemm
 
 clean:
-	make -C./Algorithms/QRFactorization/CholeskyQR2/ clean
-	make -C./Algorithms/CholeskyFactorization/CFR3D/ clean
-	make -C./Algorithms/MatrixMultiplication/MM3D/ clean
+	make -C./bench/qr/ clean
+	make -C./bench/cholesky/ clean
+	make -C./bench/matmult/ clean
