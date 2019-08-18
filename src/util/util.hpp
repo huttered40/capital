@@ -2,7 +2,7 @@
 
 template<typename MatrixType, typename RefMatrixType, typename LambdaType>
 typename MatrixType::ScalarType
-util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, size_t sliceX, size_t sliceY, size_t sliceDim){
+util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, size_t sliceX, size_t sliceY, size_t sliceDimX, size_t sliceDimY){
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
   T error = 0;
@@ -11,21 +11,22 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
   U localNumColumns = Matrix.getNumColumnsLocal();
   U globalX = sliceX;
   U globalY = sliceY;
-  for (U i=0; i<localNumColumns; i++){
+
+  for (size_t i=0; i<localNumColumns; i++){
     globalY = sliceY;    // reset
     for (size_t j=0; j<localNumRows; j++){
-      auto info = Lambda(Matrix, RefMatrix, i*localNumColumns+j,globalX, globalY);
+      auto info = Lambda(Matrix, RefMatrix, i*localNumRows+j,globalX, globalY);
       error += std::abs(info.first*info.first);
       control += std::abs(info.second*info.second);
-      globalY += sliceDim;
+      globalY += sliceDimY;
       //if (rank == 0) std::cout << val << " " << i << " " << j << std::endl;
     }
-    globalX += sliceDim;
+    globalX += sliceDimX;
   }
+
   MPI_Allreduce(MPI_IN_PLACE, &error, 1, mpi_type<T>::type, MPI_SUM, slice);
   MPI_Allreduce(MPI_IN_PLACE, &control, 1, mpi_type<T>::type, MPI_SUM, slice);
   error = std::sqrt(error) / std::sqrt(control);
-  //MPI_Allreduce(MPI_IN_PLACE, &error, 1, mpi_type<T>::type, MPI_SUM, depthComm);
   return error;
 }
 

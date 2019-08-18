@@ -24,8 +24,8 @@ validate<AlgType>::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, Square
     MPI_Allreduce(MPI_IN_PLACE, matrixI.getRawData(), matrixI.getNumElems(), mpi_type<T>::type, MPI_SUM, RectCommInfo.column_alt);
   }
 
-  auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
-    using T = typename decltype(matrix)::ScalarType;
+  auto Lambda = [](auto&& matrix, auto&& ref, size_t index, size_t sliceX, size_t sliceY){
+    using T = typename std::remove_reference_t<decltype(matrix)>::ScalarType;
     T val,control;
     if (sliceX == sliceY){
       val = std::abs(1. - matrix.getRawData()[index]);
@@ -37,7 +37,7 @@ validate<AlgType>::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, Square
     }
     return std::make_pair(val,control);
   };
-  return util::residual_local(matrixI, matrixI, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.d);
+  return util::residual_local(matrixI, matrixI, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.c, SquareCommInfo.d);
 }
 
 template<typename AlgType>
@@ -52,13 +52,13 @@ validate<AlgType>::residual(MatrixQType& matrixQ, MatrixRType& matrixR, MatrixAT
   blas::ArgPack_gemm<T> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., -1.);
   matmult::summa::invoke(matrixQ, matrixR, saveMatA, std::forward<SquareCommType>(SquareCommInfo), blasArgs);
 
-  auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
-    using T = typename decltype(matrix)::ScalarType;
+  auto Lambda = [](auto&& matrix, auto&& ref, size_t index, size_t sliceX, size_t sliceY){
+    using T = typename std::remove_reference_t<decltype(matrix)>::ScalarType;
     T val = matrix.getRawData()[index];
     T control = ref.getRawData()[index];
     return std::make_pair(val,control);
   };
-  return util::residual_local(saveMatA, matrixA, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.d);
+  return util::residual_local(saveMatA, matrixA, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.c, SquareCommInfo.d);
 }
 
 /* Validation against sequential BLAS/LAPACK constructs */

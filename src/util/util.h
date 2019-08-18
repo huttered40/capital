@@ -7,7 +7,7 @@ class util{
 public:
   template<typename MatrixType, typename RefMatrixType, typename LambdaType>
   static typename MatrixType::ScalarType
-    residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, size_t sliceX, size_t sliceY, size_t sliceDim);
+    residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, size_t sliceX, size_t sliceY, size_t sliceDimX, size_t sliceDimY);
   template<typename T, typename U>
   static std::vector<T> blockedToCyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t sliceDim);
   template<typename T, typename U>

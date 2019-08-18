@@ -46,6 +46,7 @@ int main(int argc, char** argv){
       // reset the matrix before timer starts
       // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
       MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);
+
       MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, RectTopo.c, RectTopo.c);
       matA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
       double iterTimeGlobal = 0;
@@ -77,6 +78,7 @@ int main(int argc, char** argv){
     }
     critter::finalize();
   }
+
   MPI_Finalize();
   return 0;
 }

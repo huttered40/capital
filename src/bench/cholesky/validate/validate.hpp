@@ -16,8 +16,8 @@ typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA,
   if (dir == 'L'){
     blas::ArgPack_gemm<T> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasTrans, 1., -1.);
     matmult::summa::invoke(matrixTri, matrixTriTrans, matrixA, std::forward<CommType>(CommInfo), blasArgs);
-    auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
-      using T = typename decltype(matrix)::ScalarType;
+    auto Lambda = [](auto&& matrix, auto&& ref, size_t index, size_t sliceX, size_t sliceY){
+      using T = typename std::remove_reference_t<decltype(matrix)>::ScalarType;
       T val=0;
       T control=0;
       if (sliceY >= sliceX){
@@ -26,13 +26,13 @@ typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA,
       }
       return std::make_pair(val,control);
     };
-    return util::residual_local(matrixA, saveMatA, std::move(Lambda), CommInfo.slice, CommInfo.x, CommInfo.y, CommInfo.d);
+    return util::residual_local(matrixA, saveMatA, std::move(Lambda), CommInfo.slice, CommInfo.x, CommInfo.y, CommInfo.d, CommInfo.d);
   }
   else if (dir == 'U'){
     blas::ArgPack_gemm<T> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasTrans, blas::Transpose::AblasNoTrans, 1., -1.);
     matmult::summa::invoke(matrixTriTrans, matrixTri, matrixA, std::forward<CommType>(CommInfo), blasArgs);
-    auto Lambda = [](auto matrix, auto ref, size_t index, size_t sliceX, size_t sliceY){
-      using T = typename decltype(matrix)::ScalarType;
+    auto Lambda = [](auto&& matrix, auto&& ref, size_t index, size_t sliceX, size_t sliceY){
+      using T = typename std::remove_reference_t<decltype(matrix)>::ScalarType;
       T val=0;
       T control=0;
       if (sliceY <= sliceX){
@@ -41,7 +41,7 @@ typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA,
       }
       return std::make_pair(val,control);
     };
-    return util::residual_local(matrixA, saveMatA, std::move(Lambda), CommInfo.slice, CommInfo.x, CommInfo.y, CommInfo.d);
+    return util::residual_local(matrixA, saveMatA, std::move(Lambda), CommInfo.slice, CommInfo.x, CommInfo.y, CommInfo.d, CommInfo.d);
   }
   return 0.;	// prevent compiler complaints
 }
