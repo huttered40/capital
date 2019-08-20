@@ -55,7 +55,7 @@ int main(int argc, char** argv){
 
       switch(test){
         case 0:{
-          critter::print("Cholesky", size, Inputs.size(), &Inputs[0], &InputNames[0]);
+          critter::print(i==0, "Cholesky", size, Inputs.size(), &Inputs[0], &InputNames[0]);
 	  break;
 	}
         case 1:{
@@ -66,7 +66,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(2);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;
-          critter::print("Cholesky", size, Inputs.size(), &Inputs[0], &InputNames[0], Outputs.size(), &Outputs[0]);
+          critter::print(i==0, "Cholesky", size, Inputs.size(), &Inputs[0], &InputNames[0], Outputs.size(), &Outputs[0]);
 	  break;
 	}
       }

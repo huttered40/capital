@@ -65,14 +65,14 @@ int main(int argc, char** argv){
       double iterTimeLocal=MPI_Wtime()-startTime;
       switch(test){
         case 0:{
-          critter::print("MatrixMultiplication", size, Inputs.size(), &Inputs[0], &InputNames[0]);
+          critter::print(i==0, "MatrixMultiplication", size, Inputs.size(), &Inputs[0], &InputNames[0]);
 	  break;
 	}
         case 1:{
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(1);
 	  Outputs[0] = iterTimeGlobal;
-          critter::print("MatrixMultiplication", size, Inputs.size(), &Inputs[0], &InputNames[0], Outputs.size(), &Outputs[0]);
+          critter::print(i==0, "MatrixMultiplication", size, Inputs.size(), &Inputs[0], &InputNames[0], Outputs.size(), &Outputs[0]);
           //matmult::validate<summa3d>::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
 	  break;
 	}
