@@ -26,8 +26,8 @@ int main(int argc, char** argv){
   std::string fileStr1 = argv[8];	// Critter
   std::string fileStr2 = argv[9];	// Performance/Residual/DevOrth
 
-  std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier};
-  std::vector<const char*> InputNames{"m","n","c","bcm","icm","pdm"};
+  std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier,numIterations};
+  std::vector<const char*> InputNames{"m","n","c","bcm","icm","pdm","numiter"};
 
   for (auto test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
