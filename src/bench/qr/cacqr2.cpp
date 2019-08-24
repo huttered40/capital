@@ -18,10 +18,10 @@ int main(int argc, char** argv){
 
   size_t globalMatrixDimensionM = atoi(argv[1]);
   size_t globalMatrixDimensionN = atoi(argv[2]);
-  size_t baseCaseMultiplier = atoi(argv[3]);
-  size_t inverseCutOffMultiplier = atoi(argv[4]);
-  size_t panelDimensionMultiplier = atoi(argv[5]);
-  size_t dimensionC = atoi(argv[6]);
+  size_t dimensionC = atoi(argv[3]);
+  size_t baseCaseMultiplier = atoi(argv[4]);
+  size_t inverseCutOffMultiplier = atoi(argv[5]);
+  size_t panelDimensionMultiplier = atoi(argv[6]);
   size_t numIterations=atoi(argv[7]);
   std::string fileStr1 = argv[8];	// Critter
   std::string fileStr2 = argv[9];	// Performance/Residual/DevOrth
