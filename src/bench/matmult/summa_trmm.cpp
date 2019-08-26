@@ -33,11 +33,13 @@ int main(int argc, char** argv){
   size_t pGridDimensionC = atoi(argv[3]);
   size_t methodKey2 = atoi(argv[4]);
   size_t numIterations = atoi(argv[5]);
-  std::string fileStr1 = argv[6];	// Critter
-  std::string fileStr2 = argv[7];	// Performance/Residual/DevOrth
+  size_t ppn=atoi(argv[6]);
+  size_t tpr=atoi(argv[7]);
+  std::string fileStr1 = argv[8];	// Critter
+  std::string fileStr2 = argv[9];	// Performance/Residual/DevOrth
 
-  std::vector<size_t> Inputs{matA.getNumRowsGlobal(),matA.getNumColumnsGlobal(),matB.getNumColumnsGlobal(),pGridDimensionC,numIterations};
-  std::vector<const char*> InputNames{"m","n","k","c","numiter"};
+  std::vector<size_t> Inputs{matA.getNumRowsGlobal(),matA.getNumColumnsGlobal(),matB.getNumColumnsGlobal(),pGridDimensionC,numIterations,ppn,tpr};
+  std::vector<const char*> InputNames{"m","n","k","c","numiter","ppn","tpr"};
 
   for (size_t test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize

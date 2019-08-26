@@ -22,11 +22,13 @@ int main(int argc, char** argv){
   size_t inverseCutOffMultiplier = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
   size_t panelDimensionMultiplier = atoi(argv[5]);
   size_t numIterations = atoi(argv[6]);
-  std::string fileStr1 = argv[7];	// Critter
-  std::string fileStr2 = argv[8];	// Performance/Residual/DevOrth
+  size_t ppn=atoi(argv[7]);
+  size_t tpr=atoi(argv[8]);
+  std::string fileStr1 = argv[9];	// Critter
+  std::string fileStr2 = argv[10];	// Performance/Residual/DevOrth
 
-  std::vector<size_t> Inputs{globalMatrixSize,pGridDimensionC,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier,numIterations};
-  std::vector<const char*> InputNames{"n","c","bcm","icm","pdm","numiter"};
+  std::vector<size_t> Inputs{globalMatrixSize,pGridDimensionC,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier,numIterations,ppn,tpr};
+  std::vector<const char*> InputNames{"n","c","bcm","icm","pdm","numiter","ppn","tpr"};
 
   for (size_t test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
