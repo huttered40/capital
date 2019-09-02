@@ -111,6 +111,7 @@ ifneq ($(BLUEWATERS),)
   GPU_NO_ACCEL=$(shell echo $(GPU) |grep 'NoGPUACCEL')
   LIB_PATH=-L../../../../critter/lib
   LIBS=-lcritter
+  ENVS=-D$(MACHINE) -D$(MPITYPE)
 
   ifneq ($(GPU_ACCEL),)
     CCMPI=nvcc
@@ -134,7 +135,7 @@ ifneq ($(BLUEWATERS),)
 	rm *.o
 
   $(OBJS1).o: summa_gemm.cpp $(ALG)summa.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
+	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c summa_gemm.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)

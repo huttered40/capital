@@ -109,6 +109,7 @@ ifneq ($(BLUEWATERS),)
   GPU_NO_ACCEL=$(shell echo $(GPU) |grep 'NoGPUACCEL')
   LIB_PATH=-L../../../../critter/lib
   LIBS=-lcritter
+  ENVS=-D$(MACHINE) -D$(MPITYPE)
 
   ifneq ($(GPU_ACCEL),)
     CCMPI=nvcc
@@ -132,7 +133,7 @@ ifneq ($(BLUEWATERS),)
 	rm *.o
 
   $(OBJS1).o: cholinv.cpp $(ALG)cholinv.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cholinv.cpp
+	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c $(OBJS1).cpp
 
   clean:
 	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)

@@ -113,7 +113,7 @@ ifneq ($(BLUEWATERS),)
   LIBS=-lcritter
   CCMPI=CC
   CCGPU=CC	# default unless overwritten
-  ENVS=-D$(MACHINE) -D$(MPITYPE) -D$(GPU)
+  ENVS=-D$(MACHINE) -D$(MPITYPE)
 
   ifneq ($(GPU_ACCEL),)
     LIBS=$(LIBS) -lcublas -lcusolver
@@ -124,22 +124,17 @@ ifneq ($(BLUEWATERS),)
     CFLAGS = -fast -std=c++1y
   endif
   ifneq ($(PRG_ENV_FLAG_GNU),)
-    ifneq ($(GPU_ACCEL),)
-      CFLAGS = -gencode=arch=compute_35,code=compute_35 -O3 -use_fast_math -std=c++11
-    endif
-    ifneq ($(GPU_NO_ACCEL),)
-      CFLAGS = -O3 -ffast-math -funroll-loops -ftree-vectorize -std=gnu++1y
-    endif
+    CFLAGS = -O3 -ffast-math -funroll-loops -ftree-vectorize -std=gnu++1y
   endif
 
-  OBJS1 = cacqr2_$(GPU)
+  OBJS1 = cacqr2
 
   $(OBJS1): $(OBJS1).o #offload.o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
   $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
-	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c cacqr2.cpp
+	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c $(OBJS1).cpp
 
   offload.o: ../../../Offload/offload.h
 	$(CCGPU) $(CFLAGS) $(ENVS) -o offload.o

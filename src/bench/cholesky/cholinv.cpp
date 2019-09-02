@@ -30,6 +30,8 @@ int main(int argc, char** argv){
   std::vector<size_t> Inputs{globalMatrixSize,pGridDimensionC,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier,numIterations,ppn,tpr};
   std::vector<const char*> InputNames{"n","c","bcm","icm","pdm","numiter","ppn","tpr"};
 
+  size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
+  pGridDimensionC = pGridCubeDim/pGridDimensionC;
   for (size_t test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
     auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
