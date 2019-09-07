@@ -36,7 +36,7 @@ ifneq ($(PORTER),)
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS).o -c cholinv.cpp
 
   clean:
-	-rm -f *.o *.err *.out *.gch $(BIN)charmrun $(BIN)$(OBJS1)
+	-rm -f *.o *.err *.out *.gch $(BIN)charmrun $(BIN)$(OBJS)
 endif
 
 ifneq ($(BGQ),)
