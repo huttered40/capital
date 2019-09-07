@@ -41,18 +41,7 @@ void helper::setInfoParameters_syrk(const ArgPack_syrk<T>& srcPackage,
 }
 
 template<typename T, typename U>
-void engine::_gemm(
-            T* matrixA,
-            T* matrixB,
-            T* matrixC,
-            U m,
-            U n,
-            U k,
-            U lda,
-            U ldb,
-            U ldc,
-            const ArgPack_gemm<T>& srcPackage
-         ){
+void engine::_gemm(T* matrixA, T* matrixB, T* matrixC, U m, U n, U k, U lda, U ldb, U ldc, const ArgPack_gemm<T>& srcPackage){
   TAU_FSTART(gemm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
@@ -67,15 +56,7 @@ void engine::_gemm(
 }
 
 template<typename T, typename U>
-void engine::_trmm(
-            T* matrixA,
-            T* matrixB,
-            U m,
-            U n,
-            U lda,
-            U ldb,
-            const ArgPack_trmm<T>& srcPackage
-         ){
+void engine::_trmm(T* matrixA, T* matrixB, U m, U n, U lda, U ldb, const ArgPack_trmm<T>& srcPackage){
   TAU_FSTART(trmm);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
@@ -92,15 +73,7 @@ void engine::_trmm(
 }
 
 template<typename T, typename U>
-void engine::_syrk(
-            T* matrixA,
-            T* matrixC,
-            U n,
-            U k,
-            U lda,
-            U ldc,
-            const ArgPack_syrk<T>& srcPackage
-          ){
+void engine::_syrk(T* matrixA, T* matrixC, U n, U k, U lda, U ldc, const ArgPack_syrk<T>& srcPackage){
   TAU_FSTART(syrk);
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
