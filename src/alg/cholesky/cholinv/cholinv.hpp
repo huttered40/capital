@@ -16,6 +16,7 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
   for (size_t i=0; i<blockSizeMultiplier; i++){
     bcDimension *= 2;
   }
+  bcDimension = std::min(bcDimension,CommInfo.d);// prevents corner case. Should be assert?
 
   U save = inverseCutOffGlobalDimension;
   inverseCutOffGlobalDimension = globalDimension;
