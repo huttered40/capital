@@ -28,26 +28,11 @@ int main(int argc, char** argv){
   size_t pGridDimensionC = atoi(argv[4]);
   size_t methodKey2 = atoi(argv[5]);
   size_t numIterations = atoi(argv[6]);
-  size_t ppn=atoi(argv[7]);
-  size_t tpr=atoi(argv[8]);
-  std::string fileStr1 = argv[9];	// Critter
-  std::string fileStr2 = argv[10];	// Performance/Residual/DevOrth
-
-  std::vector<size_t> Inputs{globalMatrixSizeM,globalMatrixSizeN,globalMatrixSizeK,pGridDimensionC,numIterations,ppn,tpr};
-  std::vector<const char*> InputNames{"m","n","k","c","numiter","ppn","tpr"};
+  std::string fileStr1 = argv[7];.. delete later	// Critter
 
   for (size_t test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
     auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
-
-    switch(test){
-      case 0:
-        critter::init(1,fileStr1);
-	break;
-      case 1:
-        critter::init(0,fileStr2);
-	break;
-    }
 
     // Loop for getting a good range of results.
     for (size_t i=0; i<numIterations; i++){
@@ -67,20 +52,19 @@ int main(int argc, char** argv){
       double iterTimeLocal=MPI_Wtime()-startTime;
       switch(test){
         case 0:{
-          critter::print(i==0, "MatrixMultiplication", size, Inputs.size(), &Inputs[0], &InputNames[0]);
+          critter::print(i==0, size, Inputs.size());
 	  break;
 	}
         case 1:{
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(1);
 	  Outputs[0] = iterTimeGlobal;
-          critter::print(i==0, "MatrixMultiplication", size, Inputs.size(), &Inputs[0], &InputNames[0], Outputs.size(), &Outputs[0]);
+          critter::print(i==0, size, Outputs.size(), &Outputs[0]);
           //matmult::validate<summa3d>::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
 	  break;
 	}
       }
     }
-    critter::finalize();
   }
 
   MPI_Finalize();

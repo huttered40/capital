@@ -22,28 +22,13 @@ int main(int argc, char** argv){
   size_t inverseCutOffMultiplier = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
   size_t panelDimensionMultiplier = atoi(argv[5]);
   size_t numIterations = atoi(argv[6]);
-  size_t ppn=atoi(argv[7]);
-  size_t tpr=atoi(argv[8]);
-  std::string fileStr1 = argv[9];	// Critter
-  std::string fileStr2 = argv[10];	// Performance/Residual/DevOrth
-
-  std::vector<size_t> Inputs{globalMatrixSize,pGridDimensionC,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier,numIterations,ppn,tpr};
-  std::vector<const char*> InputNames{"n","c","bcm","icm","pdm","numiter","ppn","tpr"};
+  std::string fileStr1 = argv[7];.. delete later	// Critter
 
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
   for (size_t test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
     auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
-
-    switch(test){
-      case 0:
-        critter::init(1,fileStr1);
-	break;
-      case 1:
-        critter::init(0,fileStr2);
-	break;
-    }
 
     for (size_t i=0; i<numIterations; i++){
       // Reset matrixA
@@ -59,7 +44,7 @@ int main(int argc, char** argv){
 
       switch(test){
         case 0:{
-          critter::print(i==0, "Cholesky", size, Inputs.size(), &Inputs[0], &InputNames[0]);
+          critter::print(i==0, size);
 	  break;
 	}
         case 1:{
@@ -70,12 +55,11 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(2);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;
-          critter::print(i==0, "Cholesky", size, Inputs.size(), &Inputs[0], &InputNames[0], Outputs.size(), &Outputs[0]);
+          critter::print(i==0, size, Outputs.size(), &Outputs[0]);
 	  break;
 	}
       }
     }
-    critter::finalize();
   }
   MPI_Finalize();
   return 0;

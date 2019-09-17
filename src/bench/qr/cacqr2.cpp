@@ -23,26 +23,11 @@ int main(int argc, char** argv){
   size_t inverseCutOffMultiplier = atoi(argv[5]);
   size_t panelDimensionMultiplier = atoi(argv[6]);
   size_t numIterations=atoi(argv[7]);
-  size_t ppn=atoi(argv[8]);
-  size_t tpr=atoi(argv[9]);
-  std::string fileStr1 = argv[10];	// Critter
-  std::string fileStr2 = argv[11];	// Performance/Residual/DevOrth
-
-  std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier,numIterations,ppn,tpr};
-  std::vector<const char*> InputNames{"m","n","c","bcm","icm","pdm","numiter","ppn","tpr"};
+  std::string fileStr = argv[8];.. delete later	// Critter
 
   for (auto test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
     auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC);
-
-    switch(test){
-      case 0:
-        critter::init(1,fileStr1);
-	break;
-      case 1:
-        critter::init(0,fileStr2);
-	break;
-    }
 
     for (size_t i=0; i<numIterations; i++){
       // reset the matrix before timer starts
@@ -54,16 +39,11 @@ int main(int argc, char** argv){
       double iterTimeGlobal = 0;
       double residualErrorGlobal,orthogonalityErrorGlobal;
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
-      critter::reset();
       volatile double startTime=MPI_Wtime();
       qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
       double iterTimeLocal = MPI_Wtime() - startTime;
 
       switch(test){
-        case 0:{
-          critter::print(i==0, "QR", size, Inputs.size(), &Inputs[0], &InputNames[0]);
-	  break;
-	}
         case 1:{
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MatrixTypeR saveA = matA;
@@ -73,12 +53,11 @@ int main(int argc, char** argv){
           MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(3);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = residualErrorGlobal; Outputs[2] = orthogonalityErrorGlobal;
-          critter::print(i==0, "QR", size, Inputs.size(), &Inputs[0], &InputNames[0],Outputs.size(),&Outputs[0]);
+          critter::print(i==0, size, Outputs.size(),&Outputs[0]);
 	  break;
 	}
       }
     }
-    critter::finalize();
   }
 
   MPI_Finalize();
