@@ -8,11 +8,12 @@
 #include "./../../trsm/diaginvert/diaginvert.h"
 #include "./../../cholesky/cholinv/cholinv.h"
 #include "./../policies/cacqr/policy.h"
+#include "./../../cholesky/policies/cholinv/policy.h"
 
 namespace qr{
 
 template<class SerializeSymmetricPolicy = policy::cacqr::SerializeSymmetricToTriangle,
-         class CholInvPolicy = cholesky::cholinv
+         class CholInvPolicy = cholesky::cholinv<cholesky::policy::cholinv::TrmmUpdate>
 	 >
 class cacqr{
 public:
@@ -38,7 +39,7 @@ protected:
 };
 
 template<class SerializeSymmetricPolicy = policy::cacqr::SerializeSymmetricToTriangle,
-         class CholInvPolicy = cholesky::cholinv
+         class CholInvPolicy = cholesky::cholinv<cholesky::policy::cholinv::TrmmUpdate>
 	 >
 class cacqr2 : public cacqr<SerializeSymmetricPolicy>{
 public:

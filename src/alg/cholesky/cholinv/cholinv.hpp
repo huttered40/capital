@@ -1,9 +1,10 @@
 /* Author: Edward Hutter */
 
 namespace cholesky{
+template<class TrailingMatrixUpdateLocalCompPolicy>
 template<typename MatrixAType, typename MatrixTIType, typename CommType>
 std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-cholinv::invoke(MatrixAType& MatrixA, MatrixTIType& MatrixTI, CommType&& CommInfo,
+cholinv<TrailingMatrixUpdateLocalCompPolicy>::invoke(MatrixAType& MatrixA, MatrixTIType& MatrixTI, CommType&& CommInfo,
                 typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
                 typename MatrixAType::DimensionType blockSizeMultiplier,
 		typename MatrixAType::DimensionType panelDimensionMultiplier, char dir){
@@ -54,8 +55,9 @@ cholinv::invoke(MatrixAType& MatrixA, MatrixTIType& MatrixTI, CommType&& CommInf
   return baseCaseDimList;
 }
 
+template<class TrailingMatrixUpdateLocalCompPolicy>
 template<typename MatrixAType, typename MatrixLIType, typename CommType>
-void cholinv::rFactorLower(MatrixAType& MatrixA, MatrixLIType& MatrixLI, typename MatrixAType::DimensionType localDimension,
+void cholinv<TrailingMatrixUpdateLocalCompPolicy>::rFactorLower(MatrixAType& MatrixA, MatrixLIType& MatrixLI, typename MatrixAType::DimensionType localDimension,
                            typename MatrixAType::DimensionType trueLocalDimension, typename MatrixAType::DimensionType bcDimension,
 			   typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                            typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX,
@@ -187,8 +189,9 @@ void cholinv::rFactorLower(MatrixAType& MatrixA, MatrixLIType& MatrixLI, typenam
 }
 
 
+template<class TrailingMatrixUpdateLocalCompPolicy>
 template<typename MatrixAType, typename MatrixRIType, typename CommType>
-void cholinv::rFactorUpper(MatrixAType& MatrixA, MatrixRIType& MatrixRI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+void cholinv<TrailingMatrixUpdateLocalCompPolicy>::rFactorUpper(MatrixAType& MatrixA, MatrixRIType& MatrixRI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                          typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                          typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                          typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matRIstartX, typename MatrixAType::DimensionType matRIendX,
@@ -308,8 +311,9 @@ void cholinv::rFactorUpper(MatrixAType& MatrixA, MatrixRIType& MatrixRI, typenam
 }
 
 
+template<class TrailingMatrixUpdateLocalCompPolicy>
 template<typename MatrixAType, typename MatrixIType, typename CommType>
-void cholinv::baseCase(MatrixAType& MatrixA, MatrixIType& MatrixI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+void cholinv<TrailingMatrixUpdateLocalCompPolicy>::baseCase(MatrixAType& MatrixA, MatrixIType& MatrixI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                      typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                      typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                      typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matIstartX, typename MatrixAType::DimensionType matIendX,
@@ -443,9 +447,10 @@ void cholinv::baseCase(MatrixAType& MatrixA, MatrixIType& MatrixI, typename Matr
 }
 
 
+template<class TrailingMatrixUpdateLocalCompPolicy>
 template<typename MatrixType>
 std::vector<typename MatrixType::ScalarType>
-cholinv::blockedToCyclicTransformation(MatrixType& MatrixA, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
+cholinv<TrailingMatrixUpdateLocalCompPolicy>::blockedToCyclicTransformation(MatrixType& MatrixA, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
                                      typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType matAstartX, typename MatrixType::DimensionType matAendX,
                                      typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, size_t sliceDim, MPI_Comm slice2Dcomm, char dir){
   TAU_FSTART(cholinv::blockedToCyclicTransformation);
@@ -488,8 +493,9 @@ cholinv::blockedToCyclicTransformation(MatrixType& MatrixA, typename MatrixType:
 //   when we are really only writing to a triangle. So there is a source of optimization here at least in terms of
 //   number of flops, but in terms of memory accesses and cache lines, not sure. Note that with this optimization,
 //   we may need to separate into two different functions
+template<class TrailingMatrixUpdateLocalCompPolicy>
 template<typename T, typename U>
-void cholinv::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, size_t sliceDim, size_t rankSlice, char dir){
+void cholinv<TrailingMatrixUpdateLocalCompPolicy>::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, size_t sliceDim, size_t rankSlice, char dir){
   TAU_FSTART(cholinv::cyclicToLocalTransformation);
 
   U writeIndex = 0;
@@ -525,8 +531,9 @@ void cholinv::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>
   TAU_FSTOP(cholinv::cyclicToLocalTransformation);
 }
 
+template<class TrailingMatrixUpdateLocalCompPolicy>
 template<typename U>
-void cholinv::updateInversePath(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension){
+void cholinv<TrailingMatrixUpdateLocalCompPolicy>::updateInversePath(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension){
   if (inverseCutoffGlobalDimension >= globalDimension){
     if (isInversePath == false){
       baseCaseDimList.push_back(localDimension);

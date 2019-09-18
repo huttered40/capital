@@ -31,7 +31,7 @@ int main(int argc, char** argv){
   std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier,numIterations,ppn,tpr};
   std::vector<const char*> InputNames{"m","n","c","bcm","icm","pdm","numiter","ppn","tpr"};
 
-  using qr_type = typename qr::cacqr2<qr::policy::cacqr::SerializeSymmetricToTriangle>;
+  using qr_type = typename qr::cacqr2<qr::policy::cacqr::NoSerializeSymmetricToTriangle>;
 
   for (auto test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize

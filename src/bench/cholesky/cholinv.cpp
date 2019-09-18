@@ -30,6 +30,7 @@ int main(int argc, char** argv){
   std::vector<size_t> Inputs{globalMatrixSize,pGridDimensionC,blockSizeMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier,numIterations,ppn,tpr};
   std::vector<const char*> InputNames{"n","c","bcm","icm","pdm","numiter","ppn","tpr"};
 
+  using cholesky_type = typename cholesky::cholinv<>;
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
   for (size_t test=0; test<2; test++){
@@ -54,7 +55,7 @@ int main(int argc, char** argv){
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::reset();
       double startTime=MPI_Wtime();
-      cholesky::cholinv::invoke(matA, matT, SquareTopo, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir);
+      cholesky_type::invoke(matA, matT, SquareTopo, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir);
       double iterTimeLocal=MPI_Wtime() - startTime;
 
       switch(test){
@@ -66,7 +67,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MatrixTypeA saveA = matA;
           saveA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
-          double iterErrorLocal = cholesky::validate<cholesky::cholinv>::invoke(saveA, matA, dir, SquareTopo);
+          double iterErrorLocal = cholesky::validate<cholesky_type>::invoke(saveA, matA, dir, SquareTopo);
           MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(2);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;

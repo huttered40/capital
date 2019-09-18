@@ -6,6 +6,7 @@
 #include "./../../alg.h"
 #include "./../../matmult/summa/summa.h"
 #include "./../../trsm/diaginvert/diaginvert.h"
+#include "./../policies/cholinv/policy.h"
 
 // Lets use partial template specialization
 // So only declare the fully templated class
@@ -14,6 +15,7 @@
 //   to be LowerTriangular as well
 
 namespace cholesky{
+template<class TrailingMatrixUpdateLocalCompPolicy = policy::cholinv::TrmmUpdate>
 class cholinv{
 public:
   template<typename MatrixAType, typename MatrixTIType, typename CommType>
