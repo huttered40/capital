@@ -31,6 +31,8 @@ int main(int argc, char** argv){
   std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier,numIterations,ppn,tpr};
   std::vector<const char*> InputNames{"m","n","c","bcm","icm","pdm","numiter","ppn","tpr"};
 
+  using qr_type = typename qr::cacqr2<qr::policy::cacqr::SerializeSymmetricToTriangle>;
+
   for (auto test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
     auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC);
@@ -56,7 +58,7 @@ int main(int argc, char** argv){
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
       critter::reset();
       volatile double startTime=MPI_Wtime();
-      qr::cacqr2<qr::policy::cacqr::SerializeSymmetricToTriangle>::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+      qr_type::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
       double iterTimeLocal = MPI_Wtime() - startTime;
 
       switch(test){
@@ -68,7 +70,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MatrixTypeR saveA = matA;
           saveA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-          auto error = qr::validate<qr::cacqr<qr::policy::cacqr::SerializeSymmetricToTriangle>>::invoke(saveA, matA, matR, RectTopo);
+          auto error = qr::validate<qr_type>::invoke(saveA, matA, matR, RectTopo);
           MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(3);
