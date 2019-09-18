@@ -11,7 +11,9 @@
 
 namespace qr{
 
-template<class SerializeSymmetricPolicy = policy::cacqr::SerializeSymmetricToTriangle>
+template<class SerializeSymmetricPolicy = policy::cacqr::SerializeSymmetricToTriangle,
+         class CholInvPolicy = cholesky::cholinv
+	 >
 class cacqr{
 public:
   template<typename MatrixAType, typename MatrixRType, typename CommType>
@@ -35,7 +37,9 @@ protected:
   static void broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm);
 };
 
-template<class SerializeSymmetricPolicy = policy::cacqr::SerializeSymmetricToTriangle>
+template<class SerializeSymmetricPolicy = policy::cacqr::SerializeSymmetricToTriangle,
+         class CholInvPolicy = cholesky::cholinv
+	 >
 class cacqr2 : public cacqr<SerializeSymmetricPolicy>{
 public:
   template<typename MatrixAType, typename MatrixRType, typename CommType>
