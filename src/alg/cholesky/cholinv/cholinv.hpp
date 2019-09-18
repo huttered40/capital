@@ -3,14 +3,17 @@
 namespace cholesky{
 template<typename MatrixAType, typename MatrixTIType, typename CommType>
 std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
-                typename MatrixAType::DimensionType blockSizeMultiplier, typename MatrixAType::DimensionType panelDimensionMultiplier, char dir){
+cholinv::invoke(MatrixAType& MatrixA, MatrixTIType& MatrixTI, CommType&& CommInfo,
+                typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
+                typename MatrixAType::DimensionType blockSizeMultiplier,
+		typename MatrixAType::DimensionType panelDimensionMultiplier, char dir){
   TAU_FSTART(cholinv::invoke);
 
   using U = typename MatrixAType::DimensionType;
-  U localDimension = matrixA.getNumRowsLocal();
-  U globalDimension = matrixA.getNumRowsGlobal();
-  // the division below may have a remainder, but I think integer division will be ok, as long as we change the base case condition to be <= and not just ==
+  U localDimension = MatrixA.getNumRowsLocal();
+  U globalDimension = MatrixA.getNumRowsGlobal();
+  // the division below may have a remainder, but I think integer division will be ok,
+  //   as long as we change the base case condition to be <= and not just ==
   U bcDimension = globalDimension/(CommInfo.c*CommInfo.d);
 
   for (size_t i=0; i<blockSizeMultiplier; i++){
@@ -36,14 +39,14 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
   if (dir == 'L'){
     baseCaseDimList.first = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
 //    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
-    rFactorLower(matrixA, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+    rFactorLower(MatrixA, MatrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
       0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
       baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension, panelDimensionMultiplier);
   }
   else if (dir == 'U'){
     baseCaseDimList.first = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
 //    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
-    rFactorUpper(matrixA, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+    rFactorUpper(MatrixA, MatrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
       0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
       baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension, panelDimensionMultiplier);
   }
@@ -52,17 +55,19 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
 }
 
 template<typename MatrixAType, typename MatrixLIType, typename CommType>
-void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
-                         typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
-                         typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
-                         typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matLIstartX, typename MatrixAType::DimensionType matLIendX,
-                         typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY,
-                         CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                         typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension){
+void cholinv::rFactorLower(MatrixAType& MatrixA, MatrixLIType& MatrixLI, typename MatrixAType::DimensionType localDimension,
+                           typename MatrixAType::DimensionType trueLocalDimension, typename MatrixAType::DimensionType bcDimension,
+			   typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
+                           typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX,
+			   typename MatrixAType::DimensionType matAstartY, typename MatrixAType::DimensionType matAendY,
+			   typename MatrixAType::DimensionType matLIstartX, typename MatrixAType::DimensionType matLIendX,
+                           typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY,
+                           CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension){
   TAU_FSTART(cholinv::rFactorLower);
 
   if (globalDimension <= bcDimension){
-    baseCase(matrixA, matrixLI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
+    baseCase(MatrixA, MatrixLI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
       matAstartX, matAendX, matAstartY, matAendY, matLIstartX, matLIendX, matLIstartY, matLIendY,
       std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension, 'L');
     return;
@@ -77,7 +82,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   MPI_Comm_rank(CommInfo.world, &rank);
   // globalDimension will always be a power of 2, but localDimension won't
   U localShift = (localDimension>>1);
-  // move localShift up to the next power of 2, only useful if matrix dimensions are not powers of 2
+  // move localShift up to the next power of 2, only useful if Matrix dimensions are not powers of 2
   localShift = util::getNextPowerOf2(localShift);
   // Note: I think this globalShift calculation is wrong, but it hasn't been an issue because its not really used for anything.
   U globalShift = (globalDimension>>1);
@@ -85,7 +90,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   size_t saveIndexPrev = baseCaseDimList.size();
 
   updateInversePath(inverseCutoffGlobalDimension, globalDimension, isInversePath, baseCaseDimList, localDimension);
-  rFactorLower(matrixA, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
+  rFactorLower(MatrixA, MatrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
@@ -95,7 +100,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a buffer
   matrix<T,U,lowertri,Distribution,Offload> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-  serialize<square,lowertri>::invoke(matrixLI, packedMatrix, matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
+  serialize<square,lowertri>::invoke(MatrixLI, packedMatrix, matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift);
   util::transposeSwap(packedMatrix, std::forward<CommType>(CommInfo));
 
   blas::ArgPack_trmm<T> trmmArgs(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasLower,
@@ -104,7 +109,8 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   // 2nd case: Extra optimization for the case when we only perform TRSM at the top level.
   if ((isInversePath) || (globalDimension == inverseCutoffGlobalDimension*2)){
     //std::cout << "tell me localDim and localshIFT - " << localDimension << " " << localShift << std::endl;
-    matmult::summa::invoke(packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), trmmArgs, false, true);
+    matmult::summa::invoke(packedMatrix, MatrixA, 0, localShift, 0, localShift, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+      std::forward<CommType>(CommInfo), trmmArgs, false, true);
   }
   else{
     // Note: keep this a gemm package, because we still need to use gemm in TRSM3D in the update, which is just rectangular and non-triangular matrices.
@@ -118,25 +124,25 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
     }
 
     // TODO: Note: some of those steps are unnecessary if we are doing TRSM3D to one level deep.
-    // make extra copy to avoid corrupting matrixA
+    // make extra copy to avoid corrupting MatrixA
     // Note: some of these globalShifts are wrong, but I don't know any easy way to fix them. Everything might still work though.
-    matrix<T,U,square,Distribution,Offload> matrixLcopy(std::vector<T>(), localShift, matAendY-(matAstartY+localShift), globalShift, globalShift);
-    serialize<square,square>::invoke(matrixA, matrixLcopy, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
-    // Also need to serialize top-left quadrant of matrixL so that its size matches packedMatrix
+    matrix<T,U,square,Distribution,Offload> MatrixLcopy(std::vector<T>(), localShift, matAendY-(matAstartY+localShift), globalShift, globalShift);
+    serialize<square,square>::invoke(MatrixA, MatrixLcopy, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
+    // Also need to serialize top-left quadrant of MatrixL so that its size matches packedMatrix
     matrix<T,U,lowertri,Distribution,Offload> packedMatrixL(std::vector<T>(), localShift, localShift, globalShift, globalShift);
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-    serialize<square,lowertri>::invoke(matrixA, packedMatrixL, matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
+    serialize<square,lowertri>::invoke(MatrixA, packedMatrixL, matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
     // Swap, same as we did with inverse
     util::transposeSwap(packedMatrixL, std::forward<CommType>(CommInfo));
 
     blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasLower,
       blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
-    trsm::diaginvert::invoke(matrixLcopy, packedMatrixL, packedMatrix, std::forward<CommType>(CommInfo), 'U', 'L', subBaseCaseDimList, trsmArgs);
+    trsm::diaginvert::invoke(MatrixLcopy, packedMatrixL, packedMatrix, std::forward<CommType>(CommInfo), 'U', 'L', subBaseCaseDimList, trsmArgs);
 
-    // inject matrixLcopy back into matrixA.
-    // Future optimization: avoid copying matrixL here, and utilize leading dimension and the column vectors.
-    serialize<square,square>::invoke(matrixA, matrixLcopy, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, true);
-//      if (rank == 0) matrixLcopy.print();
+    // inject MatrixLcopy back into MatrixA.
+    // Future optimization: avoid copying MatrixL here, and utilize leading dimension and the column vectors.
+    serialize<square,square>::invoke(MatrixA, MatrixLcopy, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY, true);
+//      if (rank == 0) MatrixLcopy.print();
   }
 
   // Now we need to perform L_{21}L_{21}^T via syrk
@@ -148,10 +154,10 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   U reverseDimGlobal = reverseDimLocal*CommInfo.d;
 
   blas::ArgPack_syrk<T> syrkArgs(blas::Order::AblasColumnMajor, blas::UpLo::AblasLower, blas::Transpose::AblasNoTrans, -1., 1.);
-  matmult::summa::invoke(matrixA, matrixA, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
+  matmult::summa::invoke(MatrixA, MatrixA, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), syrkArgs, true, true);
 
-  rFactorLower(matrixA, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
+  rFactorLower(MatrixA, MatrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
     matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
@@ -161,20 +167,20 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
     // Tradeoff: By encapsulating the transpose/serialization of L21 in the syrk summa routine above, I can't reuse that buffer and must re-serialize L21
     matrix<T,U,square,Distribution,Offload> tempInverse(std::vector<T>(), localShift, reverseDimLocal, globalShift, reverseDimGlobal);
     // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
-    serialize<square,square>::invoke(matrixA, tempInverse, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
+    serialize<square,square>::invoke(MatrixA, tempInverse, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY);
 
     blas::ArgPack_trmm<T> invPackage1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasLower,
       blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-    matmult::summa::invoke(matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY,
+    matmult::summa::invoke(MatrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY,
         matLIstartY+localShift, 0, localShift, 0, reverseDimLocal, std::forward<CommType>(CommInfo), invPackage1, true, false);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
     invPackage1.side = blas::Side::AblasLeft;
-    matmult::summa::invoke(matrixLI, tempInverse, matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, 0, localShift, 0, reverseDimLocal,
+    matmult::summa::invoke(MatrixLI, tempInverse, matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY, 0, localShift, 0, reverseDimLocal,
                              std::forward<CommType>(CommInfo), invPackage1, true, false);
-    // One final serialize of tempInverse into matrixLI
-    serialize<square,square>::invoke(matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, true);
+    // One final serialize of tempInverse into MatrixLI
+    serialize<square,square>::invoke(MatrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, true);
   }
   isInversePath = saveSwitch;
   TAU_FSTOP(cholinv::rFactorLower);
@@ -182,7 +188,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
 
 
 template<typename MatrixAType, typename MatrixRIType, typename CommType>
-void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+void cholinv::rFactorUpper(MatrixAType& MatrixA, MatrixRIType& MatrixRI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                          typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                          typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                          typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matRIstartX, typename MatrixAType::DimensionType matRIendX,
@@ -192,7 +198,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   TAU_FSTART(cholinv::rFactorUpper);
 
   if (globalDimension <= bcDimension){
-    baseCase(matrixA, matrixRI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
+    baseCase(MatrixA, MatrixRI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
       matAstartX, matAendX, matAstartY, matAendY, matRIstartX, matRIendX, matRIstartY, matRIendY,
       std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension, 'U');
     return;
@@ -215,7 +221,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   size_t saveIndexPrev = baseCaseDimList.size();
 
   updateInversePath(inverseCutoffGlobalDimension, globalDimension, isInversePath, baseCaseDimList, localDimension);
-  rFactorUpper(matrixA, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
+  rFactorUpper(MatrixA, MatrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
@@ -225,14 +231,14 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a square buffer
   matrix<T,U,uppertri,Distribution,Offload> packedMatrix(std::vector<T>(), localShift, localShift, globalShift, globalShift);
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-  serialize<square,uppertri>::invoke(matrixRI, packedMatrix, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
+  serialize<square,uppertri>::invoke(MatrixRI, packedMatrix, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift);
   util::transposeSwap(packedMatrix, std::forward<CommType>(CommInfo));
   blas::ArgPack_trmm<T> trmmArgs(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
     blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
 
   // 2nd case: Extra optimization for the case when we only perform TRSM at the top level.
   if ((isInversePath) || (globalDimension == inverseCutoffGlobalDimension*2)){
-    matmult::summa::invoke(packedMatrix, matrixA, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
+    matmult::summa::invoke(packedMatrix, MatrixA, 0, localShift, 0, localShift, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
       std::forward<CommType>(CommInfo), trmmArgs, false, true);
   }
   else{
@@ -244,58 +250,58 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
     for (U i=saveIndexPrev; i<saveIndexAfter; i++){
       subBaseCaseDimList[i-saveIndexPrev] = baseCaseDimList[i];
     }
-    // make extra copy to avoid corrupting matrixA
-    // Future optimization: Copy a part of A into matrixAcopy, to avoid excessing copying
+    // make extra copy to avoid corrupting MatrixA
+    // Future optimization: Copy a part of A into MatrixAcopy, to avoid excessing copying
     // Note: some of these globalShifts are wrong, but I don't know any easy way to fix them. Everything might still work though.
-    matrix<T,U,square,Distribution,Offload> matrixRcopy(std::vector<T>(), matAendX-(matAstartX+localShift), localShift, globalShift, globalShift);
-    serialize<square,square>::invoke(matrixA, matrixRcopy, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift);
-    // Also need to serialize top-left quadrant of matrixL so that its size matches packedMatrix
+    matrix<T,U,square,Distribution,Offload> MatrixRcopy(std::vector<T>(), matAendX-(matAstartX+localShift), localShift, globalShift, globalShift);
+    serialize<square,square>::invoke(MatrixA, MatrixRcopy, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift);
+    // Also need to serialize top-left quadrant of MatrixL so that its size matches packedMatrix
     matrix<T,U,uppertri,Distribution,Offload> packedMatrixR(std::vector<T>(), localShift, localShift, globalShift, globalShift);
     // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
-    serialize<square,uppertri>::invoke(matrixA, packedMatrixR, matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
+    serialize<square,uppertri>::invoke(MatrixA, packedMatrixR, matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift);
     // Swap, same as we did with inverse
     util::transposeSwap(packedMatrixR, std::forward<CommType>(CommInfo));
 
     blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
       blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
-    trsm::diaginvert::invoke(packedMatrixR, packedMatrix, matrixRcopy, std::forward<CommType>(CommInfo), 'L', 'R', subBaseCaseDimList, trsmArgs);
+    trsm::diaginvert::invoke(packedMatrixR, packedMatrix, MatrixRcopy, std::forward<CommType>(CommInfo), 'L', 'R', subBaseCaseDimList, trsmArgs);
 
-    // Inject back into matrixR
-    serialize<square,square>::invoke(matrixA, matrixRcopy, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift, true);
+    // Inject back into MatrixR
+    serialize<square,square>::invoke(MatrixA, MatrixRcopy, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift, true);
   }
 
   U reverseDimLocal = localDimension-localShift;
   U reverseDimGlobal = reverseDimLocal*CommInfo.d;
 
   blas::ArgPack_syrk<T> syrkArgs(blas::Order::AblasColumnMajor, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, -1., 1.);
-  matmult::summa::invoke(matrixA, matrixA, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
+  matmult::summa::invoke(MatrixA, MatrixA, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), syrkArgs, true, true);
 
-  rFactorUpper(matrixA, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
+  rFactorUpper(MatrixA, MatrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
     matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, panelDimension);
 
   // Next step : temp <- R_{12}*RI_{22}
-  // We can re-use holdRsyrk as our temporary output matrix.
+  // We can re-use holdRsyrk as our temporary output Matrix.
 
   if (isInversePath){
     // Tradeoff: By encapsulating the transpose/serialization of L21 in the syrk summa routine above, I can't reuse that buffer and must re-serialize L21
     matrix<T,U,square,Distribution,Offload> tempInverse(std::vector<T>(), reverseDimLocal, localShift, reverseDimGlobal, globalShift);
     // NOTE: WE BROKE SQUARE SEMANTICS WITH THIS. CHANGE LATER!
-    serialize<square,square>::invoke(matrixA, tempInverse, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift);
+    serialize<square,square>::invoke(MatrixA, tempInverse, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift);
 
     blas::ArgPack_trmm<T> invPackage1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
       blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-    matmult::summa::invoke(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift,
+    matmult::summa::invoke(MatrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY, 0, reverseDimLocal, 0, localShift,
       std::forward<CommType>(CommInfo), invPackage1, true, false);
 
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
     invPackage1.side = blas::Side::AblasLeft;
-    matmult::summa::invoke(matrixRI, tempInverse, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, 0, reverseDimLocal, 0, localShift,
+    matmult::summa::invoke(MatrixRI, tempInverse, matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift, 0, reverseDimLocal, 0, localShift,
       std::forward<CommType>(CommInfo), invPackage1, true, false);
-    serialize<square,square>::invoke(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, true);
+    serialize<square,square>::invoke(MatrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, true);
   }
   isInversePath = saveSwitch;
   TAU_FSTOP(cholinv::rFactorUpper);
@@ -303,7 +309,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
 
 
 template<typename MatrixAType, typename MatrixIType, typename CommType>
-void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+void cholinv::baseCase(MatrixAType& MatrixA, MatrixIType& MatrixI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                      typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                      typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                      typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matIstartX, typename MatrixAType::DimensionType matIendX,
@@ -338,7 +344,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
 
   // Should be fast pass-by-value via move semantics
   std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
-    matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
+    MatrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
     (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), CommInfo.d, CommInfo.slice, dir);
 
   // TODO: Note: with my new optimizations, this case might never pass, because A is serialized into. Watch out!
@@ -361,9 +367,9 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
     std::vector<T> deepBaseCaseInv = deepBaseCase;              // true copy because we have to, unless we want to iterate (see below) two different times
     lapack::engine::_trtri(&deepBaseCaseInv[0],finalDim,finalDim,trtriArgs);
 
-    // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
+    // Only truly a "square-to-square" serialization because we store MatrixL as a square (no packed storage yet!)
 
-    // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
+    // Now, before we can serialize into MatrixL and MatrixLI, we need to save the values that this processor owns according to the cyclic rule.
     // Only then can we serialize.
 
     // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
@@ -393,9 +399,9 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
 
     // invoke into the existing Matrix data structures owned by the user
 //      if (tempRank == 0) { std::cout << "check these 4 numbers - " << matLstartX << "," << matLendX << "," << matLstartY << "," << matLendY << std::endl;}
-    serialize<square,square>::invoke(matrixA, tempMat, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
+    serialize<square,square>::invoke(MatrixA, tempMat, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
       (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), true);
-    serialize<square,square>::invoke(matrixI, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
+    serialize<square,square>::invoke(MatrixI, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
   }
   else{
     size_t fTranDim1 = localDimension*CommInfo.d;
@@ -407,9 +413,9 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
     std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
     lapack::engine::_trtri(&storeMatInv[0],fTranDim1,fTranDim1,trtriArgs);
 
-    // Only truly a "square-to-square" serialization because we store matrixL as a square (no packed storage yet!)
+    // Only truly a "square-to-square" serialization because we store MatrixL as a square (no packed storage yet!)
 
-    // Now, before we can serialize into matrixL and matrixLI, we need to save the values that this processor owns according to the cyclic rule.
+    // Now, before we can serialize into MatrixL and MatrixLI, we need to save the values that this processor owns according to the cyclic rule.
     // Only then can we serialize.
 
     // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
@@ -428,9 +434,9 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
     matrix<T,U,square,Distribution,Offload> tempMatInv(std::move(storeMatInv), localDimension, localDimension, globalDimension, globalDimension, true);
 
     // invoke into the existing Matrix data structures owned by the user
-    serialize<square,square>::invoke(matrixA, tempMat, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
+    serialize<square,square>::invoke(MatrixA, tempMat, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
       (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), true);
-    serialize<square,square>::invoke(matrixI, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
+    serialize<square,square>::invoke(MatrixI, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
   }
   TAU_FSTOP(cholinv::baseCase);
   return;
@@ -439,7 +445,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
 
 template<typename MatrixType>
 std::vector<typename MatrixType::ScalarType>
-cholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
+cholinv::blockedToCyclicTransformation(MatrixType& MatrixA, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
                                      typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType matAstartX, typename MatrixType::DimensionType matAendX,
                                      typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, size_t sliceDim, MPI_Comm slice2Dcomm, char dir){
   TAU_FSTART(cholinv::blockedToCyclicTransformation);
@@ -451,7 +457,7 @@ cholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::Di
 
   if (dir == 'U'){
     matrix<T,U,uppertri,Distribution,Offload> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension, globalDimension, globalDimension);
-    serialize<square,uppertri>::invoke(matA, baseCaseMatrixA, matAstartX, matAendX, matAstartY, matAendY);
+    serialize<square,uppertri>::invoke(MatrixA, baseCaseMatrixA, matAstartX, matAendX, matAstartY, matAendY);
   //  U aggregDim = localDimension*sliceDim;
   //  std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
     U aggregSize = baseCaseMatrixA.getNumElems()*sliceDim*sliceDim;
@@ -464,7 +470,7 @@ cholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::Di
   }
   else{ // dir == 'L'
     matrix<T,U,lowertri,Distribution,Offload> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension, globalDimension, globalDimension);
-    serialize<square,lowertri>::invoke(matA, baseCaseMatrixA, matAstartX, matAendX, matAstartY, matAendY);
+    serialize<square,lowertri>::invoke(MatrixA, baseCaseMatrixA, matAstartX, matAendX, matAstartY, matAendY);
   //  U aggregDim = localDimension*sliceDim;
   //  std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
     U aggregSize = baseCaseMatrixA.getNumElems()*sliceDim*sliceDim;
