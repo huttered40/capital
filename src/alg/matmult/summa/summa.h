@@ -21,13 +21,6 @@ public:
   // New design: user will specify via an argument to the overloaded Multiply() method what underlying BLAS routine he wants called.
   //             I think this is a reasonable assumption to make and will allow me to optimize each routine.
 
-  template<typename MatrixBType, typename CommType>
-  static void invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matrixB, typename MatrixBType::ScalarType* matrixC,
-                     typename MatrixBType::DimensionType matrixAnumColumns, typename MatrixBType::DimensionType matrixAnumRows,
-                     typename MatrixBType::DimensionType matrixBnumColumns, typename MatrixBType::DimensionType matrixBnumRows,
-                     typename MatrixBType::DimensionType matrixCnumColumns, typename MatrixBType::DimensionType matrixCnumRows,
-                     CommType&& CommInfo, const blas::ArgPack_gemm<typename MatrixBType::ScalarType>& srcPackage);
-
   template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, CommType&& CommInfo,
                      const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
@@ -36,15 +29,23 @@ public:
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
                      const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
 
+  template<typename MatrixAType, typename MatrixCType, typename CommType>
+  static void invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
+                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
+
+
+  template<typename MatrixBType, typename CommType>
+  static void invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matrixB, typename MatrixBType::ScalarType* matrixC,
+                     typename MatrixBType::DimensionType matrixAnumColumns, typename MatrixBType::DimensionType matrixAnumRows,
+                     typename MatrixBType::DimensionType matrixBnumColumns, typename MatrixBType::DimensionType matrixBnumRows,
+                     typename MatrixBType::DimensionType matrixCnumColumns, typename MatrixBType::DimensionType matrixCnumRows,
+                     CommType&& CommInfo, const blas::ArgPack_gemm<typename MatrixBType::ScalarType>& srcPackage);
+
   template<typename MatrixAType, typename CommType>
   static void invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matrixB, typename MatrixAType::DimensionType matrixAnumColumns,
                      typename MatrixAType::DimensionType matrixAnumRows, typename MatrixAType::DimensionType matrixBnumColumns,
                      typename MatrixAType::DimensionType matrixBnumRows, CommType&& CommInfo,
                      const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage);
-
-  template<typename MatrixAType, typename MatrixCType, typename CommType>
-  static void invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
-                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey = 0);
 
   template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
