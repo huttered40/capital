@@ -56,7 +56,7 @@ int main(int argc, char** argv){
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
       critter::reset();
       volatile double startTime=MPI_Wtime();
-      qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+      qr::cacqr2<qr::policy::cacqr::SerializeSymmetricToTriangle>::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
       double iterTimeLocal = MPI_Wtime() - startTime;
 
       switch(test){
@@ -68,7 +68,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MatrixTypeR saveA = matA;
           saveA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-          auto error = qr::validate<qr::cacqr>::invoke(saveA, matA, matR, RectTopo);
+          auto error = qr::validate<qr::cacqr<qr::policy::cacqr::SerializeSymmetricToTriangle>>::invoke(saveA, matA, matR, RectTopo);
           MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(3);
