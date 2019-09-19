@@ -22,7 +22,6 @@ int main(int argc, char** argv){
   size_t inverseCutOffMultiplier = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
   size_t panelDimensionMultiplier = atoi(argv[5]);
   size_t numIterations = atoi(argv[6]);
-  std::string fileStr1 = argv[7];.. delete later	// Critter
 
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
@@ -37,16 +36,13 @@ int main(int argc, char** argv){
       double iterTimeGlobal,iterErrorGlobal;
       matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
-      critter::reset();
+      critter::start();
       double startTime=MPI_Wtime();
       cholesky::cholinv::invoke(matA, matT, SquareTopo, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir);
       double iterTimeLocal=MPI_Wtime() - startTime;
+      critter::stop();
 
       switch(test){
-        case 0:{
-          critter::print(i==0, size);
-	  break;
-	}
         case 1:{
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           MatrixTypeA saveA = matA;

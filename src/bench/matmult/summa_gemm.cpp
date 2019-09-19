@@ -28,7 +28,6 @@ int main(int argc, char** argv){
   size_t pGridDimensionC = atoi(argv[4]);
   size_t methodKey2 = atoi(argv[5]);
   size_t numIterations = atoi(argv[6]);
-  std::string fileStr1 = argv[7];.. delete later	// Critter
 
   for (size_t test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
@@ -46,15 +45,13 @@ int main(int argc, char** argv){
       matB.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
       matC.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
-      critter::reset();
+      critter::start();
       double startTime=MPI_Wtime();
       matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs, methodKey2);
       double iterTimeLocal=MPI_Wtime()-startTime;
+      critter::stop();
+
       switch(test){
-        case 0:{
-          critter::print(i==0, size, Inputs.size());
-	  break;
-	}
         case 1:{
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(1);

@@ -23,7 +23,6 @@ int main(int argc, char** argv){
   size_t inverseCutOffMultiplier = atoi(argv[5]);
   size_t panelDimensionMultiplier = atoi(argv[6]);
   size_t numIterations=atoi(argv[7]);
-  std::string fileStr = argv[8];.. delete later	// Critter
 
   for (auto test=0; test<2; test++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
@@ -39,9 +38,11 @@ int main(int argc, char** argv){
       double iterTimeGlobal = 0;
       double residualErrorGlobal,orthogonalityErrorGlobal;
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
+      critter::start();
       volatile double startTime=MPI_Wtime();
       qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
       double iterTimeLocal = MPI_Wtime() - startTime;
+      critter::stop();
 
       switch(test){
         case 1:{
