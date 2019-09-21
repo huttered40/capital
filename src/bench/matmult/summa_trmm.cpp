@@ -51,17 +51,19 @@ int main(int argc, char** argv){
       matB.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::start();
+      matmult::summa3d::invoke(matA, matB, SquareTopo, blasArgs, methodKey2);
+      critter::stop();
+
       double startTime=MPI_Wtime();
       matmult::summa3d::invoke(matA, matB, SquareTopo, blasArgs, methodKey2);
       double iterTimeLocal=MPI_Wtime()-startTime;
-      critter::stop();
 
       switch(test){
         case 1:{
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(1);
 	  Outputs[0] = iterTimeGlobal;
-          //critter::print(Outputs.size(), &Outputs[0]);
+          critter::print(Outputs.size(), &Outputs[0]);
           //matmult::validate<summa3d>::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
 	  break;
 	}

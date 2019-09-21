@@ -37,10 +37,12 @@ int main(int argc, char** argv){
       matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::start();
+      cholesky::cholinv::invoke(matA, matT, SquareTopo, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir);
+      critter::stop();
+
       double startTime=MPI_Wtime();
       cholesky::cholinv::invoke(matA, matT, SquareTopo, inverseCutOffMultiplier, blockSizeMultiplier, panelDimensionMultiplier, dir);
       double iterTimeLocal=MPI_Wtime() - startTime;
-      critter::stop();
 
       switch(test){
         case 1:{
@@ -51,7 +53,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(2);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;
-          //critter::print(Outputs.size(), &Outputs[0]);
+          critter::print(Outputs.size(), &Outputs[0]);
 	  break;
 	}
       }

@@ -39,10 +39,12 @@ int main(int argc, char** argv){
       double residualErrorGlobal,orthogonalityErrorGlobal;
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
       critter::start();
+      qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+      critter::stop();
+
       volatile double startTime=MPI_Wtime();
       qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
       double iterTimeLocal = MPI_Wtime() - startTime;
-      critter::stop();
 
       switch(test){
         case 1:{
@@ -54,7 +56,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(3);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = residualErrorGlobal; Outputs[2] = orthogonalityErrorGlobal;
-          //critter::print(Outputs.size(),&Outputs[0]);
+          critter::print(Outputs.size(),&Outputs[0]);
 	  break;
 	}
       }
