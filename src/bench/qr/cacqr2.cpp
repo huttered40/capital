@@ -24,43 +24,37 @@ int main(int argc, char** argv){
   size_t panelDimensionMultiplier = atoi(argv[6]);
   size_t numIterations=atoi(argv[7]);
 
-  for (auto test=0; test<2; test++){
-    // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
-    auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC);
+  // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
+  auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC);
 
-    for (size_t i=0; i<numIterations; i++){
-      // reset the matrix before timer starts
-      // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
-      MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);
+  for (size_t i=0; i<numIterations; i++){
+    // reset the matrix before timer starts
+    // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
+    MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);
 
-      MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, RectTopo.c, RectTopo.c);
-      matA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-      double iterTimeGlobal = 0;
-      double residualErrorGlobal,orthogonalityErrorGlobal;
-      MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
-      critter::start();
-      qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
-      critter::stop();
+    MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, RectTopo.c, RectTopo.c);
+    matA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
+    double iterTimeGlobal = 0;
+    double residualErrorGlobal,orthogonalityErrorGlobal;
+    MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
+    critter::start();
+    qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+    critter::stop();
 
-      volatile double startTime=MPI_Wtime();
-      qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
-      double iterTimeLocal = MPI_Wtime() - startTime;
+    volatile double startTime=MPI_Wtime();
+    qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+    double iterTimeLocal = MPI_Wtime() - startTime;
 
-      switch(test){
-        case 1:{
-          MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-          MatrixTypeR saveA = matA;
-          saveA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-          auto error = qr::validate<qr::cacqr>::invoke(saveA, matA, matR, RectTopo);
-          MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-          MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-          std::vector<double> Outputs(3);
-	  Outputs[0] = iterTimeGlobal; Outputs[1] = residualErrorGlobal; Outputs[2] = orthogonalityErrorGlobal;
-          critter::print(Outputs.size(),&Outputs[0]);
-	  break;
-	}
-      }
-    }
+    MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MatrixTypeR saveA = matA;
+    saveA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
+    auto error = qr::validate<qr::cacqr>::invoke(saveA, matA, matR, RectTopo);
+    MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    std::vector<double> Outputs(3);
+    Outputs[0] = iterTimeGlobal; Outputs[1] = residualErrorGlobal; Outputs[2] = orthogonalityErrorGlobal;
+    critter::print(Outputs.size(),&Outputs[0]);
   }
 
   MPI_Finalize();
