@@ -24,10 +24,9 @@ int main(int argc, char** argv){
   size_t panelDimensionMultiplier = atoi(argv[6]);
   size_t numIterations=atoi(argv[7]);
 
-  // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
-  auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC);
-
   for (size_t i=0; i<numIterations; i++){
+    // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
+    auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC);
     // reset the matrix before timer starts
     // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
     MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);

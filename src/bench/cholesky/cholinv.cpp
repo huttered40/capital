@@ -25,10 +25,10 @@ int main(int argc, char** argv){
 
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
-  // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
-  auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
 
   for (size_t i=0; i<numIterations; i++){
+    // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
     // Reset matrixA
     MatrixTypeA matA(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
     MatrixTypeA matT(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);

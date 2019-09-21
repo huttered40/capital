@@ -29,11 +29,10 @@ int main(int argc, char** argv){
   size_t methodKey2 = atoi(argv[5]);
   size_t numIterations = atoi(argv[6]);
 
-  // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
-  auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
-
   // Loop for getting a good range of results.
   for (size_t i=0; i<numIterations; i++){
+    // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
     MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,SquareTopo.d,SquareTopo.d);
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,SquareTopo.d,SquareTopo.d);
     MatrixTypeR matC(globalMatrixSizeN,globalMatrixSizeM,SquareTopo.d,SquareTopo.d);
