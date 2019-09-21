@@ -51,7 +51,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(2);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;
-          critter::print(i==0, size, Outputs.size(), &Outputs[0]);
+          //critter::print(Outputs.size(), &Outputs[0]);
 	  break;
 	}
       }

@@ -54,7 +54,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(3);
 	  Outputs[0] = iterTimeGlobal; Outputs[1] = residualErrorGlobal; Outputs[2] = orthogonalityErrorGlobal;
-          critter::print(i==0, size, Outputs.size(),&Outputs[0]);
+          //critter::print(Outputs.size(),&Outputs[0]);
 	  break;
 	}
       }

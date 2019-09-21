@@ -56,7 +56,7 @@ int main(int argc, char** argv){
           MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
           std::vector<double> Outputs(1);
 	  Outputs[0] = iterTimeGlobal;
-          critter::print(i==0, size, Outputs.size(), &Outputs[0]);
+          //critter::print(Outputs.size(), &Outputs[0]);
           //matmult::validate<summa3d>::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
 	  break;
 	}
