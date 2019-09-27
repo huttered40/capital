@@ -13,8 +13,9 @@
 namespace qr{
 
 template<class SerializeSymmetricPolicy = policy::cacqr::SerializeSymmetricToTriangle,
-         class CholInvPolicy = cholesky::cholinv<cholesky::policy::cholinv::TrmmUpdate>
-	 >
+         class CholInvPolicy = cholesky::cholinv<cholesky::policy::cholinv::TrmmUpdate>,
+         class TrsmPolicy = trsm::diaginvert
+         >
 class cacqr{
 public:
   template<typename MatrixAType, typename MatrixRType, typename CommType>
@@ -39,7 +40,8 @@ protected:
 };
 
 template<class SerializeSymmetricPolicy = policy::cacqr::SerializeSymmetricToTriangle,
-         class CholInvPolicy = cholesky::cholinv<cholesky::policy::cholinv::TrmmUpdate>
+         class CholInvPolicy = cholesky::cholinv<cholesky::policy::cholinv::TrmmUpdate>,
+         class TrsmPolicy = trsm::diaginvert
 	 >
 class cacqr2 : public cacqr<SerializeSymmetricPolicy>{
 public:

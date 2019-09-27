@@ -2,9 +2,9 @@
 
 namespace qr{
 
-template<class SerializeSymmetricPolicy, class CholInvPolicy>
+template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename T, typename U>
-void cacqr<SerializeSymmetricPolicy,CholInvPolicy>::broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm){
+void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm){
   TAU_FSTART(cacqr::broadcast_panels);
   if (isRoot){
     MPI_Bcast(&data[0], size, mpi_type<T>::type, pGridCoordZ, panelComm);
@@ -16,9 +16,9 @@ void cacqr<SerializeSymmetricPolicy,CholInvPolicy>::broadcast_panels(std::vector
   TAU_FSTOP(cacqr::broadcast_panels);
 }
 
-template<class SerializeSymmetricPolicy, class CholInvPolicy>
+template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke_1d(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo){
+void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_1d(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo){
   TAU_FSTART(cacqr::invoke_1d);
 
   using T = typename MatrixAType::ScalarType;
@@ -45,9 +45,9 @@ void cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke_1d(MatrixAType& Matri
   TAU_FSTOP(cacqr::invoke_1d);
 }
 
-template<class SerializeSymmetricPolicy, class CholInvPolicy>
+template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
+void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_3d(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
                       size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
 
   TAU_FSTART(cacqr::invoke_3d);
@@ -107,21 +107,21 @@ void cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixAType& Matri
     gemmPack1.transposeB = blas::Transpose::AblasNoTrans;
     blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
       blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-    trsm::diaginvert::invoke(MatrixA, rectR, rectRI, std::forward<CommType>(CommInfo), 'U', 'L', baseCaseDimList.second, gemmPack1);
+    TrsmPolicy::invoke(MatrixA, rectR, rectRI, std::forward<CommType>(CommInfo), 'U', 'L', baseCaseDimList.second, gemmPack1);
   }
   TAU_FSTOP(cacqr::invoke_3d);
 }
 
-template<class SerializeSymmetricPolicy, class CholInvPolicy>
+template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
+void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
                    size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
   invoke(MatrixA,MatrixR,std::forward<CommType>(CommInfo),topo::square(CommInfo.cube,CommInfo.c),inverseCutOffMultiplier,baseCaseMultiplier,panelDimensionMultiplier);
 }
 
-template<class SerializeSymmetricPolicy, class CholInvPolicy>
+template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename RectCommType, typename SquareCommType>
-void cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke(MatrixAType& MatrixA, MatrixRType& MatrixR, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo,
+void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke(MatrixAType& MatrixA, MatrixRType& MatrixR, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo,
                    size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
   TAU_FSTART(cacqr::invoke);
 
@@ -180,14 +180,14 @@ void cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke(MatrixAType& MatrixA,
     gemmPack1.transposeB = blas::Transpose::AblasNoTrans;
     blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
       blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-    trsm::diaginvert::invoke(MatrixA, rectR, rectRI, std::forward<SquareCommType>(SquareCommInfo), 'U', 'L', baseCaseDimList.second, gemmPack1);
+    TrsmPolicy::invoke(MatrixA, rectR, rectRI, std::forward<SquareCommType>(SquareCommInfo), 'U', 'L', baseCaseDimList.second, gemmPack1);
   }
   TAU_FSTOP(cacqr::invoke);
 }
 
-template<class SerializeSymmetricPolicy, class CholInvPolicy>
+template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr2<SerializeSymmetricPolicy,CholInvPolicy>::invoke_1d(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo){
+void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_1d(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo){
   TAU_FSTART(cacqr2::invoke_1d);
   // We assume data is owned relative to a 1D processor grid, so every processor owns a chunk of data consisting of
   //   all columns and a block of rows.
@@ -210,9 +210,9 @@ void cacqr2<SerializeSymmetricPolicy,CholInvPolicy>::invoke_1d(MatrixAType& Matr
   TAU_FSTOP(cacqr2::invoke_1d);
 }
 
-template<class SerializeSymmetricPolicy, class CholInvPolicy>
+template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr2<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
+void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_3d(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
                        size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
   TAU_FSTART(cacqr2::invoke_3d);
 
@@ -234,9 +234,9 @@ void cacqr2<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixAType& Matr
   TAU_FSTOP(cacqr2::invoke_3d);
 }
 
-template<class SerializeSymmetricPolicy, class CholInvPolicy>
+template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr2<SerializeSymmetricPolicy,CholInvPolicy>::invoke(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
+void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
                     size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
   TAU_FSTART(cacqr2::invoke);
   if (CommInfo.c == 1){
