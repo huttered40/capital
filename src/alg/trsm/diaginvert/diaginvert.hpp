@@ -167,6 +167,7 @@ void diaginvert::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType&
                          blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
   if ((UpLo=='L') && (Dir=='L')){
     //iSolveLowerLeft(matrixA,matrixB,matrixC,std::forward<CommType>(CommInfo),baseCaseDimList,gemmPackage);
+    assert(0);
   }
   else if ((UpLo=='U') && (Dir=='L')){
     iSolveUpperLeft(matrixA,matrixB,matrixC,std::forward<CommType>(CommInfo),baseCaseDimList,gemmPackage);
@@ -176,6 +177,7 @@ void diaginvert::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType&
   }
   else if ((UpLo=='U') && (Dir=='R')){
     //iSolveUpperRight(matrixA,matrixB,matrixC,std::forward<CommType>(CommInfo),baseCaseDimList,gemmPackage);
+    assert(0);
   }
 }
 }
