@@ -46,8 +46,7 @@ void cacqr::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
-                      size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
+void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
 
   TAU_FSTART(cacqr::invoke_3d);
 
@@ -82,7 +81,7 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
   MatrixRType matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, matrixA.getNumColumnsGlobal(), matrixA.getNumColumnsGlobal(), true);
 
   std::pair<bool,std::vector<U>> baseCaseDimList = cholesky::cholinv::invoke(matrixR, matrixRI, std::forward<CommType>(CommInfo),
-                                                                             inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U');
+                                                                             inverseCutOffMultiplier, 'U');
 
 // For now, comment this out, because I am experimenting with using TriangularSolve TRSM instead of MM3D
 //   But later on once it works, use an integer or something to have both available, important when benchmarking
@@ -112,14 +111,13 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
-                   size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
-  invoke(matrixA,matrixR,std::forward<CommType>(CommInfo),topo::square(CommInfo.cube,CommInfo.c),inverseCutOffMultiplier,baseCaseMultiplier,panelDimensionMultiplier);
+void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
+  invoke(matrixA,matrixR,std::forward<CommType>(CommInfo),topo::square(CommInfo.cube,CommInfo.c),inverseCutOffMultiplier);
 }
 
 template<typename MatrixAType, typename MatrixRType, typename RectCommType, typename SquareCommType>
 void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo,
-                   size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
+                   size_t inverseCutOffMultiplier){
   TAU_FSTART(cacqr::invoke);
 
   using T = typename MatrixAType::ScalarType;
@@ -157,7 +155,7 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& Re
   MatrixRType matrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
 
   std::pair<bool,std::vector<U>> baseCaseDimList = cholesky::cholinv::invoke(matrixR, matrixRI, std::forward<SquareCommType>(SquareCommInfo),
-                                                                             inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U');
+                                                                             inverseCutOffMultiplier, 'U');
 
   if (baseCaseDimList.first){
     blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
@@ -207,8 +205,7 @@ void cacqr2::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Co
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
-                       size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
+void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
   TAU_FSTART(cacqr2::invoke_3d);
 
   using T = typename MatrixAType::ScalarType;
@@ -218,8 +215,8 @@ void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Co
   U localDimensionN = matrixA.getNumColumnsLocal();		// no error check here, but hopefully 
 
   MatrixRType matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
-  cacqr::invoke_3d(matrixA, matrixR, std::forward<CommType>(CommInfo), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
-  cacqr::invoke_3d(matrixA, matrixR2, std::forward<CommType>(CommInfo), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+  cacqr::invoke_3d(matrixA, matrixR, std::forward<CommType>(CommInfo), inverseCutOffMultiplier);
+  cacqr::invoke_3d(matrixA, matrixR2, std::forward<CommType>(CommInfo), inverseCutOffMultiplier);
 
   blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
     blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
@@ -230,8 +227,7 @@ void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Co
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
-                    size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
+void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
   TAU_FSTART(cacqr2::invoke);
   if (CommInfo.c == 1){
     cacqr2::invoke_1d(matrixA, matrixR, std::forward<CommType>(CommInfo));
@@ -239,7 +235,7 @@ void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommI
   }
   if (CommInfo.c == CommInfo.d){
     // TODO: Can CommInfo be reused?
-    cacqr2::invoke_3d(matrixA, matrixR, topo::square(CommInfo.cube,CommInfo.c), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+    cacqr2::invoke_3d(matrixA, matrixR, topo::square(CommInfo.cube,CommInfo.c), inverseCutOffMultiplier);
     return;
   }
 
@@ -252,8 +248,8 @@ void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommI
   // Need to get the right global dimensions here, use a tunable package struct or something
   MatrixRType matrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
   auto SquareTopo = topo::square(CommInfo.cube,CommInfo.c);
-  cacqr::invoke(matrixA, matrixR, std::forward<CommType>(CommInfo), SquareTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
-  cacqr::invoke(matrixA, matrixR2, std::forward<CommType>(CommInfo), SquareTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+  cacqr::invoke(matrixA, matrixR, std::forward<CommType>(CommInfo), SquareTopo, inverseCutOffMultiplier);
+  cacqr::invoke(matrixA, matrixR2, std::forward<CommType>(CommInfo), SquareTopo, inverseCutOffMultiplier);
 
   blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
     blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);

@@ -18,8 +18,7 @@ class cholinv{
 public:
   template<typename MatrixAType, typename MatrixTIType, typename CommType>
   static std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-         invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension,
-                typename MatrixAType::DimensionType blockSizeMultiplier, typename MatrixAType::DimensionType panelDimensionMultiplier, char dir);
+         invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension, char dir);
 
 private:
   template<typename MatrixAType, typename MatrixLIType, typename CommType>
@@ -29,7 +28,7 @@ private:
                            typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matLIstartX, typename MatrixAType::DimensionType matLIendX,
                            typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY,
                            CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension);
+                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension);
 
   template<typename MatrixAType, typename MatrixRIType, typename CommType>
   static void rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
@@ -38,7 +37,7 @@ private:
                            typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matRIstartX, typename MatrixAType::DimensionType matRIendX,
                            typename MatrixAType::DimensionType matRIstartY, typename MatrixAType::DimensionType matRIendY,
                            CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension);
+                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension);
 
   
   template<typename MatrixAType, typename MatrixIType, typename CommType>
@@ -48,7 +47,7 @@ private:
                        typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matIstartX, typename MatrixAType::DimensionType matIendX,
                        typename MatrixAType::DimensionType matIstartY, typename MatrixAType::DimensionType matIendY, CommType&& CommInfo,
                        bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                       typename MatrixAType::DimensionType inverseCutoffGlobalDimension, typename MatrixAType::DimensionType panelDimension, char dir);
+                       typename MatrixAType::DimensionType inverseCutoffGlobalDimension, char dir);
 
   template<typename MatrixType>
   static std::vector<typename MatrixType::ScalarType>
