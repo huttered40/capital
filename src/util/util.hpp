@@ -308,13 +308,3 @@ void util::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrT
     fptrTotal2.close();
   }
 }
-
-template<typename T>
-void util::InitialGEMM(){
-  // Function must be called before performance testing is done due to MKL implementation of GEMM
-  std::vector<T> matrixA(128*128,0.);
-  std::vector<T> matrixB(128*128,0.);
-  std::vector<T> matrixC(128*128,0.);
-  blas::ArgPack_gemm<T> gemmPack1(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., 0.);
-  blas::engine::_gemm(&matrixA[0], &matrixB[0], &matrixC[0], 128, 128, 128, 128, 128, 128, gemmPack1);
-}

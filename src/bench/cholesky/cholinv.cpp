@@ -13,8 +13,6 @@ int main(int argc, char** argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  util::InitialGEMM<double>();
-
   char dir = 'U';
   size_t globalMatrixSize = atoi(argv[1]);
   size_t pGridDimensionC = atoi(argv[2]);

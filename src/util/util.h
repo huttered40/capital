@@ -21,8 +21,6 @@ public:
   template<typename MatrixType>
   static void removeTriangle(MatrixType& matrix, size_t sliceX, size_t sliceY, size_t sliceDim, char dir);
   static void processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, size_t numFuncs, size_t numIterations, size_t rank);
-  template<typename T>
-  static void InitialGEMM();
 };
 
 #include "util.hpp"

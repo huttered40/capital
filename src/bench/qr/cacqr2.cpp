@@ -14,8 +14,6 @@ int main(int argc, char** argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  util::InitialGEMM<double>();
-
   size_t globalMatrixDimensionM = atoi(argv[1]);
   size_t globalMatrixDimensionN = atoi(argv[2]);
   size_t dimensionC = atoi(argv[3]);
