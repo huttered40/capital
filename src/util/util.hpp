@@ -32,7 +32,7 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
 
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename T, typename U>
-std::vector<T> util::blockedToCyclicSpecial(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t sliceDim, char dir){
+std::vector<T> util::blocked_to_cyclic_special(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t sliceDim, char dir){
   TAU_FSTART(Util::blockedToCyclic);
 
   U aggregNumRows = localDimensionRows*sliceDim;
@@ -113,7 +113,7 @@ std::vector<T> util::blockedToCyclicSpecial(std::vector<T>& blockedData, U local
 }
 
 template<typename T, typename U>
-std::vector<T> util::blockedToCyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t sliceDim){
+std::vector<T> util::blocked_to_cyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t sliceDim){
   TAU_FSTART(Util::blockedToCyclic);
 
   U aggregNumRows = localDimensionRows*sliceDim;
@@ -147,7 +147,7 @@ std::vector<T> util::blockedToCyclic(std::vector<T>& blockedData, U localDimensi
 
 template<typename MatrixType>
 std::vector<typename MatrixType::ScalarType>
-util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_t commDim){
+util::get_reference_matrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_t commDim){
   TAU_FSTART(Util::getReferenceMatrix);
 
   using T = typename MatrixType::ScalarType;
@@ -184,7 +184,7 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_
 //  std::vector<T> cyclicMatrix(aggregSize);
   MPI_Allgather(matrixPtr, localSize, mpi_type<T>::type, &blockedMatrix[0], localSize, mpi_type<T>::type, slice);
 
-  std::vector<T> cyclicMatrix = util::blockedToCyclic(blockedMatrix, localNumRows, localNumColumns, commDim);
+  std::vector<T> cyclicMatrix = util::blocked_to_cyclic(blockedMatrix, localNumRows, localNumColumns, commDim);
 
   // In case there are hidden zeros, we will recopy
   if ((globalNumRows%commDim) || (globalNumColumns%commDim)){
@@ -202,7 +202,7 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_
 }
 
 template<typename MatrixType, typename CommType>
-void util::transposeSwap(MatrixType& mat, CommType&& CommInfo){
+void util::transpose_swap(MatrixType& mat, CommType&& CommInfo){
   TAU_FSTART(Util::transposeSwap);
 
   using T = typename MatrixType::ScalarType;
@@ -222,7 +222,7 @@ void util::transposeSwap(MatrixType& mat, CommType&& CommInfo){
 }
 
 template<typename U>
-U util::getNextPowerOf2(U localShift){
+U util::get_next_power2(U localShift){
   TAU_FSTART(Util::getNextPowerOf2);
 
   if ((localShift & (localShift-1)) != 0){
@@ -242,7 +242,7 @@ U util::getNextPowerOf2(U localShift){
 }
 
 template<typename MatrixType>
-void util::removeTriangle(MatrixType& matrix, size_t sliceX, size_t sliceY, size_t sliceDim, char dir){
+void util::remove_triangle(MatrixType& matrix, size_t sliceX, size_t sliceY, size_t sliceDim, char dir){
   TAU_FSTART(Util::removeTriangle);
 
   using U = typename MatrixType::DimensionType;

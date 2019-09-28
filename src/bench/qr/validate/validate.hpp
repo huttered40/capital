@@ -10,7 +10,7 @@ validate<AlgType>::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, Square
   using U = typename MatrixType::DimensionType;
 
   MatrixType matrixQtrans = matrixQ;
-  util::transposeSwap(matrixQtrans, SquareCommInfo);
+  util::transpose_swap(matrixQtrans, SquareCommInfo);
   U localNumRows = matrixQtrans.getNumColumnsLocal();
   U localNumColumns = matrixQ.getNumColumnsLocal();
   U globalNumRows = matrixQtrans.getNumColumnsGlobal();
@@ -69,7 +69,7 @@ validate<AlgType>::invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRTyp
   using T = typename MatrixAType::ScalarType;
 
   auto SquareTopo = topo::square(CommInfo.cube,CommInfo.c);
-  util::removeTriangle(matrixR, SquareTopo.x, SquareTopo.y, SquareTopo.d, 'U');
+  util::remove_triangle(matrixR, SquareTopo.x, SquareTopo.y, SquareTopo.d, 'U');
   T error1 = residual(matrixQ, matrixR, matrixA, std::forward<CommType>(CommInfo), SquareTopo);
   T error2 = orth(matrixQ, std::forward<CommType>(CommInfo), SquareTopo);
   return std::make_pair(error1,error2);
@@ -143,7 +143,7 @@ validate::invoke_3d(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& mat
   // generate A_computed = matrixQ*matrixR and compare against original A
   int size; MPI_Comm_size(commWorld, &size);
   size_t pGridDimensionSize = std::nearbyint(std::pow(size,1./3.));
-  util::removeTriangle(matrixR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
+  util::remove_triangle(matrixR, std::get<4>(commInfo3D), std::get<5>(commInfo3D), pGridDimensionSize, 'U');
   std::string str1 = "Residual: ";
   T error1 = validator::validateResidualParallel(matrixQ, matrixR, matrixA, 'F', commWorld, commInfo3D, str1);
   std::string str2 = "Deviation from orthogonality: ";

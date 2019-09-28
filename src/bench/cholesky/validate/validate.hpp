@@ -8,9 +8,9 @@ typename MatrixAType::ScalarType validate<AlgType>::invoke(MatrixAType& matrixA,
 
   using T = typename MatrixAType::ScalarType;
 
-  util::removeTriangle(matrixTri, CommInfo.x, CommInfo.y, CommInfo.d, dir);
+  util::remove_triangle(matrixTri, CommInfo.x, CommInfo.y, CommInfo.d, dir);
   MatrixTriType matrixTriTrans = matrixTri;
-  util::transposeSwap(matrixTriTrans, std::forward<CommType>(CommInfo));
+  util::transpose_swap(matrixTriTrans, std::forward<CommType>(CommInfo));
   MatrixAType saveMatA = matrixA;
 
   if (dir == 'L'){

@@ -90,16 +90,16 @@ private:
   static void _end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, size_t dir = 0);
 
   template<typename T, typename U>
-  static void BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel);
+  static void broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel);
 
   template<typename T, typename U>
-  static void BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel);
+  static void broadcast_panels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel);
 
   template<typename MatrixSrcType, typename MatrixDestType>
-  static void getEnginePtr(MatrixSrcType& matrixArg, MatrixDestType& matrixDest, std::vector<typename MatrixSrcType::ScalarType>& data, bool isRoot);
+  static void get_ptr(MatrixSrcType& matrixArg, MatrixDestType& matrixDest, std::vector<typename MatrixSrcType::ScalarType>& data, bool isRoot);
 
   template<typename MatrixType>
-  static MatrixType getSubMatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
+  static MatrixType get_submatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
                                  typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd, size_t sliceDim, bool getSub);
 
 };

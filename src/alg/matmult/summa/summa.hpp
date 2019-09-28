@@ -32,12 +32,12 @@ void summa::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matri
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
 
-  BroadcastPanels((isRootRow ? matrixA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
+  broadcast_panels((isRootRow ? matrixA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
   matrixAEnginePtr = (isRootRow ? matrixA : foreignA);
-  BroadcastPanels((isRootColumn ? matrixB.getVectorData() : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
+  broadcast_panels((isRootColumn ? matrixB.getVectorData() : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
   if ((!std::is_same<StructureB,rect>::value) && (!std::is_same<StructureB,square>::value)){
     matrix<T,U,rect,Distribution,Offload> helperB(std::vector<T>(), matrixBnumColumns, matrixBnumRows, matrixBnumColumns, matrixBnumRows);
-    getEnginePtr(matrixB, helperB, (isRootColumn ? matrixB.getVectorData() : foreignB), isRootColumn);
+    get_ptr(matrixB, helperB, (isRootColumn ? matrixB.getVectorData() : foreignB), isRootColumn);
     matrixBEnginePtr = helperB.getRawData();
   }
   else{
@@ -220,31 +220,31 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
 
   // soon, we will need a methodKey for the different MM algs
   if (srcPackage.side == blas::Side::AblasLeft){
-    BroadcastPanels((isRootRow ? matrixA.getVectorData() : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
+    broadcast_panels((isRootRow ? matrixA.getVectorData() : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
     if ((!std::is_same<StructureA,rect>::value) && (!std::is_same<StructureA,square>::value)){
       matrix<T,U,rect,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
-      getEnginePtr(matrixA, helperA, (isRootRow ? matrixA.getVectorData() : foreignA), isRootRow);
+      get_ptr(matrixA, helperA, (isRootRow ? matrixA.getVectorData() : foreignA), isRootRow);
       matrixAEnginePtr = std::move(helperA.getVectorData());
     }
     else{
       matrixAEnginePtr = std::move((isRootRow ? matrixA.getVectorData() : foreignA));
     }
-    BroadcastPanels((isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
+    broadcast_panels((isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
     matrixBEnginePtr = (isRootColumn ? matrixB : foreignB);
     blas::engine::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionM,
       (srcPackage.order == blas::Order::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
   else{
-    BroadcastPanels((isRootColumn ? matrixA.getVectorData() : foreignA), sizeA, isRootColumn, CommInfo.z, CommInfo.column);
+    broadcast_panels((isRootColumn ? matrixA.getVectorData() : foreignA), sizeA, isRootColumn, CommInfo.z, CommInfo.column);
     if ((!std::is_same<StructureA,rect>::value) && (!std::is_same<StructureA,square>::value)){
       matrix<T,U,rect,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
-      getEnginePtr(matrixA, helperA, (isRootColumn ? matrixA.getVectorData() : foreignA), isRootColumn);
+      get_ptr(matrixA, helperA, (isRootColumn ? matrixA.getVectorData() : foreignA), isRootColumn);
       matrixAEnginePtr = std::move(helperA.getVectorData());
     }
     else{
       matrixAEnginePtr = std::move((isRootColumn ? matrixA.getVectorData() : foreignA));
     }
-    BroadcastPanels((isRootRow ? matrixB : foreignB), sizeB, isRootRow, CommInfo.z, CommInfo.row);
+    broadcast_panels((isRootRow ? matrixB : foreignB), sizeB, isRootRow, CommInfo.z, CommInfo.row);
     matrixBEnginePtr = (isRootRow ? matrixB : foreignB);
     blas::engine::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionN,
       (srcPackage.order == blas::Order::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
@@ -279,7 +279,7 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommIn
   U localDimensionK = (srcPackage.transposeA == blas::Transpose::AblasNoTrans ? matrixA.getNumColumnsLocal() : matrixA.getNumRowsLocal());
 
   MatrixAType matrixB = matrixA;
-  util::transposeSwap(matrixB, std::forward<CommType>(CommInfo));
+  util::transpose_swap(matrixB, std::forward<CommType>(CommInfo));
 
   if (methodKey == 0){
     if (srcPackage.transposeA == blas::Transpose::AblasNoTrans){
@@ -349,9 +349,9 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matr
   using StructureC = typename MatrixCType::StructureType;
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, CommInfo.d, cutA);
-  MatrixBType matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, CommInfo.d, cutB);
-  MatrixCType matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, CommInfo.d, cutC);
+  MatrixAType matA = get_submatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, CommInfo.d, cutA);
+  MatrixBType matB = get_submatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, CommInfo.d, cutB);
+  MatrixCType matC = get_submatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, CommInfo.d, cutC);
 
   invoke((cutA ? matA : matrixA), (cutB ? matB : matrixB), (cutC ? matC : matrixC), std::forward<CommType>(CommInfo), srcPackage, methodKey);
 
@@ -376,8 +376,8 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAT
   using StructureB = typename MatrixBType::StructureType;
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, CommInfo.d, cutA);
-  MatrixBType matB = getSubMatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, CommInfo.d, cutB);
+  MatrixAType matA = get_submatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, CommInfo.d, cutA);
+  MatrixBType matB = get_submatrix(matrixB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, CommInfo.d, cutB);
   invoke((cutA ? matA : matrixA), (cutB ? matB : matrixB), std::forward<CommType>(CommInfo), srcPackage, methodKey);
 
   // reverse serialize, to put the solved piece of matrixC into where it should go. Only if we need to
@@ -400,8 +400,8 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAT
   using StructureC = typename MatrixCType::StructureType;
 
   // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  MatrixAType matA = getSubMatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, CommInfo.d, cutA);
-  MatrixAType matC = getSubMatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, CommInfo.d, cutC);
+  MatrixAType matA = get_submatrix(matrixA, matrixAcutXstart, matrixAcutXend, matrixAcutYstart, matrixAcutYend, CommInfo.d, cutA);
+  MatrixAType matC = get_submatrix(matrixC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, CommInfo.d, cutC);
 
   invoke((cutA ? matA : matrixA), (cutC ? matC : matrixC), std::forward<CommType>(CommInfo), srcPackage, methodKey);
 
@@ -436,21 +436,21 @@ void summa::_start1(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
 
-  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
-  BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
+  broadcast_panels((isRootRow ? dataA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
+  broadcast_panels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
 
   matrixAEnginePtr = (isRootRow ? &dataA[0] : &foreignA[0]);
   matrixBEnginePtr = (isRootColumn ? &dataB[0] : &foreignB[0]);
   if ((!std::is_same<StructureA,rect>::value) && (!std::is_same<StructureA,square>::value)){
     serializeKeyA = true;
     matrix<T,U,rect,Distribution,Offload> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
-    getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
+    get_ptr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
     matrixAEngineVector = std::move(helperA.getVectorData());
   }
   if ((!std::is_same<StructureB,rect>::value) && (!std::is_same<StructureB,square>::value)){
     serializeKeyB = true;
     matrix<T,U,rect,Distribution,Offload> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
-    getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
+    get_ptr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
   TAU_FSTOP(summa::_start1);
@@ -622,14 +622,14 @@ void summa::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
     && (!std::is_same<StructureArg1<T,U,Distribution>,MatrixStructuresquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
     matrix<T,U,MatrixStructureRectangular,Distribution> helperA(std::vector<T>(), localDimensionK, localDimensionM, localDimensionK, localDimensionM);
-    getEnginePtr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
+    get_ptr(matrixA, helperA, (isRootRow ? dataA : foreignA), isRootRow);
     matrixAEngineVector = std::move(helperA.getVectorData());
   }
   if ((!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructureRectangular<T,U,Distribution>>::value)
     && (!std::is_same<StructureArg2<T,U,Distribution>,MatrixStructuresquare<T,U,Distribution>>::value))		// compile time if statement. Branch prediction should be correct.
   {
     matrix<T,U,MatrixStructureRectangular,Distribution> helperB(std::vector<T>(), localDimensionN, localDimensionK, localDimensionN, localDimensionK);
-    getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
+    get_ptr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
 */
@@ -638,8 +638,8 @@ void summa::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
 
 
 template<typename T, typename U>
-void summa::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
-  TAU_FSTART(summa::BroadcastPanels);
+void summa::broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
+  TAU_FSTART(summa::broadcast_panels);
 
   if (isRoot){
     MPI_Bcast(&data[0], size, mpi_type<T>::type, pGridCoordZ, panel);
@@ -648,12 +648,12 @@ void summa::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pG
     data.resize(size);
     MPI_Bcast(&data[0], size, mpi_type<T>::type, pGridCoordZ, panel);
   }
-  TAU_FSTOP(summa::BroadcastPanels);
+  TAU_FSTOP(summa::broadcast_panels);
 }
 
 template<typename T, typename U>
-void summa::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
-  TAU_FSTART(summa::BroadcastPanels);
+void summa::broadcast_panels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
+  TAU_FSTART(summa::broadcast_panels);
 
   if (isRoot){
     MPI_Bcast(data, size, mpi_type<T>::type, pGridCoordZ, panel);
@@ -664,13 +664,13 @@ void summa::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, M
     data = new T[size];
     MPI_Bcast(data, size, mpi_type<T>::type, pGridCoordZ, panel);
   }
-  TAU_FSTOP(summa::BroadcastPanels);
+  TAU_FSTOP(summa::broadcast_panels);
 }
 
 
 template<typename MatrixSrcType, typename MatrixDestType>
-void summa::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest, std::vector<typename MatrixSrcType::ScalarType>& data, bool isRoot){
-  TAU_FSTART(summa::getEnginePtr);
+void summa::get_ptr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest, std::vector<typename MatrixSrcType::ScalarType>& data, bool isRoot){
+  TAU_FSTART(summa::get_ptr);
 
   using StructureSrc = typename MatrixSrcType::StructureType;
   using StructureDest = typename MatrixDestType::StructureType;
@@ -685,15 +685,15 @@ void summa::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest, s
     // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangular
     serialize<StructureSrc,StructureDest>::invoke(matrixSrc, matrixDest);
   }
-  TAU_FSTOP(summa::getEnginePtr);
+  TAU_FSTOP(summa::get_ptr);
 }
 
 
 template<typename MatrixType>
-MatrixType summa::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
+MatrixType summa::get_submatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
                               typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd,
 		              size_t sliceDim, bool getSub){
-  TAU_FSTART(summa::getSubMatrix);
+  TAU_FSTART(summa::get_submatrix);
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -704,12 +704,12 @@ MatrixType summa::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::Dimen
     U numRows = matrixArgRowEnd - matrixArgRowStart;
     MatrixType fillMatrix(std::vector<T>(), numColumns, numRows, numColumns*sliceDim, numRows*sliceDim);
     serialize<Structure,Structure>::invoke(srcMatrix, fillMatrix, matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
-    TAU_FSTOP(summa::getSubMatrix);
+    TAU_FSTOP(summa::get_submatrix);
     return fillMatrix;			// I am returning an rvalue
   }
   else{
     // return cheap garbage.
-    TAU_FSTOP(summa::getSubMatrix);
+    TAU_FSTOP(summa::get_submatrix);
     return MatrixType(0,0,1,1);
   }
 }
