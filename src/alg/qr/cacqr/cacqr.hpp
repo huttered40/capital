@@ -48,8 +48,7 @@ void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_1d(MatrixA
 template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename CommType>
 void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_3d(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
-                      size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
-
+                      size_t inverseCutOffMultiplier){
   TAU_FSTART(cacqr::invoke_3d);
 
   using T = typename MatrixAType::ScalarType;
@@ -83,7 +82,7 @@ void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_3d(MatrixA
   MatrixRType MatrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, MatrixA.getNumColumnsGlobal(), MatrixA.getNumColumnsGlobal(), true);
 
   std::pair<bool,std::vector<U>> baseCaseDimList = CholInvPolicy::invoke(MatrixR, MatrixRI, std::forward<CommType>(CommInfo),
-                                                                             inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U');
+                                                                             inverseCutOffMultiplier, 'U');
 
 // For now, comment this out, because I am experimenting with using TriangularSolve TRSM instead of MM3D
 //   But later on once it works, use an integer or something to have both available, important when benchmarking
@@ -115,14 +114,14 @@ void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_3d(MatrixA
 template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename CommType>
 void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
-                   size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
-  invoke(MatrixA,MatrixR,std::forward<CommType>(CommInfo),topo::square(CommInfo.cube,CommInfo.c),inverseCutOffMultiplier,baseCaseMultiplier,panelDimensionMultiplier);
+                   size_t inverseCutOffMultiplier){
+  invoke(MatrixA,MatrixR,std::forward<CommType>(CommInfo),topo::square(CommInfo.cube,CommInfo.c),inverseCutOffMultiplier);
 }
 
 template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename RectCommType, typename SquareCommType>
 void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke(MatrixAType& MatrixA, MatrixRType& MatrixR, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo,
-                   size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
+                   size_t inverseCutOffMultiplier){
   TAU_FSTART(cacqr::invoke);
 
   using T = typename MatrixAType::ScalarType;
@@ -160,7 +159,7 @@ void cacqr<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke(MatrixATyp
   MatrixRType MatrixRI(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
 
   std::pair<bool,std::vector<U>> baseCaseDimList = CholInvPolicy::invoke(MatrixR, MatrixRI, std::forward<SquareCommType>(SquareCommInfo),
-                                                                         inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier, 'U');
+                                                                         inverseCutOffMultiplier, 'U');
 
   if (baseCaseDimList.first){
     blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
@@ -213,7 +212,7 @@ void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_1d(Matrix
 template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename CommType>
 void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_3d(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
-                       size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
+                       size_t inverseCutOffMultiplier){
   TAU_FSTART(cacqr2::invoke_3d);
 
   using T = typename MatrixAType::ScalarType;
@@ -223,8 +222,8 @@ void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_3d(Matrix
   U localDimensionN = MatrixA.getNumColumnsLocal();		// no error check here, but hopefully 
 
   MatrixRType MatrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
-  cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixA, MatrixR, std::forward<CommType>(CommInfo), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
-  cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixA, MatrixR2, std::forward<CommType>(CommInfo), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+  cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixA, MatrixR, std::forward<CommType>(CommInfo), inverseCutOffMultiplier);
+  cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixA, MatrixR2, std::forward<CommType>(CommInfo), inverseCutOffMultiplier);
 
   blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
     blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
@@ -237,15 +236,14 @@ void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_3d(Matrix
 template<class SerializeSymmetricPolicy, class CholInvPolicy, class TrsmPolicy>
 template<typename MatrixAType, typename MatrixRType, typename CommType>
 void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke(MatrixAType& MatrixA, MatrixRType& MatrixR, CommType&& CommInfo,
-                    size_t inverseCutOffMultiplier, size_t baseCaseMultiplier, size_t panelDimensionMultiplier){
+                    size_t inverseCutOffMultiplier){
   TAU_FSTART(cacqr2::invoke);
   if (CommInfo.c == 1){
     cacqr2::invoke_1d(MatrixA, MatrixR, std::forward<CommType>(CommInfo));
     return;
   }
   if (CommInfo.c == CommInfo.d){
-    // TODO: Can CommInfo be reused?
-    cacqr2<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixA, MatrixR, topo::square(CommInfo.cube,CommInfo.c), inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+    cacqr2<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixA, MatrixR, topo::square(CommInfo.cube,CommInfo.c), inverseCutOffMultiplier);
     return;
   }
 
@@ -258,8 +256,8 @@ void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke(MatrixATy
   // Need to get the right global dimensions here, use a tunable package struct or something
   MatrixRType MatrixR2(std::vector<T>(localDimensionN*localDimensionN,0), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN, true);
   auto SquareTopo = topo::square(CommInfo.cube,CommInfo.c);
-  cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke(MatrixA, MatrixR, std::forward<CommType>(CommInfo), SquareTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
-  cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke(MatrixA, MatrixR2, std::forward<CommType>(CommInfo), SquareTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
+  cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke(MatrixA, MatrixR, std::forward<CommType>(CommInfo), SquareTopo, inverseCutOffMultiplier);
+  cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke(MatrixA, MatrixR2, std::forward<CommType>(CommInfo), SquareTopo, inverseCutOffMultiplier);
 
   blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
     blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);

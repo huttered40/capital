@@ -19,68 +19,40 @@ int main(int argc, char** argv){
   size_t globalMatrixDimensionM = atoi(argv[1]);
   size_t globalMatrixDimensionN = atoi(argv[2]);
   size_t dimensionC = atoi(argv[3]);
-  size_t baseCaseMultiplier = atoi(argv[4]);
   size_t inverseCutOffMultiplier = atoi(argv[5]);
-  size_t panelDimensionMultiplier = atoi(argv[6]);
   size_t numIterations=atoi(argv[7]);
-  size_t ppn=atoi(argv[8]);
-  size_t tpr=atoi(argv[9]);
-  std::string fileStr1 = argv[10];	// Critter
-  std::string fileStr2 = argv[11];	// Performance/Residual/DevOrth
-
-  std::vector<size_t> Inputs{globalMatrixDimensionM,globalMatrixDimensionN,dimensionC,baseCaseMultiplier,inverseCutOffMultiplier,panelDimensionMultiplier,numIterations,ppn,tpr};
-  std::vector<const char*> InputNames{"m","n","c","bcm","icm","pdm","numiter","ppn","tpr"};
 
   using qr_type = typename qr::cacqr2<qr::policy::cacqr::NoSerializeSymmetricToTriangle>;
-
-  for (auto test=0; test<2; test++){
+  for (size_t i=0; i<numIterations; i++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
     auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC);
+    // reset the matrix before timer starts
+    // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
+    MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);
 
-    switch(test){
-      case 0:
-        critter::init(1,fileStr1);
-	break;
-      case 1:
-        critter::init(0,fileStr2);
-	break;
-    }
+    MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, RectTopo.c, RectTopo.c);
+    matA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
+    double iterTimeGlobal = 0;
+    double residualErrorGlobal,orthogonalityErrorGlobal;
+    MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
+    critter::start();
+    qr_type::invoke(matA, matR, RectTopo, inverseCutOffMultiplier);
+    critter::stop();
 
-    for (size_t i=0; i<numIterations; i++){
-      // reset the matrix before timer starts
-      // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
-      MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);
+    volatile double startTime=MPI_Wtime();
+    qr_type::invoke(matA, matR, RectTopo, inverseCutOffMultiplier);
+    double iterTimeLocal = MPI_Wtime() - startTime;
 
-      MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, RectTopo.c, RectTopo.c);
-      matA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-      double iterTimeGlobal = 0;
-      double residualErrorGlobal,orthogonalityErrorGlobal;
-      MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
-      critter::reset();
-      volatile double startTime=MPI_Wtime();
-      qr_type::invoke(matA, matR, RectTopo, inverseCutOffMultiplier, baseCaseMultiplier, panelDimensionMultiplier);
-      double iterTimeLocal = MPI_Wtime() - startTime;
+    MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MatrixTypeR saveA = matA;
+    saveA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
+    auto error = qr::validate<qr_type>::invoke(saveA, matA, matR, RectTopo);
+    MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-      switch(test){
-        case 0:{
-          critter::print(i==0, "QR", size, Inputs.size(), &Inputs[0], &InputNames[0]);
-	  break;
-	}
-        case 1:{
-          MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-          MatrixTypeR saveA = matA;
-          saveA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-          auto error = qr::validate<qr_type>::invoke(saveA, matA, matR, RectTopo);
-          MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-          MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-          std::vector<double> Outputs(3);
-	  Outputs[0] = iterTimeGlobal; Outputs[1] = residualErrorGlobal; Outputs[2] = orthogonalityErrorGlobal;
-          critter::print(i==0, "QR", size, Inputs.size(), &Inputs[0], &InputNames[0],Outputs.size(),&Outputs[0]);
-	  break;
-	}
-      }
-    }
-    critter::finalize();
+    std::vector<double> Outputs(3);
+    Outputs[0] = iterTimeGlobal; Outputs[1] = residualErrorGlobal; Outputs[2] = orthogonalityErrorGlobal;
+    critter::print(Outputs.size(),&Outputs[0]);
   }
 
   MPI_Finalize();
