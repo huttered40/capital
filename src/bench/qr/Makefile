@@ -14,18 +14,18 @@ endif
 
 ifneq ($(PORTER),)
   MACHINE=PORTER
-  CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
+  CCMPI = /home/hutter2/hutter2/external/MPICH/installDir/bin/mpicxx
   ifeq ($(MPITYPE),"MPI_TYPE")
-    CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
+    CCMPI = /home/hutter2/hutter2/external/MPICH/installDir/bin/mpicxx
     echo "HERE??"
   endif
   ifeq ($(MPITYPE),"AMPI_TYPE")
-    CCMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
+    CCMPI = /home/hutter2/hutter2/external/CHARM/charm/bin/ampicxx
     echo "HERE??"
   endif
   CFLAGS = -g -Wall -O0 -std=c++14
-  LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/critter/lib
-  LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread -lcritter
+  LIB_PATH=-L/home/hutter2/hutter2/external/critter/lib
+  LIBS=/home/hutter2/hutter2/external/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread -lcritter
 
   OBJS = cacqr2
 
