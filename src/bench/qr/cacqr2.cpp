@@ -19,8 +19,8 @@ int main(int argc, char** argv){
   size_t globalMatrixDimensionM = atoi(argv[1]);
   size_t globalMatrixDimensionN = atoi(argv[2]);
   size_t dimensionC = atoi(argv[3]);
-  size_t inverseCutOffMultiplier = atoi(argv[5]);
-  size_t numIterations=atoi(argv[7]);
+  size_t inverseCutOffMultiplier = atoi(argv[4]);
+  size_t numIterations=atoi(argv[5]);
 
   for (size_t i=0; i<numIterations; i++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize

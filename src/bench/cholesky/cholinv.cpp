@@ -18,8 +18,8 @@ int main(int argc, char** argv){
   char dir = 'U';
   size_t globalMatrixSize = atoi(argv[1]);
   size_t pGridDimensionC = atoi(argv[2]);
-  size_t inverseCutOffMultiplier = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
-  size_t numIterations = atoi(argv[6]);
+  size_t inverseCutOffMultiplier = atoi(argv[3]); // multiplies baseCase dimension by sucessive 2
+  size_t numIterations = atoi(argv[4]);
 
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
