@@ -20,7 +20,7 @@ class cholinv{
 public:
   template<typename MatrixAType, typename MatrixTIType, typename CommType>
   static std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-         invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension, char dir);
+         invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension=0, char dir='U');
 
 private:
   template<typename MatrixAType, typename MatrixLIType, typename CommType>

@@ -202,6 +202,8 @@ void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke_1d(Matrix
   cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke_1d(MatrixA, MatrixR, std::forward<CommType>(CommInfo));
   cacqr<SerializeSymmetricPolicy,CholInvPolicy>::invoke_1d(MatrixA, MatrixR2, std::forward<CommType>(CommInfo));
 
+  // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
+  //   send half of the data!
   blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
     blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
   blas::engine::_trmm(MatrixR2.getRawData(), MatrixR.getRawData(), localDimensionN, localDimensionN,
@@ -243,7 +245,7 @@ void cacqr2<SerializeSymmetricPolicy,CholInvPolicy,TrsmPolicy>::invoke(MatrixATy
     return;
   }
   if (CommInfo.c == CommInfo.d){
-    cacqr2<SerializeSymmetricPolicy,CholInvPolicy>::invoke_3d(MatrixA, MatrixR, topo::square(CommInfo.cube,CommInfo.c), inverseCutOffMultiplier);
+    cacqr2::invoke_3d(MatrixA, MatrixR, topo::square(CommInfo.cube,CommInfo.c), inverseCutOffMultiplier);
     return;
   }
 
