@@ -22,7 +22,7 @@ ifneq ($(PORTER),)
     CCMPI = /home/hutter2/hutter2/external/CHARM/charm/bin/ampicxx
   endif
   CFLAGS = -g -Wall -O3 -std=c++14
-  LIB_PATH=-L/home/hutter2/hutter2/external/critter/lib
+  LIB_PATH=-L/home/hutter2/hutter2/critter/lib
   LIBS=/home/hutter2/hutter2/external/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a /home/hutter2/hutter2/external/BLAS/OpenBLAS/lapack-netlib/liblapacke.a /home/hutter2/hutter2/external/BLAS/OpenBLAS/lapack-netlib/liblapack.a -lgfortran -lpthread -lcritter
 
   OBJS = cholinv
