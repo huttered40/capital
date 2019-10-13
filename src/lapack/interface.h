@@ -8,7 +8,7 @@
 #include <complex>
 
 #ifdef PORTER
-#include "/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
+#include "/home/hutter2/hutter2/external/BLAS/OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
 #endif
 
 #ifdef THETA
