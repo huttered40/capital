@@ -14,16 +14,16 @@ endif
 
 ifneq ($(PORTER),)
   MACHINE=PORTER
-  CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
+  CCMPI = ~/hutter2/external/MPICH/installDir/bin/mpicxx
   ifeq ($(MPITYPE),"MPI_TYPE")
-    CCMPI = /home/hutter2/hutter2/ExternalLibraries/MPICH/installDir/bin/mpicxx
+    CCMPI = ~/hutter2/external/MPICH/installDir/bin/mpicxx
   endif
   ifeq ($(MPITYPE),"AMPI_TYPE")
-    CCMPI = /home/hutter2/hutter2/ExternalLibraries/CHARM/charm/bin/ampicxx
+    CCMPI = ~/hutter2/external/CHARM/charm/bin/ampicxx
   endif
   CFLAGS = -g -Wall -O3 -std=c++14
-  LIB_PATH=-L/home/hutter2/hutter2/ExternalLibraries/critter/lib
-  LIBS=/home/hutter2/hutter2/ExternalLibraries/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lcritter -lpthread
+  LIB_PATH=-L/home/hutter2/hutter2/critter/lib
+  LIBS=~/hutter2/external/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lcritter -lpthread
 
   OBJS = summa_gemm
 
