@@ -28,7 +28,6 @@ int main(int argc, char** argv){
     // reset the matrix before timer starts
     // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
     MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);
-
     MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, RectTopo.c, RectTopo.c);
     matA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
     double iterTimeGlobal = 0;
@@ -38,6 +37,7 @@ int main(int argc, char** argv){
     qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier);
     critter::stop();
 
+    matA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
     volatile double startTime=MPI_Wtime();
     qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier);
     double iterTimeLocal = MPI_Wtime() - startTime;

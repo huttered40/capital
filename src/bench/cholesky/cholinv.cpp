@@ -37,6 +37,7 @@ int main(int argc, char** argv){
     cholesky::cholinv::invoke(matA, matT, SquareTopo, inverseCutOffMultiplier, dir);
     critter::stop();
 
+    matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     double startTime=MPI_Wtime();
     cholesky::cholinv::invoke(matA, matT, SquareTopo, inverseCutOffMultiplier, dir);
     double iterTimeLocal=MPI_Wtime() - startTime;

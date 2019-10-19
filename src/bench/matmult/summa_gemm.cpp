@@ -47,6 +47,9 @@ int main(int argc, char** argv){
     matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs, methodKey2);
     critter::stop();
 
+    matA.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
+    matB.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
+    matC.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
     double startTime=MPI_Wtime();
     matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs, methodKey2);
     double iterTimeLocal=MPI_Wtime()-startTime;
