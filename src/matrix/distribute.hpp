@@ -29,7 +29,7 @@ void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensio
 
 template<typename T, typename U>
 void cyclic::_DistributeIdentity(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX,
-    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY){
+    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, T val){
   // Note: this is not fully implemented yet, as I have not decided on whether I need to perform a local transpose
   //       or local (but distributed based on the values each processor gets) transpose.
 
@@ -51,8 +51,8 @@ void cyclic::_DistributeIdentity(std::vector<T*>& matrix, U dimensionX, U dimens
       }
 */
       matrix[i][j] = 0;
-      if ((diagonallyDominant) && (saveGlobalPositionX == saveGlobalPositionY) && (i==j)){
-        matrix[i][j] += 1;	// X or Y, should not matter
+      if ((saveGlobalPositionX == saveGlobalPositionY) && (i==j)){
+        matrix[i][j] += val;	// X or Y, should not matter
       }
       saveGlobalPositionY += globalPgridDimY;
     }

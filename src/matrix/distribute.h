@@ -11,7 +11,7 @@ public:
     size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, square);
   template<typename T, typename U>
   static void _DistributeIdentity(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX,
-    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY);
+    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, T val);
   template<typename T, typename U>
   static void _DistributeSymmetric(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX,
     size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, bool diagonallyDominant);

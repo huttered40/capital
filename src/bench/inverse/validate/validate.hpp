@@ -7,6 +7,7 @@ template<typename MatrixType, typename CommType>
 typename MatrixType::ScalarType validate<AlgType>::invoke(MatrixType& matrixA, MatrixType& matrixB, CommType&& CommInfo){
 
   using T = typename MatrixType::ScalarType;
+  using U = typename MatrixType::DimensionType;
 
   U localNumRows = matrixA.getNumColumnsLocal();
   U localNumColumns = matrixA.getNumColumnsLocal();

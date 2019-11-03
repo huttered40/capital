@@ -2,6 +2,7 @@ all:
 	make -C./bench/qr/ cacqr2
 	make -C./bench/cholesky/ cholinv
 	make -C./bench/matmult/ summa_gemm
+	make -C./bench/inverse/ newton
 
 cacqr2:
 	make -C./bench/qr/ cacqr2
@@ -12,7 +13,11 @@ cholinv:
 summa_gemm:
 	make -C./bench/matmult/ summa_gemm
 
+newton:
+	make -C./bench/inverse/ newton
+
 clean:
 	make -C./bench/qr/ clean
 	make -C./bench/cholesky/ clean
 	make -C./bench/matmult/ clean
+	make -C./bench/inverse/ clean
