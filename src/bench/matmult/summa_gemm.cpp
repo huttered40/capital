@@ -26,8 +26,10 @@ int main(int argc, char** argv){
   size_t globalMatrixSizeN = atoi(argv[2]);
   size_t globalMatrixSizeK = atoi(argv[3]);
   size_t pGridDimensionC = atoi(argv[4]);
-  size_t methodKey2 = atoi(argv[5]);
-  size_t numIterations = atoi(argv[6]);
+  size_t numIterations = atoi(argv[5]);
+
+  size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
+  pGridDimensionC = pGridCubeDim/pGridDimensionC;
 
   // Loop for getting a good range of results.
   for (size_t i=0; i<numIterations; i++){
@@ -44,14 +46,14 @@ int main(int argc, char** argv){
     matC.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
     MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
     critter::start();
-    matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs, methodKey2);
+    matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
     critter::stop();
 
     matA.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
     matB.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
     matC.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
     double startTime=MPI_Wtime();
-    matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs, methodKey2);
+    matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
     double iterTimeLocal=MPI_Wtime()-startTime;
 
     MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
