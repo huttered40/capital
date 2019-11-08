@@ -1,5 +1,34 @@
 /* Author: Edward Hutter */
 
+template<typename MatrixType, typename CommType>
+typename MatrixType::ScalarType util::get_identity_residual(MatrixType& Matrix, CommType&& CommInfo, MPI_Comm comm){
+  // Should be offloaded to Matrix definition, which knows how best to iterate over matrix?
+  // Should this be made more general so that user can supply a Lambda and more than the max can be obtained in this interface?
+  using T = typename MatrixType::ScalarType;
+  using U = typename MatrixType::DimensionType;
+  T res = 0;
+  U localNumRows = Matrix.getNumRowsLocal();
+  U localNumColumns = Matrix.getNumColumnsLocal();
+  U globalX = CommInfo.x;
+  U globalY = CommInfo.y;
+  U index=0;
+  for (size_t i=0; i<localNumColumns; i++){
+    globalY = CommInfo.y;    // reset
+    for (size_t j=0; j<localNumRows; j++){
+      if (globalX == globalY){
+        res += 1.-Matrix.getRawData()[index++];
+      } else{
+        res += Matrix.getRawData()[index++];
+      }
+      globalY += CommInfo.d;
+      
+    }
+    globalX += CommInfo.d;//TODO: This will not work for a rectangular grid (i.e. CommType is RectTopo)
+  }
+  MPI_Allreduce(MPI_IN_PLACE,&res,1,mpi_type<T>::type, MPI_SUM, comm);
+  return res;
+}
+
 template<typename MatrixType, typename RefMatrixType, typename LambdaType>
 typename MatrixType::ScalarType
 util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, size_t sliceX, size_t sliceY, size_t sliceDimX, size_t sliceDimY){

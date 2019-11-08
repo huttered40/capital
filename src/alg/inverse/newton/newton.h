@@ -11,7 +11,7 @@ namespace inverse{
 class newton{
 public:
   template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& matrix, CommType&& CommInfo);
+  static void invoke(MatrixType& matrix, CommType&& CommInfo, typename MatrixType::ScalarType tol=1e-14, size_t max_iter=100);
 protected:
 };
 }

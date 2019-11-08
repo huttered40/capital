@@ -40,19 +40,41 @@ void cyclic::_DistributeIdentity(std::vector<T*>& matrix, U dimensionX, U dimens
   for (U i=0; i<padXlen; i++){
     saveGlobalPositionY = localPgridDimY;
     for (U j=0; j<padYlen; j++){
-/*
-      if (saveGlobalPositionX > saveGlobalPositionY)
-      {
-        srand48(saveGlobalPositionX + globalDimensionY*saveGlobalPositionY);
-      }
-      else
-      {
-        srand48(saveGlobalPositionY + globalDimensionY*saveGlobalPositionX);
-      }
-*/
       matrix[i][j] = 0;
       if ((saveGlobalPositionX == saveGlobalPositionY) && (i==j)){
         matrix[i][j] += val;	// X or Y, should not matter
+      }
+      saveGlobalPositionY += globalPgridDimY;
+    }
+    // check for padding
+    if (padYlen != dimensionY) { matrix[i][dimensionY-1] = 0; }
+    saveGlobalPositionX += globalPgridDimX;
+  }
+  // check for padding
+  if (padXlen != dimensionX){
+    for (U j=0; j<dimensionY; j++){
+      matrix[dimensionX-1][j] = 0;
+    }
+  }
+  return;
+}
+
+template<typename T, typename U>
+void cyclic::_DistributeDebug(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX,
+    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY){
+  // Note: this is not fully implemented yet, as I have not decided on whether I need to perform a local transpose
+  //       or local (but distributed based on the values each processor gets) transpose.
+
+  size_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  size_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
+  U saveGlobalPositionX = localPgridDimX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  U saveGlobalPositionY = localPgridDimY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  for (U i=0; i<padXlen; i++){
+    saveGlobalPositionY = localPgridDimY;
+    for (U j=0; j<padYlen; j++){
+      matrix[i][j] = 0.5;
+      if ((saveGlobalPositionX == saveGlobalPositionY) && (i==j)){
+        matrix[i][j] = globalDimensionX;	// X or Y, should not matter
       }
       saveGlobalPositionY += globalPgridDimY;
     }

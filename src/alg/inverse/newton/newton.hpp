@@ -3,7 +3,7 @@
 namespace inverse{
 
 template<typename MatrixType, typename CommType>
-void newton::invoke(MatrixType& matrix, CommType&& CommInfo){
+void newton::invoke(MatrixType& matrix, CommType&& CommInfo, typename MatrixType::ScalarType tol, size_t max_iter){
   // `matrix` is modified in-place
   TAU_FSTART(newton::invoke);
   // TODO: Assuming CommType is an instance of SquareTopo
@@ -15,7 +15,7 @@ void newton::invoke(MatrixType& matrix, CommType&& CommInfo){
 
   // obtain starting iterate by getting infinity norm
   auto ptr_data = matrix.getMatrixData();
-  std::vector<double> save_partial_row_sums(localDimensionN,0.);
+  std::vector<T> save_partial_row_sums(localDimensionN,0.);
   auto norm=0.;
   for (auto col=0; col<localDimensionN; col++){
     for (auto row=0; row<localDimensionN; row++){
@@ -31,16 +31,21 @@ void newton::invoke(MatrixType& matrix, CommType&& CommInfo){
   MatrixType iterate(globalDimensionN,globalDimensionN, CommInfo.c, CommInfo.d);
   MatrixType intermediate(globalDimensionN,globalDimensionN, CommInfo.c, CommInfo.d);
   iterate.DistributeIdentity(CommInfo.x, CommInfo.y, CommInfo.c, CommInfo.d,1./max_row_sum);
-  std::cout << "max_row_sum - " << max_row_sum << std::endl;
   // Each process now knows the starting iterate
   // But, we need to make sure that each process knows which of its elements are global diagonal elements
   
   blas::ArgPack_gemm<T> pack1(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., 0.);
   blas::ArgPack_gemm<T> pack2(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, -1., 2.);
   int i=0;
-  while (i<100){
+  while (i<max_iter){
     matmult::summa::invoke(iterate, matrix, intermediate, CommInfo, pack1);
-    // TODO: check stopping criterion here ..
+    // TODO: check stopping criterion here using 'tol'..
+    auto norm = util::get_identity_residual(intermediate,std::forward<CommType>(CommInfo),CommInfo.slice);
+    //debug
+    if ((CommInfo.x+CommInfo.y+CommInfo.z) == 0){ std::cout << "Residual - " << norm << std::endl;}
+    if (norm < tol){
+      break;
+    }
     matmult::summa::invoke(intermediate, iterate, iterate, CommInfo, pack2);	// TODO: Make sure having `iterate` as both in/out is ok
     i++;
   }

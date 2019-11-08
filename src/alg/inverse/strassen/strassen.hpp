@@ -46,7 +46,6 @@ void strassen::invert(MatrixType& matrix, typename MatrixType::DimensionType loc
   U localShift = (localDimension>>1);
   // move localShift up to the next power of 2, only useful if matrix dimensions are not powers of 2
   localShift = util::getNextPowerOf2(localShift);
-  // Note: I think this globalShift calculation is wrong, but it hasn't been an issue because its not really used for anything.
   U globalShift = (globalDimension>>1);
 
   invert(matrix, localShift, trueLocalDimension, bcDimension, NewtonDimension, globalShift, trueGlobalDimension,
