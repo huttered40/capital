@@ -30,13 +30,15 @@ int main(int argc, char** argv){
     // Reset matrixA
     MatrixTypeA matA(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
     double iterTimeGlobal,iterErrorGlobal;
-    matA.DistributeDebug(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d);
+    //matA.DistributeDebug(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d);
+    matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
     critter::start();
     inverse::newton::invoke(matA, SquareTopo,1e-14,10);
     critter::stop();
 
-    matA.DistributeDebug(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d);
+    //matA.DistributeDebug(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d);
+    matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     double startTime=MPI_Wtime();
     inverse::newton::invoke(matA, SquareTopo,1e-14,10);
     double iterTimeLocal=MPI_Wtime() - startTime;
@@ -46,13 +48,14 @@ int main(int argc, char** argv){
 
     MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MatrixTypeA saveA = matA;
-    saveA.DistributeDebug(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d);
+    //saveA.DistributeDebug(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d);
+    saveA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     double iterErrorLocal = inverse::validate<inverse::newton>::invoke(saveA, matA, SquareTopo);
     MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-    std::vector<double> Outputs(2);
-    Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;
-    critter::print(Outputs.size(), &Outputs[0]);
+    if (rank == 0){
+      std::cout << iterTimeGlobal << " " << iterErrorGlobal << std::endl;
+    }
   }
   MPI_Finalize();
   return 0;

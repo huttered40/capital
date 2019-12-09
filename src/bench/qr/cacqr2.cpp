@@ -49,9 +49,9 @@ int main(int argc, char** argv){
     MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-    std::vector<double> Outputs(3);
-    Outputs[0] = iterTimeGlobal; Outputs[1] = residualErrorGlobal; Outputs[2] = orthogonalityErrorGlobal;
-    critter::print(Outputs.size(),&Outputs[0]);
+    if (rank==0){
+      std::cout << iterTimeGlobal << " " << residualErrorGlobal << " " << orthogonalityErrorGlobal << std::endl;
+    }
   }
 
   MPI_Finalize();

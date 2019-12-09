@@ -48,9 +48,9 @@ int main(int argc, char** argv){
     double iterErrorLocal = cholesky::validate<cholesky::cholinv>::invoke(saveA, matA, dir, SquareTopo);
     MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-    std::vector<double> Outputs(2);
-    Outputs[0] = iterTimeGlobal; Outputs[1] = iterErrorGlobal;
-    critter::print(Outputs.size(), &Outputs[0]);
+    if (rank==0){
+      std::cout << iterTimeGlobal << " " << iterErrorGlobal << std::endl;
+    }
   }
   MPI_Finalize();
   return 0;
