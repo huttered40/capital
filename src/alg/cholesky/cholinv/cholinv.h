@@ -21,8 +21,10 @@ public:
          invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension, char dir);
 
 private:
-  template<typename MatrixAType, typename MatrixLIType, typename CommType>
-  static void rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimenion,
+  template<typename MatrixAType, typename MatrixLIType, typename BaseCaseMatrixType, typename CommType>
+  static void factor_lower(MatrixAType& matrixA, MatrixLIType& matrixLI, BaseCaseMatrixType& matrix_base_case,
+                           std::vector<typename MatrixAType::ScalarType>& blocked_data, std::vector<typename MatrixAType::ScalarType>& cyclic_data,
+                           typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimenion,
                            typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                            typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                            typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matLIstartX, typename MatrixAType::DimensionType matLIendX,
@@ -30,8 +32,10 @@ private:
                            CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                            typename MatrixAType::DimensionType inverseCutoffGlobalDimension);
 
-  template<typename MatrixAType, typename MatrixRIType, typename CommType>
-  static void rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+  template<typename MatrixAType, typename MatrixRIType, typename BaseCaseMatrixType, typename CommType>
+  static void factor_upper(MatrixAType& matrixA, MatrixRIType& matrixRI, BaseCaseMatrixType& matrix_base_case,
+                           std::vector<typename MatrixAType::ScalarType>& blocked_data, std::vector<typename MatrixAType::ScalarType>& cyclic_data,
+                           typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                            typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                            typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                            typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matRIstartX, typename MatrixAType::DimensionType matRIendX,
@@ -39,9 +43,10 @@ private:
                            CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                            typename MatrixAType::DimensionType inverseCutoffGlobalDimension);
 
-  
-  template<typename MatrixAType, typename MatrixIType, typename CommType>
-  static void baseCase(MatrixAType& matrixA, MatrixIType& matrixLI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+  template<typename MatrixAType, typename MatrixIType, typename BaseCaseMatrixType, typename CommType>
+  static void baseCase(MatrixAType& matrixA, MatrixIType& matrixLI, BaseCaseMatrixType& matrix_base_case,
+                       std::vector<typename MatrixAType::ScalarType>& blocked_data, std::vector<typename MatrixAType::ScalarType>& cyclic_data,
+                       typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                        typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                        typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                        typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matIstartX, typename MatrixAType::DimensionType matIendX,
@@ -49,11 +54,11 @@ private:
                        bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                        typename MatrixAType::DimensionType inverseCutoffGlobalDimension, char dir);
 
-  template<typename MatrixType>
-  static std::vector<typename MatrixType::ScalarType>
-  blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
-                                typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType matAstartX, typename MatrixType::DimensionType matAendX,
-                                typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, size_t sliceDim, MPI_Comm slice2Dcomm, char dir);
+  template<typename MatrixType, typename BaseCaseMatrixType, typename CommType>
+  static void aggregate(MatrixType& matA, BaseCaseMatrixType& matrix_base_case, std::vector<typename MatrixType::ScalarType>& blocked_data,
+                        std::vector<typename MatrixType::ScalarType>& cyclic_data, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
+                        typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType matAstartX, typename MatrixType::DimensionType matAendX,
+                        typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, CommType&& CommInfo, char dir);
 
   template<typename T, typename U>
   static void cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, size_t sliceDim, size_t rankSlice, char dir);

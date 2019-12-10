@@ -5,7 +5,12 @@ template<typename MatrixAType, typename MatrixTIType, typename CommType>
 std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
 cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension, char dir){
 
+  using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
+  using Distribution = typename MatrixAType::DistributionType;
+  using Offload = typename MatrixAType::OffloadType;
+  int sliceDim1 = CommInfo.c*CommInfo.d;
+  int sliceDim2 = CommInfo.d*CommInfo.d;
   U localDimension = matrixA.getNumRowsLocal();
   U globalDimension = matrixA.getNumRowsGlobal();
   // the division below may have a remainder, but I think integer division will be ok, as long as we change the base case condition to be <= and not just ==
@@ -21,32 +26,74 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
 
   if (dir == 'L'){
     baseCaseDimList.first = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
-//    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
-    rFactorLower(matrixA, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
-      baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+    if ((CommInfo.num_chunks == 0) || (CommInfo.num_chunks > localDimension/sliceDim1)){
+      matrix<T,U,lowertri,Distribution,Offload> matrix_base_case(std::vector<T>(), localDimension/sliceDim1, localDimension/sliceDim1, globalDimension/sliceDim1, globalDimension/sliceDim1);
+      U aggregSize = matrix_base_case.getNumElems()*sliceDim2;
+      std::vector<T> blocked_data(aggregSize);
+      U aggregNumRows = localDimension/CommInfo.d;
+      U aggregNumColumns = localDimension/CommInfo.d;
+      U cyclicSize = aggregNumRows*aggregNumColumns;
+      std::vector<T> cyclic_data(cyclicSize);
+      factor_lower(matrixA, matrixTI, matrix_base_case, blocked_data, cyclic_data, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+        0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
+        baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+    }
+    else{
+      matrix<T,U,square,Distribution,Offload> matrix_base_case(std::vector<T>(), localDimension/sliceDim1, localDimension/sliceDim1, globalDimension/sliceDim1, globalDimension/sliceDim1);
+      U aggregSize = matrix_base_case.getNumElems()*sliceDim2;
+      std::vector<T> blocked_data(aggregSize);
+      U aggregNumRows = localDimension/CommInfo.d;
+      U aggregNumColumns = localDimension/CommInfo.d;
+      U cyclicSize = aggregNumRows*aggregNumColumns;
+      std::vector<T> cyclic_data(cyclicSize);
+      factor_lower(matrixA, matrixTI, matrix_base_case, blocked_data, cyclic_data, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+        0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
+        baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+    }
   }
   else if (dir == 'U'){
     baseCaseDimList.first = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
-//    if (isInversePath) { baseCaseDimList.push_back(localDimension); }
-    rFactorUpper(matrixA, matrixTI, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-      0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
-      baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+    if ((CommInfo.num_chunks == 0) || (CommInfo.num_chunks > localDimension/sliceDim1)){
+      matrix<T,U,uppertri,Distribution,Offload> matrix_base_case(std::vector<T>(), localDimension/sliceDim1, localDimension/sliceDim1, globalDimension/sliceDim1, globalDimension/sliceDim1);
+      U aggregSize = matrix_base_case.getNumElems()*sliceDim2;
+      std::vector<T> blocked_data(aggregSize);
+      U aggregNumRows = localDimension/CommInfo.d;
+      U aggregNumColumns = localDimension/CommInfo.d;
+      U cyclicSize = aggregNumRows*aggregNumColumns;
+      std::vector<T> cyclic_data(cyclicSize);
+      factor_upper(matrixA, matrixTI, matrix_base_case, blocked_data, cyclic_data, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+        0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
+        baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+    }
+    else{
+      matrix<T,U,square,Distribution,Offload> matrix_base_case(std::vector<T>(), localDimension/sliceDim1, localDimension/sliceDim1, globalDimension/sliceDim1, globalDimension/sliceDim1);
+      U aggregSize = matrix_base_case.getNumElems()*sliceDim2;
+      std::vector<T> blocked_data(aggregSize);
+      U aggregNumRows = localDimension/CommInfo.d;
+      U aggregNumColumns = localDimension/CommInfo.d;
+      U cyclicSize = aggregNumRows*aggregNumColumns;
+      std::vector<T> cyclic_data(cyclicSize);
+      factor_upper(matrixA, matrixTI, matrix_base_case, blocked_data, cyclic_data, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
+        0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
+        baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+    }
   }
   return baseCaseDimList;
 }
 
-template<typename MatrixAType, typename MatrixLIType, typename CommType>
-void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
-                         typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
-                         typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
-                         typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matLIstartX, typename MatrixAType::DimensionType matLIendX,
-                         typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY,
-                         CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                         typename MatrixAType::DimensionType inverseCutoffGlobalDimension){
+template<typename MatrixAType, typename MatrixLIType, typename BaseCaseMatrixType, typename CommType>
+void cholinv::factor_lower(MatrixAType& matrixA, MatrixLIType& matrixLI, BaseCaseMatrixType& matrix_base_case,
+                           std::vector<typename MatrixAType::ScalarType>& blocked_data, std::vector<typename MatrixAType::ScalarType>& cyclic_data,
+                           typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+                           typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
+                           typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
+                           typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matLIstartX, typename MatrixAType::DimensionType matLIendX,
+                           typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY,
+                           CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension){
 
   if (globalDimension <= bcDimension){
-    baseCase(matrixA, matrixLI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
+    baseCase(matrixA, matrixLI, matrix_base_case, blocked_data, cyclic_data, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
       matAstartX, matAendX, matAstartY, matAendY, matLIstartX, matLIendX, matLIstartY, matLIendY,
       std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, 'L');
     return;
@@ -69,7 +116,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   size_t saveIndexPrev = baseCaseDimList.size();
 
   updateInversePath(inverseCutoffGlobalDimension, globalDimension, isInversePath, baseCaseDimList, localDimension);
-  rFactorLower(matrixA, matrixLI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
+  factor_lower(matrixA, matrixLI, matrix_base_case, blocked_data, cyclic_data, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matLIstartX, matLIstartX+localShift, matLIstartY, matLIstartY+localShift,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
@@ -135,7 +182,7 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
   matmult::summa::invoke(matrixA, matrixA, matAstartX, matAstartX+localShift, matAstartY+localShift, matAendY,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), syrkArgs, true, true);
 
-  rFactorLower(matrixA, matrixLI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
+  factor_lower(matrixA, matrixLI, matrix_base_case, blocked_data, cyclic_data, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
     matLIstartX+localShift, matLIendX, matLIstartY+localShift, matLIendY,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
@@ -164,17 +211,19 @@ void cholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typenam
 }
 
 
-template<typename MatrixAType, typename MatrixRIType, typename CommType>
-void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
-                         typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
-                         typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
-                         typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matRIstartX, typename MatrixAType::DimensionType matRIendX,
-                         typename MatrixAType::DimensionType matRIstartY, typename MatrixAType::DimensionType matRIendY,
-                         CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                         typename MatrixAType::DimensionType inverseCutoffGlobalDimension){
+template<typename MatrixAType, typename MatrixRIType, typename BaseCaseMatrixType, typename CommType>
+void cholinv::factor_upper(MatrixAType& matrixA, MatrixRIType& matrixRI, BaseCaseMatrixType& matrix_base_case,
+                           std::vector<typename MatrixAType::ScalarType>& blocked_data, std::vector<typename MatrixAType::ScalarType>& cyclic_data,
+                           typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+                           typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
+                           typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
+                           typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matRIstartX, typename MatrixAType::DimensionType matRIendX,
+                           typename MatrixAType::DimensionType matRIstartY, typename MatrixAType::DimensionType matRIendY,
+                           CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension){
 
   if (globalDimension <= bcDimension){
-    baseCase(matrixA, matrixRI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
+    baseCase(matrixA, matrixRI, matrix_base_case, blocked_data, cyclic_data, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
       matAstartX, matAendX, matAstartY, matAendY, matRIstartX, matRIendX, matRIstartY, matRIendY,
       std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, 'U');
     return;
@@ -197,7 +246,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   size_t saveIndexPrev = baseCaseDimList.size();
 
   updateInversePath(inverseCutoffGlobalDimension, globalDimension, isInversePath, baseCaseDimList, localDimension);
-  rFactorUpper(matrixA, matrixRI, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
+  factor_upper(matrixA, matrixRI, matrix_base_case, blocked_data, cyclic_data, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     matAstartX, matAstartX+localShift, matAstartY, matAstartY+localShift,
     matRIstartX, matRIstartX+localShift, matRIstartY, matRIstartY+localShift,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
@@ -253,7 +302,7 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
   matmult::summa::invoke(matrixA, matrixA, matAstartX+localShift, matAendX, matAstartY, matAstartY+localShift,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY, std::forward<CommType>(CommInfo), syrkArgs, true, true);
 
-  rFactorUpper(matrixA, matrixRI, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
+  factor_upper(matrixA, matrixRI, matrix_base_case, blocked_data, cyclic_data, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal/*globalShift*/, trueGlobalDimension,
     matAstartX+localShift, matAendX, matAstartY+localShift, matAendY,
     matRIstartX+localShift, matRIendX, matRIstartY+localShift, matRIendY,
     std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
@@ -283,8 +332,10 @@ void cholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typenam
 }
 
 
-template<typename MatrixAType, typename MatrixIType, typename CommType>
-void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+template<typename MatrixAType, typename MatrixIType, typename BaseCaseMatrixType, typename CommType>
+void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, BaseCaseMatrixType& matrix_base_case,
+                     std::vector<typename MatrixAType::ScalarType>& blocked_data, std::vector<typename MatrixAType::ScalarType>& cyclic_data,
+                     typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                      typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                      typename MatrixAType::DimensionType matAstartX, typename MatrixAType::DimensionType matAendX, typename MatrixAType::DimensionType matAstartY,
                      typename MatrixAType::DimensionType matAendY, typename MatrixAType::DimensionType matIstartX, typename MatrixAType::DimensionType matIendX,
@@ -317,9 +368,9 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
   MPI_Comm_rank(CommInfo.slice, &rankSlice);
 
   // Should be fast pass-by-value via move semantics
-  std::vector<T> cyclicBaseCaseData = blockedToCyclicTransformation(
-    matrixA, localDimension, globalDimension, globalDimension/*bcDimension*/, (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
-    (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), CommInfo.d, CommInfo.slice, dir);
+  aggregate(matrixA, matrix_base_case, blocked_data, cyclic_data, localDimension, globalDimension, globalDimension/*bcDimension*/,
+    (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY),
+    (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), std::forward<CommType>(CommInfo), dir);
 
   // TODO: Note: with my new optimizations, this case might never pass, because A is serialized into. Watch out!
   if (((dir == 'L') && (matAendX == trueLocalDimension)) || ((dir == 'U') && (matAendY == trueLocalDimension))){
@@ -331,7 +382,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
     // manual serialize
     for (U i=0; i<finalDim; i++){
       for (U j=0; j<finalDim; j++){
-        deepBaseCase[i*finalDim+j] = cyclicBaseCaseData[i*checkDim+j];
+        deepBaseCase[i*finalDim+j] = cyclic_data[i*checkDim+j];
       }
     }
 
@@ -379,7 +430,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
   }
   else{
     size_t fTranDim1 = localDimension*CommInfo.d;
-    std::vector<T>& storeMat = cyclicBaseCaseData;
+    std::vector<T> storeMat = cyclic_data;	// TODO: Expensive copy?
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
     lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, (dir == 'L' ? lapack::UpLo::AlapackLower : lapack::UpLo::AlapackUpper));
     lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, (dir == 'L' ? lapack::UpLo::AlapackLower : lapack::UpLo::AlapackUpper), lapack::Diag::AlapackNonUnit);
@@ -416,40 +467,45 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename Matr
 }
 
 
-template<typename MatrixType>
-std::vector<typename MatrixType::ScalarType>
-cholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
-                                     typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType matAstartX, typename MatrixType::DimensionType matAendX,
-                                     typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, size_t sliceDim, MPI_Comm slice2Dcomm, char dir){
+template<typename MatrixType, typename BaseCaseMatrixType, typename CommType>
+void
+cholinv::aggregate(MatrixType& matA, BaseCaseMatrixType& matrix_base_case, std::vector<typename MatrixType::ScalarType>& blocked_data,
+                   std::vector<typename MatrixType::ScalarType>& cyclic_data, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
+                               typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType matAstartX, typename MatrixType::DimensionType matAendX,
+                               typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, CommType&& CommInfo, char dir){
 
+  assert(matrix_base_case.getNumColumnsLocal() == localDimension);
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
   using Distribution = typename MatrixType::DistributionType;
   using Offload = typename MatrixType::OffloadType;
+  using BaseCaseStructure = typename BaseCaseMatrixType::StructureType;
 
-  if (dir == 'U'){
-    matrix<T,U,uppertri,Distribution,Offload> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension, globalDimension, globalDimension);
-    serialize<square,uppertri>::invoke(matA, baseCaseMatrixA, matAstartX, matAendX, matAstartY, matAendY);
-  //  U aggregDim = localDimension*sliceDim;
-  //  std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
-    U aggregSize = baseCaseMatrixA.getNumElems()*sliceDim*sliceDim;
-    std::vector<T> blockedBaseCaseData(aggregSize);
-    // Note: recv buffer will be larger tha send buffer * sliceDim**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
-    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), mpi_type<T>::type, &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), mpi_type<T>::type, slice2Dcomm);
-
-    return util::blockedToCyclicSpecial(blockedBaseCaseData, localDimension, localDimension, sliceDim, dir);
+  serialize<square,BaseCaseStructure>::invoke(matA, matrix_base_case, matAstartX, matAendX, matAstartY, matAendY);
+  if (CommInfo.num_chunks == 0 || (CommInfo.num_chunks > localDimension)){
+    MPI_Allgather(matrix_base_case.getRawData(), matrix_base_case.getNumElems(), mpi_type<T>::type, &blocked_data[0], matrix_base_case.getNumElems(), mpi_type<T>::type, CommInfo.slice);
+    util::block_to_cyclic(blocked_data, cyclic_data, localDimension, localDimension, CommInfo.d, dir);
   }
-  else{ // dir == 'L'
-    matrix<T,U,lowertri,Distribution,Offload> baseCaseMatrixA(std::vector<T>(), localDimension, localDimension, globalDimension, globalDimension);
-    serialize<square,lowertri>::invoke(matA, baseCaseMatrixA, matAstartX, matAendX, matAstartY, matAendY);
-  //  U aggregDim = localDimension*sliceDim;
-  //  std::vector<T> blockedBaseCaseData(aggregDim*aggregDim);
-    U aggregSize = baseCaseMatrixA.getNumElems()*sliceDim*sliceDim;
-    std::vector<T> blockedBaseCaseData(aggregSize);
-    // Note: recv buffer will be larger tha send buffer * sliceDim**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
-    MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), mpi_type<T>::type, &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), mpi_type<T>::type, slice2Dcomm);
-
-    return util::blockedToCyclicSpecial(blockedBaseCaseData, localDimension, localDimension, sliceDim, dir);
+  else{
+    // initiate distribution of allgather into chunks of local columns, multiples of localDimension
+    std::vector<MPI_Request> req(CommInfo.num_chunks);
+    std::vector<MPI_Status> stat(CommInfo.num_chunks);
+    size_t offset = localDimension*(localDimension%CommInfo.num_chunks);
+    size_t progress=0;
+    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
+      MPI_Iallgather(matrix_base_case.getRawData()+progress, idx==(CommInfo.num_chunks-1) ? localDimension*(localDimension/CommInfo.num_chunks+offset) : localDimension*(localDimension/CommInfo.num_chunks),
+                     mpi_type<T>::type, &blocked_data[progress], idx==(CommInfo.num_chunks-1) ? localDimension*(localDimension/CommInfo.num_chunks+offset) : localDimension*(localDimension/CommInfo.num_chunks),
+                     mpi_type<T>::type, CommInfo.slice, &req[idx]);
+      progress += localDimension * (localDimension/CommInfo.num_chunks);
+    }
+    // initiate distribution along columns and complete distribution across rows
+    progress=0;
+    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
+      MPI_Wait(&req[idx],&stat[idx]);
+      util::block_to_cyclic(&blocked_data[progress], &cyclic_data[progress], localDimension,
+                            idx==(CommInfo.num_chunks-1) ? (localDimension+offset)/CommInfo.num_chunks : localDimension/CommInfo.num_chunks, CommInfo.d);
+      progress += (localDimension * (localDimension/CommInfo.num_chunks))*CommInfo.d*CommInfo.d;
+    }
   }
 }
 

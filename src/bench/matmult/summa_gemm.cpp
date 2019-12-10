@@ -18,15 +18,12 @@ int main(int argc, char** argv){
 
   util::InitialGEMM<double>();
 
-  /*
-    Choices for methodKey2: 0) Broadcast + Allreduce
-			    1) Allgather + Allreduce
-  */
   size_t globalMatrixSizeM = atoi(argv[1]);
   size_t globalMatrixSizeN = atoi(argv[2]);
   size_t globalMatrixSizeK = atoi(argv[3]);
-  size_t pGridDimensionC = atoi(argv[4]);
-  size_t numIterations = atoi(argv[5]);
+  size_t pGridDimensionC   = atoi(argv[4]);
+  size_t num_chunks        = atoi(argv[5]);
+  size_t numIterations     = atoi(argv[6]);
 
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
@@ -34,7 +31,7 @@ int main(int argc, char** argv){
   // Loop for getting a good range of results.
   for (size_t i=0; i<numIterations; i++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
-    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC,num_chunks);
     MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,SquareTopo.d,SquareTopo.d);
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,SquareTopo.d,SquareTopo.d);
     MatrixTypeR matC(globalMatrixSizeN,globalMatrixSizeM,SquareTopo.d,SquareTopo.d);

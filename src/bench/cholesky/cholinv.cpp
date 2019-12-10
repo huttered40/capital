@@ -19,14 +19,15 @@ int main(int argc, char** argv){
   size_t globalMatrixSize = atoi(argv[1]);
   size_t pGridDimensionC = atoi(argv[2]);
   size_t inverseCutOffMultiplier = atoi(argv[3]); // multiplies baseCase dimension by sucessive 2
-  size_t numIterations = atoi(argv[4]);
+  size_t num_chunks        = atoi(argv[4]);
+  size_t numIterations = atoi(argv[5]);
 
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
 
   for (size_t i=0; i<numIterations; i++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
-    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC,num_chunks);
     // Reset matrixA
     MatrixTypeA matA(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
     MatrixTypeA matT(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);

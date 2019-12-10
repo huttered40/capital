@@ -418,15 +418,15 @@ void summa::distribute_bcast(MatrixAType& matrixA, MatrixBType& matrixB, CommTyp
   U sizeB = matrixB.getNumElems();
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
-  if (!isRootRow){ dataA.resize(sizeA); }
-  if (!isRootColumn){ dataB.resize(sizeB); }
+  if (!isRootRow){ foreignA.resize(sizeA); }
+  if (!isRootColumn){ foreignB.resize(sizeB); }
 
   // Check chunk size. If its 0, then bcast across rows and columns with no overlap
   if (CommInfo.num_chunks == 0){
     // distribute across rows
-    MPI_Bcast(&dataA[0], sizeA, mpi_type<T>::type, CommInfo.z, CommInfo.row);
+    MPI_Bcast((isRootRow ? &dataA[0] : &foreignA[0]), sizeA, mpi_type<T>::type, CommInfo.z, CommInfo.row);
     // distribute across columns
-    MPI_Bcast(&dataB[0], sizeB, mpi_type<T>::type, CommInfo.z, CommInfo.column);
+    MPI_Bcast((isRootColumn ? &dataB[0] : &foreignB[0]), sizeB, mpi_type<T>::type, CommInfo.z, CommInfo.column);
   }
   else{
     // initiate distribution across rows
@@ -437,14 +437,16 @@ void summa::distribute_bcast(MatrixAType& matrixA, MatrixBType& matrixB, CommTyp
     size_t offset = sizeA%CommInfo.num_chunks;
     size_t progress=0;
     for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
-      MPI_Ibcast(&dataA[progress], idx==(CommInfo.num_chunks-1) ? sizeA/CommInfo.num_chunks+offset : sizeA/CommInfo.num_chunks, mpi_type<T>::type, CommInfo.z, CommInfo.row, &row_req[idx]);
+      MPI_Ibcast((isRootRow ? &dataA[progress] : &foreignA[progress]), idx==(CommInfo.num_chunks-1) ? sizeA/CommInfo.num_chunks+offset : sizeA/CommInfo.num_chunks,
+                 mpi_type<T>::type, CommInfo.z, CommInfo.row, &row_req[idx]);
       progress += sizeA/CommInfo.num_chunks;
     }
     // initiate distribution along columns and complete distribution across rows
     offset = sizeB%CommInfo.num_chunks;
     progress=0;
     for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
-      MPI_Ibcast(&dataB[progress], idx==(CommInfo.num_chunks-1) ? sizeB/CommInfo.num_chunks+offset : sizeB/CommInfo.num_chunks, mpi_type<T>::type, CommInfo.z, CommInfo.column, &column_req[idx]);
+      MPI_Ibcast((isRootColumn ? &dataB[progress] : &foreignB[progress]), idx==(CommInfo.num_chunks-1) ? sizeB/CommInfo.num_chunks+offset : sizeB/CommInfo.num_chunks,
+                 mpi_type<T>::type, CommInfo.z, CommInfo.column, &column_req[idx]);
       progress += sizeB/CommInfo.num_chunks;
       MPI_Wait(&row_req[idx],&row_stat[idx]);
     }
