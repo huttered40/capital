@@ -120,6 +120,18 @@ void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeSym
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
+void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeIdentity(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY, T val){
+  // matrix must be already constructed with memory. Add a check for this later.
+  DistributionPolicy::_DistributeIdentity(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,val);
+}
+
+template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
+void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeDebug(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY){
+  // matrix must be already constructed with memory. Add a check for this later.
+  DistributionPolicy::_DistributeDebug(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY);
+}
+
+template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
 void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::print() const{
   StructurePolicy::_Print(this->_matrix,this->_dimensionX,this->_dimensionY);
 }

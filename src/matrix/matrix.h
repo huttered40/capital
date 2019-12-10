@@ -49,6 +49,8 @@ public:
   inline T& getAccess(U dimX, U dimY) {return this->_matrix[dimX][dimY];}
   void DistributeRandom(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY, size_t key);
   void DistributeSymmetric(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY, size_t key, bool diagonallyDominant);
+  void DistributeIdentity(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY, T val=1.);
+  void DistributeDebug(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY);
   void print() const;
 
 private:
