@@ -4,7 +4,6 @@ namespace cholesky{
 template<typename MatrixAType, typename MatrixTIType, typename CommType>
 std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
 polycholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension, char dir){
-  TAU_FSTART(polycholinv::invoke);
 
   using U = typename MatrixAType::DimensionType;
   U localDimension = matrixA.getNumRowsLocal();
@@ -34,7 +33,6 @@ polycholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& Com
       0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
       baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
   }
-  TAU_FSTOP(polycholinv::invoke);
   return baseCaseDimList;
 }
 
@@ -46,7 +44,6 @@ void polycholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typ
                          typename MatrixAType::DimensionType matLIstartY, typename MatrixAType::DimensionType matLIendY,
                          CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                          typename MatrixAType::DimensionType inverseCutoffGlobalDimension){
-  TAU_FSTART(polycholinv::rFactorLower);
 
   if (globalDimension <= bcDimension){
     baseCase(matrixA, matrixLI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
@@ -164,7 +161,6 @@ void polycholinv::rFactorLower(MatrixAType& matrixA, MatrixLIType& matrixLI, typ
     serialize<square,square>::invoke(matrixLI, tempInverse, matLIstartX, matLIstartX+localShift, matLIstartY+localShift, matLIendY, true);
   }
   isInversePath = saveSwitch;
-  TAU_FSTOP(polycholinv::rFactorLower);
 }
 
 
@@ -176,7 +172,6 @@ void polycholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typ
                          typename MatrixAType::DimensionType matRIstartY, typename MatrixAType::DimensionType matRIendY,
                          CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                          typename MatrixAType::DimensionType inverseCutoffGlobalDimension){
-  TAU_FSTART(polycholinv::rFactorUpper);
 
   if (globalDimension <= bcDimension){
     baseCase(matrixA, matrixRI, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
@@ -285,7 +280,6 @@ void polycholinv::rFactorUpper(MatrixAType& matrixA, MatrixRIType& matrixRI, typ
     serialize<square,square>::invoke(matrixRI, tempInverse, matRIstartX+localShift, matRIendX, matRIstartY, matRIstartY+localShift, true);
   }
   isInversePath = saveSwitch;
-  TAU_FSTOP(polycholinv::rFactorUpper);
 }
 
 
@@ -297,7 +291,6 @@ void polycholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename 
                      typename MatrixAType::DimensionType matIstartY, typename MatrixAType::DimensionType matIendY,
                      CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                      typename MatrixAType::DimensionType inverseCutoffGlobalDimension, char dir){
-  TAU_FSTART(polycholinv::baseCase);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -419,7 +412,6 @@ void polycholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, typename 
       (dir == 'L' ? matAstartX : matAstartY), (dir == 'L' ? matAendX : matAendY), true);
     serialize<square,square>::invoke(matrixI, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
   }
-  TAU_FSTOP(polycholinv::baseCase);
   return;
 }
 
@@ -429,7 +421,6 @@ std::vector<typename MatrixType::ScalarType>
 polycholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
                                      typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType matAstartX, typename MatrixType::DimensionType matAendX,
                                      typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, size_t sliceDim, MPI_Comm slice2Dcomm, char dir){
-  TAU_FSTART(polycholinv::blockedToCyclicTransformation);
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -446,7 +437,6 @@ polycholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType
     // Note: recv buffer will be larger tha send buffer * sliceDim**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
     MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), mpi_type<T>::type, &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), mpi_type<T>::type, slice2Dcomm);
 
-    TAU_FSTOP(polycholinv::blockedToCyclicTransformation);
     return util::blockedToCyclicSpecial(blockedBaseCaseData, localDimension, localDimension, sliceDim, dir);
   }
   else{ // dir == 'L'
@@ -459,7 +449,6 @@ polycholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType
     // Note: recv buffer will be larger tha send buffer * sliceDim**2! This should not crash, but we need this much memory anyway when calling DPOTRF and DTRTRI
     MPI_Allgather(baseCaseMatrixA.getRawData(), baseCaseMatrixA.getNumElems(), mpi_type<T>::type, &blockedBaseCaseData[0], baseCaseMatrixA.getNumElems(), mpi_type<T>::type, slice2Dcomm);
 
-    TAU_FSTOP(polycholinv::blockedToCyclicTransformation);
     return util::blockedToCyclicSpecial(blockedBaseCaseData, localDimension, localDimension, sliceDim, dir);
   }
 }
@@ -471,7 +460,6 @@ polycholinv::blockedToCyclicTransformation(MatrixType& matA, typename MatrixType
 //   we may need to separate into two different functions
 template<typename T, typename U>
 void polycholinv::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, size_t sliceDim, size_t rankSlice, char dir){
-  TAU_FSTART(polycholinv::cyclicToLocalTransformation);
 
   U writeIndex = 0;
   U rowOffsetWithinBlock = rankSlice / sliceDim;
@@ -503,7 +491,6 @@ void polycholinv::cyclicToLocalTransformation(std::vector<T>& storeT, std::vecto
       writeIndex++;
     }
   }
-  TAU_FSTOP(polycholinv::cyclicToLocalTransformation);
 }
 
 template<typename U>

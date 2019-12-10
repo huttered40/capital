@@ -62,7 +62,6 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename T, typename U>
 std::vector<T> util::blockedToCyclicSpecial(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t sliceDim, char dir){
-  TAU_FSTART(Util::blockedToCyclic);
 
   U aggregNumRows = localDimensionRows*sliceDim;
   U aggregNumColumns = localDimensionColumns*sliceDim;
@@ -136,14 +135,12 @@ std::vector<T> util::blockedToCyclicSpecial(std::vector<T>& blockedData, U local
 
   // Should be quick pass-by-value via move semantics, since we are effectively returning a localvariable that is going to lose its scope anyways,
   //   so the compiler should be smart enough to use the move constructor for the vector in the caller function.
-  TAU_FSTOP(Util::blockedToCyclic);
   return cyclicData;
 
 }
 
 template<typename T, typename U>
 std::vector<T> util::blockedToCyclic(std::vector<T>& blockedData, U localDimensionRows, U localDimensionColumns, size_t sliceDim){
-  TAU_FSTART(Util::blockedToCyclic);
 
   U aggregNumRows = localDimensionRows*sliceDim;
   U aggregNumColumns = localDimensionColumns*sliceDim;
@@ -170,14 +167,12 @@ std::vector<T> util::blockedToCyclic(std::vector<T>& blockedData, U localDimensi
 
   // Should be quick pass-by-value via move semantics, since we are effectively returning a localvariable that is going to lose its scope anyways,
   //   so the compiler should be smart enough to use the move constructor for the vector in the caller function.
-  TAU_FSTOP(Util::blockedToCyclic);
   return cyclicData;
 }
 
 template<typename MatrixType>
 std::vector<typename MatrixType::ScalarType>
 util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_t commDim){
-  TAU_FSTART(Util::getReferenceMatrix);
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -226,13 +221,11 @@ util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_
     // In this case, globalSize < aggregSize
     cyclicMatrix.resize(globalSize);
   }
-  TAU_FSTOP(Util::getReferenceMatrix);
   return cyclicMatrix;
 }
 
 template<typename MatrixType, typename CommType>
 void util::transposeSwap(MatrixType& mat, CommType&& CommInfo){
-  TAU_FSTART(Util::transposeSwap);
 
   using T = typename MatrixType::ScalarType;
   size_t SquareFaceSize = CommInfo.c*CommInfo.d;
@@ -247,12 +240,10 @@ void util::transposeSwap(MatrixType& mat, CommType&& CommInfo){
     //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
 
   //}
-  TAU_FSTOP(Util::transposeSwap);
 }
 
 template<typename U>
 U util::getNextPowerOf2(U localShift){
-  TAU_FSTART(Util::getNextPowerOf2);
 
   if ((localShift & (localShift-1)) != 0){
     // move localShift up to the next power of 2
@@ -266,13 +257,11 @@ U util::getNextPowerOf2(U localShift){
     localShift |= (localShift >> 32);
     localShift++;
   }
-  TAU_FSTOP(Util::getNextPowerOf2);
   return localShift;
 }
 
 template<typename MatrixType>
 void util::removeTriangle(MatrixType& matrix, size_t sliceX, size_t sliceY, size_t sliceDim, char dir){
-  TAU_FSTART(Util::removeTriangle);
 
   using U = typename MatrixType::DimensionType;
 
@@ -293,7 +282,6 @@ void util::removeTriangle(MatrixType& matrix, size_t sliceX, size_t sliceY, size
     }
     globalDimHoriz += sliceDim;
   }
-  TAU_FSTOP(Util::removeTriangle);
 }
 
 void util::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, size_t numFuncs, size_t numIterations, size_t rank){

@@ -60,7 +60,6 @@ extern "C" void LAPACKE_zgeqrf(char, int, int, std::complex<double>*, int, std::
 
 // Local includes
 #include "./../util/shared.h"
-#include "./../timer/CTFtimer.h"
 
 namespace lapack{
 

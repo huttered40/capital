@@ -22,7 +22,6 @@ static void fillZerosContig(T* addr, U size){
 
 template<typename SrcType, typename DestType>
 void serialize<square,square>::invoke(SrcType& src, DestType& dest){
-  TAU_FSTART(invoke);
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
@@ -56,7 +55,6 @@ void serialize<square,square>::invoke(SrcType& src, DestType& dest){
     dest.setNumElems(srcNumElems);
     square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
@@ -64,7 +62,6 @@ template<typename BigType, typename SmallType>
 void serialize<square,square>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart,
                                            typename BigType::DimensionType cutDimensionXend, typename BigType::DimensionType cutDimensionYstart,
                                            typename BigType::DimensionType cutDimensionYend, bool dir){
-  TAU_FSTART(invoke);
 
   using T = typename BigType::ScalarType;
   using U = typename BigType::DimensionType;
@@ -122,7 +119,6 @@ void serialize<square,square>::invoke(BigType& big, SmallType& small, typename B
     small.setNumElems(numElems);
     square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
-  TAU_FSTOP(invoke);
 }
 
 template<typename SrcType, typename DestType>
@@ -142,7 +138,6 @@ void serialize<square,rect>::invoke(BigType& src, SmallType& dest, typename BigT
 
 template<typename SrcType, typename DestType>
 void serialize<square,uppertri>::invoke(SrcType& src, DestType& dest){
-  TAU_FSTART(invoke);
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
@@ -183,7 +178,6 @@ void serialize<square,uppertri>::invoke(SrcType& src, DestType& dest){
     dest.setNumElems(numElems);
     uppertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
@@ -229,7 +223,6 @@ void serialize<T,U,square, uppertri>::invoke(Matrix<T,U,square,Distributer>& src
 template<typename BigType, typename SmallType>
 void serialize<square,uppertri>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
                                                    typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
-  TAU_FSTART(invoke);
 
   using T = typename BigType::ScalarType;
   using U = typename BigType::DimensionType;
@@ -282,7 +275,6 @@ void serialize<square,uppertri>::invoke(BigType& big, SmallType& small, typename
     // I am only providing UT here, not square, because if square, it would have aborted
     uppertri::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
-  TAU_FSTOP(invoke);
 }
 
 /*
@@ -328,7 +320,6 @@ void serialize<T,U,square, uppertri>::invoke(Matrix<T,U,square,Distributer>& src
 
 template<typename SrcType, typename DestType>
 void serialize<square,lowertri>::invoke(SrcType& src, DestType& dest){
-  TAU_FSTART(invoke);
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
@@ -371,7 +362,6 @@ void serialize<square,lowertri>::invoke(SrcType& src, DestType& dest){
     dest.setNumElems(numElems);
     lowertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
@@ -417,7 +407,6 @@ void serialize<T,U,square, lowertri>::invoke(Matrix<T,U,square,Distributer>& src
 template<typename BigType, typename SmallType>
 void serialize<square,lowertri>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
                                                    typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
-  TAU_FSTART(invoke);
 
   using T = typename BigType::ScalarType;
   using U = typename BigType::DimensionType;
@@ -470,7 +459,6 @@ void serialize<square,lowertri>::invoke(BigType& big, SmallType& small, typename
     // I am only providing UT here, not square, because if square, it would have aborted
     lowertri::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
-  TAU_FSTOP(invoke);
 }
 
 /*
@@ -531,7 +519,6 @@ void serialize<rect,square>::invoke(BigType& src, SmallType& dest, typename BigT
 
 template<typename SrcType, typename DestType>
 void serialize<rect,rect>::invoke(SrcType& src, DestType& dest){
-  TAU_FSTART(invoke);
 
   // For now, just call square counterpart, it should be the same --- Actually I can't unless I try to do a weird cast.
   // Annoying code bloat here
@@ -566,14 +553,12 @@ void serialize<rect,rect>::invoke(SrcType& src, DestType& dest){
     dest.setNumElems(srcNumElems);
     square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
 template<typename BigType, typename SmallType>
 void serialize<rect,rect>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
                                                     typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
-  TAU_FSTART(invoke);
 
   // For now, just call square counterpart, it should be the same --- Actually I can't unless I try to do a weird cast.
   // Annoying code bloat here
@@ -633,7 +618,6 @@ void serialize<rect,rect>::invoke(BigType& big, SmallType& small, typename BigTy
     small.setNumElems(numElems);
     square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
@@ -670,7 +654,6 @@ void serialize<rect,lowertri>::invoke(BigType& src, SmallType& dest, typename Bi
 
 template<typename SrcType, typename DestType>
 void serialize<uppertri,square>::invoke(SrcType& src, DestType& dest){
-  TAU_FSTART(invoke);
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
@@ -715,14 +698,12 @@ void serialize<uppertri,square>::invoke(SrcType& src, DestType& dest){
     dest.setNumElems(numElems);
     uppertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
 template<typename BigType, typename SmallType>
 void serialize<uppertri, square>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
                                                         typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
-  TAU_FSTART(invoke);
 
   using T = typename BigType::ScalarType;
   using U = typename BigType::DimensionType;
@@ -773,7 +754,6 @@ void serialize<uppertri, square>::invoke(BigType& big, SmallType& small, typenam
     // I am only providing square here, not UT, because if UT, it would have aborted
     square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
-  TAU_FSTOP(invoke);
 }
 
 /* No reason for this method. Just use UT to little square
@@ -824,7 +804,6 @@ void serialize<T,U,uppertri, square>::invoke(Matrix<T,U,uppertri,Distributer>& s
 
 template<typename SrcType, typename DestType>
 void serialize<uppertri,rect>::invoke(SrcType& src, DestType& dest){
-  TAU_FSTART(invoke);
 
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
@@ -869,7 +848,6 @@ void serialize<uppertri,rect>::invoke(SrcType& src, DestType& dest){
     dest.setNumElems(numElems);
     uppertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
@@ -877,7 +855,6 @@ void serialize<uppertri,rect>::invoke(SrcType& src, DestType& dest){
 template<typename BigType, typename SmallType>
 void serialize<uppertri,rect>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
                                                         typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
-  TAU_FSTART(invoke);
 
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
@@ -929,13 +906,11 @@ void serialize<uppertri,rect>::invoke(BigType& big, SmallType& small, typename B
     // I am only providing square here, not UT, because if UT, it would have aborted
     square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
-  TAU_FSTOP(invoke);
 }
 
 
 template<typename SrcType, typename DestType>
 void serialize<uppertri,uppertri>::invoke(SrcType& src, DestType& dest){
-  TAU_FSTART(invoke);
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
@@ -969,7 +944,6 @@ void serialize<uppertri,uppertri>::invoke(SrcType& src, DestType& dest){
     dest.setNumElems(srcNumElems);
     uppertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
@@ -977,7 +951,6 @@ void serialize<uppertri,uppertri>::invoke(SrcType& src, DestType& dest){
 template<typename BigType, typename SmallType>
 void serialize<uppertri,uppertri>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
                                                             typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
-  TAU_FSTART(invoke);
 
   using T = typename BigType::ScalarType;
   using U = typename BigType::DimensionType;
@@ -1030,14 +1003,12 @@ void serialize<uppertri,uppertri>::invoke(BigType& big, SmallType& small, typena
     small.setNumElems(numElems);
     uppertri::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
 
 template<typename SrcType, typename DestType>
 void serialize<lowertri, square>::invoke(SrcType& src, DestType& dest){
-  TAU_FSTART(invoke);
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
@@ -1082,7 +1053,6 @@ void serialize<lowertri, square>::invoke(SrcType& src, DestType& dest){
     dest.setNumElems(numElems);
     square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
@@ -1091,7 +1061,6 @@ void serialize<lowertri, square>::invoke(SrcType& src, DestType& dest){
 template<typename BigType, typename SmallType>
 void serialize<lowertri,square>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
                                                    typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
-  TAU_FSTART(invoke);
 
   using T = typename BigType::ScalarType;
   using U = typename BigType::DimensionType;
@@ -1146,7 +1115,6 @@ void serialize<lowertri,square>::invoke(BigType& big, SmallType& small, typename
     small.setNumElems(numElems);
     square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
@@ -1196,7 +1164,6 @@ void serialize<T,U,lowertri, square>::invoke(Matrix<T,U,lowertri,Distributer>& s
 
 template<typename SrcType, typename DestType>
 void serialize<lowertri,rect>::invoke(SrcType& src, DestType& dest){
-  TAU_FSTART(invoke);
 
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
@@ -1240,14 +1207,12 @@ void serialize<lowertri,rect>::invoke(SrcType& src, DestType& dest){
     dest.setNumElems(numElems);
     square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
 template<typename BigType, typename SmallType>
 void serialize<lowertri,rect>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
                                                         typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
-  TAU_FSTART(invoke);
 
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
@@ -1303,14 +1268,12 @@ void serialize<lowertri,rect>::invoke(BigType& big, SmallType& small, typename B
     small.setNumElems(numElems);
     square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
 
 template<typename SrcType, typename DestType>
 void serialize<lowertri,lowertri>::invoke(SrcType& src, DestType& dest){
-  TAU_FSTART(invoke);
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
@@ -1344,14 +1307,12 @@ void serialize<lowertri,lowertri>::invoke(SrcType& src, DestType& dest){
     dest.setNumElems(srcNumElems);
     lowertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
-  TAU_FSTOP(invoke);
   return;
 }
 
 template<typename BigType, typename SmallType>
 void serialize<lowertri,lowertri>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
                                                             typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
-  TAU_FSTART(invoke);
 
   using T = typename BigType::ScalarType;
   using U = typename BigType::DimensionType;
@@ -1407,6 +1368,5 @@ void serialize<lowertri,lowertri>::invoke(BigType& big, SmallType& small, typena
     small.setNumElems(numElems);
     lowertri::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
-  TAU_FSTOP(invoke);
   return;
 }

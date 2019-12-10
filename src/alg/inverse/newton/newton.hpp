@@ -5,7 +5,6 @@ namespace inverse{
 template<typename MatrixType, typename CommType>
 void newton::invoke(MatrixType& matrix, CommType&& CommInfo, typename MatrixType::ScalarType tol, size_t max_iter){
   // `matrix` is modified in-place
-  TAU_FSTART(newton::invoke);
   // TODO: Assuming CommType is an instance of SquareTopo
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -50,7 +49,5 @@ void newton::invoke(MatrixType& matrix, CommType&& CommInfo, typename MatrixType
     i++;
   }
   std::memcpy(matrix.getRawData(),iterate.getRawData(),sizeof(T)*matrix.getNumElems()); 
-
-  TAU_FSTOP(newton::invoke);
 }
 }

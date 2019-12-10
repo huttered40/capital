@@ -14,7 +14,6 @@ template<typename MatrixAType, typename MatrixUType, typename MatrixUIType, type
 void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixUType& matrixU, MatrixUIType& matrixUI, CommType&& CommInfo,
                                  std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                                  blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
-  TAU_FSTART(diaginvert::iSolveUpperLeft);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -82,7 +81,6 @@ void diaginvert::iSolveUpperLeft(MatrixAType& matrixA, MatrixUType& matrixU, Mat
       offset2 += baseCaseDimList[i+1];
     }
   }
-  TAU_FSTOP(diaginvert::iSolveUpperLeft);
 }
 
 
@@ -91,7 +89,6 @@ template<typename MatrixLType, typename MatrixLIType, typename MatrixAType, type
 void diaginvert::iSolveLowerRight(MatrixLType& matrixL, MatrixLIType& matrixLI, MatrixAType& matrixA, CommType&& CommInfo,
                                   std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                                   blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
-  TAU_FSTART(diaginvert::iSolveLowerRight);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -150,7 +147,6 @@ void diaginvert::iSolveLowerRight(MatrixLType& matrixL, MatrixLIType& matrixLI, 
       offset2 += baseCaseDimList[i+1];
     }
   }
-  TAU_FSTOP(diaginvert::iSolveLowerRight);
 }
 
 /*

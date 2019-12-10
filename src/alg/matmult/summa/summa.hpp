@@ -7,7 +7,6 @@ void summa::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matri
                     typename MatrixBType::DimensionType matrixBnumColumns, typename MatrixBType::DimensionType matrixBnumRows,
                     typename MatrixBType::DimensionType matrixCnumColumns, typename MatrixBType::DimensionType matrixCnumRows,
                     CommType&& CommInfo, const blas::ArgPack_gemm<typename MatrixBType::ScalarType>& srcPackage){
-  TAU_FSTART(summa::invoke);
 
   // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
   //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
@@ -32,9 +31,9 @@ void summa::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matri
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
 
-  BroadcastPanels((isRootRow ? matrixA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
+  //BroadcastPanels((isRootRow ? matrixA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
   matrixAEnginePtr = (isRootRow ? matrixA : foreignA);
-  BroadcastPanels((isRootColumn ? matrixB.getVectorData() : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
+  //BroadcastPanels((isRootColumn ? matrixB.getVectorData() : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
   if ((!std::is_same<StructureB,rect>::value) && (!std::is_same<StructureB,square>::value)){
     matrix<T,U,rect,Distribution,Offload> helperB(std::vector<T>(), matrixBnumColumns, matrixBnumRows, matrixBnumColumns, matrixBnumRows);
     getEnginePtr(matrixB, helperB, (isRootColumn ? matrixB.getVectorData() : foreignB), isRootColumn);
@@ -67,7 +66,6 @@ void summa::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matri
     }
   }
   if (!isRootRow) delete[] foreignA;
-  TAU_FSTOP(summa::invoke);
 }
 
 
@@ -78,7 +76,6 @@ void summa::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matri
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
 void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, CommType&& CommInfo,
                      const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
-  TAU_FSTART(summa::invoke);
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -98,12 +95,12 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matr
   U localDimensionK = (srcPackage.transposeA == blas::Transpose::AblasNoTrans ? matrixA.getNumColumnsLocal() : matrixA.getNumRowsLocal());
 
   if (methodKey == 0){
-    _start1(matrixA,matrixB,std::forward<CommType>(CommInfo),matrixAEnginePtr,matrixBEnginePtr,matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
+    distribute_bcast(matrixA,matrixB,std::forward<CommType>(CommInfo),matrixAEnginePtr,matrixBEnginePtr,matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
   }
   else if (methodKey == 1){
     serializeKeyA = true;
     serializeKeyB = true;
-    _start2(matrixA,matrixB,std::forward<CommType>(CommInfo), matrixAEngineVector,matrixBEngineVector,serializeKeyA,serializeKeyB);
+    distribute_allgather(matrixA,matrixB,std::forward<CommType>(CommInfo), matrixAEngineVector,matrixBEngineVector,serializeKeyA,serializeKeyB);
   }
 
   // Assume, for now, that matrixC has Rectangular Structure. In the future, we can always do the same procedure as above, and add a invoke after the AllReduce
@@ -117,7 +114,7 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matr
       (srcPackage.transposeA == blas::Transpose::AblasNoTrans ? localDimensionM : localDimensionK),
       (srcPackage.transposeB == blas::Transpose::AblasNoTrans ? localDimensionK : localDimensionN),
       localDimensionM, srcPackage);
-    _end1(matrixCforEnginePtr,matrixC,std::forward<CommType>(CommInfo));
+    collect(matrixCforEnginePtr,matrixC,std::forward<CommType>(CommInfo));
    }
    else{
      // This cancels out any affect beta could have. Beta is just not compatable with summa and must be handled separately
@@ -127,18 +124,16 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matr
        (srcPackage.transposeA == blas::Transpose::AblasNoTrans ? localDimensionM : localDimensionK),
        (srcPackage.transposeB == blas::Transpose::AblasNoTrans ? localDimensionK : localDimensionN),
        localDimensionM, srcPackage); 
-    _end1(&holdProduct[0],matrixC,std::forward<CommType>(CommInfo),1);
+    collect(&holdProduct[0],matrixC,std::forward<CommType>(CommInfo),1);
     for (U i=0; i<holdProduct.size(); i++){
       matrixC.getRawData()[i] = srcPackage.beta*matrixC.getRawData()[i] + holdProduct[i];
     }
   }
-  TAU_FSTOP(summa::invoke);
 }
 
 template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
                      const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
-  TAU_FSTART(summa::invoke);
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -159,13 +154,13 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommIn
   // soon, we will need a methodKey for the different MM algs
   if (srcPackage.side == blas::Side::AblasLeft){
     if (methodKey == 0){
-      _start1(matrixA, matrixB, std::forward<CommType>(CommInfo), matrixAEnginePtr, matrixBEnginePtr, matrixAEngineVector, matrixBEngineVector, foreignA, foreignB,
+      distribute_bcast(matrixA, matrixB, std::forward<CommType>(CommInfo), matrixAEnginePtr, matrixBEnginePtr, matrixAEngineVector, matrixBEngineVector, foreignA, foreignB,
         serializeKeyA, serializeKeyB);
     }
     else if (methodKey == 1){
       serializeKeyA = true;
       serializeKeyB = true;
-      _start2(matrixA, matrixB, std::forward<CommType>(CommInfo), matrixAEngineVector, matrixBEngineVector,
+      distribute_allgather(matrixA, matrixB, std::forward<CommType>(CommInfo), matrixAEngineVector, matrixBEngineVector,
         serializeKeyA, serializeKeyB);
     }
     blas::engine::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
@@ -174,20 +169,19 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommIn
   }
   else{
     if (methodKey == 0){
-      _start1(matrixB, matrixA, std::forward<CommType>(CommInfo), matrixBEnginePtr, matrixAEnginePtr, matrixBEngineVector, matrixAEngineVector, foreignB, foreignA, serializeKeyB, serializeKeyA);
+      distribute_bcast(matrixB, matrixA, std::forward<CommType>(CommInfo), matrixBEnginePtr, matrixAEnginePtr, matrixBEngineVector, matrixAEngineVector, foreignB, foreignA, serializeKeyB, serializeKeyA);
     }
     else if (methodKey == 1){
       serializeKeyA = true;
       serializeKeyB = true;
-      _start2(matrixB, matrixA, std::forward<CommType>(CommInfo), matrixBEngineVector, matrixAEngineVector, serializeKeyB, serializeKeyA);
+      distribute_allgather(matrixB, matrixA, std::forward<CommType>(CommInfo), matrixBEngineVector, matrixAEngineVector, serializeKeyB, serializeKeyA);
     }
     blas::engine::_trmm((serializeKeyA ? &matrixAEngineVector[0] : matrixAEnginePtr), (serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),
       localDimensionM, localDimensionN, localDimensionN, (srcPackage.order == blas::Order::AblasColumnMajor ? localDimensionM : localDimensionN),
       srcPackage);
   }
   // We will follow the standard here: matrixA is always the triangular matrix. matrixB is always the rectangular matrix
-  _end1((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),matrixB,std::forward<CommType>(CommInfo));
-  TAU_FSTOP(summa::invoke);
+  collect((serializeKeyB ? &matrixBEngineVector[0] : matrixBEnginePtr),matrixB,std::forward<CommType>(CommInfo));
 }
 
 template<typename MatrixAType, typename CommType>
@@ -195,7 +189,6 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
                     typename MatrixAType::DimensionType matrixAnumRows, typename MatrixAType::DimensionType matrixBnumColumns,
                     typename MatrixAType::DimensionType matrixBnumRows, CommType&& CommInfo,
                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage){
-  TAU_FSTART(summa::invoke);
   // Note: this is a temporary method that simplifies optimizations by bypassing the Matrix interface
   //       Later on, I can make this prettier and merge with the Matrix-explicit method below.
   //       Also, I only allow method1, not Allgather-based method2
@@ -220,7 +213,7 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
 
   // soon, we will need a methodKey for the different MM algs
   if (srcPackage.side == blas::Side::AblasLeft){
-    BroadcastPanels((isRootRow ? matrixA.getVectorData() : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
+    //BroadcastPanels((isRootRow ? matrixA.getVectorData() : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
     if ((!std::is_same<StructureA,rect>::value) && (!std::is_same<StructureA,square>::value)){
       matrix<T,U,rect,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
       getEnginePtr(matrixA, helperA, (isRootRow ? matrixA.getVectorData() : foreignA), isRootRow);
@@ -229,13 +222,13 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
     else{
       matrixAEnginePtr = std::move((isRootRow ? matrixA.getVectorData() : foreignA));
     }
-    BroadcastPanels((isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
+    //BroadcastPanels((isRootColumn ? matrixB : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
     matrixBEnginePtr = (isRootColumn ? matrixB : foreignB);
     blas::engine::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionM,
       (srcPackage.order == blas::Order::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
   else{
-    BroadcastPanels((isRootColumn ? matrixA.getVectorData() : foreignA), sizeA, isRootColumn, CommInfo.z, CommInfo.column);
+    //BroadcastPanels((isRootColumn ? matrixA.getVectorData() : foreignA), sizeA, isRootColumn, CommInfo.z, CommInfo.column);
     if ((!std::is_same<StructureA,rect>::value) && (!std::is_same<StructureA,square>::value)){
       matrix<T,U,rect,Distribution,Offload> helperA(std::vector<T>(), matrixAnumColumns, matrixAnumRows, matrixAnumColumns, matrixAnumRows);
       getEnginePtr(matrixA, helperA, (isRootColumn ? matrixA.getVectorData() : foreignA), isRootColumn);
@@ -244,7 +237,7 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
     else{
       matrixAEnginePtr = std::move((isRootColumn ? matrixA.getVectorData() : foreignA));
     }
-    BroadcastPanels((isRootRow ? matrixB : foreignB), sizeB, isRootRow, CommInfo.z, CommInfo.row);
+    //BroadcastPanels((isRootRow ? matrixB : foreignB), sizeB, isRootRow, CommInfo.z, CommInfo.row);
     matrixBEnginePtr = (isRootRow ? matrixB : foreignB);
     blas::engine::_trmm(&matrixAEnginePtr[0], matrixBEnginePtr, localDimensionM, localDimensionN, localDimensionN,
       (srcPackage.order == blas::Order::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
@@ -253,13 +246,11 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
   std::memcpy(matrixB, matrixBEnginePtr, sizeB*sizeof(T));
   if ((srcPackage.side == blas::Side::AblasLeft) && (!isRootColumn)) delete[] foreignB;
   if ((srcPackage.side == blas::Side::AblasRight) && (!isRootRow)) delete[] foreignB;
-  TAU_FSTOP(summa::invoke);
 }
 
 template<typename MatrixAType, typename MatrixCType, typename CommType>
 void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
                      const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
-  TAU_FSTART(summa::invoke);
   // Note: Internally, this routine uses gemm, not syrk, as its not possible for each processor to perform local MM with symmetric matrices
   //         given the data layout over the processor grid.
 
@@ -283,11 +274,11 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommIn
 
   if (methodKey == 0){
     if (srcPackage.transposeA == blas::Transpose::AblasNoTrans){
-      _start1(matrixA,matrixB,std::forward<CommType>(CommInfo),matrixAEnginePtr,matrixBEnginePtr,
+      distribute_bcast(matrixA,matrixB,std::forward<CommType>(CommInfo),matrixAEnginePtr,matrixBEnginePtr,
         matrixAEngineVector,matrixBEngineVector,foreignA,foreignB,serializeKeyA,serializeKeyB);
     }
     else{
-      _start1(matrixB,matrixA,std::forward<CommType>(CommInfo),matrixBEnginePtr,matrixAEnginePtr,
+      distribute_bcast(matrixB,matrixA,std::forward<CommType>(CommInfo),matrixBEnginePtr,matrixAEnginePtr,
         matrixBEngineVector,matrixAEngineVector,foreignB,foreignA,serializeKeyB,serializeKeyA);
     }
   }
@@ -307,7 +298,7 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommIn
         matrixCforEnginePtr, localDimensionN, localDimensionN, localDimensionK,
         localDimensionK, localDimensionK, localDimensionN, gemmArgs);
     }
-    _end1(matrixCforEnginePtr,matrixC,std::forward<CommType>(CommInfo));
+    collect(matrixCforEnginePtr,matrixC,std::forward<CommType>(CommInfo));
   }
   else{
     // This cancels out any affect beta could have. Beta is just not compatable with summa and must be handled separately
@@ -324,14 +315,13 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommIn
         &holdProduct[0], localDimensionN, localDimensionN, localDimensionK,
         localDimensionK, localDimensionK, localDimensionN, gemmArgs);
     }
-    _end1(&holdProduct[0],matrixC,std::forward<CommType>(CommInfo),1);
+    collect(&holdProduct[0],matrixC,std::forward<CommType>(CommInfo),1);
 
     // Future optimization: Reduce loop length by half since the update will be a symmetric matrix and only half will be used going forward.
     for (U i=0; i<holdProduct.size(); i++){
       matrixC.getRawData()[i] = srcPackage.beta*matrixC.getRawData()[i] + holdProduct[i];
     }
   }
-  TAU_FSTOP(summa::invoke);
 }
 
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
@@ -343,7 +333,6 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matr
                     typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutYstart,
                     typename MatrixCType::DimensionType matrixCcutYend, CommType&& CommInfo,
                     const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC, size_t methodKey){
-  TAU_FSTART(summa::invokeCut);
   // We will set up 3 matrices and call the method above.
 
   using StructureC = typename MatrixCType::StructureType;
@@ -359,7 +348,6 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matr
   if (cutC){
     serialize<StructureC,StructureC>::invoke(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutYstart, matrixCcutYend, true);
   }
-  TAU_FSTOP(summa::invokeCut);
 }
 
 
@@ -370,7 +358,6 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAT
                     typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
                     typename MatrixBType::DimensionType matrixBcutXend, CommType&& CommInfo,
                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, size_t methodKey){
-  TAU_FSTART(summa::invokeCut);
   // We will set up 2 matrices and call the method above.
 
   using StructureB = typename MatrixBType::StructureType;
@@ -384,7 +371,6 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAT
   if (cutB){
     serialize<StructureB,StructureB>::invoke(matrixB, matB, matrixBcutZstart, matrixBcutZend, matrixBcutXstart, matrixBcutXend, true);
   }
-  TAU_FSTOP(summa::invokeCut);
 }
 
 template<typename MatrixAType, typename MatrixCType, typename CommType>
@@ -394,7 +380,6 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAT
                     typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutXstart,
                     typename MatrixCType::DimensionType matrixCcutXend, CommType&& CommInfo,
                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutC, size_t methodKey){
-  TAU_FSTART(summa::invokeCut);
   // We will set up 2 matrices and call the method above.
 
   using StructureC = typename MatrixCType::StructureType;
@@ -409,15 +394,13 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAT
   if (cutC){
     serialize<StructureC,StructureC>::invoke(matrixC, matC, matrixCcutZstart, matrixCcutZend, matrixCcutXstart, matrixCcutXend, true);
   }
-  TAU_FSTOP(summa::invokeCut);
 }
 
 template<typename MatrixAType, typename MatrixBType, typename CommType>
-void summa::_start1(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo, typename MatrixAType::ScalarType*& matrixAEnginePtr,
+void summa::distribute_bcast(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo, typename MatrixAType::ScalarType*& matrixAEnginePtr,
                    typename MatrixBType::ScalarType*& matrixBEnginePtr, std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector,
                    std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector, std::vector<typename MatrixAType::ScalarType>& foreignA,
                    std::vector<typename MatrixBType::ScalarType>& foreignB, bool& serializeKeyA, bool& serializeKeyB){
-  TAU_FSTART(summa::_start1);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -435,9 +418,41 @@ void summa::_start1(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
   U sizeB = matrixB.getNumElems();
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
+  if (!isRootRow){ dataA.resize(sizeA); }
+  if (!isRootColumn){ dataB.resize(sizeB); }
 
-  BroadcastPanels((isRootRow ? dataA : foreignA), sizeA, isRootRow, CommInfo.z, CommInfo.row);
-  BroadcastPanels((isRootColumn ? dataB : foreignB), sizeB, isRootColumn, CommInfo.z, CommInfo.column);
+  // Check chunk size. If its 0, then bcast across rows and columns with no overlap
+  if (CommInfo.num_chunks == 0){
+    // distribute across rows
+    MPI_Bcast(&dataA[0], sizeA, mpi_type<T>::type, CommInfo.z, CommInfo.row);
+    // distribute across columns
+    MPI_Bcast(&dataB[0], sizeB, mpi_type<T>::type, CommInfo.z, CommInfo.column);
+  }
+  else{
+    // initiate distribution across rows
+    std::vector<MPI_Request> row_req(CommInfo.num_chunks);
+    std::vector<MPI_Request> column_req(CommInfo.num_chunks);
+    std::vector<MPI_Status> row_stat(CommInfo.num_chunks);
+    std::vector<MPI_Status> column_stat(CommInfo.num_chunks);
+    size_t offset = sizeA%CommInfo.num_chunks;
+    size_t progress=0;
+    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
+      MPI_Ibcast(&dataA[progress], idx==(CommInfo.num_chunks-1) ? sizeA/CommInfo.num_chunks+offset : sizeA/CommInfo.num_chunks, mpi_type<T>::type, CommInfo.z, CommInfo.row, &row_req[idx]);
+      progress += sizeA/CommInfo.num_chunks;
+    }
+    // initiate distribution along columns and complete distribution across rows
+    offset = sizeB%CommInfo.num_chunks;
+    progress=0;
+    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
+      MPI_Ibcast(&dataB[progress], idx==(CommInfo.num_chunks-1) ? sizeB/CommInfo.num_chunks+offset : sizeB/CommInfo.num_chunks, mpi_type<T>::type, CommInfo.z, CommInfo.column, &column_req[idx]);
+      progress += sizeB/CommInfo.num_chunks;
+      MPI_Wait(&row_req[idx],&row_stat[idx]);
+    }
+    // complete distribution along columns
+    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
+      MPI_Wait(&column_req[idx],&column_stat[idx]);
+    }
+  }
 
   matrixAEnginePtr = (isRootRow ? &dataA[0] : &foreignA[0]);
   matrixBEnginePtr = (isRootColumn ? &dataB[0] : &foreignB[0]);
@@ -453,13 +468,11 @@ void summa::_start1(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
     getEnginePtr(matrixB, helperB, (isRootColumn ? dataB : foreignB), isRootColumn);
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
-  TAU_FSTOP(summa::_start1);
 }
 
 
 template<typename MatrixType, typename CommType>
-void summa::_end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, size_t dir){
-  TAU_FSTART(summa::_end1);
+void summa::collect(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, size_t dir){
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -472,14 +485,12 @@ void summa::_end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& 
   else{
     MPI_Allreduce(matrixEnginePtr, matrix.getRawData(), numElems, mpi_type<T>::type, MPI_SUM, CommInfo.depth);
   }
-  TAU_FSTOP(summa::_end1);
 }
 
 template<typename MatrixAType, typename MatrixBType, typename CommType>
-void summa::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
+void summa::distribute_allgather(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
                       std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector, std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector,
 	              bool& serializeKeyA, bool& serializeKeyB){
-  TAU_FSTART(summa::_start2);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -491,7 +502,7 @@ void summa::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
 
 /* Debugging notes
   How do I deal with serialization? Like, what if matrixA or B is a UT or LT? I do not want to communicate more than the packed data
-    in that case obviously, but I also need to make sure that things are still in order, which I think is harder now than it was in _start1( method )
+    in that case obviously, but I also need to make sure that things are still in order, which I think is harder now than it was in distribute_bcast( method )
 */
 
   std::vector<T>& dataA = matrixA.getVectorData(); 
@@ -633,27 +644,11 @@ void summa::_start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommI
     matrixBEngineVector = std::move(helperB.getVectorData());
   }
 */
-  TAU_FSTOP(summa::_start2);
 }
 
-
-template<typename T, typename U>
-void summa::BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
-  TAU_FSTART(summa::BroadcastPanels);
-
-  if (isRoot){
-    MPI_Bcast(&data[0], size, mpi_type<T>::type, pGridCoordZ, panel);
-  }
-  else{
-    data.resize(size);
-    MPI_Bcast(&data[0], size, mpi_type<T>::type, pGridCoordZ, panel);
-  }
-  TAU_FSTOP(summa::BroadcastPanels);
-}
-
+/*
 template<typename T, typename U>
 void summa::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
-  TAU_FSTART(summa::BroadcastPanels);
 
   if (isRoot){
     MPI_Bcast(data, size, mpi_type<T>::type, pGridCoordZ, panel);
@@ -664,13 +659,11 @@ void summa::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, M
     data = new T[size];
     MPI_Bcast(data, size, mpi_type<T>::type, pGridCoordZ, panel);
   }
-  TAU_FSTOP(summa::BroadcastPanels);
 }
-
+*/
 
 template<typename MatrixSrcType, typename MatrixDestType>
 void summa::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest, std::vector<typename MatrixSrcType::ScalarType>& data, bool isRoot){
-  TAU_FSTART(summa::getEnginePtr);
 
   using StructureSrc = typename MatrixSrcType::StructureType;
   using StructureDest = typename MatrixDestType::StructureType;
@@ -685,7 +678,6 @@ void summa::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest, s
     // If code path gets here, StructureArg must be a LT or UT, so we need to serialize into a Square, not a Rectangular
     serialize<StructureSrc,StructureDest>::invoke(matrixSrc, matrixDest);
   }
-  TAU_FSTOP(summa::getEnginePtr);
 }
 
 
@@ -693,7 +685,6 @@ template<typename MatrixType>
 MatrixType summa::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
                               typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd,
 		              size_t sliceDim, bool getSub){
-  TAU_FSTART(summa::getSubMatrix);
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -704,12 +695,10 @@ MatrixType summa::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::Dimen
     U numRows = matrixArgRowEnd - matrixArgRowStart;
     MatrixType fillMatrix(std::vector<T>(), numColumns, numRows, numColumns*sliceDim, numRows*sliceDim);
     serialize<Structure,Structure>::invoke(srcMatrix, fillMatrix, matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
-    TAU_FSTOP(summa::getSubMatrix);
     return fillMatrix;			// I am returning an rvalue
   }
   else{
     // return cheap garbage.
-    TAU_FSTOP(summa::getSubMatrix);
     return MatrixType(0,0,1,1);
   }
 }

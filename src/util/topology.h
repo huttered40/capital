@@ -15,9 +15,9 @@ namespace topo{
 
 class rect{
 public:
-  rect(MPI_Comm comm, size_t c){
-    TAU_FSTART(topo::rect);
+  rect(MPI_Comm comm, size_t c, size_t num_chunks=0){
 
+    this->num_chunks = num_chunks;
     MPI_Comm column;
     int rank, size, columnRank, cubeRank;
     MPI_Comm_rank(comm, &rank);
@@ -48,28 +48,25 @@ public:
     this->y = rank/SubCubeSliceSize;
     this->x = (rank%SubCubeSliceSize)/c;
     MPI_Comm_free(&column);
-    TAU_FSTOP(topo::rect);
   }
   ~rect(){
-    TAU_FSTART(topo::~rect);
     MPI_Comm_free(&this->row);
     MPI_Comm_free(&this->column_contig);
     MPI_Comm_free(&this->column_alt);
     MPI_Comm_free(&this->depth);
     MPI_Comm_free(&this->slice);
     MPI_Comm_free(&this->cube);
-    TAU_FSTOP(topo::~rect);
   }
 
   MPI_Comm world,row,column_contig,column_alt,depth,slice,cube;
-  size_t c,d,x,y,z;
+  size_t c,d,x,y,z,num_chunks;
 };
 
 class square{
 public:
-  square(MPI_Comm comm, size_t c){
-    TAU_FSTART(topo::square);
+  square(MPI_Comm comm, size_t c, size_t num_chunks=0){
 
+    this->num_chunks = num_chunks;
     int rank,size;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
@@ -95,19 +92,16 @@ public:
       this->world=comm;
     }
 
-    TAU_FSTOP(topo::square);
   }
   ~square(){
-    TAU_FSTART(topo::~square);
     MPI_Comm_free(&this->row);
     MPI_Comm_free(&this->column);
     MPI_Comm_free(&this->slice);
     MPI_Comm_free(&this->depth);
-    TAU_FSTOP(topo::~square);
   }
 
   MPI_Comm world,row,column,slice,depth;
-  size_t c,d,x,y,z;
+  size_t c,d,x,y,z,num_chunks;
 };
 }
 

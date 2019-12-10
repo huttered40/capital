@@ -29,7 +29,6 @@ void helper::setInfoParameters_orgqr(const ArgPack_orgqr& srcPackage,
 
 template<typename T>
 void engine::_potrf(T* matrixA, int n, int lda, const ArgPack_potrf& srcPackage){
-  TAU_FSTART(potrf);
   // First, unpack the info parameter
   int arg1; char arg2;
   helper::setInfoParameters_potrf(srcPackage, arg1, arg2);
@@ -41,12 +40,10 @@ void engine::_potrf(T* matrixA, int n, int lda, const ArgPack_potrf& srcPackage)
 #else
   _potrf_(arg1, arg2, n, matrixA, lda);
 #endif
-  TAU_FSTOP(potrf);
 }
 
 template<typename T>
 void engine::_trtri(T* matrixA, int n, int lda, const ArgPack_trtri& srcPackage){
-  TAU_FSTART(trtri);
   // First, unpack the info parameter
   int arg1; char arg2; char arg3;
   helper::setInfoParameters_trtri(srcPackage, arg1, arg2, arg3);
@@ -58,12 +55,10 @@ void engine::_trtri(T* matrixA, int n, int lda, const ArgPack_trtri& srcPackage)
 #else
   _trtri_(arg1, arg2, arg3, n, matrixA, lda);
 #endif
-  TAU_FSTOP(trtri);
 }
 
 template<typename T>
 void engine::_geqrf(T* matrixA, T* tau, int m, int n, int lda, const ArgPack_geqrf& srcPackage){
-  TAU_FSTART(geqrf);
   // First, unpack the info parameter
   int arg1;
   helper::setInfoParameters_geqrf(srcPackage, arg1);
@@ -75,12 +70,10 @@ void engine::_geqrf(T* matrixA, T* tau, int m, int n, int lda, const ArgPack_geq
 #else
   _geqrf_(arg1, m, n, matrixA, lda, tau);
 #endif
-  TAU_FSTOP(geqrf);
 }
 
 template<typename T>
 void engine::_orgqr(T* matrixA, T* tau, int m, int n, int k, int lda, const ArgPack_orgqr& srcPackage){
-  TAU_FSTART(orgqr);
   // First, unpack the info parameter
   int arg1;
   helper::setInfoParameters_orgqr(srcPackage, arg1);
@@ -92,6 +85,5 @@ void engine::_orgqr(T* matrixA, T* tau, int m, int n, int k, int lda, const ArgP
 #else
   _orgqr_(arg1, m, n, k, matrixA, lda, tau);
 #endif
-  TAU_FSTOP(orgqr);
 }
 }

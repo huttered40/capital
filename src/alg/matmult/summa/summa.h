@@ -75,24 +75,18 @@ public:
 private:
 
   template<typename MatrixAType, typename MatrixBType, typename CommType>
-  static void _start1(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo, typename MatrixAType::ScalarType*& matrixAEnginePtr,
+  static void distribute_bcast(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo, typename MatrixAType::ScalarType*& matrixAEnginePtr,
                       typename MatrixBType::ScalarType*& matrixBEnginePtr, std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector,
                       std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector, std::vector<typename MatrixAType::ScalarType>& foreignA,
                       std::vector<typename MatrixBType::ScalarType>& foreignB, bool& serializeKeyA, bool& serializeKeyB);
 
   template<typename MatrixAType, typename MatrixBType, typename CommType>
-  static void _start2(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
+  static void distribute_allgather(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
                       std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector, std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector,
                       bool& serializeKeyA, bool& serializeKeyB);
 
   template<typename MatrixType, typename CommType>
-  static void _end1(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, size_t dir = 0);
-
-  template<typename T, typename U>
-  static void BroadcastPanels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel);
-
-  template<typename T, typename U>
-  static void BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel);
+  static void collect(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, size_t dir = 0);
 
   template<typename MatrixSrcType, typename MatrixDestType>
   static void getEnginePtr(MatrixSrcType& matrixArg, MatrixDestType& matrixDest, std::vector<typename MatrixSrcType::ScalarType>& data, bool isRoot);

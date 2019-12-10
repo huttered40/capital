@@ -4,7 +4,6 @@ namespace qr{
 
 template<typename T, typename U>
 void cacqr::broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm){
-  TAU_FSTART(cacqr::broadcast_panels);
   if (isRoot){
     MPI_Bcast(&data[0], size, mpi_type<T>::type, pGridCoordZ, panelComm);
   }
@@ -12,12 +11,10 @@ void cacqr::broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t p
     data.resize(size);
     MPI_Bcast(&data[0], size, mpi_type<T>::type, pGridCoordZ, panelComm);
   }
-  TAU_FSTOP(cacqr::broadcast_panels);
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
 void cacqr::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo){
-  TAU_FSTART(cacqr::invoke_1d);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -42,13 +39,11 @@ void cacqr::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
   // Finish by performing local matrix multiplication Q = A*R^{-1}
   blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
   blas::engine::_trmm(&RI[0], matrixA.getRawData(), localDimensionM, localDimensionN, localDimensionN, localDimensionM, trmmPack1);
-  TAU_FSTOP(cacqr::invoke_1d);
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
 void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
 
-  TAU_FSTART(cacqr::invoke_3d);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -107,7 +102,6 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
       blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     trsm::diaginvert::invoke(matrixA, rectR, rectRI, std::forward<CommType>(CommInfo), 'U', 'L', baseCaseDimList.second, gemmPack1);
   }
-  TAU_FSTOP(cacqr::invoke_3d);
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
@@ -118,7 +112,6 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommIn
 template<typename MatrixAType, typename MatrixRType, typename RectCommType, typename SquareCommType>
 void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo,
                    size_t inverseCutOffMultiplier){
-  TAU_FSTART(cacqr::invoke);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -177,12 +170,10 @@ void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& Re
       blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     trsm::diaginvert::invoke(matrixA, rectR, rectRI, std::forward<SquareCommType>(SquareCommInfo), 'U', 'L', baseCaseDimList.second, gemmPack1);
   }
-  TAU_FSTOP(cacqr::invoke);
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
 void cacqr2::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo){
-  TAU_FSTART(cacqr2::invoke_1d);
   // We assume data is owned relative to a 1D processor grid, so every processor owns a chunk of data consisting of
   //   all columns and a block of rows.
 
@@ -201,12 +192,10 @@ void cacqr2::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Co
     blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
   blas::engine::_trmm(matrixR2.getRawData(), matrixR.getRawData(), localDimensionN, localDimensionN,
     localDimensionN, localDimensionN, trmmPack1);
-  TAU_FSTOP(cacqr2::invoke_1d);
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
 void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
-  TAU_FSTART(cacqr2::invoke_3d);
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -223,12 +212,10 @@ void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Co
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
   matmult::summa::invoke(matrixR2, matrixR, std::forward<CommType>(CommInfo), trmmPack1);
-  TAU_FSTOP(cacqr2::invoke_3d);
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
 void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
-  TAU_FSTART(cacqr2::invoke);
   if (CommInfo.c == 1){
     cacqr2::invoke_1d(matrixA, matrixR, std::forward<CommType>(CommInfo));
     return;
@@ -257,7 +244,5 @@ void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommI
   //   send half of the data!
   // TODO: Any other way to avoid building .. without complicating the interface?
   matmult::summa::invoke(matrixR2, matrixR, SquareTopo, trmmPack1);
-
-  TAU_FSTOP(cacqr2::invoke);
 }
 }
