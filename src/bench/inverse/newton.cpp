@@ -26,7 +26,7 @@ int main(int argc, char** argv){
 
   for (size_t i=0; i<numIterations; i++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
-    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC,num_chunks);
     // Reset matrixA
     MatrixTypeA matA(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
     double iterTimeGlobal,iterErrorGlobal;
