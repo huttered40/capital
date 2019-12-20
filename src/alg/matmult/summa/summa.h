@@ -30,11 +30,11 @@ public:
 
   template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, CommType&& CommInfo,
-                     const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, int64_t methodKey = 0);
+                     const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage);
 
   template<typename MatrixAType, typename MatrixBType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
-                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, int64_t methodKey = 0);
+                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage);
 
   template<typename MatrixAType, typename CommType>
   static void invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matrixB, typename MatrixAType::DimensionType matrixAnumColumns,
@@ -44,7 +44,7 @@ public:
 
   template<typename MatrixAType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
-                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, int64_t methodKey = 0);
+                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage);
 
   template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
@@ -54,7 +54,7 @@ public:
                      typename MatrixBType::DimensionType matrixBcutXend, typename MatrixCType::DimensionType matrixCcutZstart,
                      typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutYstart,
                      typename MatrixCType::DimensionType matrixCcutYend, CommType&& CommInfo,
-                     const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC, int64_t methodKey = 0);
+                     const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC);
 
   template<typename MatrixAType, typename MatrixBType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAType::DimensionType matrixAcutXstart,
@@ -62,7 +62,7 @@ public:
                      typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
                      typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
                      typename MatrixBType::DimensionType matrixBcutXend, CommType&& CommInfo,
-                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, int64_t methodKey = 0);
+                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB);
 
   template<typename MatrixAType, typename MatrixCType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAType::DimensionType matrixAcutXstart,
@@ -70,20 +70,14 @@ public:
                      typename MatrixAType::DimensionType matrixAcutYend, typename MatrixCType::DimensionType matrixCcutZstart,
                      typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutXstart,
                      typename MatrixCType::DimensionType matrixCcutXend, CommType&& CommInfo,
-                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA = true, bool cutC = true, int64_t methodKey = 0);
+                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA = true, bool cutC = true);
 
 private:
 
   template<typename MatrixAType, typename MatrixBType, typename CommType>
   static void distribute_bcast(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo, typename MatrixAType::ScalarType*& matrixAEnginePtr,
                       typename MatrixBType::ScalarType*& matrixBEnginePtr, std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector,
-                      std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector, std::vector<typename MatrixAType::ScalarType>& foreignA,
-                      std::vector<typename MatrixBType::ScalarType>& foreignB, bool& serializeKeyA, bool& serializeKeyB);
-
-  template<typename MatrixAType, typename MatrixBType, typename CommType>
-  static void distribute_allgather(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
-                      std::vector<typename MatrixAType::ScalarType>& matrixAEngineVector, std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector,
-                      bool& serializeKeyA, bool& serializeKeyB);
+                      std::vector<typename MatrixBType::ScalarType>& matrixBEngineVector, bool& serializeKeyA, bool& serializeKeyB);
 
   template<typename MatrixType, typename CommType>
   static void collect(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, int64_t dir = 0);
