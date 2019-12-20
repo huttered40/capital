@@ -3,7 +3,7 @@
 namespace qr{
 
 template<typename T, typename U>
-void cacqr::broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm){
+void cacqr::broadcast_panels(std::vector<T>& data, U size, bool isRoot, int64_t pGridCoordZ, MPI_Comm panelComm){
   if (isRoot){
     MPI_Bcast(&data[0], size, mpi_type<T>::type, pGridCoordZ, panelComm);
   }
@@ -42,7 +42,7 @@ void cacqr::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
+void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, int64_t inverseCutOffMultiplier){
 
 
   using T = typename MatrixAType::ScalarType;
@@ -105,13 +105,13 @@ void cacqr::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Com
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
+void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, int64_t inverseCutOffMultiplier){
   invoke(matrixA,matrixR,std::forward<CommType>(CommInfo),topo::square(CommInfo.cube,CommInfo.c),inverseCutOffMultiplier);
 }
 
 template<typename MatrixAType, typename MatrixRType, typename RectCommType, typename SquareCommType>
 void cacqr::invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo,
-                   size_t inverseCutOffMultiplier){
+                   int64_t inverseCutOffMultiplier){
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -195,7 +195,7 @@ void cacqr2::invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Co
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
+void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, int64_t inverseCutOffMultiplier){
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -215,7 +215,7 @@ void cacqr2::invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& Co
 }
 
 template<typename MatrixAType, typename MatrixRType, typename CommType>
-void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier){
+void cacqr2::invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, int64_t inverseCutOffMultiplier){
   if (CommInfo.c == 1){
     cacqr2::invoke_1d(matrixA, matrixR, std::forward<CommType>(CommInfo));
     return;

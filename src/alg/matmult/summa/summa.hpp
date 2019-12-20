@@ -75,7 +75,7 @@ void summa::invoke(typename MatrixBType::ScalarType* matrixA, MatrixBType& matri
 
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
 void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matrixC, CommType&& CommInfo,
-                     const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
+                     const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, int64_t methodKey){
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -133,7 +133,7 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matr
 
 template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, CommType&& CommInfo,
-                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
+                     const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, int64_t methodKey){
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -250,7 +250,7 @@ void summa::invoke(MatrixAType& matrixA, typename MatrixAType::ScalarType* matri
 
 template<typename MatrixAType, typename MatrixCType, typename CommType>
 void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, CommType&& CommInfo,
-                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, size_t methodKey){
+                     const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, int64_t methodKey){
   // Note: Internally, this routine uses gemm, not syrk, as its not possible for each processor to perform local MM with symmetric matrices
   //         given the data layout over the processor grid.
 
@@ -332,7 +332,7 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, MatrixCType& matr
                     typename MatrixBType::DimensionType matrixBcutXend, typename MatrixCType::DimensionType matrixCcutZstart,
                     typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutYstart,
                     typename MatrixCType::DimensionType matrixCcutYend, CommType&& CommInfo,
-                    const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC, size_t methodKey){
+                    const blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC, int64_t methodKey){
   // We will set up 3 matrices and call the method above.
 
   using StructureC = typename MatrixCType::StructureType;
@@ -357,7 +357,7 @@ void summa::invoke(MatrixAType& matrixA, MatrixBType& matrixB, typename MatrixAT
                     typename MatrixAType::DimensionType matrixAcutYend, typename MatrixBType::DimensionType matrixBcutZstart,
                     typename MatrixBType::DimensionType matrixBcutZend, typename MatrixBType::DimensionType matrixBcutXstart,
                     typename MatrixBType::DimensionType matrixBcutXend, CommType&& CommInfo,
-                    const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, size_t methodKey){
+                    const blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, int64_t methodKey){
   // We will set up 2 matrices and call the method above.
 
   using StructureB = typename MatrixBType::StructureType;
@@ -379,7 +379,7 @@ void summa::invoke(MatrixAType& matrixA, MatrixCType& matrixC, typename MatrixAT
                     typename MatrixAType::DimensionType matrixAcutYend, typename MatrixCType::DimensionType matrixCcutZstart,
                     typename MatrixCType::DimensionType matrixCcutZend, typename MatrixCType::DimensionType matrixCcutXstart,
                     typename MatrixCType::DimensionType matrixCcutXend, CommType&& CommInfo,
-                    const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutC, size_t methodKey){
+                    const blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutC, int64_t methodKey){
   // We will set up 2 matrices and call the method above.
 
   using StructureC = typename MatrixCType::StructureType;
@@ -434,9 +434,9 @@ void summa::distribute_bcast(MatrixAType& matrixA, MatrixBType& matrixB, CommTyp
     std::vector<MPI_Request> column_req(CommInfo.num_chunks);
     std::vector<MPI_Status> row_stat(CommInfo.num_chunks);
     std::vector<MPI_Status> column_stat(CommInfo.num_chunks);
-    size_t offset = sizeA%CommInfo.num_chunks;
-    size_t progress=0;
-    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
+    int64_t offset = sizeA%CommInfo.num_chunks;
+    int64_t progress=0;
+    for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){
       MPI_Ibcast((isRootRow ? &dataA[progress] : &foreignA[progress]), idx==(CommInfo.num_chunks-1) ? sizeA/CommInfo.num_chunks+offset : sizeA/CommInfo.num_chunks,
                  mpi_type<T>::type, CommInfo.z, CommInfo.row, &row_req[idx]);
       progress += sizeA/CommInfo.num_chunks;
@@ -444,14 +444,14 @@ void summa::distribute_bcast(MatrixAType& matrixA, MatrixBType& matrixB, CommTyp
     // initiate distribution along columns and complete distribution across rows
     offset = sizeB%CommInfo.num_chunks;
     progress=0;
-    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
+    for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){
       MPI_Ibcast((isRootColumn ? &dataB[progress] : &foreignB[progress]), idx==(CommInfo.num_chunks-1) ? sizeB/CommInfo.num_chunks+offset : sizeB/CommInfo.num_chunks,
                  mpi_type<T>::type, CommInfo.z, CommInfo.column, &column_req[idx]);
       progress += sizeB/CommInfo.num_chunks;
       MPI_Wait(&row_req[idx],&row_stat[idx]);
     }
     // complete distribution along columns
-    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
+    for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){
       MPI_Wait(&column_req[idx],&column_stat[idx]);
     }
   }
@@ -474,7 +474,7 @@ void summa::distribute_bcast(MatrixAType& matrixA, MatrixBType& matrixB, CommTyp
 
 
 template<typename MatrixType, typename CommType>
-void summa::collect(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, size_t dir){
+void summa::collect(typename MatrixType::ScalarType* matrixEnginePtr, MatrixType& matrix, CommType&& CommInfo, int64_t dir){
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -650,7 +650,7 @@ void summa::distribute_allgather(MatrixAType& matrixA, MatrixBType& matrixB, Com
 
 /*
 template<typename T, typename U>
-void summa::BroadcastPanels(T*& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panel){
+void summa::BroadcastPanels(T*& data, U size, bool isRoot, int64_t pGridCoordZ, MPI_Comm panel){
 
   if (isRoot){
     MPI_Bcast(data, size, mpi_type<T>::type, pGridCoordZ, panel);
@@ -686,7 +686,7 @@ void summa::getEnginePtr(MatrixSrcType& matrixSrc, MatrixDestType& matrixDest, s
 template<typename MatrixType>
 MatrixType summa::getSubMatrix(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
                               typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd,
-		              size_t sliceDim, bool getSub){
+		              int64_t sliceDim, bool getSub){
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;

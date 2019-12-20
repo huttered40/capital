@@ -13,30 +13,30 @@ namespace qr{
 class cacqr{
 public:
   template<typename MatrixAType, typename MatrixRType, typename CommType>
-  static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, size_t inverseCutOffMultiplier = 0);
+  static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo, int64_t inverseCutOffMultiplier = 0);
 
 protected:
   // Special overload to avoid recreating MPI communicator topologies
   template<typename MatrixAType, typename MatrixRType, typename RectCommType, typename SquareCommType>
   static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo,
-                     size_t inverseCutOffMultiplier = 0);
+                     int64_t inverseCutOffMultiplier = 0);
 
   template<typename MatrixAType, typename MatrixRType, typename CommType>
   static void invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo);
 
   template<typename MatrixAType, typename MatrixRType, typename CommType>
   static void invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
-                        size_t inverseCutOffMultiplier);
+                        int64_t inverseCutOffMultiplier);
 
   template<typename T, typename U> 
-  static void broadcast_panels(std::vector<T>& data, U size, bool isRoot, size_t pGridCoordZ, MPI_Comm panelComm);
+  static void broadcast_panels(std::vector<T>& data, U size, bool isRoot, int64_t pGridCoordZ, MPI_Comm panelComm);
 };
 
 class cacqr2 : public cacqr{
 public:
   template<typename MatrixAType, typename MatrixRType, typename CommType>
   static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
-                     size_t inverseCutOffMultiplier = 0);
+                     int64_t inverseCutOffMultiplier = 0);
 
 protected:
   template<typename MatrixAType, typename MatrixRType, typename CommType>
@@ -44,7 +44,7 @@ protected:
 
   template<typename MatrixAType, typename MatrixRType, typename CommType>
   static void invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, CommType&& CommInfo,
-                        size_t inverseCutOffMultiplier);
+                        int64_t inverseCutOffMultiplier);
 };
 }
 

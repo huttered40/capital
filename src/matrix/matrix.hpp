@@ -3,9 +3,9 @@
 // #include "matrix.h"  -> Compiler needs the full definition of the templated class in order to instantiate it.
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
-matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(U globalDimensionX, U globalDimensionY, size_t globalPgridX, size_t globalPgridY){
+matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(U globalDimensionX, U globalDimensionY, int64_t globalPgridX, int64_t globalPgridY){
   // Extra padding of zeros is at most 1 in either dimension
-  size_t pHelper = globalDimensionX%globalPgridX;
+  int64_t pHelper = globalDimensionX%globalPgridX;
   this->_dimensionX = {globalDimensionX/globalPgridX + (pHelper ? 1 : 0)};
   pHelper = globalDimensionY%globalPgridY;
   this->_dimensionY = {globalDimensionY/globalPgridY + (pHelper ? 1 : 0)};
@@ -108,25 +108,25 @@ void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::mover(matrix&
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeRandom(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY, size_t key){
+void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeRandom(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key){
   // matrix must be already constructed with memory. Add a check for this later.
   DistributionPolicy::_DistributeRandom(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,key,StructurePolicy());
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeSymmetric(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY, size_t key, bool diagonallyDominant){
+void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeSymmetric(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key, bool diagonallyDominant){
   // matrix must be already constructed with memory. Add a check for this later.
   DistributionPolicy::_DistributeSymmetric(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,key,diagonallyDominant);
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeIdentity(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY, T val){
+void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeIdentity(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, T val){
   // matrix must be already constructed with memory. Add a check for this later.
   DistributionPolicy::_DistributeIdentity(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,val);
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeDebug(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY){
+void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::DistributeDebug(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY){
   // matrix must be already constructed with memory. Add a check for this later.
   DistributionPolicy::_DistributeDebug(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY);
 }

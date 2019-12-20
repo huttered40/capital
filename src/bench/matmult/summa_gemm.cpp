@@ -6,9 +6,9 @@
 using namespace std;
 
 int main(int argc, char** argv){
-  using MatrixTypeR = matrix<double,size_t,rect,cyclic>;
-  using MatrixTypeLT = matrix<double,size_t,lowertri,cyclic>;
-  using MatrixTypeUT = matrix<double,size_t,uppertri,cyclic>;
+  using MatrixTypeR = matrix<double,int64_t,rect,cyclic>;
+  using MatrixTypeLT = matrix<double,int64_t,lowertri,cyclic>;
+  using MatrixTypeUT = matrix<double,int64_t,uppertri,cyclic>;
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
@@ -18,14 +18,14 @@ int main(int argc, char** argv){
 
   util::InitialGEMM<double>();
 
-  size_t globalMatrixSizeM = atoi(argv[1]);
-  size_t globalMatrixSizeN = atoi(argv[2]);
-  size_t globalMatrixSizeK = atoi(argv[3]);
-  size_t pGridDimensionC   = atoi(argv[4]);
-  size_t num_chunks        = atoi(argv[5]);
-  size_t numIterations     = atoi(argv[6]);
+  int64_t globalMatrixSizeM = atoi(argv[1]);
+  int64_t globalMatrixSizeN = atoi(argv[2]);
+  int64_t globalMatrixSizeK = atoi(argv[3]);
+  int64_t pGridDimensionC   = atoi(argv[4]);
+  int64_t num_chunks        = atoi(argv[5]);
+  int64_t numIterations     = atoi(argv[6]);
 
-  size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
+  int64_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
 
   // Loop for getting a good range of results.

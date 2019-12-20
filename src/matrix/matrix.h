@@ -7,7 +7,7 @@
 #include "structure.h"
 #include "distribute.h"
 
-template<typename T, typename U = size_t , typename StructurePolicy = rect, typename DistributionPolicy = cyclic, typename OffloadPolicy = OffloadEachGemm>
+template<typename T, typename U = int64_t, typename StructurePolicy = rect, typename DistributionPolicy = cyclic, typename OffloadPolicy = OffloadEachGemm>
 class matrix : public StructurePolicy, DistributionPolicy{
 public:
   // Type traits (some inherited from matrixBase)
@@ -18,7 +18,7 @@ public:
   using OffloadType = OffloadPolicy;
 
   explicit matrix() = delete;
-  explicit matrix(U globalDimensionX, U globalDimensionY, size_t globalPgridX, size_t globalPgridY);				// Regular constructor
+  explicit matrix(U globalDimensionX, U globalDimensionY, int64_t globalPgridX, int64_t globalPgridY);				// Regular constructor
   explicit matrix(std::vector<T>&& data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, bool assemble = false);	// Injection constructor
   matrix(const matrix& rhs);
   matrix(matrix&& rhs);
@@ -47,10 +47,10 @@ public:
   // dim.first -- column index (X) , dim.second -- row index (Y)
   inline T& operator[](const std::pair<U,U>& dim) {return this->_matrix[dim.first][dim.second];}
   inline T& getAccess(U dimX, U dimY) {return this->_matrix[dimX][dimY];}
-  void DistributeRandom(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY, size_t key);
-  void DistributeSymmetric(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY, size_t key, bool diagonallyDominant);
-  void DistributeIdentity(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY, T val=1.);
-  void DistributeDebug(size_t localPgridX, size_t localPgridY, size_t globalPgridX, size_t globalPgridY);
+  void DistributeRandom(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key);
+  void DistributeSymmetric(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key, bool diagonallyDominant);
+  void DistributeIdentity(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, T val=1.);
+  void DistributeDebug(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY);
   void print() const;
 
 private:

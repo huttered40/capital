@@ -12,9 +12,9 @@ typename MatrixType::ScalarType util::get_identity_residual(MatrixType& Matrix, 
   U globalX = CommInfo.x;
   U globalY = CommInfo.y;
   U index=0;
-  for (size_t i=0; i<localNumColumns; i++){
+  for (int64_t i=0; i<localNumColumns; i++){
     globalY = CommInfo.y;    // reset
-    for (size_t j=0; j<localNumRows; j++){
+    for (int64_t j=0; j<localNumRows; j++){
       if (globalX == globalY){
         res += 1.-Matrix.getRawData()[index++];
       } else{
@@ -31,7 +31,7 @@ typename MatrixType::ScalarType util::get_identity_residual(MatrixType& Matrix, 
 
 template<typename MatrixType, typename RefMatrixType, typename LambdaType>
 typename MatrixType::ScalarType
-util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, size_t sliceX, size_t sliceY, size_t sliceDimX, size_t sliceDimY){
+util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, int64_t sliceX, int64_t sliceY, int64_t sliceDimX, int64_t sliceDimY){
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
   T error = 0;
@@ -41,9 +41,9 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
   U globalX = sliceX;
   U globalY = sliceY;
 
-  for (size_t i=0; i<localNumColumns; i++){
+  for (int64_t i=0; i<localNumColumns; i++){
     globalY = sliceY;    // reset
-    for (size_t j=0; j<localNumRows; j++){
+    for (int64_t j=0; j<localNumRows; j++){
       auto info = Lambda(Matrix, RefMatrix, i*localNumRows+j,globalX, globalY);
       error += std::abs(info.first*info.first);
       control += std::abs(info.second*info.second);
@@ -61,7 +61,7 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
 
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename T, typename U>
-void util::block_to_cyclic(std::vector<T>& blockedData, std::vector<T>& cyclicData, U localDimensionRows, U localDimensionColumns, size_t sliceDim, char dir){
+void util::block_to_cyclic(std::vector<T>& blockedData, std::vector<T>& cyclicData, U localDimensionRows, U localDimensionColumns, int64_t sliceDim, char dir){
 
   U aggregNumRows = localDimensionRows*sliceDim;
   U aggregNumColumns = localDimensionColumns*sliceDim;
@@ -135,7 +135,7 @@ void util::block_to_cyclic(std::vector<T>& blockedData, std::vector<T>& cyclicDa
 }
 
 template<typename T, typename U>
-void util::block_to_cyclic(T* blockedData, T* cyclicData, U localDimensionRows, U localDimensionColumns, size_t sliceDim){
+void util::block_to_cyclic(T* blockedData, T* cyclicData, U localDimensionRows, U localDimensionColumns, int64_t sliceDim){
   U write_idx = 0;
   U read_idx = 0;
   U readDataOffset = localDimensionRows*localDimensionColumns;
@@ -153,7 +153,7 @@ void util::block_to_cyclic(T* blockedData, T* cyclicData, U localDimensionRows, 
 
 template<typename MatrixType>
 std::vector<typename MatrixType::ScalarType>
-util::getReferenceMatrix(MatrixType& myMatrix, size_t key, MPI_Comm slice, size_t commDim){
+util::getReferenceMatrix(MatrixType& myMatrix, int64_t key, MPI_Comm slice, int64_t commDim){
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
@@ -209,8 +209,8 @@ template<typename MatrixType, typename CommType>
 void util::transposeSwap(MatrixType& mat, CommType&& CommInfo){
 
   using T = typename MatrixType::ScalarType;
-  size_t SquareFaceSize = CommInfo.c*CommInfo.d;
-  size_t transposePartner = CommInfo.x*SquareFaceSize + CommInfo.y*CommInfo.c + CommInfo.z;
+  int64_t SquareFaceSize = CommInfo.c*CommInfo.d;
+  int64_t transposePartner = CommInfo.x*SquareFaceSize + CommInfo.y*CommInfo.c + CommInfo.z;
   //if (myRank != transposeRank)
   //{
     // Transfer with transpose rank
@@ -242,7 +242,7 @@ U util::getNextPowerOf2(U localShift){
 }
 
 template<typename MatrixType>
-void util::removeTriangle(MatrixType& matrix, size_t sliceX, size_t sliceY, size_t sliceDim, char dir){
+void util::removeTriangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir){
 
   using U = typename MatrixType::DimensionType;
 
@@ -265,22 +265,22 @@ void util::removeTriangle(MatrixType& matrix, size_t sliceX, size_t sliceY, size
   }
 }
 
-void util::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, size_t numFuncs, size_t numIterations, size_t rank){
+void util::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, int64_t numFuncs, int64_t numIterations, int64_t rank){
   if (rank == 0){
     std::ifstream fptrTotal2(fileStrTotal.c_str());
     //debugging
     if (!fptrTotal2.is_open()){
       abort();
     }
-    using profileType = std::tuple<std::string,size_t,double,double,double,double>;
+    using profileType = std::tuple<std::string,int64_t,double,double,double,double>;
     std::vector<profileType> profileVector(numFuncs, std::make_tuple("",0,0,0,0,0));
-    for (size_t i=0; i<numIterations; i++){
+    for (int64_t i=0; i<numIterations; i++){
       // read in first item on line: iteration #
-      size_t numIter;
+      int64_t numIter;
       fptrTotal2 >> numIter;
-      for (size_t j=0; j<numFuncs; j++){
+      for (int64_t j=0; j<numFuncs; j++){
         std::string funcName;
-        size_t numCalls;
+        int64_t numCalls;
         double info1,info2,info3,info4;
         fptrTotal2 >> funcName >> numCalls >> info1 >> info2 >> info3 >> info4;
 	// Below statement is for debugging
@@ -293,7 +293,7 @@ void util::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrT
         std::get<5>(profileVector[j]) += info4;
       }
     }
-    for (size_t i=0; i<numFuncs; i++){
+    for (int64_t i=0; i<numFuncs; i++){
       if (i>0) fptrAvg << "\t";
       fptrAvg << std::get<0>(profileVector[i]).c_str();
       fptrAvg << "\t" << std::get<1>(profileVector[i]);

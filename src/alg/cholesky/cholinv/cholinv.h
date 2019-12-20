@@ -61,7 +61,7 @@ private:
                         typename MatrixType::DimensionType matAstartY, typename MatrixType::DimensionType matAendY, CommType&& CommInfo, char dir);
 
   template<typename T, typename U>
-  static void cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, size_t sliceDim, size_t rankSlice, char dir);
+  static void cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice, char dir);
 
   template<typename U>
   static inline void updateInversePath(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension);

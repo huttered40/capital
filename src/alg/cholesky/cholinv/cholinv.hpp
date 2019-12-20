@@ -429,7 +429,7 @@ void cholinv::baseCase(MatrixAType& matrixA, MatrixIType& matrixI, BaseCaseMatri
     serialize<square,square>::invoke(matrixI, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
   }
   else{
-    size_t fTranDim1 = localDimension*CommInfo.d;
+    U fTranDim1 = localDimension*CommInfo.d;
     std::vector<T> storeMat = cyclic_data;	// TODO: Expensive copy?
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
     lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, (dir == 'L' ? lapack::UpLo::AlapackLower : lapack::UpLo::AlapackUpper));
@@ -490,8 +490,8 @@ cholinv::aggregate(MatrixType& matA, BaseCaseMatrixType& matrix_base_case, std::
     // initiate distribution of allgather into chunks of local columns, multiples of localDimension
     std::vector<MPI_Request> req(CommInfo.num_chunks);
     std::vector<MPI_Status> stat(CommInfo.num_chunks);
-    size_t offset = localDimension*(localDimension%CommInfo.num_chunks);
-    size_t progress=0;
+    U offset = localDimension*(localDimension%CommInfo.num_chunks);
+    U progress=0;
     for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
       MPI_Iallgather(matrix_base_case.getRawData()+progress, idx==(CommInfo.num_chunks-1) ? localDimension*(localDimension/CommInfo.num_chunks+offset) : localDimension*(localDimension/CommInfo.num_chunks),
                      mpi_type<T>::type, &blocked_data[progress], idx==(CommInfo.num_chunks-1) ? localDimension*(localDimension/CommInfo.num_chunks+offset) : localDimension*(localDimension/CommInfo.num_chunks),
@@ -515,7 +515,7 @@ cholinv::aggregate(MatrixType& matA, BaseCaseMatrixType& matrix_base_case, std::
 //   number of flops, but in terms of memory accesses and cache lines, not sure. Note that with this optimization,
 //   we may need to separate into two different functions
 template<typename T, typename U>
-void cholinv::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, size_t sliceDim, size_t rankSlice, char dir){
+void cholinv::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice, char dir){
 
   U writeIndex = 0;
   U rowOffsetWithinBlock = rankSlice / sliceDim;

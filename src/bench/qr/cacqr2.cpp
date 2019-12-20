@@ -6,8 +6,8 @@
 using namespace std;
 
 int main(int argc, char** argv){
-  using MatrixTypeS = matrix<double,size_t,square,cyclic>;
-  using MatrixTypeR = matrix<double,size_t,rect,cyclic>;
+  using MatrixTypeS = matrix<double,int64_t,square,cyclic>;
+  using MatrixTypeR = matrix<double,int64_t,rect,cyclic>;
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
@@ -16,12 +16,12 @@ int main(int argc, char** argv){
 
   util::InitialGEMM<double>();
 
-  size_t globalMatrixDimensionM = atoi(argv[1]);
-  size_t globalMatrixDimensionN = atoi(argv[2]);
-  size_t dimensionC = atoi(argv[3]);
-  size_t inverseCutOffMultiplier = atoi(argv[4]);
-  size_t num_chunks        = atoi(argv[5]);
-  size_t numIterations=atoi(argv[6]);
+  int64_t globalMatrixDimensionM = atoi(argv[1]);
+  int64_t globalMatrixDimensionN = atoi(argv[2]);
+  int64_t dimensionC = atoi(argv[3]);
+  int64_t inverseCutOffMultiplier = atoi(argv[4]);
+  int64_t num_chunks        = atoi(argv[5]);
+  int64_t numIterations=atoi(argv[6]);
 
   for (size_t i=0; i<numIterations; i++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
