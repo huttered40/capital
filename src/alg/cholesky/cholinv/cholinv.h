@@ -19,9 +19,9 @@ public:
   // cholinv is not parameterized as its not dependent on any lower-level algorithmic type
   class pack{
   public:
-    pack(const pack& p){ inv_cut_off_dim = p.inv_cut_off_dim; dir = p.dir; }
-    pack(pack&& p){ inv_cut_off_dim = std::move(p.inv_cut_off_dim); dir = std::move(p.dir); }
-    pack(int64_t inv_cut_off_dim, char dir){ inv_cut_off_dim = inv_cut_off_dim; dir = dir; }
+    pack(const pack& p) : inv_cut_off_dim(p.inv_cut_off_dim), dir(p.dir) {}
+    pack(pack&& p) : inv_cut_off_dim(std::move(p.inv_cut_off_dim)), dir(std::move(p.dir)) {}
+    pack(int64_t inv_cut_off_dim, char dir) : inv_cut_off_dim(inv_cut_off_dim), dir(dir) {}
     int64_t inv_cut_off_dim;
     char dir;
   };

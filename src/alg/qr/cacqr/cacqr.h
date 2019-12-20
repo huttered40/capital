@@ -17,8 +17,8 @@ public:
   class pack{
   public:
     using cholesky_inverse_type = CholeskyInversionType;
-    pack(const pack& p) : cholesky_inverse_pack = p.cholesky_inverse_pack {}
-    pack(pack&& p) : cholesky_inverse_pack = std::move(p.cholesky_inverse_pack) {}
+    pack(const pack& p) : cholesky_inverse_pack(p.cholesky_inverse_pack) {}
+    pack(pack&& p) : cholesky_inverse_pack(std::move(p.cholesky_inverse_pack)) {}
     template<typename CholeskyInversionArgType>
     pack(CholeskyInversionArgType&& ci_args) : cholesky_inverse_args(std::forward<CholeskyInversionArgType>(ci_args)) {}
     typename CholeskyInversionType::pack cholesky_inverse_args;

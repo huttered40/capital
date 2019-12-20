@@ -10,8 +10,18 @@ namespace inverse{
 
 class newton{
 public:
-  template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& matrix, CommType&& CommInfo, typename MatrixType::ScalarType tol=1e-14, size_t max_iter=100);
+  // newton is not parameterized as its not dependent on any lower-level algorithmic type
+  class pack{
+  public:
+    pack(const pack& p) : tol = p.tol, max_iter = p.max_iter {}
+    pack(pack&& p) : tol = std::move(p.tol), max_iter = std::move(p.max_iter) {}
+    pack(int64_t tol, char max_iter) : tol = tol, max_iter = max_iter }
+    int64_t tol;
+    char max_iter;
+  };
+
+  template<typename MatrixType, typename ArgType, typename CommType>
+  static void invoke(MatrixType& matrix, ArgType&& args, CommType&& CommInfo);
 protected:
 };
 }

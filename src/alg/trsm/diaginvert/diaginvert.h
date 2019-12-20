@@ -8,12 +8,6 @@
 
 namespace trsm{
 
-// Lets use partial template specialization
-// So only declare the fully templated class
-// Why not just use square? Because later on, I may want to experiment with LowerTriangular Structure.
-// Also note, we do not need an extra template parameter for L-inverse. Presumably if the user wants L to be LowerTriangular, then he wants L-inverse
-//   to be LowerTriangular as well
-
 class diaginvert{
 public:
   template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>

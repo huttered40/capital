@@ -2,8 +2,8 @@
 
 namespace inverse{
 
-template<typename MatrixType, typename CommType>
-void newton::invoke(MatrixType& matrix, CommType&& CommInfo, typename MatrixType::ScalarType tol, size_t max_iter){
+template<typename MatrixType, typename ArgType, typename CommType>
+void newton::invoke(MatrixType& matrix, ArgType&& args, CommType&& CommInfo){
   // `matrix` is modified in-place
   // TODO: Assuming CommType is an instance of SquareTopo
   using T = typename MatrixType::ScalarType;
@@ -36,13 +36,13 @@ void newton::invoke(MatrixType& matrix, CommType&& CommInfo, typename MatrixType
   blas::ArgPack_gemm<T> pack1(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., 0.);
   blas::ArgPack_gemm<T> pack2(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, -1., 2.);
   int i=0;
-  while (i<max_iter){
+  while (i<args.max_iter){
     matmult::summa::invoke(iterate, matrix, intermediate, CommInfo, pack1);
     // TODO: check stopping criterion here using 'tol'..
     auto norm = util::get_identity_residual(intermediate,std::forward<CommType>(CommInfo),CommInfo.slice);
     //debug
     if ((CommInfo.x+CommInfo.y+CommInfo.z) == 0){ std::cout << "Residual - " << norm << std::endl;}
-    if (norm < tol){
+    if (norm < args.tol){
       break;
     }
     matmult::summa::invoke(intermediate, iterate, iterate, CommInfo, pack2);	// TODO: Make sure having `iterate` as both in/out is ok
