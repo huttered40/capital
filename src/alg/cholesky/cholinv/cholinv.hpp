@@ -1,9 +1,9 @@
 /* Author: Edward Hutter */
 
 namespace cholesky{
-template<typename MatrixAType, typename MatrixTIType, typename CommType>
+template<typename MatrixAType, typename MatrixTIType, typename ArgType, typename CommType>
 std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension, char dir){
+cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, ArgType&& args, CommType&& CommInfo){
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -16,16 +16,16 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
   // the division below may have a remainder, but I think integer division will be ok, as long as we change the base case condition to be <= and not just ==
   U bcDimension = globalDimension/(CommInfo.c*CommInfo.d);
 
-  U save = inverseCutOffGlobalDimension;
-  inverseCutOffGlobalDimension = globalDimension;
+  U save = args.inv_cut_off_dim;
+  args.inv_cut_off_dim = globalDimension;
   for (size_t i=0; i<save; i++){
-    inverseCutOffGlobalDimension >>= 1;
+    args.inv_cut_off_dim >>= 1;
   }
-  inverseCutOffGlobalDimension = std::max(localDimension*2,inverseCutOffGlobalDimension);
+  args.inv_cut_off_dim = std::max(localDimension*2,args.inv_cut_off_dim);
   std::pair<bool,std::vector<U>> baseCaseDimList;
 
-  if (dir == 'L'){
-    baseCaseDimList.first = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
+  if (args.dir == 'L'){
+    baseCaseDimList.first = (args.inv_cut_off_dim >= globalDimension ? true : false);
     if ((CommInfo.num_chunks == 0) || (CommInfo.num_chunks > localDimension/sliceDim1)){
       matrix<T,U,lowertri,Distribution,Offload> matrix_base_case(std::vector<T>(), localDimension/sliceDim1, localDimension/sliceDim1, globalDimension/sliceDim1, globalDimension/sliceDim1);
       U aggregSize = matrix_base_case.getNumElems()*sliceDim2;
@@ -36,7 +36,7 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
       std::vector<T> cyclic_data(cyclicSize);
       factor_lower(matrixA, matrixTI, matrix_base_case, blocked_data, cyclic_data, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
         0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
-        baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+        baseCaseDimList.first, baseCaseDimList.second, args.inv_cut_off_dim);
     }
     else{
       matrix<T,U,square,Distribution,Offload> matrix_base_case(std::vector<T>(), localDimension/sliceDim1, localDimension/sliceDim1, globalDimension/sliceDim1, globalDimension/sliceDim1);
@@ -48,11 +48,11 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
       std::vector<T> cyclic_data(cyclicSize);
       factor_lower(matrixA, matrixTI, matrix_base_case, blocked_data, cyclic_data, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
         0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
-        baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+        baseCaseDimList.first, baseCaseDimList.second, args.inv_cut_off_dim);
     }
   }
-  else if (dir == 'U'){
-    baseCaseDimList.first = (inverseCutOffGlobalDimension >= globalDimension ? true : false);
+  else if (args.dir == 'U'){
+    baseCaseDimList.first = (args.inv_cut_off_dim >= globalDimension ? true : false);
     if ((CommInfo.num_chunks == 0) || (CommInfo.num_chunks > localDimension/sliceDim1)){
       matrix<T,U,uppertri,Distribution,Offload> matrix_base_case(std::vector<T>(), localDimension/sliceDim1, localDimension/sliceDim1, globalDimension/sliceDim1, globalDimension/sliceDim1);
       U aggregSize = matrix_base_case.getNumElems()*sliceDim2;
@@ -63,7 +63,7 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
       std::vector<T> cyclic_data(cyclicSize);
       factor_upper(matrixA, matrixTI, matrix_base_case, blocked_data, cyclic_data, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
         0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
-        baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+        baseCaseDimList.first, baseCaseDimList.second, args.inv_cut_off_dim);
     }
     else{
       matrix<T,U,square,Distribution,Offload> matrix_base_case(std::vector<T>(), localDimension/sliceDim1, localDimension/sliceDim1, globalDimension/sliceDim1, globalDimension/sliceDim1);
@@ -75,7 +75,7 @@ cholinv::invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInf
       std::vector<T> cyclic_data(cyclicSize);
       factor_upper(matrixA, matrixTI, matrix_base_case, blocked_data, cyclic_data, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
         0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo),
-        baseCaseDimList.first, baseCaseDimList.second, inverseCutOffGlobalDimension);
+        baseCaseDimList.first, baseCaseDimList.second, args.inv_cut_off_dim);
     }
   }
   return baseCaseDimList;

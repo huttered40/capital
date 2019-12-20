@@ -24,7 +24,9 @@ int main(int argc, char** argv){
 
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
-  if (rank==0){ std::cout << "pGridDimensionC - " << pGridDimensionC << std::endl; }
+  
+  // Generate algorithmic structure via instantiating packs
+  cholesky::cholinv::pack pack(inverseCutOffMultiplier,dir);
 
   for (size_t i=0; i<numIterations; i++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
@@ -34,16 +36,14 @@ int main(int argc, char** argv){
     MatrixTypeA matT(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
     double iterTimeGlobal,iterErrorGlobal;
     matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
-    if (rank==0){ std::cout << "SquareTopo values - " << SquareTopo.c << " " << SquareTopo.d << " " << SquareTopo.x << " " << SquareTopo.y << std::endl; }
-    if (rank==0){ std::cout << "matA dims - " << matA.getNumRowsLocal() << " " << matA.getNumColumnsLocal() << " " << matA.getNumRowsGlobal() << " " << matA.getNumColumnsLocal() << std::endl; }
     MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
     critter::start();
-    cholesky::cholinv::invoke(matA, matT, SquareTopo, inverseCutOffMultiplier, dir);
+    cholesky::cholinv::invoke(matA, matT, pack, SquareTopo);
     critter::stop();
 
     matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     double startTime=MPI_Wtime();
-    cholesky::cholinv::invoke(matA, matT, SquareTopo, inverseCutOffMultiplier, dir);
+    cholesky::cholinv::invoke(matA, matT, pack, SquareTopo);
     double iterTimeLocal=MPI_Wtime() - startTime;
 
     MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);

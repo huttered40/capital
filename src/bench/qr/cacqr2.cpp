@@ -23,6 +23,10 @@ int main(int argc, char** argv){
   int64_t num_chunks        = atoi(argv[5]);
   int64_t numIterations=atoi(argv[6]);
 
+  // Generate algorithmic structure via instantiating packs
+  cholesky::cholinv::pack ci_pack(inverseCutOffMultiplier,'U');
+  qr::cacqr2::pack<cholesky::cholinv> pack(ci_pack);
+
   for (size_t i=0; i<numIterations; i++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
     auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC, num_chunks);
@@ -35,12 +39,12 @@ int main(int argc, char** argv){
     double residualErrorGlobal,orthogonalityErrorGlobal;
     MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
     critter::start();
-    qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier);
+    qr::cacqr2::invoke(matA, matR, pack, RectTopo);
     critter::stop();
 
     matA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
     volatile double startTime=MPI_Wtime();
-    qr::cacqr2::invoke(matA, matR, RectTopo, inverseCutOffMultiplier);
+    qr::cacqr2::invoke(matA, matR, pack, RectTopo);
     double iterTimeLocal = MPI_Wtime() - startTime;
 
     MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);

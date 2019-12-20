@@ -16,9 +16,19 @@
 namespace cholesky{
 class cholinv{
 public:
-  template<typename MatrixAType, typename MatrixTIType, typename CommType>
+  // cholinv is not parameterized as its not dependent on any lower-level algorithmic type
+  class pack{
+  public:
+    pack(const pack& p){ inv_cut_off_dim = p.inv_cut_off_dim; dir = p.dir; }
+    pack(pack&& p){ inv_cut_off_dim = std::move(p.inv_cut_off_dim); dir = std::move(p.dir); }
+    pack(int64_t inv_cut_off_dim, char dir){ inv_cut_off_dim = inv_cut_off_dim; dir = dir; }
+    int64_t inv_cut_off_dim;
+    char dir;
+  };
+
+  template<typename MatrixAType, typename MatrixTIType, typename ArgType, typename CommType>
   static std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-         invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, CommType&& CommInfo, typename MatrixAType::DimensionType inverseCutOffGlobalDimension, char dir);
+         invoke(MatrixAType& matrixA, MatrixTIType& matrixTI, ArgType&& args, CommType&& CommInfo);
 
 private:
   template<typename MatrixAType, typename MatrixLIType, typename BaseCaseMatrixType, typename CommType>
