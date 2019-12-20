@@ -5,7 +5,6 @@
 
 #include "./../../alg.h"
 #include "./../../matmult/summa/summa.h"
-#include "./../../trsm/diaginvert/diaginvert.h"
 
 // Lets use partial template specialization
 // So only declare the fully templated class
@@ -75,6 +74,16 @@ private:
 
   template<typename U>
   static inline void updateInversePath(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension);
+
+  template<typename MatrixAType, typename MatrixUType, typename MatrixUIType, typename CommType>
+  static void iSolveUpperLeft(MatrixAType& matrixA, MatrixUType& matrixU, MatrixUIType& matrixUI, CommType&& CommInfo,
+                              std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                              blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage);
+  
+  template<typename MatrixLType, typename MatrixLIType, typename MatrixAType, typename CommType>
+  static void iSolveLowerRight(MatrixLType& matrixL, MatrixLIType& matrixLI, MatrixAType& matrixA, CommType&& CommInfo,
+                               std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                               blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage);
 };
 }
 
