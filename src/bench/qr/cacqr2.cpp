@@ -14,8 +14,6 @@ int main(int argc, char** argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  util::InitialGEMM<double>();
-
   int64_t globalMatrixDimensionM = atoi(argv[1]);
   int64_t globalMatrixDimensionN = atoi(argv[2]);
   int64_t dimensionC = atoi(argv[3]);
@@ -23,40 +21,40 @@ int main(int argc, char** argv){
   int64_t num_chunks        = atoi(argv[5]);
   int64_t numIterations=atoi(argv[6]);
 
+  {
+  double iterTimeGlobal = 0; double iterTimeLocal = 0;
+  double residualErrorGlobal,orthogonalityErrorGlobal;
+  auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC, num_chunks);
   // Generate algorithmic structure via instantiating packs
   cholesky::cholinv::pack ci_pack(inverseCutOffMultiplier,'U');
   qr::cacqr2::pack<cholesky::cholinv> pack(ci_pack);
+  MatrixTypeR A(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);
+  MatrixTypeS R(globalMatrixDimensionN,globalMatrixDimensionN, RectTopo.c, RectTopo.c);
+  MatrixTypeR saveA = A;
 
   for (size_t i=0; i<numIterations; i++){
-    // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
-    auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC, num_chunks);
     // reset the matrix before timer starts
-    // Note: matA and matR are rectangular, but the pieces owned by the individual processors may be square (so also rectangular)
-    MatrixTypeR matA(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);
-    MatrixTypeS matR(globalMatrixDimensionN,globalMatrixDimensionN, RectTopo.c, RectTopo.c);
-    matA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-    double iterTimeGlobal = 0;
-    double residualErrorGlobal,orthogonalityErrorGlobal;
+    A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
     MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
     critter::start();
-    qr::cacqr2::invoke(matA, matR, pack, RectTopo);
+    qr::cacqr2::invoke(A, R, pack, RectTopo);
     critter::stop();
 
-    matA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
+    A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
     volatile double startTime=MPI_Wtime();
-    qr::cacqr2::invoke(matA, matR, pack, RectTopo);
-    double iterTimeLocal = MPI_Wtime() - startTime;
+    qr::cacqr2::invoke(A, R, pack, RectTopo);
+    iterTimeLocal = MPI_Wtime() - startTime;
 
     MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    MatrixTypeR saveA = matA;
-    saveA.DistributeRandom(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-    auto error = qr::validate<qr::cacqr>::invoke(saveA, matA, matR, RectTopo);
+    saveA.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
+    auto error = qr::validate<qr::cacqr>::invoke(saveA, A, R, RectTopo);
     MPI_Reduce(&error.first, &residualErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
     if (rank==0){
       std::cout << iterTimeGlobal << " " << residualErrorGlobal << " " << orthogonalityErrorGlobal << std::endl;
     }
+  }
   }
 
   MPI_Finalize();

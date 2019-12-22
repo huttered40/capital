@@ -5,7 +5,6 @@
 
 #include "./../../alg.h"
 #include "./../../matmult/summa/summa.h"
-#include "./../../trsm/diaginvert/diaginvert.h"
 #include "./../../cholesky/cholinv/cholinv.h"
 
 namespace qr{
@@ -26,21 +25,23 @@ public:
   };
 
   template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, ArgType&& args, CommType&& CommInfo);
+  static void invoke(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo);
 
 protected:
   // Special overload to avoid recreating MPI communicator topologies
   template<typename MatrixAType, typename MatrixRType, typename ArgType, typename RectCommType, typename SquareCommType>
-  static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, ArgType&& args, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
+  static void invoke(MatrixAType& A, MatrixRType& R, MatrixRType& RI, ArgType&& args, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
 
   template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, ArgType&& args, CommType&& CommInfo);
+  static void invoke_1d(MatrixAType& A, MatrixRType& R, typename MatrixRType::ScalarType* RI, ArgType&& args, CommType&& CommInfo);
 
   template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, ArgType&& args, CommType&& CommInfo);
+  static void invoke_3d(MatrixAType& A, MatrixRType& R, MatrixRType& RI, ArgType&& args, CommType&& CommInfo);
 
-  template<typename T, typename U> 
-  static void broadcast_panels(std::vector<T>& data, U size, bool isRoot, int64_t pGridCoordZ, MPI_Comm panelComm);
+  template<typename MatrixAType, typename MatrixUType, typename MatrixUIType, typename CommType>
+  static void solve_upper_left(MatrixAType& matrixA, MatrixUType& matrixU, MatrixUIType& matrixUI, CommType&& CommInfo,
+                               std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                               blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage);
 };
 
 class cacqr2 : public cacqr{
@@ -59,14 +60,14 @@ public:
   };
 
   template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke(MatrixAType& matrixA, MatrixRType& matrixR, ArgType&& args, CommType&& CommInfo);
+  static void invoke(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo);
 
 protected:
   template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke_1d(MatrixAType& matrixA, MatrixRType& matrixR, ArgType&& args, CommType&& CommInfo);
+  static void invoke_1d(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo);
 
   template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke_3d(MatrixAType& matrixA, MatrixRType& matrixR, ArgType&& args, CommType&& CommInfo);
+  static void invoke_3d(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo);
 };
 }
 

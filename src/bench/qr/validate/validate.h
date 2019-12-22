@@ -14,25 +14,25 @@ class validate{
 public:
   template<typename MatrixAType, typename MatrixQType, typename MatrixRType, typename CommType>
   static std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
-           invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& myR, CommType&& CommInfo);
+           invoke(MatrixAType& A, MatrixQType& Q, MatrixRType& myR, CommType&& CommInfo);
 private:
   template<typename MatrixType, typename RectCommType, typename SquareCommType>
   static typename MatrixType::ScalarType
-  orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
+  orth(MatrixType& Q, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
   
   template<typename MatrixQType, typename MatrixRType, typename MatrixAType, typename RectCommType, typename SquareCommType>
   static typename MatrixAType::ScalarType
-  residual(MatrixQType& matrixQ, MatrixRType& matrixR, MatrixAType& matrixA, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
+  residual(MatrixQType& Q, MatrixRType& R, MatrixAType& A, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
 
 /*
   // We require that for a 1D algorithm, Q is rectangular and R is square
   template<typename MatrixAType, typename MatrixQType, typename MatrixRType>
-  static void invoke_1d(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, MPI_Comm commWorld);
+  static void invoke_1d(MatrixAType& A, MatrixQType& Q, MatrixRType& R, MPI_Comm commWorld);
 
   // We require that for a 3D algorithm, Q is square and R is square
   template<typename MatrixAType, typename MatrixQType, typename MatrixRType>
   static std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
-         invoke_3d(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, MPI_Comm commWorld,
+         invoke_3d(MatrixAType& A, MatrixQType& Q, MatrixRType& R, MPI_Comm commWorld,
                             std::tuple<MPI_Comm,MPI_Comm,MPI_Comm,MPI_Comm,size_t,size_t,size_t>& commInfo3D);
   // 1D helper routines
   template<typename T, typename U>

@@ -16,8 +16,6 @@ int main(int argc, char** argv){
   // size -- total number of processors in the 3D grid
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  util::InitialGEMM<double>();
-
   /*
     Choices for methodKey2: 0) Broadcast + Allreduce
 			    1) Allgather + Allreduce

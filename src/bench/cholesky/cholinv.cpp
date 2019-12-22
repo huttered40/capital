@@ -13,8 +13,6 @@ int main(int argc, char** argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  util::InitialGEMM<double>();
-
   char dir = 'U';
   int64_t globalMatrixSize = atoi(argv[1]);
   int64_t pGridDimensionC = atoi(argv[2]);
@@ -24,37 +22,36 @@ int main(int argc, char** argv){
 
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
-  
+ 
+  { 
+  auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC,num_chunks);
+  MatrixTypeA A(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
+  MatrixTypeA T(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
+  MatrixTypeA saveA = A;
+  double iterTimeGlobal,iterErrorGlobal;
   // Generate algorithmic structure via instantiating packs
   cholesky::cholinv::pack pack(inverseCutOffMultiplier,dir);
 
   for (size_t i=0; i<numIterations; i++){
-    // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
-    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC,num_chunks);
-    // Reset matrixA
-    MatrixTypeA matA(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
-    MatrixTypeA matT(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
-    double iterTimeGlobal,iterErrorGlobal;
-    matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
+    A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
     critter::start();
-    cholesky::cholinv::invoke(matA, matT, pack, SquareTopo);
+    cholesky::cholinv::invoke(A, T, pack, SquareTopo);
     critter::stop();
 
-    matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
+    A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     double startTime=MPI_Wtime();
-    cholesky::cholinv::invoke(matA, matT, pack, SquareTopo);
+    cholesky::cholinv::invoke(A, T, pack, SquareTopo);
     double iterTimeLocal=MPI_Wtime() - startTime;
-
     MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    MatrixTypeA saveA = matA;
-    saveA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
-    double iterErrorLocal = cholesky::validate<cholesky::cholinv>::invoke(saveA, matA, dir, SquareTopo);
+    saveA.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
+    double iterErrorLocal = cholesky::validate<cholesky::cholinv>::invoke(saveA, A, dir, SquareTopo);
     MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
     if (rank==0){
       std::cout << iterTimeGlobal << " " << iterErrorGlobal << std::endl;
     }
+  }
   }
   MPI_Finalize();
   return 0;

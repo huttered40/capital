@@ -7,8 +7,8 @@ typename MatrixType::ScalarType util::get_identity_residual(MatrixType& Matrix, 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
   T res = 0;
-  U localNumRows = Matrix.getNumRowsLocal();
-  U localNumColumns = Matrix.getNumColumnsLocal();
+  U localNumRows = Matrix.num_rows_local();
+  U localNumColumns = Matrix.num_columns_local();
   U globalX = CommInfo.x;
   U globalY = CommInfo.y;
   U index=0;
@@ -16,9 +16,9 @@ typename MatrixType::ScalarType util::get_identity_residual(MatrixType& Matrix, 
     globalY = CommInfo.y;    // reset
     for (int64_t j=0; j<localNumRows; j++){
       if (globalX == globalY){
-        res += 1.-Matrix.getRawData()[index++];
+        res += 1.-Matrix.data()[index++];
       } else{
-        res += Matrix.getRawData()[index++];
+        res += Matrix.data()[index++];
       }
       globalY += CommInfo.d;
       
@@ -36,8 +36,8 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
   using U = typename MatrixType::DimensionType;
   T error = 0;
   T control = 0;
-  U localNumRows = Matrix.getNumRowsLocal();
-  U localNumColumns = Matrix.getNumColumnsLocal();
+  U localNumRows = Matrix.num_rows_local();
+  U localNumColumns = Matrix.num_columns_local();
   U globalX = sliceX;
   U globalY = sliceY;
 
@@ -161,10 +161,10 @@ util::getReferenceMatrix(MatrixType& myMatrix, int64_t key, MPI_Comm slice, int6
   using Distribution = typename MatrixType::DistributionType;
   using Offload = typename MatrixType::OffloadType;
 
-  U localNumColumns = myMatrix.getNumColumnsLocal();
-  U localNumRows = myMatrix.getNumRowsLocal();
-  U globalNumColumns = myMatrix.getNumColumnsGlobal();
-  U globalNumRows = myMatrix.getNumRowsGlobal();
+  U localNumColumns = myMatrix.num_columns_local();
+  U localNumRows = myMatrix.num_rows_local();
+  U globalNumColumns = myMatrix.num_columns_global();
+  U globalNumRows = myMatrix.num_rows_global();
 /*
   using MatrixType = Matrix<T,U,Square,Distribution>;
   MatrixType localMatrix(globalNumColumns, globalNumRows, commDim, commDim);
@@ -172,12 +172,12 @@ util::getReferenceMatrix(MatrixType& myMatrix, int64_t key, MPI_Comm slice, int6
 */
   // I first want to check whether or not I want to serialize into a rectangular buffer (I don't care too much about efficiency here,
   //   if I did, I would serialize after the AllGather, but whatever)
-  T* matrixPtr = myMatrix.getRawData();
-  matrix<T,U,rect,Distribution,Offload> matrixDest(std::vector<T>(), localNumColumns, localNumRows, globalNumColumns, globalNumRows);
+  T* matrixPtr = myMatrix.data();
+  matrix<T,U,rect,Distribution,Offload> matrixDest(globalNumColumns, globalNumRows, commDim, commDim);
   if ((!std::is_same<Structure,rect>::value)
     && (!std::is_same<Structure,square>::value)){
     serialize<Structure,rect>::invoke(myMatrix, matrixDest);
-    matrixPtr = matrixDest.getRawData();
+    matrixPtr = matrixDest.data();
   }
 
   U aggregNumRows = localNumRows*commDim;
@@ -206,7 +206,7 @@ util::getReferenceMatrix(MatrixType& myMatrix, int64_t key, MPI_Comm slice, int6
 }
 
 template<typename MatrixType, typename CommType>
-void util::transposeSwap(MatrixType& mat, CommType&& CommInfo){
+void util::transpose(MatrixType& mat, CommType&& CommInfo){
 
   using T = typename MatrixType::ScalarType;
   int64_t SquareFaceSize = CommInfo.c*CommInfo.d;
@@ -214,7 +214,7 @@ void util::transposeSwap(MatrixType& mat, CommType&& CommInfo){
   //if (myRank != transposeRank)
   //{
     // Transfer with transpose rank
-    MPI_Sendrecv_replace(mat.getRawData(), mat.getNumElems(), mpi_type<T>::type, transposePartner, 0, transposePartner, 0, CommInfo.world, MPI_STATUS_IGNORE);
+    MPI_Sendrecv_replace(mat.data(), mat.num_elems(), mpi_type<T>::type, transposePartner, 0, transposePartner, 0, CommInfo.world, MPI_STATUS_IGNORE);
 
     // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
     //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
@@ -248,71 +248,19 @@ void util::removeTriangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, in
 
   U globalDimVert = sliceY;
   U globalDimHoriz = sliceX;
-  U localVert = matrix.getNumRowsLocal();
-  U localHoriz = matrix.getNumColumnsLocal();
+  U localVert = matrix.num_rows_local();
+  U localHoriz = matrix.num_columns_local();
   for (U i=0; i<localHoriz; i++){
     globalDimVert = sliceY;    //   reset
     for (U j=0; j<localVert; j++){
       if ((globalDimVert < globalDimHoriz) && (dir == 'L')){
-        matrix.getRawData()[i*localVert + j] = 0;
+        matrix.data()[i*localVert + j] = 0;
       }
       if ((globalDimVert > globalDimHoriz) && (dir == 'U')){
-        matrix.getRawData()[i*localVert + j] = 0;
+        matrix.data()[i*localVert + j] = 0;
       }
       globalDimVert += sliceDim;
     }
     globalDimHoriz += sliceDim;
   }
-}
-
-void util::processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, int64_t numFuncs, int64_t numIterations, int64_t rank){
-  if (rank == 0){
-    std::ifstream fptrTotal2(fileStrTotal.c_str());
-    //debugging
-    if (!fptrTotal2.is_open()){
-      abort();
-    }
-    using profileType = std::tuple<std::string,int64_t,double,double,double,double>;
-    std::vector<profileType> profileVector(numFuncs, std::make_tuple("",0,0,0,0,0));
-    for (int64_t i=0; i<numIterations; i++){
-      // read in first item on line: iteration #
-      int64_t numIter;
-      fptrTotal2 >> numIter;
-      for (int64_t j=0; j<numFuncs; j++){
-        std::string funcName;
-        int64_t numCalls;
-        double info1,info2,info3,info4;
-        fptrTotal2 >> funcName >> numCalls >> info1 >> info2 >> info3 >> info4;
-	// Below statement is for debugging
-	std::cout << "check this: " << funcName << " " << numCalls << " " << info1 << " " << info2 << " " << info3 << " " << info4 << std::endl;
-        std::get<0>(profileVector[j]) = funcName;
-        std::get<1>(profileVector[j]) = numCalls;
-        std::get<2>(profileVector[j]) += info1;
-        std::get<3>(profileVector[j]) += info2;
-        std::get<4>(profileVector[j]) += info3;
-        std::get<5>(profileVector[j]) += info4;
-      }
-    }
-    for (int64_t i=0; i<numFuncs; i++){
-      if (i>0) fptrAvg << "\t";
-      fptrAvg << std::get<0>(profileVector[i]).c_str();
-      fptrAvg << "\t" << std::get<1>(profileVector[i]);
-      fptrAvg << "\t" << std::get<2>(profileVector[i])/numIterations;
-      fptrAvg << "\t" << std::get<3>(profileVector[i])/numIterations;
-      fptrAvg << "\t" << std::get<4>(profileVector[i])/numIterations;
-      fptrAvg << "\t" << std::get<5>(profileVector[i])/numIterations;
-    }
-    fptrAvg << std::endl;
-    fptrTotal2.close();
-  }
-}
-
-template<typename T>
-void util::InitialGEMM(){
-  // Function must be called before performance testing is done due to MKL implementation of GEMM
-  std::vector<T> matrixA(128*128,0.);
-  std::vector<T> matrixB(128*128,0.);
-  std::vector<T> matrixC(128*128,0.);
-  blas::ArgPack_gemm<T> gemmPack1(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., 0.);
-  blas::engine::_gemm(&matrixA[0], &matrixB[0], &matrixC[0], 128, 128, 128, 128, 128, 128, gemmPack1);
 }

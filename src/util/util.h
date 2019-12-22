@@ -22,18 +22,13 @@ public:
   static std::vector<typename MatrixType::ScalarType> getReferenceMatrix(MatrixType& myMatrix, int64_t key, MPI_Comm slice, int64_t commDim);
 
   template<typename MatrixType, typename CommType>
-  static void transposeSwap(MatrixType& mat, CommType&& CommInfo);
+  static void transpose(MatrixType& mat, CommType&& CommInfo);
 
   template<typename U>
   static U getNextPowerOf2(U localShift);
 
   template<typename MatrixType>
   static void removeTriangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir);
-
-  static void processAveragesFromFile(std::ofstream& fptrAvg, std::string& fileStrTotal, int64_t numFuncs, int64_t numIterations, int64_t rank);
-  template<typename T>
-
-  static void InitialGEMM();
 };
 
 #include "util.hpp"

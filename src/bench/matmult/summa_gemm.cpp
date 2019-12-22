@@ -16,8 +16,6 @@ int main(int argc, char** argv){
   // size -- total number of processors in the 3D grid
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  util::InitialGEMM<double>();
-
   int64_t globalMatrixSizeM = atoi(argv[1]);
   int64_t globalMatrixSizeN = atoi(argv[2]);
   int64_t globalMatrixSizeK = atoi(argv[3]);
@@ -38,17 +36,17 @@ int main(int argc, char** argv){
     blas::ArgPack_gemm<double> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., 0.);
     double iterTimeGlobal;
     // Note: I think these calls below are still ok given the new topology mapping on Blue Waters/Stampede2
-    matA.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
-    matB.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
-    matC.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
+    matA.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
+    matB.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
+    matC.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
     MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
     critter::start();
     matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
     critter::stop();
 
-    matA.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
-    matB.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
-    matC.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
+    matA.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
+    matB.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
+    matC.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
     double startTime=MPI_Wtime();
     matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
     double iterTimeLocal=MPI_Wtime()-startTime;

@@ -25,36 +25,14 @@ void serialize<square,square>::invoke(SrcType& src, DestType& dest){
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
-  U srcNumRows = src.getNumRowsLocal();
-  U srcNumColumns = src.getNumColumnsLocal();
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
   U srcNumElems = srcNumRows*srcNumColumns;
 
-  std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T*>& srcMatrixData = src.getMatrixData();
-  std::vector<T>& destVectorData = dest.getVectorData();
-  std::vector<T*>& destMatrixData = dest.getMatrixData();
-
-  bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < srcNumElems){
-    assembleFinder = true;
-    destVectorData.resize(srcNumElems);
-  }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
-    assembleFinder = true;
-    destMatrixData.resize(srcNumColumns);
-  }
-
+  T* srcVectorData = src.data();
+  T* destVectorData = dest.data();
   // direction doesn't matter here since no indexing here
-  memcpy(&destVectorData[0], &srcVectorData[0], sizeof(T)*srcNumElems);
-
-  if (assembleFinder){
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    dest.setNumRowsLocal(srcNumRows);
-    dest.setNumColumnsLocal(srcNumColumns);
-    dest.setNumElems(srcNumElems);
-    square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
-  }
+  memcpy(destVectorData, srcVectorData, sizeof(T)*srcNumElems);
   return;
 }
 
@@ -67,57 +45,26 @@ void serialize<square,square>::invoke(BigType& big, SmallType& small, typename B
   using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
-/*  Commenting this assert out for now, since CFR3D requires non-square partitioning
-  if (rangeX != rangeY)
-  {
-    std::cout << "rangeX - " << rangeX << " and rangeY - " << rangeY << std::endl;
-    std::cout << "cutDimensionXstart - " << cutDimensionXstart << ", cutDimensionXend - " << cutDimensionXend << "cutDimensionYstart - " << cutDimensionYstart << ", cutDimensionYend - " << cutDimensionYend << std::endl;
-    assert(rangeX == rangeY);
-  }
-*/
-  U bigNumRows = big.getNumRowsLocal();
-  U bigNumColumns = big.getNumColumnsLocal();
+  U bigNumRows = big.num_rows_local();
+  U bigNumColumns = big.num_columns_local();
 
-  std::vector<T>& bigVectorData = big.getVectorData();
-  std::vector<T*>& bigMatrixData = big.getMatrixData();
-  std::vector<T>& smallVectorData = small.getVectorData();
-  std::vector<T*>& smallMatrixData = small.getMatrixData();
+  T* bigVectorData = big.data();
+  T* smallVectorData = small.data();
 
   // We assume that if dir==true, the user passed in a destination matrix that is properly sized
   // If I find a use case where that is not true, then I can pass in big x and y dimensions, but I do not wan to do that.
   // In most cases, the lae matri will be known and we are simply trying to fill in the smaller into the existing bigger
 
-  U numElems = (dir ? bigNumRows*bigNumColumns : rangeX*rangeY);
-  U numColumns = (dir ? bigNumColumns : rangeX);
-  bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
-    assembleFinder = true;
-    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
-  }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
-    assembleFinder = true;
-    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
-  }
-
   U destIndex = (dir ? cutDimensionYstart+bigNumRows*cutDimensionXstart : 0);
   U srcIndex = (dir ? 0 : cutDimensionYstart+bigNumRows*cutDimensionXstart);
   U srcCounter = (dir ? rangeY : bigNumRows);
   U destCounter = (dir ? bigNumRows : rangeY);
-  auto& destVectorData = dir ? bigVectorData : smallVectorData;
-  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  T* destVectorData = dir ? bigVectorData : smallVectorData;
+  T* srcVectorData = dir ? smallVectorData : bigVectorData;
   for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destIndex], &srcVectorData[srcIndex], sizeof(T)*rangeY);		// rangeX is fine. blocks of size rangeX are still being copied.
     destIndex += destCounter;
     srcIndex += srcCounter;
-  }
-
-  if (assembleFinder){
-    if (dir) {abort();}		// weird case that I want to check against
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(rangeY);
-    small.setNumColumnsLocal(numColumns);
-    small.setNumElems(numElems);
-    square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
 }
 
@@ -125,7 +72,7 @@ template<typename SrcType, typename DestType>
 void serialize<square,rect>::invoke(SrcType& src, DestType& dest){
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   std::cout << "Not fully implemented yet in Matrixserialize square -> rect\n";
-  return;
+  assert(0);
 }
 
 template<typename BigType, typename SmallType>
@@ -133,7 +80,7 @@ void serialize<square,rect>::invoke(BigType& src, SmallType& dest, typename BigT
                                                typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   std::cout << "Not fully implemented yet in Matrixserialize square -> rect\n";
-  return;
+  assert(0);
 }
 
 template<typename SrcType, typename DestType>
@@ -141,42 +88,21 @@ void serialize<square,uppertri>::invoke(SrcType& src, DestType& dest){
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
-  U srcNumRows = src.getNumRowsLocal();
-  U srcNumColumns = src.getNumColumnsLocal();
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
 
-  std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T>& destVectorData = dest.getVectorData();
-  std::vector<T*>& destMatrixData = dest.getMatrixData();
-
-  U numElems = ((srcNumColumns*(srcNumColumns+1))>>1);
-  bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems){
-    assembleFinder = true;
-    destVectorData.resize(numElems);
-  }
-  if (static_cast<U>(destMatrixData.size()) < srcNumRows){
-    assembleFinder = true;
-    destMatrixData.resize(srcNumRows);
-  }
+  T* srcVectorData = src.data();
+  T* destVectorData = dest.data();
 
   U counter{1};
   U srcOffset{0};
   U destOffset{0};
   U counter2{srcNumColumns};
-
   for (U i=0; i<srcNumColumns; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
     srcOffset += counter2;
     destOffset += counter;
     counter++;
-  }
-
-  if (assembleFinder){
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    dest.setNumRowsLocal(srcNumRows);
-    dest.setNumColumnsLocal(srcNumColumns);
-    dest.setNumElems(numElems);
-    uppertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
   return;
 }
@@ -230,50 +156,26 @@ void serialize<square,uppertri>::invoke(BigType& big, SmallType& small, typename
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
 
-  U bigNumRows = big.getNumRowsLocal();
-  U bigNumColumns = big.getNumColumnsLocal();
+  U bigNumRows = big.num_rows_local();
+  U bigNumColumns = big.num_columns_local();
 
-  std::vector<T>& bigVectorData = big.getVectorData();
-  std::vector<T*>& bigMatrixData = big.getMatrixData();
-  std::vector<T>& smallVectorData = small.getVectorData();
-  std::vector<T*>& smallMatrixData = small.getMatrixData();
+  T* bigVectorData = big.data();
+  T* smallVectorData = small.data();
 
   // We assume that if dir==true, the user passed in a destination matrix that is properly sized
   // If I find a use case where that is not true, then I can pass in big x and y dimensions, but I do not wan to do that.
   // In most cases, the lae matri will be known and we are simply trying to fill in the smaller into the existing bigger
 
-  U numElems = (dir ? bigNumRows*bigNumRows : ((rangeX*(rangeX+1))>>1));
-  U numColumns = (dir ? bigNumColumns : rangeX);
-  bool assembleFinder = false;
-  if ((dir ? bigVectorData.size() : smallVectorData.size()) < numElems){
-    assembleFinder = true;
-    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
-  }
-  if ((dir ? bigMatrixData.size() : smallMatrixData.size()) < numColumns){
-    assembleFinder = true;
-    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
-  }
-
   U destIndex = (dir ? cutDimensionYstart+bigNumRows*cutDimensionXstart : 0);
   U counter{1};
   U srcIndexSave = (dir ? 0 : cutDimensionYstart+bigNumRows*cutDimensionXstart);
-  auto& destVectorData = (dir ? bigVectorData : smallVectorData);
-  auto& srcVectorData = (dir ? smallVectorData : bigVectorData);
+  T* destVectorData = (dir ? bigVectorData : smallVectorData);
+  T* srcVectorData = (dir ? smallVectorData : bigVectorData);
   for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destIndex], &srcVectorData[srcIndexSave], sizeof(T)*counter);
     destIndex += (dir ? bigNumRows : counter);
     srcIndexSave += (dir ? counter : bigNumRows);
     counter++;
-  }
-
-  if (assembleFinder){
-    if (dir) {abort();}		// weird case that I want to check against
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(rangeY);
-    small.setNumColumnsLocal(numColumns);
-    small.setNumElems(numElems);
-    // I am only providing UT here, not square, because if square, it would have aborted
-    uppertri::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
 }
 
@@ -323,26 +225,13 @@ void serialize<square,lowertri>::invoke(SrcType& src, DestType& dest){
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
-  U srcNumRows = src.getNumRowsLocal();
-  U srcNumColumns = src.getNumColumnsLocal();
-  U destNumRows = dest.getNumRowsLocal();
-  U destNumColumns = dest.getNumColumnsLocal();
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
+  U destNumRows = dest.num_rows_local();
+  U destNumColumns = dest.num_columns_local();
 
-  std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T*>& srcMatrixData = src.getMatrixData();
-  std::vector<T>& destVectorData = dest.getVectorData();
-  std::vector<T*>& destMatrixData = dest.getMatrixData();
-
-  U numElems = ((srcNumColumns*(srcNumColumns+1))>>1);
-  bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems){
-    assembleFinder = true;
-    destVectorData.resize(numElems);
-  }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
-    assembleFinder = true;
-    destMatrixData.resize(srcNumColumns);
-  }
+  T* srcVectorData = src.data();
+  T* destVectorData = dest.data();
 
   U counter{srcNumRows};
   U srcOffset{0};
@@ -353,14 +242,6 @@ void serialize<square,lowertri>::invoke(SrcType& src, DestType& dest){
     srcOffset += counter2;
     destOffset += counter;
     counter--;
-  }
-
-  if (assembleFinder){
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    dest.setNumRowsLocal(srcNumRows);
-    dest.setNumColumnsLocal(srcNumColumns);
-    dest.setNumElems(numElems);
-    lowertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
   }
   return;
 }
@@ -414,50 +295,22 @@ void serialize<square,lowertri>::invoke(BigType& big, SmallType& small, typename
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
 
-  U bigNumRows = big.getNumRowsLocal();
-  U bigNumColumns = big.getNumColumnsLocal();
+  U bigNumRows = big.num_rows_local();
+  U bigNumColumns = big.num_columns_local();
 
-  std::vector<T>& bigVectorData = big.getVectorData();
-  std::vector<T*>& bigMatrixData = big.getMatrixData();
-  std::vector<T>& smallVectorData = small.getVectorData();
-  std::vector<T*>& smallMatrixData = small.getMatrixData();
-
-  // We assume that if dir==true, the user passed in a destination matrix that is properly sized
-  // If I find a use case where that is not true, then I can pass in big x and y dimensions, but I do not wan to do that.
-  // In most cases, the lae matri will be known and we are simply trying to fill in the smaller into the existing bigger
-
-  U numElems = (dir ? bigNumRows*bigNumRows : ((rangeX*(rangeX+1))>>1));
-  U numColumns = (dir ? bigNumColumns : rangeX);
-  bool assembleFinder = false;
-  if ((dir ? bigVectorData.size() : smallVectorData.size()) < numElems){
-    assembleFinder = true;
-    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
-  }
-  if ((dir ? bigMatrixData.size() : smallMatrixData.size()) < numColumns){
-    assembleFinder = true;
-    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
-  }
+  T* bigVectorData = big.data();
+  T* smallVectorData = small.data();
 
   U counter{rangeY};
   U srcOffset = (dir ? 0 : cutDimensionYstart+bigNumRows*cutDimensionXstart);
   U destOffset = (dir ? cutDimensionYstart+bigNumRows*cutDimensionXstart  : 0);
-  auto& destVectorData = dir ? bigVectorData : smallVectorData;
-  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  T* destVectorData = dir ? bigVectorData : smallVectorData;
+  T* srcVectorData = dir ? smallVectorData : bigVectorData;
   for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*counter);
     destOffset += (dir ? bigNumRows+1 : counter);
     srcOffset += (dir ? counter : bigNumRows+1);
     counter--;
-  }
-
-  if (assembleFinder){
-    if (dir) {abort();}		// weird case that I want to check against
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(rangeY);
-    small.setNumColumnsLocal(numColumns);
-    small.setNumElems(numElems);
-    // I am only providing UT here, not square, because if square, it would have aborted
-    lowertri::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
 }
 
@@ -524,35 +377,15 @@ void serialize<rect,rect>::invoke(SrcType& src, DestType& dest){
   // Annoying code bloat here
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
-  U srcNumRows = src.getNumRowsLocal();
-  U srcNumColumns = src.getNumColumnsLocal();
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
   U srcNumElems = srcNumRows*srcNumColumns;
 
-  std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T>& destVectorData = dest.getVectorData();
-  std::vector<T*>& destMatrixData = dest.getMatrixData();
-
-  bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < srcNumElems){
-    assembleFinder = true;
-    destVectorData.resize(srcNumElems);
-  }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
-    assembleFinder = true;
-    destMatrixData.resize(srcNumColumns);
-  }
+  T* srcVectorData = src.data();
+  T* destVectorData = dest.data();
 
   // direction doesn't matter here since no indexing here
   memcpy(&destVectorData[0], &srcVectorData[0], sizeof(T)*srcNumElems);
-
-  if (assembleFinder){
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    dest.setNumRowsLocal(srcNumRows);
-    dest.setNumColumnsLocal(srcNumColumns);
-    dest.setNumElems(srcNumElems);
-    square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
-  }
   return;
 }
 
@@ -574,49 +407,22 @@ void serialize<rect,rect>::invoke(BigType& big, SmallType& small, typename BigTy
     assert(rangeX == rangeY);
   }
 */
-  U bigNumRows = big.getNumRowsLocal();
-  U bigNumColumns = big.getNumColumnsLocal();
+  U bigNumRows = big.num_rows_local();
+  U bigNumColumns = big.num_columns_local();
 
-  std::vector<T>& bigVectorData = big.getVectorData();
-  std::vector<T*>& bigMatrixData = big.getMatrixData();
-  std::vector<T>& smallVectorData = small.getVectorData();
-  std::vector<T*>& smallMatrixData = small.getMatrixData();
-
-  // We assume that if dir==true, the user passed in a destination matrix that is properly sized
-  // If I find a use case where that is not true, then I can pass in big x and y dimensions, but I do not wan to do that.
-  // In most cases, the lae matri will be known and we are simply trying to fill in the smaller into the existing bigger
-
-  U numElems = (dir ? bigNumRows*bigNumColumns : rangeX*rangeY);
-  U numColumns = (dir ? bigNumColumns : rangeX);
-  bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
-    assembleFinder = true;
-    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
-  }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
-    assembleFinder = true;
-    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
-  }
+  T* bigVectorData = big.data();
+  T* smallVectorData = small.data();
 
   U destIndex = (dir ? cutDimensionYstart+bigNumRows*cutDimensionXstart : 0);
   U srcIndex = (dir ? 0 : cutDimensionYstart+bigNumRows*cutDimensionXstart);
   U srcCounter = (dir ? rangeY : bigNumRows);
   U destCounter = (dir ? bigNumRows : rangeY);
-  auto& destVectorData = dir ? bigVectorData : smallVectorData;
-  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  T* destVectorData = dir ? bigVectorData : smallVectorData;
+  T* srcVectorData = dir ? smallVectorData : bigVectorData;
   for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destIndex], &srcVectorData[srcIndex], sizeof(T)*rangeY);		// rangeX is fine. blocks of size rangeX are still being copied.
     destIndex += destCounter;
     srcIndex += srcCounter;
-  }
-
-  if (assembleFinder){
-    if (dir) {abort();}		// weird case that I want to check against
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(rangeY);
-    small.setNumColumnsLocal(numColumns);
-    small.setNumElems(numElems);
-    square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   return;
 }
@@ -652,31 +458,18 @@ void serialize<rect,lowertri>::invoke(BigType& src, SmallType& dest, typename Bi
 }
 
 
-template<typename SrcType, typename DestType>
-void serialize<uppertri,square>::invoke(SrcType& src, DestType& dest){
+template<typename SrcType>
+void serialize<uppertri,square>::invoke(SrcType& src){
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
-  U srcNumRows = src.getNumRowsLocal();
-  U srcNumColumns = src.getNumColumnsLocal();
-  U destNumRows = dest.getNumRowsLocal();
-  U destNumColumns = dest.getNumColumnsLocal();
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
+  U destNumRows = dest.num_rows_local();
+  U destNumColumns = dest.num_columns_local();
 
-  std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T*>& srcMatrixData = src.getMatrixData();
-  std::vector<T>& destVectorData = dest.getVectorData();
-  std::vector<T*>& destMatrixData = dest.getMatrixData();
-
-  U numElems = srcNumColumns*srcNumColumns;
-  bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems){
-    assembleFinder = true;
-    destVectorData.resize(numElems);
-  }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
-    assembleFinder = true;
-    destMatrixData.resize(srcNumRows);
-  }
+  T* srcVectorData = src.scratch();
+  T* destVectorData = src.pad();
 
   U counter{1};
   U srcOffset{0};
@@ -690,15 +483,34 @@ void serialize<uppertri,square>::invoke(SrcType& src, DestType& dest){
     destOffset += counter2;
     counter++;
   }
-
-  if (assembleFinder){
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    dest.setNumRowsLocal(srcNumRows);
-    dest.setNumColumnsLocal(srcNumColumns);
-    dest.setNumElems(numElems);
-    uppertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
-  }
   return;
+}
+
+template<typename SrcType, typename DestType>
+void serialize<uppertri,square>::invoke(SrcType& src, DestType& dest){
+
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
+  U destNumRows = dest.num_rows_local();
+  U destNumColumns = dest.num_columns_local();
+
+  T* srcVectorData = src.data();
+  T* destVectorData = dest.data();
+
+  U counter{1};
+  U srcOffset{0};
+  U destOffset{0};
+  U counter2{srcNumRows};
+  for (U i=0; i<srcNumRows; i++){
+    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
+    U fillZeros = srcNumRows-counter;
+    fillZerosContig(&destVectorData[destOffset+counter], fillZeros);
+    srcOffset += counter;
+    destOffset += counter2;
+    counter++;
+  }
 }
 
 template<typename BigType, typename SmallType>
@@ -711,48 +523,24 @@ void serialize<uppertri, square>::invoke(BigType& big, SmallType& small, typenam
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
 
-  U bigNumRows = big.getNumRowsLocal();
-  U bigNumColumns = big.getNumColumnsLocal();
+  U bigNumRows = big.num_rows_local();
+  U bigNumColumns = big.num_columns_local();
 
-  std::vector<T>& bigVectorData = big.getVectorData();
-  std::vector<T*>& bigMatrixData = big.getMatrixData();
-  std::vector<T>& smallVectorData = small.getVectorData();
-  std::vector<T*>& smallMatrixData = small.getMatrixData();
-
-  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeX);
-  U numColumns = (dir ? bigNumColumns : rangeX);
-  bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
-    assembleFinder = true;
-    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
-  }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallVectorData.size())) < numColumns){
-    assembleFinder = true;
-    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
-  }
+  T* bigVectorData = big.data();
+  T* smallVectorData = small.data();
 
   U bigMatOffset = ((cutDimensionXstart*(cutDimensionXstart+1))>>1);
   bigMatOffset += cutDimensionYstart;
   U bigMatCounter = cutDimensionXstart;
   U srcOffset = (dir ? 0 : bigMatOffset);
   U destOffset = (dir ? bigMatOffset : 0);
-  auto& destVectorData = dir ? bigVectorData : smallVectorData;
-  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  T* destVectorData = dir ? bigVectorData : smallVectorData;
+  T* srcVectorData = dir ? smallVectorData : bigVectorData;
   for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
     destOffset += (dir ? (bigMatCounter+1) : rangeY);
     srcOffset += (dir ? rangeY : (bigMatCounter+1));
     bigMatCounter++;
-  }
-
-  if (assembleFinder){
-    if (dir) {abort();}		// weird case that I want to check against
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(numColumns);
-    small.setNumColumnsLocal(rangeY);
-    small.setNumElems(numElems);
-    // I am only providing square here, not UT, because if UT, it would have aborted
-    square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
 }
 
@@ -801,32 +589,19 @@ void serialize<T,U,uppertri, square>::invoke(Matrix<T,U,uppertri,Distributer>& s
 }
 */
   
-
-template<typename SrcType, typename DestType>
-void serialize<uppertri,rect>::invoke(SrcType& src, DestType& dest){
+template<typename SrcType>
+void serialize<uppertri,rect>::invoke(SrcType& src){
 
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
-  U srcNumRows = src.getNumRowsLocal();
-  U srcNumColumns = src.getNumColumnsLocal();
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
 
-  std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T>& destVectorData = dest.getVectorData();
-  std::vector<T*>& destMatrixData = dest.getMatrixData();
-
-  U numElems = srcNumColumns*srcNumColumns;
-  bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems){
-    assembleFinder = true;
-    destVectorData.resize(numElems);
-  }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
-    assembleFinder = true;
-    destMatrixData.resize(srcNumRows);
-  }
+  T* srcVectorData = src.scratch();
+  T* destVectorData = src.pad();
 
   U counter{1};
   U srcOffset{0};
@@ -840,13 +615,34 @@ void serialize<uppertri,rect>::invoke(SrcType& src, DestType& dest){
     destOffset += counter2;
     counter++;
   }
+  return;
+}
 
-  if (assembleFinder){
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    dest.setNumRowsLocal(srcNumRows);
-    dest.setNumColumnsLocal(srcNumColumns);
-    dest.setNumElems(numElems);
-    uppertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
+template<typename SrcType, typename DestType>
+void serialize<uppertri,rect>::invoke(SrcType& src, DestType& dest){
+
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
+  // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
+
+  T* srcVectorData = src.data();
+  T* destVectorData = dest.data();
+
+  U counter{1};
+  U srcOffset{0};
+  U destOffset{0};
+  U counter2{srcNumRows};
+  for (U i=0; i<srcNumRows; i++){
+    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
+    U fillZeros = srcNumRows-counter;
+    fillZerosContig(&destVectorData[destOffset+counter], fillZeros);
+    srcOffset += counter;
+    destOffset += counter2;
+    counter++;
   }
   return;
 }
@@ -854,7 +650,7 @@ void serialize<uppertri,rect>::invoke(SrcType& src, DestType& dest){
 
 template<typename BigType, typename SmallType>
 void serialize<uppertri,rect>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                                                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
+                                      typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
 
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
@@ -864,47 +660,23 @@ void serialize<uppertri,rect>::invoke(BigType& big, SmallType& small, typename B
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
-  U bigNumColumns = big.getNumColumnsLocal();
+  U bigNumColumns = big.num_columns_local();
 
-  std::vector<T>& bigVectorData = big.getVectorData();
-  std::vector<T*>& bigMatrixData = big.getMatrixData();
-  std::vector<T>& smallVectorData = small.getVectorData();
-  std::vector<T*>& smallMatrixData = small.getMatrixData();
-
-  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeY);
-  U numColumns = (dir ? bigNumColumns : rangeX);
-  bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
-    assembleFinder = true;
-    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
-  }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
-    assembleFinder = true;
-    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
-  }
+  T* bigVectorData = big.data();
+  T* smallVectorData = small.data();
 
   U bigMatOffset = ((cutDimensionXstart*(cutDimensionXstart+1))>>1);
   bigMatOffset += cutDimensionYstart;
   U bigMatCounter = cutDimensionXstart;
   U srcOffset = (dir ? 0 : bigMatOffset);
   U destOffset = (dir ? bigMatOffset : 0);
-  auto& destVectorData = dir ? bigVectorData : smallVectorData;
-  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  T* destVectorData = dir ? bigVectorData : smallVectorData;
+  T* srcVectorData = dir ? smallVectorData : bigVectorData;
   for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
     destOffset += (dir ? (bigMatCounter+1) : rangeY);
     srcOffset += (dir ? rangeY : (bigMatCounter+1));
     bigMatCounter++;
-  }
-
-  if (assembleFinder){
-    if (dir) {abort();}		// weird case that I want to check against
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    small.setNumRowsLocal(rangeY);
-    small.setNumColumnsLocal(numColumns);
-    small.setNumElems(numElems);
-    // I am only providing square here, not UT, because if UT, it would have aborted
-    square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
 }
 
@@ -914,36 +686,15 @@ void serialize<uppertri,uppertri>::invoke(SrcType& src, DestType& dest){
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
-  U srcNumRows = src.getNumRowsLocal();
-  U srcNumColumns = src.getNumColumnsLocal();
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
   U srcNumElems = srcNumRows*srcNumColumns;
 
-  std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T*>& srcMatrixData = src.getMatrixData();
-  std::vector<T>& destVectorData = dest.getVectorData();
-  std::vector<T*>& destMatrixData = dest.getMatrixData();
-
-  bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < srcNumElems){
-    assembleFinder = true;
-    destVectorData.resize(srcNumElems);
-  }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
-    assembleFinder = true;
-    destMatrixData.resize(srcNumColumns);
-  }
+  T* srcVectorData = src.data();
+  T* destVectorData = dest.data();
 
   // direction doesn't matter here since no indexing here
   memcpy(&destVectorData[0], &srcVectorData[0], sizeof(T)*srcNumElems);
-
-  if (assembleFinder){
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    dest.setNumRowsLocal(srcNumRows);
-    dest.setNumColumnsLocal(srcNumColumns);
-    dest.setNumElems(srcNumElems);
-    uppertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
-  }
   return;
 }
 
@@ -958,24 +709,10 @@ void serialize<uppertri,uppertri>::invoke(BigType& big, SmallType& small, typena
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
 
-  U bigNumColumns = big.getNumColumnsLocal();
+  U bigNumColumns = big.num_columns_local();
 
-  std::vector<T>& bigVectorData = big.getVectorData();
-  std::vector<T*>& bigMatrixData = big.getMatrixData();
-  std::vector<T>& smallVectorData = small.getVectorData();
-  std::vector<T*>& smallMatrixData = small.getMatrixData();
-
-  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : ((rangeX*(rangeX+1))>>1));
-  U numColumns = (dir ? bigNumColumns : rangeX);
-  bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
-    assembleFinder = true;
-    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
-  }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
-    assembleFinder = true;
-    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
-  }
+  T* bigVectorData = big.data();
+  T* smallVectorData = small.data();
 
   U bigMatOffset = ((cutDimensionXstart*(cutDimensionXstart+1))>>1);
   bigMatOffset += cutDimensionYstart;
@@ -984,8 +721,8 @@ void serialize<uppertri,uppertri>::invoke(BigType& big, SmallType& small, typena
   U smallMatCounter{1};
   U srcOffset = (dir ? smallMatOffset : bigMatOffset);
   U destOffset = (dir ? bigMatOffset : smallMatOffset);
-  auto& destVectorData = dir ? bigVectorData : smallVectorData;
-  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  T* destVectorData = dir ? bigVectorData : smallVectorData;
+  T* srcVectorData = dir ? smallVectorData : bigVectorData;
   for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*smallMatCounter);
     destOffset += (dir ? (bigMatCounter+1) : smallMatCounter);
@@ -993,45 +730,22 @@ void serialize<uppertri,uppertri>::invoke(BigType& big, SmallType& small, typena
     bigMatCounter++;
     smallMatCounter++;
   }
-
-  if (assembleFinder){
-    if (dir) {abort();}
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    small.setNumRowsLocal(rangeY);
-    small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
-    small.setNumElems(numElems);
-    uppertri::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
-  }
   return;
 }
 
 
-template<typename SrcType, typename DestType>
-void serialize<lowertri, square>::invoke(SrcType& src, DestType& dest){
+template<typename SrcType>
+void serialize<lowertri, square>::invoke(SrcType& src){
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
-  U srcNumRows = src.getNumRowsLocal();
-  U srcNumColumns = src.getNumColumnsLocal();
-  U destNumRows = dest.getNumRowsLocal();
-  U destNumColumns = dest.getNumColumnsLocal();
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
+  U destNumRows = dest.num_rows_local();
+  U destNumColumns = dest.num_columns_local();
 
-  std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T*>& srcMatrixData = src.getMatrixData();
-  std::vector<T>& destVectorData = dest.getVectorData();
-  std::vector<T*>& destMatrixData = dest.getMatrixData();
-
-  U numElems = srcNumColumns*srcNumColumns;
-  bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems){
-    assembleFinder = true;
-    destVectorData.resize(numElems);
-  }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
-    assembleFinder = true;
-    destMatrixData.resize(srcNumColumns);
-  }
+  T* srcVectorData = src.scratch();
+  T* destVectorData = src.pad();
 
   U counter{srcNumRows};
   U srcOffset{0};
@@ -1044,14 +758,33 @@ void serialize<lowertri, square>::invoke(SrcType& src, DestType& dest){
     destOffset += srcNumRows;
     counter--;
   }
+  return;
+}
 
-  if (assembleFinder){
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    dest.setNumRowsLocal(srcNumRows);
-    dest.setNumColumnsLocal(srcNumColumns);	// no dir needed here due to abort above
-    dest.setNumElems(numElems);
-    square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
+
+template<typename SrcType, typename DestType>
+void serialize<lowertri, square>::invoke(SrcType& src, DestType& dest){
+
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
+  U destNumRows = dest.num_rows_local();
+  U destNumColumns = dest.num_columns_local();
+
+  T* srcVectorData = src.data();
+  T* destVectorData = src.data();
+
+  U counter{srcNumRows};
+  U srcOffset{0};
+  U destOffset{0};
+  U counter2{srcNumColumns};
+  for (U i=0; i<srcNumColumns; i++){
+    fillZerosContig(&destVectorData[destOffset], i);
+    memcpy(&destVectorData[destOffset+i], &srcVectorData[srcOffset], counter*sizeof(T));
+    srcOffset += counter;
+    destOffset += srcNumRows;
+    counter--;
   }
   return;
 }
@@ -1069,25 +802,11 @@ void serialize<lowertri,square>::invoke(BigType& big, SmallType& small, typename
   std::cout << "rangeX,rangeY - " << rangeX << " " << rangeY << std::endl;
   assert(rangeX == rangeY);
 
-  U bigNumRows = big.getNumRowsLocal();
-  U bigNumColumns = big.getNumColumnsLocal();
+  U bigNumRows = big.num_rows_local();
+  U bigNumColumns = big.num_columns_local();
 
-  std::vector<T>& bigVectorData = big.getVectorData();
-  std::vector<T*>& bigMatrixData = big.getMatrixData();
-  std::vector<T>& smallVectorData = small.getVectorData();
-  std::vector<T*>& smallMatrixData = small.getMatrixData();
-
-  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeX*rangeX);
-  U numColumns = (dir ? bigNumColumns : rangeX);
-  bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
-    assembleFinder = true;
-    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
-  }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
-    assembleFinder = true;
-    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
-  }
+  T* bigVectorData = big.data();
+  T* smallVectorData = small.data();
 
   U smallMatOffset = 0;
   U smallMatCounter = rangeY;
@@ -1098,22 +817,13 @@ void serialize<lowertri,square>::invoke(BigType& big, SmallType& small, typename
   U bigMatCounter = bigNumRows-cutDimensionXstart;
   U srcOffset = (dir ? smallMatOffset : bigMatOffset);
   U destOffset = (dir ? bigMatOffset : smallMatOffset);
-  auto& destVectorData = dir ? bigVectorData : smallVectorData;
-  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  T* destVectorData = dir ? bigVectorData : smallVectorData;
+  T* srcVectorData = dir ? smallVectorData : bigVectorData;
   for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
     destOffset += (dir ? (bigMatCounter-1) : smallMatCounter);
     srcOffset += (dir ? smallMatCounter : (bigMatCounter-1));
     bigMatCounter--;
-  }
-  if (assembleFinder){
-    if (dir) {abort();}
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    small.setNumRowsLocal(rangeY);
-    small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
-    small.setNumElems(numElems);
-    square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   return;
 }
@@ -1162,31 +872,20 @@ void serialize<T,U,lowertri, square>::invoke(Matrix<T,U,lowertri,Distributer>& s
 }
 */
 
-template<typename SrcType, typename DestType>
-void serialize<lowertri,rect>::invoke(SrcType& src, DestType& dest){
+
+template<typename SrcType>
+void serialize<lowertri,rect>::invoke(SrcType& src){
 
   // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
   // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
   // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
-  U srcNumRows = src.getNumRowsLocal();
-  U srcNumColumns = src.getNumColumnsLocal();
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
 
-  std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T>& destVectorData = dest.getVectorData();
-  std::vector<T*>& destMatrixData = dest.getMatrixData();
-
-  U numElems = srcNumColumns*srcNumRows;
-  bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < numElems){
-    assembleFinder = true;
-    destVectorData.resize(numElems);
-  }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
-    assembleFinder = true;
-    destMatrixData.resize(srcNumColumns);
-  }
+  T* srcVectorData = src.scratch();
+  T* destVectorData = src.pad();
 
   U counter{srcNumRows};
   U srcOffset{0};
@@ -1198,14 +897,31 @@ void serialize<lowertri,rect>::invoke(SrcType& src, DestType& dest){
     destOffset += srcNumRows;
     counter--;
   }
+}
 
-  if (assembleFinder){
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    dest.setNumRowsLocal(srcNumRows);
-    dest.setNumColumnsLocal(srcNumColumns);	// no dir needed here due to abort above
-    dest.setNumElems(numElems);
-    square::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);	// again, no dir ? needed here
+template<typename SrcType, typename DestType>
+void serialize<lowertri,rect>::invoke(SrcType& src, DestType& dest){
+
+  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
+  // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
+  // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
+  using T = typename SrcType::ScalarType;
+  using U = typename SrcType::DimensionType;
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
+
+  T* srcVectorData = src.data();
+  T* destVectorData = dest.data();
+
+  U counter{srcNumRows};
+  U srcOffset{0};
+  U destOffset{0};
+  for (U i=0; i<srcNumColumns; i++){
+    fillZerosContig(&destVectorData[destOffset], i);
+    memcpy(&destVectorData[destOffset+i], &srcVectorData[srcOffset], counter*sizeof(T));
+    srcOffset += counter;
+    destOffset += srcNumRows;
+    counter--;
   }
   return;
 }
@@ -1222,25 +938,11 @@ void serialize<lowertri,rect>::invoke(BigType& big, SmallType& small, typename B
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
 
-  U bigNumRows = big.getNumRowsLocal();
-  U bigNumColumns = big.getNumColumnsLocal();
+  U bigNumRows = big.num_rows_local();
+  U bigNumColumns = big.num_columns_local();
 
-  std::vector<T>& bigVectorData = big.getVectorData();
-  std::vector<T*>& bigMatrixData = big.getMatrixData();
-  std::vector<T>& smallVectorData = small.getVectorData();
-  std::vector<T*>& smallMatrixData = small.getMatrixData();
-
-  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : rangeY*rangeX);
-  U numColumns = (dir ? bigNumColumns : rangeX);
-  bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
-    assembleFinder = true;
-    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
-  }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
-    assembleFinder = true;
-    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
-  }
+  T* bigVectorData = big.data();
+  T* smallVectorData = small.data();
 
   U smallMatOffset = 0;
   U smallMatCounter = rangeY;
@@ -1251,22 +953,13 @@ void serialize<lowertri,rect>::invoke(BigType& big, SmallType& small, typename B
   U bigMatCounter = bigNumRows-cutDimensionXstart;
   U srcOffset = (dir ? smallMatOffset : bigMatOffset);
   U destOffset = (dir ? bigMatOffset : smallMatOffset);
-  auto& destVectorData = dir ? bigVectorData : smallVectorData;
-  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  T* destVectorData = dir ? bigVectorData : smallVectorData;
+  T* srcVectorData = dir ? smallVectorData : bigVectorData;
   for (U i=0; i<rangeX; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*rangeY);
     destOffset += (dir ? (bigMatCounter-1) : smallMatCounter);
     srcOffset += (dir ? smallMatCounter : (bigMatCounter-1));
     bigMatCounter--;
-  }
-  if (assembleFinder){
-    if (dir) {abort();}
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    small.setNumRowsLocal(rangeY);
-    small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
-    small.setNumElems(numElems);
-    square::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   return;
 }
@@ -1277,37 +970,15 @@ void serialize<lowertri,lowertri>::invoke(SrcType& src, DestType& dest){
 
   using T = typename SrcType::ScalarType;
   using U = typename SrcType::DimensionType;
-  U srcNumRows = src.getNumRowsLocal();
-  U srcNumColumns = src.getNumColumnsLocal();
+  U srcNumRows = src.num_rows_local();
+  U srcNumColumns = src.num_columns_local();
   U srcNumElems = srcNumRows*srcNumColumns;
 
-  std::vector<T>& srcVectorData = src.getVectorData();
-  std::vector<T*>& srcMatrixData = src.getMatrixData();
-  std::vector<T>& destVectorData = dest.getVectorData();
-  std::vector<T*>& destMatrixData = dest.getMatrixData();
-
-  bool assembleFinder = false;
-  if (static_cast<U>(destVectorData.size()) < srcNumElems){
-    assembleFinder = true;
-    destVectorData.resize(srcNumElems);
-  }
-  if (static_cast<U>(destMatrixData.size()) < srcNumColumns){
-    assembleFinder = true;
-    destMatrixData.resize(srcNumColumns);
-  }
+  T* srcVectorData = src.data();
+  T* destVectorData = dest.data();
 
   // direction doesn't matter here since no indexing here
   memcpy(&destVectorData[0], &srcVectorData[0], sizeof(T)*srcNumElems);
-
-  if (assembleFinder){
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    dest.setNumRowsLocal(srcNumRows);
-    dest.setNumColumnsLocal(srcNumColumns);
-    dest.setNumElems(srcNumElems);
-    lowertri::_AssembleMatrix(destVectorData, destMatrixData, srcNumColumns, srcNumRows);
-  }
-  return;
 }
 
 template<typename BigType, typename SmallType>
@@ -1320,25 +991,11 @@ void serialize<lowertri,lowertri>::invoke(BigType& big, SmallType& small, typena
   U rangeY = cutDimensionYend-cutDimensionYstart;
   assert(rangeX == rangeY);
 
-  U bigNumRows = big.getNumRowsLocal();
-  U bigNumColumns = big.getNumColumnsLocal();
+  U bigNumRows = big.num_rows_local();
+  U bigNumColumns = big.num_columns_local();
 
-  std::vector<T>& bigVectorData = big.getVectorData();
-  std::vector<T*>& bigMatrixData = big.getMatrixData();
-  std::vector<T>& smallVectorData = small.getVectorData();
-  std::vector<T*>& smallMatrixData = small.getMatrixData();
-
-  U numElems = (dir ? ((bigNumColumns*(bigNumColumns+1))>>1) : ((rangeX*(rangeX+1))>>1));
-  U numColumns = (dir ? bigNumColumns : rangeX);
-  bool assembleFinder = false;
-  if (static_cast<U>((dir ? bigVectorData.size() : smallVectorData.size())) < numElems){
-    assembleFinder = true;
-    dir ? bigVectorData.resize(numElems) : smallVectorData.resize(numElems);
-  }
-  if (static_cast<U>((dir ? bigMatrixData.size() : smallMatrixData.size())) < numColumns){
-    assembleFinder = true;
-    dir ? bigMatrixData.resize(numColumns) : smallMatrixData.resize(numColumns);
-  }
+  T* bigVectorData = big.data();
+  T* smallVectorData = small.data();
 
   U smallMatOffset = 0;
   U smallMatCounter = rangeY;
@@ -1349,24 +1006,14 @@ void serialize<lowertri,lowertri>::invoke(BigType& big, SmallType& small, typena
   U bigMatCounter = bigNumRows-cutDimensionXstart;
   U srcOffset = (dir ? smallMatOffset : bigMatOffset);
   U destOffset = (dir ? bigMatOffset : smallMatOffset);
-  auto& destVectorData = dir ? bigVectorData : smallVectorData;
-  auto& srcVectorData = dir ? smallVectorData : bigVectorData;
+  T* destVectorData = dir ? bigVectorData : smallVectorData;
+  T* srcVectorData = dir ? smallVectorData : bigVectorData;
   for (U i=0; i<rangeY; i++){
     memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], sizeof(T)*smallMatCounter);
     destOffset += (dir ? bigMatCounter : smallMatCounter);
     srcOffset += (dir ? smallMatCounter : bigMatCounter);
     bigMatCounter--;
     smallMatCounter--;
-  }
-
-  if (assembleFinder){
-    if (dir) {abort();}
-    // We won't always have to reassemble the offset vector. Only necessary when the destination matrix was being assembled in here.
-    // User can assume that everything except for global dimensions are set. If he needs global dimensions too, he can set them himself.
-    small.setNumRowsLocal(rangeY);
-    small.setNumColumnsLocal(numColumns);	// no dir needed here due to abort above
-    small.setNumElems(numElems);
-    lowertri::_AssembleMatrix(destVectorData, smallMatrixData, numColumns, rangeY);
   }
   return;
 }

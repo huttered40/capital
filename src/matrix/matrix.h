@@ -18,8 +18,8 @@ public:
   using OffloadType = OffloadPolicy;
 
   explicit matrix() = delete;
-  explicit matrix(U globalDimensionX, U globalDimensionY, int64_t globalPgridX, int64_t globalPgridY);				// Regular constructor
-  explicit matrix(std::vector<T>&& data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, bool assemble = false);	// Injection constructor
+  explicit matrix(U globalDimensionX, U globalDimensionY, int64_t globalPgridX, int64_t globalPgridY);	// Regular constructor
+  explicit matrix(T* data, U dimensionX, U dimensionY, U globalPgridX, U globalPgridY);			// Injection constructor
   matrix(const matrix& rhs);
   matrix(matrix&& rhs);
   matrix& operator=(const matrix& rhs);
@@ -28,37 +28,44 @@ public:
 
   // automatically inlined
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
-  inline T* getRawData() { return &this->_data[0]; }
-  inline std::vector<T>& getVectorData() { return this->_data; }
-  inline std::vector<T*>& getMatrixData() { return this->_matrix;}
-  inline U getNumElems() { return this->_numElems; }
-  inline U getNumElems(U rangeX, U rangeY) { return StructurePolicy::_getNumElems(rangeX, rangeY); }
-  inline U getNumRowsLocal() { return this->_dimensionY; }
-  inline U getNumColumnsLocal() { return this->_dimensionX; }
-  inline U getNumRowsGlobal() { return this->_globalDimensionY; }
-  inline U getNumColumnsGlobal() { return this->_globalDimensionX; }
-  
-  inline void setNumRowsLocal(U arg) { this->_dimensionY = arg; }
-  inline void setNumColumnsLocal(U arg) { this->_dimensionX = arg; }
-  inline void setNumRowsGlobal(U arg) { this->_globalDimensionY = arg; }
-  inline void setNumColumnsGlobal(U arg) { this->_globalDimensionX = arg; }
-  inline void setNumElems(U arg) { this->_numElems = arg; }
+  inline T*& data() { return this->_data; }
+  inline T*& scratch() { return this->_scratch; }
+  inline T*& pad() { return this->_pad; }
+  inline U num_elems() { return this->_numElems; }
+  inline U num_elems(U rangeX, U rangeY) { return StructurePolicy::_num_elems(rangeX, rangeY); }
+  inline U num_rows_local() { return this->_dimensionY; }
+  inline U num_columns_local() { return this->_dimensionX; }
+  inline U num_rows_global() { return this->_globalDimensionY; }
+  inline U num_columns_global() { return this->_globalDimensionX; }
+
+  inline void swap() { T* ptr = this->data(); this->data() = this->scratch(); this->scratch() = ptr; } 
+  inline void swap_pad() { T* ptr = this->scratch(); this->scratch() = this->pad(); this->pad() = ptr; } 
+
+  inline void set_num_rows_local(U arg) { this->_dimensionY = arg; }
+  inline void set_num_columns_local(U arg) { this->_dimensionX = arg; }
+  inline void set_num_rows_global(U arg) { this->_globalDimensionY = arg; }
+  inline void set_num_columns_global(U arg) { this->_globalDimensionX = arg; }
+  inline void set_num_elems(U arg) { this->_numElems = arg; }
 
   // dim.first -- column index (X) , dim.second -- row index (Y)
-  inline T& operator[](const std::pair<U,U>& dim) {return this->_matrix[dim.first][dim.second];}
-  inline T& getAccess(U dimX, U dimY) {return this->_matrix[dimX][dimY];}
-  void DistributeRandom(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key);
-  void DistributeSymmetric(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key, bool diagonallyDominant);
-  void DistributeIdentity(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, T val=1.);
-  void DistributeDebug(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY);
+  void distribute_random(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key);
+  void distribute_symmetric(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key, bool diagonallyDominant);
+  void distribute_identity(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, T val=1.);
+  void distribute_debug(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY);
   void print() const;
+  void print_data() const;
+  void print_scratch() const;
+  void print_pad() const;
 
 private:
   void copy(const matrix& rhs);
   void mover(matrix&& rhs);		// will need to use std::forward<T> with this I think.
 
-  std::vector<T> _data;
+  T* _data;				// Where the matrix data lives as a contiguous 1d array
+  T* _scratch;				// Extra storage for summa and other computations that require one2all and all2one communications
+  T* _pad;				// Extra storage for uppertri and lowertri structures only used in avoiding extra allocations in summa
   std::vector<T*> _matrix;		// Holds offsets into the columns of 1D array of data. So matrix[1] is the pointer to the starting address of the 1st column.
+  bool allocated_data;			// Asks if the raw data was allocated by the user or ourselves
 
   U _numElems;
   U _dimensionX;			// Number of columns owned locally
