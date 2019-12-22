@@ -10,6 +10,6 @@ Optimized parallel schedules and algorithms for:
 * Eigen-decomposition
 
 Highlights include:
-* Communication-avoiding Cholesky QR2
-* Pipelined Communication-avoiding QR
-* Symmetric full-to-band reduction with communication-avoiding QR
+* Communication-avoiding Cholesky QR2 (https://ieeexplore.ieee.org/abstract/document/8820981)
+* Pipelined Communication-avoiding QR (*add HPDC arxiv link*)
+* Symmetric full-to-band reduction with communication-avoiding QR (https://dl.acm.org/citation.cfm?id=3087561)
