@@ -17,8 +17,8 @@ public:
   static void invoke(MatrixType& Matrix, CommType&& CommInfo){
     using T = typename MatrixType::ScalarType;
     using U = typename MatrixType::DimensionType;
-    U localDimensionN = Matrix.getNumColumnsLocal();
-    MPI_Allreduce(MPI_IN_PLACE, Matrix.getRawData(), localDimensionN*localDimensionN, mpi_type<T>::type, MPI_SUM, CommInfo.world);
+    U localDimensionN = Matrix.num_columns_local();
+    MPI_Allreduce(MPI_IN_PLACE, Matrix.data(), localDimensionN*localDimensionN, mpi_type<T>::type, MPI_SUM, CommInfo.world);
     return;
   }
 };
@@ -32,12 +32,12 @@ public:
     using U = typename MatrixType::DimensionType;
     using Distribution = typename MatrixType::DistributionType;
     using Offload = typename MatrixType::OffloadType;
-    U localDimensionN = Matrix.getNumColumnsLocal();
-    U globalDimensionN = Matrix.getNumColumnsGlobal();
-    matrix<T,U,uppertri,Distribution,Offload> Packed(std::vector<T>(), localDimensionN, localDimensionN, globalDimensionN, globalDimensionN);
-    // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
+    U localDimensionN = Matrix.num_columns_local();
+    U globalDimensionN = Matrix.num_columns_global();
+    //TODO: Note that this can be further optimized if necessary to reduce number of allocations from each invocation of cacqr to just 1.
+    matrix<T,U,uppertri,Distribution,Offload> Packed(globalDimensionN, globalDimensionN, CommInfo.c, CommInfo.c);
     serialize<square,uppertri>::invoke(Matrix, Packed);
-    MPI_Allreduce(MPI_IN_PLACE, Packed.getRawData(), Packed.getNumElems(), mpi_type<T>::type, MPI_SUM, CommInfo.world);
+    MPI_Allreduce(MPI_IN_PLACE, Packed.data(), Packed.getNumElems(), mpi_type<T>::type, MPI_SUM, CommInfo.world);
     serialize<uppertri,square>::invoke(Packed, Matrix);
     return;
   }

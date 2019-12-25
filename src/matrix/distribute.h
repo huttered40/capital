@@ -7,20 +7,26 @@
 class cyclic{
 public:
   template<typename T, typename U>
-  static void _DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX,
-    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, square);
+  static void _distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX,
+    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, square);
   template<typename T, typename U>
-  static void _DistributeSymmetric(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX,
-    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, bool diagonallyDominant);
+  static void _distribute_identity(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX,
+    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, T val);
   template<typename T, typename U>
-  static void _DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, size_t globalDimensionY, size_t localPgridDimX,
-    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, rect);
+  static void _distribute_debug(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX,
+    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY);
   template<typename T, typename U>
-  static void _DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, size_t globalDimensionY, size_t localPgridDimX, size_t localPgridDimY,
-    size_t globalPgridDimX, size_t globalPgridDimY, size_t key, uppertri);
+  static void _distribute_symmetric(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX,
+    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, bool diagonallyDominant);
   template<typename T, typename U>
-  static void _DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX, size_t localPgridDimY,
-    size_t globalPgridDimX, size_t globalPgridDimY, size_t key, lowertri);
+  static void _distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, int64_t globalDimensionY, int64_t localPgridDimX,
+    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, rect);
+  template<typename T, typename U>
+  static void _distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, int64_t globalDimensionY, int64_t localPgridDimX, int64_t localPgridDimY,
+    int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, uppertri);
+  template<typename T, typename U>
+  static void _distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX, int64_t localPgridDimY,
+    int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, lowertri);
 };
 
 // We must provide the template class definitions below. Read up on why exactly we need to do this.

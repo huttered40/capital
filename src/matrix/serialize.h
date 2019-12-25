@@ -16,6 +16,9 @@ class serialize;
 template<>
 class serialize<square,square>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -27,6 +30,9 @@ public:
 template<>
 class serialize<square,rect>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -38,6 +44,9 @@ public:
 template<>
 class serialize<square,uppertri>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -49,6 +58,9 @@ public:
 template<>
 class serialize<square,lowertri>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -60,6 +72,9 @@ public:
 template<>
 class serialize<rect,square>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -71,6 +86,9 @@ public:
 template<>
 class serialize<rect,rect>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -82,6 +100,9 @@ public:
 template<>
 class serialize<rect,uppertri>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -93,6 +114,9 @@ public:
 template<>
 class serialize<rect,lowertri>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -104,6 +128,9 @@ public:
 template<>
 class serialize<uppertri,square>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -115,6 +142,9 @@ public:
 template<>
 class serialize<uppertri,rect>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -126,6 +156,9 @@ public:
 template<>
 class serialize<uppertri,uppertri>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -137,6 +170,9 @@ public:
 template<>
 class serialize<lowertri,square>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -148,6 +184,9 @@ public:
 template<>
 class serialize<lowertri,rect>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 
@@ -159,6 +198,9 @@ public:
 template<>
 class serialize<lowertri,lowertri>{
 public:
+  template<typename SrcType>
+  static void invoke(SrcType& src);
+
   template<typename SrcType, typename DestType>
   static void invoke(SrcType& src, DestType& dest);
 

@@ -1,19 +1,21 @@
 /* Author: Edward Hutter */
 
 template<typename T, typename U>
-void square::_Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY){
+void square::_assemble(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY){
   // dimensionX must be equal to dimensionY, but I can't check this at compile time.
   //assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionX);
   matrixNumElems = dimensionX * dimensionY;
-  data.resize(matrixNumElems);
-
-  _AssembleMatrix(data, matrix, dimensionX, dimensionY);
+  data = new T[matrixNumElems];
+  _assemble_matrix(data, scratch, pad, matrix, dimensionX, dimensionY);
 }
 
 template<typename T, typename U>
-void square::_AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY){
+void square::_assemble_matrix(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U dimensionX, U dimensionY){
+  U matrixNumElems = dimensionX * dimensionY;
+  scratch = new T[matrixNumElems];
+  pad = nullptr;
   U offset{0};
   for (auto& ptr : matrix){
     ptr = &data[offset];
@@ -21,22 +23,15 @@ void square::_AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U di
   }
 }
 
-template<typename T>
-void square::_Dissamble(std::vector<T*>& matrix){
-  if ((matrix.size() > 0) && (matrix[0] != nullptr)){
-    delete[] matrix[0];
-  }
-}
-
 template<typename T, typename U>
-void square::_Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY){
+void square::_copy(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, T* const & source, U dimensionX, U dimensionY){
   U numElems = 0;		// Just choose one dimension.
-  _Assemble(data, matrix, numElems, dimensionX, dimensionY);	// Just choose one dimension.
+  _assemble(data, scratch, pad, matrix, numElems, dimensionX, dimensionY);	// Just choose one dimension.
   std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
 
 template<typename T, typename U>
-void square::_Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY){
+void square::_print(const std::vector<T*>& matrix, U dimensionX, U dimensionY){
   for (U i=0; i<dimensionY; i++){
     for (U j=0; j<dimensionX; j++){
       std::cout << " " << matrix[j][i];
@@ -47,16 +42,18 @@ void square::_Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY){
 
 
 template<typename T, typename U>
-void rect::_Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY){
+void rect::_assemble(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY){
   matrix.resize(dimensionX);
   matrixNumElems = dimensionX * dimensionY;
-  data.resize(matrixNumElems);
-  
-  _AssembleMatrix(data, matrix, dimensionX, dimensionY);
+  data = new T[matrixNumElems];
+  _assemble_matrix(data, scratch, pad, matrix, dimensionX, dimensionY);
 }
 
 template<typename T, typename U>
-void rect::_AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY){
+void rect::_assemble_matrix(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U dimensionX, U dimensionY){
+  U matrixNumElems = dimensionX * dimensionY;
+  scratch = new T[matrixNumElems];
+  pad = nullptr;
   U offset{0};
   for (auto& ptr : matrix){
     ptr = &data[offset];
@@ -64,22 +61,15 @@ void rect::_AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dime
   }
 }
 
-template<typename T>
-void rect::_Dissamble(std::vector<T*>& matrix){
-  if ((matrix.size() > 0) && (matrix[0] != nullptr)){
-    delete[] matrix[0];
-  }
-}
-
 template<typename T, typename U>
-void rect::_Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY){
+void rect::_copy(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, T* const & source, U dimensionX, U dimensionY){
   U numElems = 0;
-  _Assemble(data, matrix, numElems, dimensionX, dimensionY);
+  _assemble(data, scratch, pad, matrix, numElems, dimensionX, dimensionY);
   std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
 
 template<typename T, typename U>
-void rect::_Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY){
+void rect::_print(const std::vector<T*>& matrix, U dimensionX, U dimensionY){
   for (U i=0; i<dimensionY; i++){
     for (U j=0; j<dimensionX; j++){
       std::cout << " " << matrix[j][i];
@@ -90,19 +80,22 @@ void rect::_Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY){
 
 
 template<typename T, typename U>
-void uppertri::_Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY){
+void uppertri::_assemble(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY){
   // dimensionY must be equal to dimensionX
   assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionY);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
-  data.resize(matrixNumElems);
-
-  _AssembleMatrix(data, matrix, dimensionX, dimensionY);
+  data = new T[matrixNumElems];
+  _assemble_matrix(data, scratch, pad, matrix, dimensionX, dimensionY);
 }
 
 template<typename T, typename U>
-void uppertri::_AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY){
+void uppertri::_assemble_matrix(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U dimensionX, U dimensionY){
+  U nonPackedNumElems = dimensionX*dimensionY;
+  U matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
+  scratch = new T[matrixNumElems];
+  pad = new T[nonPackedNumElems];	// we give full non-packed size here to account for need for summa to use nonpacked layout
   U offset{0};
   U counter{1};
   for (auto& ptr : matrix){
@@ -112,26 +105,18 @@ void uppertri::_AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U 
   }
 }
 
-
-template<typename T>
-void uppertri::_Dissamble(std::vector<T*>& matrix){
-  if ((matrix.size() > 0) && (matrix[0] != nullptr)){
-    delete[] matrix[0];
-  }
-}
-
 template<typename T, typename U>
-void uppertri::_Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY){
+void uppertri::_copy(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, T* const & source, U dimensionX, U dimensionY){
   U numElems = 0;
-  _Assemble(data, matrix, numElems, dimensionX, dimensionY);
+  _assemble(data, scratch, pad, matrix, numElems, dimensionX, dimensionY);
   std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
 
 template<typename T, typename U>
-void uppertri::_Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY){
+void uppertri::_print(const std::vector<T*>& matrix, U dimensionX, U dimensionY){
   U startIter = 0;
   for (U i=0; i<dimensionY; i++){
-    // Print spaces to represent the lower triangular zeros
+    // print spaces to represent the lower triangular zeros
     for (U j=0; j<i; j++){
       std::cout << "    ";
     }
@@ -146,19 +131,22 @@ void uppertri::_Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY)
 
 
 template<typename T, typename U>
-void lowertri::_Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY){
+void lowertri::_assemble(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY){
   // dimensionY must be equal to dimensionX
   assert(dimensionX == dimensionY);
 
   matrix.resize(dimensionX);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
-  data.resize(matrixNumElems);
-
-  _AssembleMatrix(data, matrix, dimensionX, dimensionY);
+  data = new T[matrixNumElems];
+  _assemble_matrix(data, scratch, pad, matrix, dimensionX, dimensionY);
 }
 
 template<typename T, typename U>
-void lowertri::_AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY){
+void lowertri::_assemble_matrix(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U dimensionX, U dimensionY){
+  U nonPackedNumElems = dimensionX*dimensionY;
+  U matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
+  scratch = new T[matrixNumElems];
+  pad = new T[nonPackedNumElems];	// we give full non-packed size here to account for need for summa to use nonpacked layout
   U offset{0};
   U counter{dimensionY};
   for (auto& ptr : matrix){
@@ -168,22 +156,15 @@ void lowertri::_AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U 
   }
 }
 
-template<typename T>
-void lowertri::_Dissamble(std::vector<T*>& matrix){
-  if ((matrix.size() > 0) && (matrix[0] != nullptr)){
-    delete[] matrix[0];
-  }
-}
-
 template<typename T, typename U>
-void lowertri::_Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY){
+void lowertri::_copy(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, T* const & source, U dimensionX, U dimensionY){
   U numElems = 0;
-  _Assemble(data, matrix, numElems, dimensionX, dimensionY);
+  _assemble(data, scratch, pad, matrix, numElems, dimensionX, dimensionY);
   std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
 
 template<typename T, typename U>
-void lowertri::_Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY){
+void lowertri::_print(const std::vector<T*>& matrix, U dimensionX, U dimensionY){
   for (U i=0; i<dimensionY; i++){
     for (U j=0; j<=i; j++){
       std::cout << matrix[j][i-j] << " ";

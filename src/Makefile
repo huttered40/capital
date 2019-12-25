@@ -12,6 +12,7 @@ cholinv:
 summa_gemm:
 	make -C./bench/matmult/ summa_gemm
 
+
 clean:
 	make -C./bench/qr/ clean
 	make -C./bench/cholesky/ clean

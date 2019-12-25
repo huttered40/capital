@@ -8,66 +8,66 @@
 class square{
 public:
   template<typename T, typename U>
-  static void _Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
+  static void _assemble(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
   template<typename T, typename U>
-  static void _AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY);
+  static void _assemble_matrix(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U dimensionX, U dimensionY);
   template<typename T>
-  static void _Dissamble(std::vector<T*>& matrix);
+  static void _dissamble(std::vector<T*>& matrix);
   template<typename T, typename U>
-  static void _Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY);
+  static void _copy(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, T* const & source, U dimensionX, U dimensionY);
   template<typename T, typename U>
-  static void _Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
+  static void _print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
   template<typename U>
-  static inline U _getNumElems(U rangeX, U rangeY) { return rangeX*rangeY; }
+  static inline U _num_elems(U rangeX, U rangeY) { return rangeX*rangeY; }
 };
 
 
 class rect{
 public:
   template<typename T, typename U>
-  static void _Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
+  static void _assemble(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
   template<typename T, typename U>
-  static void _AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY);
+  static void _assemble_matrix(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U dimensionX, U dimensionY);
   template<typename T>
-  static void _Dissamble(std::vector<T*>& matrix);
+  static void _dissamble(std::vector<T*>& matrix);
   template<typename T, typename U>
-  static void _Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY);
+  static void _copy(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, T* const & source, U dimensionX, U dimensionY);
   template<typename T, typename U>
-  static void _Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
+  static void _print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
   template<typename U>
-  static inline U _getNumElems(U rangeX, U rangeY) { return rangeX*rangeY; }
+  static inline U _num_elems(U rangeX, U rangeY) { return rangeX*rangeY; }
 };
 
 class uppertri{
 public:
   template<typename T, typename U>
-  static void _Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
+  static void _assemble(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
   template<typename T, typename U>
-  static void _AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY);
+  static void _assemble_matrix(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U dimensionX, U dimensionY);
   template<typename T>
-  static void _Dissamble(std::vector<T*>& matrix);
+  static void _dissamble(std::vector<T*>& matrix);
   template<typename T, typename U>
-  static void _Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY);
+  static void _copy(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, T* const & source, U dimensionX, U dimensionY);
   template<typename T, typename U>
-  static void _Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
+  static void _print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
   template<typename U>
-  static inline U _getNumElems(U rangeX, U rangeY) { return ((rangeX*(rangeX+1))>>1); }
+  static inline U _num_elems(U rangeX, U rangeY) { return ((rangeX*(rangeX+1))>>1); }
 };
 
 class lowertri{
 public:
   template<typename T, typename U>
-  static void _Assemble(std::vector<T>& data, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
+  static void _assemble(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U& matrixNumElems, U dimensionX, U dimensionY);
   template<typename T, typename U>
-  static void _AssembleMatrix(std::vector<T>& data, std::vector<T*>& matrix, U dimensionX, U dimensionY);
+  static void _assemble_matrix(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, U dimensionX, U dimensionY);
   template<typename T>
-  static void _Dissamble(std::vector<T*>& matrix);
+  static void _dissamble(std::vector<T*>& matrix);
   template<typename T, typename U>
-  static void _Copy(std::vector<T>& data, std::vector<T*>& matrix, const std::vector<T>& source, U dimensionX, U dimensionY);
+  static void _copy(T*& data, T*& scratch, T*& pad, std::vector<T*>& matrix, T* const & source, U dimensionX, U dimensionY);
   template<typename T, typename U>
-  static void _Print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
+  static void _print(const std::vector<T*>& matrix, U dimensionX, U dimensionY);
   template<typename U>
-  static inline U _getNumElems(U rangeX, U rangeY) { return ((rangeX*(rangeX+1))>>1); }
+  static inline U _num_elems(U rangeX, U rangeY) { return ((rangeX*(rangeX+1))>>1); }
 };
 
 #include "structure.hpp"

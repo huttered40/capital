@@ -14,12 +14,12 @@ template<typename AlgType>
 class validate{
 public:
   template<typename MatrixAType, typename MatrixTriType, typename CommType>
-  static typename MatrixAType::ScalarType invoke(MatrixAType& matrixA, MatrixTriType& matrixTri, char dir, CommType&& CommInfo);
+  static typename MatrixAType::ScalarType invoke(MatrixAType& A, MatrixTriType& Tri, char dir, CommType&& CommInfo);
 
 private:
 /*
   template<typename MatrixAType, typename MatrixSolType>
-  static void validateLocal(MatrixAType& matrixA, MatrixSolType& matrixSol, char dir, MPI_Comm commWorld);
+  static void validateLocal(MatrixAType& A, MatrixSolType& Sol, char dir, MPI_Comm commWorld);
 
   template<typename T, typename U, typename CommType>
   static T getResidualTriangleLower(std::vector<T>& myValues, std::vector<T>& lapackValues, U localDimension, U globalDimension, CommType&& CommInfo);

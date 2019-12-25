@@ -30,12 +30,13 @@ int main(int argc, char** argv){
   size_t globalMatrixSizeN = atoi(argv[2]);
   size_t pGridDimensionC = atoi(argv[3]);
   size_t methodKey2 = atoi(argv[4]);
-  size_t numIterations = atoi(argv[5]);
+  size_t num_chunks        = atoi(argv[5]);
+  size_t numIterations = atoi(argv[6]);
 
   // Loop for getting a good range of results.
   for (size_t i=0; i<numIterations; i++){
     // Create new topology each outer-iteration so the instance goes out of scope before MPI_Finalize
-    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC);
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC,num_chunks);
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeM, SquareTopo.d,SquareTopo.d);
     MatrixTypeUT matA(globalMatrixSizeN,globalMatrixSizeN, SquareTopo.d,SquareTopo.d);
     blasEngineArgumentPackage_trmm<double> blasArgs(blasEngineOrder::AblasColumnMajor, blasEngineSide::AblasRight, blasEngineUpLo::AblasUpper,
@@ -49,14 +50,13 @@ int main(int argc, char** argv){
     matmult::summa3d::invoke(matA, matB, SquareTopo, blasArgs, methodKey2);
     critter::stop();
 
+    matA.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
+    matB.DistributeRandom(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
     double startTime=MPI_Wtime();
     matmult::summa3d::invoke(matA, matB, SquareTopo, blasArgs, methodKey2);
     double iterTimeLocal=MPI_Wtime()-startTime;
 
     MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    std::vector<double> Outputs(1);
-    Outputs[0] = iterTimeGlobal;
-    critter::print(Outputs.size(), &Outputs[0]);
     //matmult::validate<summa3d>::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
   }
 

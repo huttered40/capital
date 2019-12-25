@@ -5,7 +5,7 @@ THETA=$(shell echo $(HOST) |grep 'theta')
 STAMPEDE2=$(shell echo $(HOST) |grep 'stampede2')
 BLUEWATERS=$(shell echo $(HOST) |grep 'h2o')
 BIN=./../../bin/
-ALG=./../../alg/matmult/summa/
+ALG=./../../alg/inverse/newton/
 
 # If make is called outside of the batch script generator, a few environment variables need to be set by default (double,int)
 ifeq ($(MPITYPE),)
@@ -23,41 +23,41 @@ ifneq ($(PORTER),)
   endif
   CFLAGS = -g -Wall -O3 -std=c++14
   LIB_PATH=-L/home/hutter2/hutter2/critter/lib
-  LIBS=~/hutter2/external/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lcritter -lpthread
+  LIBS=~/hutter2/external/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a ~/hutter2/external/BLAS/OpenBLAS/lapack-netlib/liblapacke.a ~/hutter2/external/BLAS/OpenBLAS/lapack-netlib/liblapack.a -lgfortran -lpthread -lcritter
 
-  OBJS = summa_gemm
+  OBJS = newton
 
   $(OBJS): $(OBJS).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS) $(OBJS).o $(LIB_PATH) $(LIBS)
-	rm *.o
+	rm *.o; \
 	#mv charmrun $(BIN)charmrun
 
-  $(OBJS).o: summa_gemm.cpp $(ALG)summa.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS).o -c summa_gemm.cpp
+  $(OBJS).o: newton.cpp $(ALG)newton.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS).o -c newton.cpp
 
   clean:
-	-rm -f *.o *.gch $(BIN)charmrun $(BIN)$(OBJS)
+	-rm -f *.o *.err *.out *.gch $(BIN)charmrun $(BIN)$(OBJS)
 endif
 
 ifneq ($(BGQ),)
   MACHINE=BGQ
   CCMPI = mpic++11
-  CFLAGS = -std=c++11 -g -fopenmp
+  CFLAGS = -std=c++11 -g
   INCLUDES=-I/soft/libraries/essl/current/essl/5.1/include/
-  LIB_PATH=-L/home/huttered/scratch/CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L$(IBM_MAIN_DIR)/xlf/bg/14.1/bglib64 -L$(IBM_MAIN_DIR)/xlsmp/bg/3.1/bglib64/ -L$(IBM_MAIN_DIR)/xlmass/bg/7.3/bglib64/
-  LIBS=-lcblas -lblas -lgfortran -lesslbg -lxlf90_r -lxl -lxlopt -lxlfmath -lm -lcritter -Wl,--allow-multiple-definition
+  LIB_PATH=-L../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64
+  LIBS=-llapack -lcblas -lblas -lesslbg -lgfortran -lxlopt -lxlf90_r -lxlfmath -lxl -lcritter
 
-  OBJS1 = summa_gemm
+  OBJS1 = newton
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(INCLUDES) $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: summa_gemm.cpp $(ALG)summa.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
+  $(OBJS1).o: newton.cpp $(ALG)newton.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c newton.cpp
 
   clean:
-	-rm -f *.o *.gch $(BIN)$(OBJS1)
+	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)
 endif
 
 ifneq ($(THETA),)
@@ -67,18 +67,17 @@ ifneq ($(THETA),)
   LIB_PATH=-L../../../../CritterXC40/critter/lib
   LIBS=-lcritter
 
-  OBJS1 = summa_gemm
+  OBJS1 = newton
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: summa_gemm.cpp $(ALG)summa.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
+  $(OBJS1).o: newton.cpp $(ALG)newton.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c newton.cpp
 
   clean:
-	-rm -f *.o *.gch $(BIN)$(OBJS1)
-
+	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)
 endif
 
 ifneq ($(STAMPEDE2),)
@@ -88,18 +87,17 @@ ifneq ($(STAMPEDE2),)
   LIB_PATH=-L../../../../critter/lib
   LIBS=-lcritter
 
-  OBJS1 = summa_gemm
+  OBJS1 = newton
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: summa_gemm.cpp $(ALG)summa.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c summa_gemm.cpp
+  $(OBJS1).o: newton.cpp $(ALG)newton.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c newton.cpp
 
   clean:
-	-rm -f *.o *.gch $(BIN)$(OBJS1)
-
+	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)
 endif
 
 ifneq ($(BLUEWATERS),)
@@ -115,7 +113,7 @@ ifneq ($(BLUEWATERS),)
 
   ifneq ($(GPU_ACCEL),)
     CCMPI=nvcc
-    LIBS=$(LIBS) -lcublas -lcusolver
+    LIBS=-lcublas -lcusolver
   endif
   ifneq ($(GPU_NO_ACCEL),)
     CCMPI=CC
@@ -128,16 +126,15 @@ ifneq ($(BLUEWATERS),)
     CFLAGS = -O3 -ffast-math -funroll-loops -std=gnu++1y
   endif
 
-  OBJS1 = summa_gemm
+  OBJS1 = newton
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: summa_gemm.cpp $(ALG)summa.h
-	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c summa_gemm.cpp
+  $(OBJS1).o: newton.cpp $(ALG)newton.h
+	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c $(OBJS1).cpp
 
   clean:
-	-rm -f *.o *.gch $(BIN)$(OBJS1)
-
+	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)
 endif

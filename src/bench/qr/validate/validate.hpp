@@ -4,74 +4,74 @@ namespace qr{
 template<typename AlgType>
 template<typename MatrixType, typename RectCommType, typename SquareCommType>
 typename MatrixType::ScalarType
-validate<AlgType>::orth(MatrixType& matrixQ, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
+validate<AlgType>::orth(MatrixType& Q, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
 
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
 
-  MatrixType matrixQtrans = matrixQ;
-  util::transpose_swap(matrixQtrans, SquareCommInfo);
-  U localNumRows = matrixQtrans.getNumColumnsLocal();
-  U localNumColumns = matrixQ.getNumColumnsLocal();
-  U globalNumRows = matrixQtrans.getNumColumnsGlobal();
-  U globalNumColumns = matrixQ.getNumColumnsGlobal();
+  MatrixType Qtrans = Q;
+  util::transpose(Qtrans, SquareCommInfo);
+  U localNumRows = Qtrans.num_columns_local();
+  U localNumColumns = Q.num_columns_local();
+  U globalNumRows = Qtrans.num_columns_global();
+  U globalNumColumns = Q.num_columns_global();
   U numElems = localNumRows*localNumColumns;
-  MatrixType matrixI(std::vector<T>(numElems,0), localNumColumns, localNumRows, globalNumColumns, globalNumRows, true);
+  MatrixType I(globalNumColumns, globalNumRows, SquareCommInfo.d, SquareCommInfo.d);
 
   blas::ArgPack_gemm<T> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasTrans, blas::Transpose::AblasNoTrans, 1., 0.);
-  matmult::summa::invoke(matrixQtrans, matrixQ, matrixI, std::forward<SquareCommType>(SquareCommInfo), blasArgs);
+  matmult::summa::invoke(Qtrans, Q, I, std::forward<SquareCommType>(SquareCommInfo), blasArgs);
   if (RectCommInfo.column_alt != MPI_COMM_WORLD){
-    MPI_Allreduce(MPI_IN_PLACE, matrixI.getRawData(), matrixI.getNumElems(), mpi_type<T>::type, MPI_SUM, RectCommInfo.column_alt);
+    MPI_Allreduce(MPI_IN_PLACE, I.data(), I.num_elems(), mpi_type<T>::type, MPI_SUM, RectCommInfo.column_alt);
   }
 
   auto Lambda = [](auto&& matrix, auto&& ref, size_t index, size_t sliceX, size_t sliceY){
     using T = typename std::remove_reference_t<decltype(matrix)>::ScalarType;
     T val,control;
     if (sliceX == sliceY){
-      val = std::abs(1. - matrix.getRawData()[index]);
+      val = std::abs(1. - matrix.data()[index]);
       control = 1;
     }
     else{
-      val = matrix.getRawData()[index];
+      val = matrix.data()[index];
       control = 0;
     }
     return std::make_pair(val,control);
   };
-  return util::residual_local(matrixI, matrixI, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.c, SquareCommInfo.d);
+  return util::residual_local(I, I, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.c, SquareCommInfo.d);
 }
 
 template<typename AlgType>
 template<typename MatrixQType, typename MatrixRType, typename MatrixAType, typename RectCommType, typename SquareCommType>
 typename MatrixAType::ScalarType
-validate<AlgType>::residual(MatrixQType& matrixQ, MatrixRType& matrixR, MatrixAType& matrixA, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
+validate<AlgType>::residual(MatrixQType& Q, MatrixRType& R, MatrixAType& A, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
 
-  MatrixAType saveMatA = matrixA;
+  MatrixAType saveMatA = A;
   blas::ArgPack_gemm<T> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., -1.);
-  matmult::summa::invoke(matrixQ, matrixR, saveMatA, std::forward<SquareCommType>(SquareCommInfo), blasArgs);
+  matmult::summa::invoke(Q, R, saveMatA, std::forward<SquareCommType>(SquareCommInfo), blasArgs);
 
   auto Lambda = [](auto&& matrix, auto&& ref, size_t index, size_t sliceX, size_t sliceY){
     using T = typename std::remove_reference_t<decltype(matrix)>::ScalarType;
-    T val = matrix.getRawData()[index];
-    T control = ref.getRawData()[index];
+    T val = matrix.data()[index];
+    T control = ref.data()[index];
     return std::make_pair(val,control);
   };
-  return util::residual_local(saveMatA, matrixA, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.c, SquareCommInfo.d);
+  return util::residual_local(saveMatA, A, std::move(Lambda), SquareCommInfo.slice, SquareCommInfo.x, SquareCommInfo.y, SquareCommInfo.c, SquareCommInfo.d);
 }
 
 /* Validation against sequential BLAS/LAPACK constructs */
 template<typename AlgType>
 template<typename MatrixAType, typename MatrixQType, typename MatrixRType, typename CommType>
 std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
-validate<AlgType>::invoke(MatrixAType& matrixA, MatrixQType& matrixQ, MatrixRType& matrixR, CommType&& CommInfo){
+validate<AlgType>::invoke(MatrixAType& A, MatrixQType& Q, MatrixRType& R, CommType&& CommInfo){
   using T = typename MatrixAType::ScalarType;
 
   auto SquareTopo = topo::square(CommInfo.cube,CommInfo.c);
-  util::remove_triangle(matrixR, SquareTopo.x, SquareTopo.y, SquareTopo.d, 'U');
-  T error1 = residual(matrixQ, matrixR, matrixA, std::forward<CommType>(CommInfo), SquareTopo);
-  T error2 = orth(matrixQ, std::forward<CommType>(CommInfo), SquareTopo);
+  util::remove_triangle(R, SquareTopo.x, SquareTopo.y, SquareTopo.d, 'U');
+  T error1 = residual(Q, R, A, std::forward<CommType>(CommInfo), SquareTopo);
+  T error2 = orth(Q, std::forward<CommType>(CommInfo), SquareTopo);
   return std::make_pair(error1,error2);
 }
 
@@ -91,7 +91,7 @@ void validate::validateLocal1D(MatrixAType& matrixA, MatrixQType& matrixQ, Matri
   MPI_Comm_rank(commWorld, &myRank);
 
   U globalDimensionM = matrixA.getNumRowsGlobal();
-  U globalDimensionN = matrixA.getNumColumnsGlobal();
+  U globalDimensionN = matrixA.get_num_columns_global();
   U localDimensionM = matrixA.getNumRowsLocal();
 
   std::vector<T> globalMatrixA = getReferenceMatrix1D(matrixA, globalDimensionN, globalDimensionM, localDimensionM, myRank, commWorld);
@@ -335,13 +335,13 @@ T validate<T,U>::testOrthogonality3D(Matrix<T,U,MatrixStructureRectangle,Distrib
       T errorSquare = 0;
       if (implicitIndexX == implicitIndexY)
       {
-        errorSquare = std::abs(myI.getRawData()[myIndex] - 1);
-        //if (myRank == 6) {std::cout << myI.getRawData()[myIndex] << " " << 1 << std::endl;}
+        errorSquare = std::abs(myI.get_data()[myIndex] - 1);
+        //if (myRank == 6) {std::cout << myI.get_data()[myIndex] << " " << 1 << std::endl;}
       }
       else
       {
-        errorSquare = std::abs(myI.getRawData()[myIndex] - 0);
-        //if (myRank == 6) {std::cout << myI.getRawData()[myIndex] << " " << 0 << std::endl;}
+        errorSquare = std::abs(myI.get_data()[myIndex] - 0);
+        //if (myRank == 6) {std::cout << myI.get_data()[myIndex] << " " << 0 << std::endl;}
       }
       errorSquare *= errorSquare;
       error += errorSquare;
@@ -378,8 +378,8 @@ validate::getReferenceMatrix1D(MatrixType& myMatrix, typename MatrixType::Dimens
   U globalSize = globalDimensionX*localMatrix.getNumRowsLocal()*numPEs; //globalDimensionY
   std::vector<T> blockedMatrix(globalSize);
   std::vector<T> cyclicMatrix(globalSize);
-  U localSize = localMatrix.getNumRowsLocal()*localMatrix.getNumColumnsLocal();
-  MPI_Allgather(localMatrix.getRawData(), localSize, MPI_DATATYPE, &blockedMatrix[0], localSize, MPI_DATATYPE, commWorld);
+  U localSize = localMatrix.getNumRowsLocal()*localMatrix.get_num_columns_local();
+  MPI_Allgather(localMatrix.get_data(), localSize, MPI_DATATYPE, &blockedMatrix[0], localSize, MPI_DATATYPE, commWorld);
 
   U writeIndex = 0;
   // MACRO loop over all columns

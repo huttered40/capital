@@ -1,13 +1,13 @@
 /* Author: Edward Hutter */
 
 template<typename T, typename U>
-void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX,
-    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, square){
+void cyclic::_distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX,
+    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, square){
 
   srand48(key);
   U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
-  size_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
-  size_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
+  int64_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int64_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
   for (U i=0; i<padXlen; i++){
     U globalPosition = saveGlobalPosition;
     for (U j=0; j<padYlen; j++){
@@ -28,29 +28,87 @@ void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensio
 }
 
 template<typename T, typename U>
-void cyclic::_DistributeSymmetric(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX,
-    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, bool diagonallyDominant){
+void cyclic::_distribute_identity(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX,
+    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, T val){
   // Note: this is not fully implemented yet, as I have not decided on whether I need to perform a local transpose
   //       or local (but distributed based on the values each processor gets) transpose.
 
-  srand48(key);
-  size_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
-  size_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
+  int64_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int64_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
   U saveGlobalPositionX = localPgridDimX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   U saveGlobalPositionY = localPgridDimY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
   for (U i=0; i<padXlen; i++){
     saveGlobalPositionY = localPgridDimY;
     for (U j=0; j<padYlen; j++){
-/*
-      if (saveGlobalPositionX > saveGlobalPositionY)
-      {
+      matrix[i][j] = 0;
+      if ((saveGlobalPositionX == saveGlobalPositionY) && (i==j)){
+        matrix[i][j] += val;	// X or Y, should not matter
+      }
+      saveGlobalPositionY += globalPgridDimY;
+    }
+    // check for padding
+    if (padYlen != dimensionY) { matrix[i][dimensionY-1] = 0; }
+    saveGlobalPositionX += globalPgridDimX;
+  }
+  // check for padding
+  if (padXlen != dimensionX){
+    for (U j=0; j<dimensionY; j++){
+      matrix[dimensionX-1][j] = 0;
+    }
+  }
+  return;
+}
+
+template<typename T, typename U>
+void cyclic::_distribute_debug(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX,
+    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY){
+  // Note: this is not fully implemented yet, as I have not decided on whether I need to perform a local transpose
+  //       or local (but distributed based on the values each processor gets) transpose.
+
+  int64_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int64_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
+  U saveGlobalPositionX = localPgridDimX;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  U saveGlobalPositionY = localPgridDimY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  for (U i=0; i<padXlen; i++){
+    saveGlobalPositionY = localPgridDimY;
+    for (U j=0; j<padYlen; j++){
+      matrix[i][j] = 0.5;
+      if ((saveGlobalPositionX == saveGlobalPositionY) && (i==j)){
+        matrix[i][j] = globalDimensionX;	// X or Y, should not matter
+      }
+      saveGlobalPositionY += globalPgridDimY;
+    }
+    // check for padding
+    if (padYlen != dimensionY) { matrix[i][dimensionY-1] = 0; }
+    saveGlobalPositionX += globalPgridDimX;
+  }
+  // check for padding
+  if (padXlen != dimensionX){
+    for (U j=0; j<dimensionY; j++){
+      matrix[dimensionX-1][j] = 0;
+    }
+  }
+  return;
+}
+
+template<typename T, typename U>
+void cyclic::_distribute_symmetric(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX,
+    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, bool diagonallyDominant){
+
+  srand48(key);
+  int64_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int64_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
+  U saveGlobalPositionX = localPgridDimX;
+  U saveGlobalPositionY = localPgridDimY;
+  for (U i=0; i<padXlen; i++){
+    saveGlobalPositionY = localPgridDimY;
+    for (U j=0; j<padYlen; j++){
+      if (saveGlobalPositionX > saveGlobalPositionY){
         srand48(saveGlobalPositionX + globalDimensionY*saveGlobalPositionY);
       }
-      else
-      {
+      else{
         srand48(saveGlobalPositionY + globalDimensionY*saveGlobalPositionX);
       }
-*/
       matrix[i][j] = drand48();			// Change this later.
       if ((diagonallyDominant) && (saveGlobalPositionX == saveGlobalPositionY) && (i==j)){
         matrix[i][j] += globalDimensionX;		// X or Y, should not matter
@@ -71,12 +129,12 @@ void cyclic::_DistributeSymmetric(std::vector<T*>& matrix, U dimensionX, U dimen
 }
 
 template<typename T, typename U>
-void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, size_t globalDimensionY, size_t localPgridDimX,
-    size_t localPgridDimY, size_t globalPgridDimX, size_t globalPgridDimY, size_t key, rect){
+void cyclic::_distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, int64_t globalDimensionY, int64_t localPgridDimX,
+    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, rect){
   srand48(key);
   U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
-  size_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
-  size_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
+  int64_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int64_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
   for (U i=0; i<padXlen; i++){
     U globalPosition = saveGlobalPosition;
     for (U j=0; j<padYlen; j++){
@@ -97,11 +155,11 @@ void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensio
 }
 
 template<typename T, typename U>
-void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, size_t globalDimensionY, size_t localPgridDimX, size_t localPgridDimY,
-    size_t globalPgridDimX, size_t globalPgridDimY, size_t key, uppertri){
+void cyclic::_distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, int64_t globalDimensionY, int64_t localPgridDimX, int64_t localPgridDimY,
+    int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, uppertri){
   srand48(key);
   U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
-  size_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int64_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
   U counter{1};
   U startIter;
   U endIter;
@@ -130,11 +188,11 @@ void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensio
 }
 
 template<typename T, typename U>
-void cyclic::_DistributeRandom(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, size_t localPgridDimX, size_t localPgridDimY,
-    size_t globalPgridDimX, size_t globalPgridDimY, size_t key, lowertri){
+void cyclic::_distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX, int64_t localPgridDimY,
+    int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, lowertri){
   srand48(key);
-  size_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
-  size_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
+  int64_t padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  int64_t padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
   U saveGlobalPosX = localPgridDimX;
   U saveGlobalPosY = localPgridDimY;
   U counter{0};
