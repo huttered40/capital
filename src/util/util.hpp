@@ -151,58 +151,6 @@ void util::block_to_cyclic(T* blockedData, T* cyclicData, U localDimensionRows, 
   }
 }
 
-/*
-template<typename MatrixType>
-std::vector<typename MatrixType::ScalarType>
-util::get_reference_matrix(MatrixType& myMatrix, int64_t key, MPI_Comm slice, int64_t commDim){
-
-  using T = typename MatrixType::ScalarType;
-  using U = typename MatrixType::DimensionType;
-  using Structure = typename MatrixType::StructureType;
-  using Distribution = typename MatrixType::DistributionType;
-  using Offload = typename MatrixType::OffloadType;
-
-  U localNumColumns = myMatrix.num_columns_local();
-  U localNumRows = myMatrix.num_rows_local();
-  U globalNumColumns = myMatrix.num_columns_global();
-  U globalNumRows = myMatrix.num_rows_global();
-
-  // I first want to check whether or not I want to serialize into a rectangular buffer (I don't care too much about efficiency here,
-  //   if I did, I would serialize after the AllGather, but whatever)
-  T* matrixPtr = myMatrix.data();
-  matrix<T,U,rect,Distribution,Offload> matrixDest(globalNumColumns, globalNumRows, commDim, commDim);
-  if ((!std::is_same<Structure,rect>::value)
-    && (!std::is_same<Structure,square>::value)){
-    serialize<Structure,rect>::invoke(myMatrix, matrixDest);
-    matrixPtr = matrixDest.data();
-  }
-
-  U aggregNumRows = localNumRows*commDim;
-  U aggregNumColumns = localNumColumns*commDim;
-  U localSize = localNumColumns*localNumRows;
-  U globalSize = globalNumColumns*globalNumRows;
-  U aggregSize = aggregNumRows*aggregNumColumns;
-  std::vector<T> blockedMatrix(aggregSize);
-//  std::vector<T> cyclicMatrix(aggregSize);
-  MPI_Allgather(matrixPtr, localSize, mpi_type<T>::type, &blockedMatrix[0], localSize, mpi_type<T>::type, slice);
-
-  std::vector<T> cyclicMatrix = util::blocked_to_cyclic(blockedMatrix, localNumRows, localNumColumns, commDim);
-
-  // In case there are hidden zeros, we will recopy
-  if ((globalNumRows%commDim) || (globalNumColumns%commDim)){
-    U index = 0;
-    for (U i=0; i<globalNumColumns; i++){
-      for (U j=0; j<globalNumRows; j++){
-        cyclicMatrix[index++] = cyclicMatrix[i*aggregNumRows+j];
-      }
-    }
-    // In this case, globalSize < aggregSize
-    cyclicMatrix.resize(globalSize);
-  }
-  return cyclicMatrix;
-}
-*/
-
 template<typename MatrixType, typename CommType>
 void util::transpose(MatrixType& mat, CommType&& CommInfo){
 
@@ -240,7 +188,7 @@ U util::get_next_power2(U localShift){
 }
 
 template<typename MatrixType>
-void util::remove_triangle(MatrixType& matrix, typename MatrixType::ScalarType sliceX, typename MatrixType::ScalarType sliceY, typename MatrixType::ScalarType sliceDim, char dir){
+void util::remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir){
   using U = typename MatrixType::DimensionType;
 
   U globalDimVert = sliceY;

@@ -14,7 +14,8 @@
 //   to be LowerTriangular as well
 
 namespace cholesky{
-template<class TrailingMatrixUpdateLocalCompPolicy = policy::cholinv::TrmmUpdate>
+template<class TrailingMatrixUpdateLocalCompPolicy = policy::cholinv::TrmmUpdate,
+         class OverlapGatherPolicy = policy::cholinv::NoOverlapGather>
 class cholinv{
 public:
   // cholinv is not parameterized as its not dependent on any lower-level algorithmic type

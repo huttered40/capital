@@ -11,7 +11,7 @@ class SerializeSymmetricToTriangle;
 class NoSerializeSymmetricToTriangle;
 
 template<class PolicyClass>
-class ReduceSymmetricMatrix{
+class SerializeSymmetricPolicyClass{
 public:
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& Matrix, CommType&& CommInfo){
@@ -24,7 +24,7 @@ public:
 };
 
 template<>
-class ReduceSymmetricMatrix<SerializeSymmetricToTriangle>{
+class SerializeSymmetricPolicyClass<SerializeSymmetricToTriangle>{
 public:
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& Matrix, CommType&& CommInfo){

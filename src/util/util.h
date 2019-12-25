@@ -18,9 +18,6 @@ public:
   template<typename T, typename U>
   static void block_to_cyclic(T* blockedData, T* cyclicData, U localDimensionRows, U localDimensionColumns, int64_t sliceDim);
 
-//  template<typename MatrixType>
-//  static std::vector<typename MatrixType::ScalarType> get_reference_matrix(MatrixType& myMatrix, int64_t key, MPI_Comm slice, int64_t commDim);
-
   template<typename MatrixType, typename CommType>
   static void transpose(MatrixType& mat, CommType&& CommInfo);
 
@@ -28,7 +25,7 @@ public:
   static U get_next_power2(U localShift);
 
   template<typename MatrixType>
-  static void remove_triangle(MatrixType& matrix, typename MatrixType::ScalarType sliceX, typename MatrixType::ScalarType sliceY, typename MatrixType::ScalarType sliceDim, char dir);
+  static void remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir);
 };
 
 #include "util.hpp"

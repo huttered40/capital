@@ -1,10 +1,10 @@
 /* Author: Edward Hutter */
 
 namespace cholesky{
-template<class TrailingMatrixUpdateLocalCompPolicy>
+template<class TrailingMatrixUpdateLocalCompPolicy, class OverlapGatherPolicy>
 template<typename MatrixAType, typename MatrixTIType, typename ArgType, typename CommType>
 std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-cholinv<TrailingMatrixUpdateLocalCompPolicy>::invoke(MatrixAType& A, MatrixTIType& TI, ArgType&& args, CommType&& CommInfo){
+cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::invoke(MatrixAType& A, MatrixTIType& TI, ArgType&& args, CommType&& CommInfo){
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -55,9 +55,9 @@ cholinv<TrailingMatrixUpdateLocalCompPolicy>::invoke(MatrixAType& A, MatrixTITyp
   return baseCaseDimList;
 }
 
-template<class TrailingMatrixUpdateLocalCompPolicy>
+template<class TrailingMatrixUpdateLocalCompPolicy, class OverlapGatherPolicy>
 template<typename MatrixAType, typename MatrixRIType, typename BaseCaseMatrixType, typename CommType>
-void cholinv<TrailingMatrixUpdateLocalCompPolicy>::factor(MatrixAType& A, MatrixRIType& RI, BaseCaseMatrixType& matrix_base_case,
+void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::factor(MatrixAType& A, MatrixRIType& RI, BaseCaseMatrixType& matrix_base_case,
                            std::vector<typename MatrixAType::ScalarType>& blocked_data, std::vector<typename MatrixAType::ScalarType>& cyclic_data,
                            typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                            typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
@@ -177,9 +177,9 @@ void cholinv<TrailingMatrixUpdateLocalCompPolicy>::factor(MatrixAType& A, Matrix
 }
 
 
-template<class TrailingMatrixUpdateLocalCompPolicy>
+template<class TrailingMatrixUpdateLocalCompPolicy, class OverlapGatherPolicy>
 template<typename MatrixAType, typename MatrixIType, typename BaseCaseMatrixType, typename CommType>
-void cholinv<TrailingMatrixUpdateLocalCompPolicy>::basecase(MatrixAType& A, MatrixIType& I, BaseCaseMatrixType& matrix_base_case,
+void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::basecase(MatrixAType& A, MatrixIType& I, BaseCaseMatrixType& matrix_base_case,
                      std::vector<typename MatrixAType::ScalarType>& blocked_data, std::vector<typename MatrixAType::ScalarType>& cyclic_data,
                      typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                      typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
@@ -251,10 +251,9 @@ void cholinv<TrailingMatrixUpdateLocalCompPolicy>::basecase(MatrixAType& A, Matr
 }
 
 
-template<class TrailingMatrixUpdateLocalCompPolicy>
+template<class TrailingMatrixUpdateLocalCompPolicy, class OverlapGatherPolicy>
 template<typename MatrixType, typename BaseCaseMatrixType, typename CommType>
-void
-cholinv<TrailingMatrixUpdateLocalCompPolicy>::aggregate(MatrixType& A, BaseCaseMatrixType& matrix_base_case, std::vector<typename MatrixType::ScalarType>& blocked_data,
+void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::aggregate(MatrixType& A, BaseCaseMatrixType& matrix_base_case, std::vector<typename MatrixType::ScalarType>& blocked_data,
                    std::vector<typename MatrixType::ScalarType>& cyclic_data, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
                                typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType AstartX, typename MatrixType::DimensionType AendX,
                                typename MatrixType::DimensionType AstartY, typename MatrixType::DimensionType AendY, CommType&& CommInfo, char dir){
@@ -267,31 +266,7 @@ cholinv<TrailingMatrixUpdateLocalCompPolicy>::aggregate(MatrixType& A, BaseCaseM
   using BaseCaseStructure = typename BaseCaseMatrixType::StructureType;
 
   serialize<square,BaseCaseStructure>::invoke(A, matrix_base_case, AstartX, AendX, AstartY, AendY);
-  if (1){//CommInfo.num_chunks == 0 || (CommInfo.num_chunks > localDimension)){
-    MPI_Allgather(matrix_base_case.data(), matrix_base_case.num_elems(), mpi_type<T>::type, &blocked_data[0], matrix_base_case.num_elems(), mpi_type<T>::type, CommInfo.slice);
-    util::block_to_cyclic(blocked_data, cyclic_data, localDimension, localDimension, CommInfo.d, dir);
-  }
-  else{
-    // initiate distribution of allgather into chunks of local columns, multiples of localDimension
-    std::vector<MPI_Request> req(CommInfo.num_chunks);
-    std::vector<MPI_Status> stat(CommInfo.num_chunks);
-    U offset = localDimension*(localDimension%CommInfo.num_chunks);
-    U progress=0;
-    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
-      MPI_Iallgather(matrix_base_case.data()+progress, idx==(CommInfo.num_chunks-1) ? localDimension*(localDimension/CommInfo.num_chunks+offset) : localDimension*(localDimension/CommInfo.num_chunks),
-                     mpi_type<T>::type, &blocked_data[progress], idx==(CommInfo.num_chunks-1) ? localDimension*(localDimension/CommInfo.num_chunks+offset) : localDimension*(localDimension/CommInfo.num_chunks),
-                     mpi_type<T>::type, CommInfo.slice, &req[idx]);
-      progress += localDimension * (localDimension/CommInfo.num_chunks);
-    }
-    // initiate distribution along columns and complete distribution across rows
-    progress=0;
-    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
-      MPI_Wait(&req[idx],&stat[idx]);
-      util::block_to_cyclic(&blocked_data[progress], &cyclic_data[progress], localDimension,
-                            idx==(CommInfo.num_chunks-1) ? (localDimension+offset)/CommInfo.num_chunks : localDimension/CommInfo.num_chunks, CommInfo.d);
-      progress += (localDimension * (localDimension/CommInfo.num_chunks))*CommInfo.d*CommInfo.d;
-    }
-  }
+  policy::cholinv::OverlapGatherPolicyClass<OverlapGatherPolicy>::invoke(matrix_base_case,blocked_data,cyclic_data,std::forward<CommType>(CommInfo));
 }
 
 
@@ -299,9 +274,10 @@ cholinv<TrailingMatrixUpdateLocalCompPolicy>::aggregate(MatrixType& A, BaseCaseM
 //   when we are really only writing to a triangle. So there is a source of optimization here at least in terms of
 //   number of flops, but in terms of memory accesses and cache lines, not sure. Note that with this optimization,
 //   we may need to separate into two different functions
-template<class TrailingMatrixUpdateLocalCompPolicy>
+template<class TrailingMatrixUpdateLocalCompPolicy, class OverlapGatherPolicy>
 template<typename T, typename U>
-void cholinv<TrailingMatrixUpdateLocalCompPolicy>::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice, char dir){
+void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension,
+                                                                                             U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice, char dir){
 
   U writeIndex = 0;
   U rowOffsetWithinBlock = rankSlice / sliceDim;
@@ -334,9 +310,10 @@ void cholinv<TrailingMatrixUpdateLocalCompPolicy>::cyclicToLocalTransformation(s
   }
 }
 
-template<class TrailingMatrixUpdateLocalCompPolicy>
+template<class TrailingMatrixUpdateLocalCompPolicy, class OverlapGatherPolicy>
 template<typename U>
-void cholinv<TrailingMatrixUpdateLocalCompPolicy>::update_inverse_path(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension){
+void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::update_inverse_path(U inverseCutoffGlobalDimension, U globalDimension,
+                                                                                     bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension){
   if (inverseCutoffGlobalDimension >= globalDimension){
     if (isInversePath == false){
       baseCaseDimList.push_back(localDimension);
@@ -347,9 +324,9 @@ void cholinv<TrailingMatrixUpdateLocalCompPolicy>::update_inverse_path(U inverse
 
 
 // For solving LA=B for A. But note that B is being modified in place and will turn into A
-template<class TrailingMatrixUpdateLocalCompPolicy>
+template<class TrailingMatrixUpdateLocalCompPolicy, class OverlapGatherPolicy>
 template<typename MatrixLType, typename MatrixLIType, typename MatrixAType, typename CommType>
-void cholinv<TrailingMatrixUpdateLocalCompPolicy>::solve_lower_right(MatrixLType& L, MatrixLIType& LI, MatrixAType& A, CommType&& CommInfo,
+void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::solve_lower_right(MatrixLType& L, MatrixLIType& LI, MatrixAType& A, CommType&& CommInfo,
                                   std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                                   blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
 
