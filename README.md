@@ -1,11 +1,11 @@
 # CAPITAL
 **C**ommunication-**A**voiding **P**arallelism-**I**ncreasing ma**T**rix f**A**ctorization **L**ibrary
 
-We merge the **CANDMC** library with new algorithms for Cholesky factorization and QR factorization.
+We merge the **CANDMC** library with new algorithms for Cholesky factorization and QR factorization of dense matrices.
 
 Optimized parallel schedules for:
-* Cholesky
-* QR
+* Cholesky factorization
+* QR factorization
 * Eigen-decomposition
 
 Highlights include:
