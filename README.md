@@ -3,8 +3,7 @@
 
 We merge the **CANDMC** library with new algorithms for Cholesky factorization and QR factorization.
 
-Optimized parallel schedules and algorithms for:
-* LU
+Optimized parallel schedules for:
 * Cholesky
 * QR
 * Eigen-decomposition
