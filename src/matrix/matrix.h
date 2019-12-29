@@ -19,6 +19,9 @@ public:
 
   explicit matrix() = delete;
   explicit matrix(U globalDimensionX, U globalDimensionY, int64_t globalPgridX, int64_t globalPgridY);	// Regular constructor
+  // Injection constructor below assumes data is stored in column-major format
+  explicit matrix(T* data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U globalPgridX, U globalPgridY);			// Injection constructor
+  // Injection constructor below assumes data is nullptr
   explicit matrix(T* data, U dimensionX, U dimensionY, U globalPgridX, U globalPgridY);			// Injection constructor
   matrix(const matrix& rhs);
   matrix(matrix&& rhs);
@@ -29,6 +32,7 @@ public:
   // automatically inlined
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
   inline T*& data() { return this->_data; }
+  inline T* get_data() { T* data = this->_data; this->_data=nullptr; return data; }	// only to be used if internal pointer is needed and instance is never to be used again
   inline T*& scratch() { return this->_scratch; }
   inline T*& pad() { return this->_pad; }
   inline U num_elems() { return this->_numElems; }

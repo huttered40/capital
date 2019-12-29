@@ -94,8 +94,8 @@ ifneq ($(STAMPEDE2),)
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cacqr2.cpp
+  $(OBJS1).o:# cacqr2.cpp $(ALG)cacqr.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c $(OBJS1).cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)

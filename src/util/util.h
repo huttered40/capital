@@ -26,6 +26,14 @@ public:
 
   template<typename MatrixType>
   static void remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir);
+
+  template<typename T, typename U>
+  static void random_fill(T* A, U dimensionX, U dimensionY, U globalDimensionX, int64_t globalDimensionY, int64_t localPgridDimX,
+                          int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key);
+
+  template<typename T, typename U>
+  static void random_fill_symmetric(T* A, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX,
+                                    int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key);
 };
 
 #include "util.hpp"

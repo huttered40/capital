@@ -21,6 +21,7 @@ public:
   // cholinv is not parameterized as its not dependent on any lower-level algorithmic type
   class pack{
   public:
+    using alg_type = cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>;
     pack(const pack& p) : inv_cut_off_dim(p.inv_cut_off_dim), dir(p.dir) {}
     pack(pack&& p) : inv_cut_off_dim(std::move(p.inv_cut_off_dim)), dir(std::move(p.dir)) {}
     pack(int64_t inv_cut_off_dim, char dir) : inv_cut_off_dim(inv_cut_off_dim), dir(dir) {}
@@ -31,6 +32,9 @@ public:
   template<typename MatrixAType, typename MatrixTIType, typename ArgType, typename CommType>
   static std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
          invoke(MatrixAType& A, MatrixTIType& TI, ArgType&& args, CommType&& CommInfo);
+
+  template<typename T, typename U, typename ArgType, typename CommType>
+  static std::pair<T*,T*> invoke(T* A, T* TI, U localDim, U globalDim, ArgType&& args, CommType&& CommInfo);
 
 private:
   template<typename MatrixAType, typename MatrixRIType, typename BaseCaseMatrixType, typename CommType>

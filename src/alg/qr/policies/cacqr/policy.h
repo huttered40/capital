@@ -37,7 +37,7 @@ public:
     //TODO: Note that this can be further optimized if necessary to reduce number of allocations from each invocation of cacqr to just 1.
     matrix<T,U,uppertri,Distribution,Offload> Packed(globalDimensionN, globalDimensionN, CommInfo.c, CommInfo.c);
     serialize<square,uppertri>::invoke(Matrix, Packed);
-    MPI_Allreduce(MPI_IN_PLACE, Packed.data(), Packed.getNumElems(), mpi_type<T>::type, MPI_SUM, CommInfo.world);
+    MPI_Allreduce(MPI_IN_PLACE, Packed.data(), Packed.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.world);
     serialize<uppertri,square>::invoke(Packed, Matrix);
     return;
   }

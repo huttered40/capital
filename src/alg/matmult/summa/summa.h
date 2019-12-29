@@ -25,6 +25,9 @@ public:
   static void invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& CommInfo,
                      blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage);
 
+  template<typename T, typename U, typename ArgType, typename CommType>
+  static T* invoke(T* A, T* B, T* C, U localNumRowsA, U localNumColumnsA, U localNumColumnsB, U globalNumRowsA, U globalNumColumnsA, U globalNumColumnsB, ArgType&& args, CommType&& CommInfo);
+
   template<typename MatrixAType, typename MatrixBType, typename CommType>
   static void invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
                      blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage);

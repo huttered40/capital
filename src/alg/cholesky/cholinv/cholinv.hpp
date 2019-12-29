@@ -55,6 +55,17 @@ cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::invoke(MatrixA
   return baseCaseDimList;
 }
 
+//TODO: Notice how this routine does not pass back a list of integers like the other invoke method. Should this be supported?
+template<class TrailingMatrixUpdateLocalCompPolicy, class OverlapGatherPolicy>
+template<typename T, typename U, typename ArgType, typename CommType>
+std::pair<T*,T*> cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::invoke(T* A, T* TI, U localDim, U globalDim, ArgType&& args, CommType&& CommInfo){
+  //TODO: Test with non-power-of-2 global matrix dimensions
+  matrix<T,U,rect,cyclic> mA(A,localDim,localDim,globalDim,globalDim,CommInfo.c,CommInfo.c);
+  matrix<T,U,rect,cyclic> mTI(R,localDim,localDim,globalDim,globalDim,CommInfo.c,CommInfo.c);
+  invoke(mA,mTI,std::forward<ArgType>(args),std::forward<CommType>(CommInfo));
+  return std::make_pair(mA.get_data(),mTI.get_data());
+}
+
 template<class TrailingMatrixUpdateLocalCompPolicy, class OverlapGatherPolicy>
 template<typename MatrixAType, typename MatrixRIType, typename BaseCaseMatrixType, typename CommType>
 void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::factor(MatrixAType& A, MatrixRIType& RI, BaseCaseMatrixType& matrix_base_case,
@@ -99,7 +110,7 @@ void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::factor(Ma
   size_t saveIndexAfter = baseCaseDimList.size();
 
   // Regardless of whether or not we need to communicate for the transpose, we still need to serialize into a square buffer
-  matrix<T,U,uppertri,Distribution,Offload> packedMatrix(nullptr, localShift, localShift, CommInfo.d, CommInfo.d);
+  matrix<T,U,uppertri,Distribution,Offload> packedMatrix(nullptr,localShift,localShift,CommInfo.d,CommInfo.d);
   // Note: packedMatrix has no data right now. It will modify its buffers when serialized below
   serialize<square,uppertri>::invoke(RI, packedMatrix, RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift);
   util::transpose(packedMatrix, std::forward<CommType>(CommInfo));
@@ -238,10 +249,10 @@ void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::basecase(
   // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
   //   and then "move" them cheaply into new Matrix structures before I call invoke on them individually.
 
-  cyclicToLocalTransformation(storeMat, storeMatInv, localDimension, globalDimension, globalDimension/*bcDimension*/, CommInfo.d, rankSlice, dir);
+  cyclicToLocalTransformation(storeMat, storeMatInv, localDimension, globalDimension, globalDimension/*bcDimension*/, CommInfo.d,rankSlice,dir);
 
-  matrix<T,U,square,Distribution,Offload> tempMat(&storeMat[0], localDimension, localDimension, CommInfo.d, CommInfo.d);
-  matrix<T,U,square,Distribution,Offload> tempMatInv(&storeMatInv[0], localDimension, localDimension, CommInfo.d, CommInfo.d);
+  matrix<T,U,square,Distribution,Offload> tempMat(&storeMat[0],localDimension,localDimension,globalDimension,globalDimension,CommInfo.d,CommInfo.d);
+  matrix<T,U,square,Distribution,Offload> tempMatInv(&storeMatInv[0],localDimension,localDimension,globalDimension,globalDimension,CommInfo.d,CommInfo.d);
 
   // invoke into the existing Matrix data structures owned by the user
   serialize<square,square>::invoke(A, tempMat, (dir == 'L' ? AstartX : AstartY), (dir == 'L' ? AendX : AendY),
@@ -258,7 +269,7 @@ void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::aggregate
                                typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType AstartX, typename MatrixType::DimensionType AendX,
                                typename MatrixType::DimensionType AstartY, typename MatrixType::DimensionType AendY, CommType&& CommInfo, char dir){
 
-  assert(matrix_base_case.num_columns_local() == localDimension);
+  //assert(matrix_base_case.num_columns_local() == localDimension);
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
   using Distribution = typename MatrixType::DistributionType;

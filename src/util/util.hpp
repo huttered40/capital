@@ -209,3 +209,52 @@ void util::remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, i
     globalDimHoriz += sliceDim;
   }
 }
+
+template<typename T, typename U>
+void util::random_fill(T* A, U dimensionX, U dimensionY, U globalDimensionX, int64_t globalDimensionY, int64_t localPgridDimX,
+                       int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key){
+  
+  srand48(key);
+  U padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  U padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
+  for (U i=0; i<padXlen*padYlen; i++){
+    A[i] = drand48();
+  }
+  //TODO: Note that I am missing zero-setting code in the 
+  return;
+}
+
+template<typename T, typename U>
+void util::random_fill_symmetric(T* A, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX, int64_t localPgridDimY,
+                                 int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key){
+/*
+  srand48(key);
+  U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
+  U padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
+  U counter{1};
+  U startIter;
+  U endIter;
+  for (U i=0; i<padXlen; i++){
+    U globalPosition = saveGlobalPosition;
+    startIter = 0;
+    endIter = counter;
+    for (U j=startIter; j<endIter; j++){
+      A[counter-1] = drand48();			// Change this later.
+      globalPosition += globalPgridDimY;
+    }
+    // Special corner case: If a processor's first data on each row is out of bounds of the UT structure, then give a 0 value
+    if (localPgridDimY > localPgridDimX){
+      A[counter-1] = 0;			// reset this to 0 instead of whatever was set in the last iteration of the loop above.
+    }
+    counter++;
+    saveGlobalPosition += (globalPgridDimX*globalDimensionY);
+  }
+  if (padXlen != dimensionX){
+    // fill in the last column with zeros
+    for (U j=0; j<dimensionY; j++){
+      matrix[dimensionX-1][j] = 0;
+    }
+  }
+*/
+  return;
+}

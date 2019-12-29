@@ -14,7 +14,8 @@ class validate{
 public:
   template<typename MatrixAType, typename MatrixQType, typename MatrixRType, typename CommType>
   static std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
-           invoke(MatrixAType& A, MatrixQType& Q, MatrixRType& myR, CommType&& CommInfo);
+           invoke(MatrixAType& A, MatrixQType& Q, MatrixRType& R, CommType&& CommInfo);
+
 private:
   template<typename MatrixType, typename RectCommType, typename SquareCommType>
   static typename MatrixType::ScalarType

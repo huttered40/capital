@@ -18,6 +18,7 @@ public:
   template<typename CholeskyInversionType>
   class pack{
   public:
+    using alg_type = cacqr<SerializeSymmetricPolicy>;
     using cholesky_inverse_type = CholeskyInversionType;
     pack(const pack& p) : cholesky_inverse_pack(p.cholesky_inverse_pack) {}
     pack(pack&& p) : cholesky_inverse_pack(std::move(p.cholesky_inverse_pack)) {}
@@ -29,6 +30,9 @@ public:
 
   template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
   static void invoke(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo);
+
+  template<typename T, typename U, typename ArgType, typename CommType>
+  static std::pair<T*,T*> invoke(T* A, T* R, U localNumRows, U localNumColumns, U globalNumRows, U globalNumColumns, ArgType&& args, CommType&& CommInfo);
 
 protected:
   // Special overload to avoid recreating MPI communicator topologies
@@ -42,7 +46,7 @@ protected:
   static void invoke_3d(MatrixAType& A, MatrixRType& R, MatrixRType& RI, ArgType&& args, CommType&& CommInfo);
 
   template<typename MatrixAType, typename MatrixUType, typename MatrixUIType, typename CommType>
-  static void solve_upper_left(MatrixAType& matrixA, MatrixUType& matrixU, MatrixUIType& matrixUI, CommType&& CommInfo,
+  static void solve_upper_left(MatrixAType& A, MatrixUType& U, MatrixUIType& UI, CommType&& CommInfo,
                                std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                                blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage);
 };
@@ -54,6 +58,7 @@ public:
   template<typename CholeskyInversionType>
   class pack{
   public:
+    using alg_type = cacqr2<SerializeSymmetricPolicy>;
     using cholesky_inverse_type = CholeskyInversionType;
     pack(const pack& p) : cholesky_inverse_pack = p.cholesky_inverse_pack {}
     pack(pack&& p) : cholesky_inverse_pack = std::move(p.cholesky_inverse_pack) {}
@@ -65,6 +70,9 @@ public:
 
   template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
   static void invoke(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo);
+
+  template<typename T, typename U, typename ArgType, typename CommType>
+  static std::pair<T*,T*> invoke(T* A, T* R, U localNumRows, U localNumColumns, U globalNumRows, U globalNumColumns, ArgType&& args, CommType&& CommInfo);
 
 protected:
   template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>

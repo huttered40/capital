@@ -129,7 +129,7 @@ void cyclic::_distribute_symmetric(std::vector<T*>& matrix, U dimensionX, U dime
 }
 
 template<typename T, typename U>
-void cyclic::_distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, int64_t globalDimensionY, int64_t localPgridDimX,
+void cyclic::_distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX,
     int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, rect){
   srand48(key);
   U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
@@ -155,7 +155,7 @@ void cyclic::_distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensi
 }
 
 template<typename T, typename U>
-void cyclic::_distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, int64_t globalDimensionY, int64_t localPgridDimX, int64_t localPgridDimY,
+void cyclic::_distribute_random(std::vector<T*>& matrix, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, int64_t localPgridDimX, int64_t localPgridDimY,
     int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key, uppertri){
   srand48(key);
   U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.

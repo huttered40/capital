@@ -50,6 +50,15 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& Co
   if (isRootRow){ A.swap(); }
   if (isRootColumn){ B.swap(); }
 }
+  
+template<typename T, typename U, typename ArgType, typename CommType>
+T* summa::invoke(T* A, T* B, T* C, U localNumRowsA, U localNumColumnsA, U localNumColumnsB, U globalNumRowsA, U globalNumColumnsA, U globalNumColumnsB, ArgType&& args, CommType&& CommInfo){
+  matrix<T,U,rect,cyclic> mA(A,localNumColumnsA,localNumRowsA,globalNumColumnsA,globalNumRowsA,CommInfo.d,CommInfo.d);
+  matrix<T,U,rect,cyclic> mB(B,localNumColumnsB,localNumColumnsA,globalNumColumnsB,globalNumColumnsA,CommInfo.d,CommInfo.d);
+  matrix<T,U,rect,cyclic> mC(C,localNumColumnsB,localNumRowsA,globalNumColumnsB,globalNumRowsA,CommInfo.d,CommInfo.d);
+  invoke(mA,mB,mC,std::forward<ArgType>(args),std::forward<CommType>(CommInfo));
+  return mC.get_data();
+}
 
 template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
@@ -309,7 +318,7 @@ MatrixType summa::extract(MatrixType& srcMatrix, typename MatrixType::DimensionT
   if (getSub){
     U numColumns = matrixArgColumnEnd - matrixArgColumnStart;
     U numRows = matrixArgRowEnd - matrixArgRowStart;
-    MatrixType fillMatrix(nullptr,numColumns, numRows, sliceDim, sliceDim);
+    MatrixType fillMatrix(numColumns*sliceDim,numRows*sliceDim,sliceDim,sliceDim);
     serialize<Structure,Structure>::invoke(srcMatrix, fillMatrix, matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
     return fillMatrix;			// I am returning an rvalue
   }

@@ -173,6 +173,16 @@ void cacqr<SerializeSymmetricPolicy>::invoke(MatrixAType& A, MatrixRType& R, Arg
 }
 
 template<class SerializeSymmetricPolicy>
+template<typename T, typename U, typename ArgType, typename CommType>
+std::pair<T*,T*> cacqr<SerializeSymmetricPolicy>::invoke(T* A, T* R, U localNumRows, U localNumColumns, U globalNumRows, U globalNumColumns, ArgType&& args, CommType&& CommInfo){
+  //TODO: Test with non-power-of-2 global matrix dimensions
+  matrix<T,U,rect,cyclic> mA(A,localNumColumns,localNumRows,globalNumColumns,globalNumRows,CommInfo.c,CommInfo.d);
+  matrix<T,U,rect,cyclic> mR(A,localNumColumns,localNumColumns,globalNumColumns,globalNumColumns,CommInfo.c,CommInfo.c);
+  invoke(mA,mR,std::forward<ArgType>(args),std::forward<CommType>(CommInfo));
+  return std::make_pair(mA.get_data(),mR.get_data());
+}
+
+template<class SerializeSymmetricPolicy>
 template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
 void cacqr2<SerializeSymmetricPolicy>::invoke_1d(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo){
   // We assume data is owned relative to a 1D processor grid, so every processor owns a chunk of data consisting of
@@ -254,12 +264,12 @@ void cacqr2<SerializeSymmetricPolicy>::invoke(MatrixAType& A, MatrixRType& R, Ar
 
 template<class SerializeSymmetricPolicy>
 template<typename MatrixAType, typename MatrixUType, typename MatrixUIType, typename CommType>
-void cacqr<SerializeSymmetricPolicy>::solve_upper_left(MatrixAType& matrixA, MatrixUType& matrixU, MatrixUIType& matrixUI, CommType&& CommInfo,
+void cacqr<SerializeSymmetricPolicy>::solve_upper_left(MatrixAType& A, MatrixUType& U, MatrixUIType& UI, CommType&& CommInfo,
                                  std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                                  blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
 
   using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
+  using V = typename MatrixAType::DimensionType;
   using StructureTri = typename MatrixUType::StructureType;
   using Distribution = typename MatrixAType::DistributionType;
   using Offload = typename MatrixAType::OffloadType;
@@ -269,28 +279,28 @@ void cacqr<SerializeSymmetricPolicy>::solve_upper_left(MatrixAType& matrixA, Mat
   // to catch debugging issues, assert that this has at least one size
   assert(baseCaseDimList.size());
 
-  U matAendX = matrixA.num_columns_local();
-  U matAendY = matrixA.num_rows_local();
-  U matUendX = matrixU.num_columns_local();
+  V matAendX = A.num_columns_local();
+  V matAendY = A.num_rows_local();
+  V matUendX = U.num_columns_local();
 
   // Lets operate on individual columns at a time
   // Potential optimization 1): Don't use summa if the columns are too skinny in relation to the block size!
     // Or this could just be taken care of when we tune block sizes?
   // Potential optimization 2) Lots of serializing going on with each summa, this needs to be reduced.
-  // Communicate matrixA and matrixU and matrixUI immediately.
+  // Communicate A and U and UI immediately.
   // These 3 matrices should never need to be communicated again.
-  //   matrixB however will need to be AllReduced at each iteration so that final results can be summed and updated before next iteration
+  //   B however will need to be AllReduced at each iteration so that final results can be summed and updated before next iteration
 
-  U offset1 = 0; U offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]); U offset3 = 0;
-  U arg1 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset1 : offset3);
-  U arg2 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? matUendX : offset1);
-  U arg3 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset3 : offset1);
-  U arg4 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset1 : matUendX);
-  U save1 = offset2-offset1;
-  matrix<T,U,rect,Distribution,Offload> matrixUpartition(nullptr, baseCaseDimList[0], arg4-arg3, CommInfo.d, CommInfo.d);
-  matrix<T,U,StructureTri,Distribution,Offload> matrixUIpartition(nullptr, save1, save1, CommInfo.d, CommInfo.d);
+  V offset1 = 0; V offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]); V offset3 = 0;
+  V arg1 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset1 : offset3);
+  V arg2 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? matUendX : offset1);
+  V arg3 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset3 : offset1);
+  V arg4 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset1 : matUendX);
+  V save1 = offset2-offset1;
+  matrix<T,V,rect,Distribution,Offload> Upartition(nullptr, baseCaseDimList[0], arg4-arg3, CommInfo.d, CommInfo.d);
+  matrix<T,V,StructureTri,Distribution,Offload> UIpartition(nullptr, save1, save1, CommInfo.d, CommInfo.d);
 
-  for (U i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++){
+  for (V i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++){
     // Update the current column by accumulating the updates via MM
     gemmPackage.alpha = -1;
     gemmPackage.beta = 1.;
@@ -303,9 +313,9 @@ void cacqr<SerializeSymmetricPolicy>::solve_upper_left(MatrixAType& matrixA, Mat
       arg3 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset3 : offset1);
       arg4 = (gemmPackage.transposeB == blas::Transpose::AblasNoTrans ? offset1 : matUendX);
 
-      serialize<StructureTri,rect>::invoke(matrixU, matrixUpartition, arg1, arg2, arg3, arg4);
+      serialize<StructureTri,rect>::invoke(U, Upartition, arg1, arg2, arg3, arg4);
 
-//      matmult::summa::invoke(matrixA.getRawData()+(offset3*matAendY), matrixUpartition, matrixA.getRawData()+(offset1*matAendY),
+//      matmult::summa::invoke(A.getRawData()+(offset3*matAendY), Upartition, A.getRawData()+(offset1*matAendY),
 //        offset1-offset3, matAendY, arg2-arg1, arg4-arg3, matAendX-offset1, matAendY, std::forward<CommType>(CommInfo), gemmPackage);
     }
 
@@ -314,11 +324,11 @@ void cacqr<SerializeSymmetricPolicy>::solve_upper_left(MatrixAType& matrixA, Mat
     // New optimization: prevent this copy if we are doing TRSM only at the top level
     // Note: this change might be rendered useless now that I modified CFR3D.hpp with a similar optimization for that top level of TRSM
     if (baseCaseDimList.size() <= 1){
-//      matmult::summa::invoke(matrixUI, matrixA.data()+(offset1*matAendY), save1, save1, save1, matAendY, std::forward<CommType>(CommInfo), trmmPackage);
+//      matmult::summa::invoke(UI, A.data()+(offset1*matAendY), save1, save1, save1, matAendY, std::forward<CommType>(CommInfo), trmmPackage);
     }
     else{
-      serialize<StructureTri,StructureTri>::invoke(matrixUI, matrixUIpartition, offset1, offset2, offset1, offset2);
-//      matmult::summa::invoke(matrixUIpartition, matrixA.getRawData()+(offset1*matAendY), save1, save1, save1, matAendY, std::forward<CommType>(CommInfo), trmmPackage);
+      serialize<StructureTri,StructureTri>::invoke(UI, UIpartition, offset1, offset2, offset1, offset2);
+//      matmult::summa::invoke(UIpartition, A.getRawData()+(offset1*matAendY), save1, save1, save1, matAendY, std::forward<CommType>(CommInfo), trmmPackage);
     }
     if ((i+1) < baseCaseDimList.size()){
       // Update the offsets
@@ -327,5 +337,15 @@ void cacqr<SerializeSymmetricPolicy>::solve_upper_left(MatrixAType& matrixA, Mat
       offset2 += baseCaseDimList[i+1];
     }
   }
+}
+
+template<class SerializeSymmetricPolicy>
+template<typename T, typename U, typename ArgType, typename CommType>
+std::pair<T*,T*> cacqr2<SerializeSymmetricPolicy>::invoke(T* A, T* R, U localNumRows, U localNumColumns, U globalNumRows, U globalNumColumns, ArgType&& args, CommType&& CommInfo){
+  //TODO: Test with non-power-of-2 global matrix dimensions
+  matrix<T,U,rect,cyclic> mA(A,localNumColumns,localNumRows,globalNumColumns,globalNumRows,CommInfo.c,CommInfo.d);
+  matrix<T,U,rect,cyclic> mR(R,localNumColumns,localNumColumns,globalNumColumns,globalNumColumns,CommInfo.c,CommInfo.c);
+  invoke(mA,mR,std::forward<ArgType>(args),std::forward<CommType>(CommInfo));
+  return std::make_pair(mA.get_data(),mR.get_data());
 }
 }
