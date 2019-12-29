@@ -61,9 +61,9 @@ private:
 
   template<typename MatrixType, typename BaseCaseMatrixType, typename CommType>
   static void aggregate(MatrixType& A, BaseCaseMatrixType& _base_case, std::vector<typename MatrixType::ScalarType>& blocked_data,
-                        std::vector<typename MatrixType::ScalarType>& cyclic_data, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
-                        typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType AstartX, typename MatrixType::DimensionType AendX,
-                        typename MatrixType::DimensionType AstartY, typename MatrixType::DimensionType AendY, CommType&& CommInfo, char dir);
+                        std::vector<typename MatrixType::ScalarType>& cyclic_data, typename MatrixType::DimensionType localDimension,
+                        typename MatrixType::DimensionType AstartX, typename MatrixType::DimensionType AendX,
+                        typename MatrixType::DimensionType AstartY, typename MatrixType::DimensionType AendY, CommType&& CommInfo, bool no_fit);
 
   template<typename MatrixLType, typename MatrixLIType, typename MatrixAType, typename CommType>
   static void solve_lower_right(MatrixLType& L, MatrixLIType& LI, MatrixAType& A, CommType&& CommInfo,

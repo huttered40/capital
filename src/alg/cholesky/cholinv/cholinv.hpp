@@ -17,7 +17,7 @@ cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::invoke(MatrixA
   U localDimension = A.num_rows_local();
   U globalDimension = A.num_rows_global();
   U minDimLocal = 1;
-  U bcDimLocal  = std::max(minDimLocal,localDimension/(CommInfo.c*CommInfo.d));	// min prevents recursing into a 0x0 local matrix
+  U bcDimLocal  = std::max(minDimLocal,util::get_next_power2(localDimension/(CommInfo.c*CommInfo.d)));	// min prevents recursing into a 0x0 local matrix
   U bcDimension = CommInfo.d*bcDimLocal;
 
   U save = globalDimension;
@@ -225,39 +225,66 @@ void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::basecase(
   MPI_Comm_rank(CommInfo.slice, &rankSlice);
 
   // Should be fast pass-by-value via move semantics
-  aggregate(A, matrix_base_case, blocked_data, cyclic_data, localDimension, globalDimension, globalDimension/*bcDimension*/,
-    (dir == 'L' ? AstartX : AstartY), (dir == 'L' ? AendX : AendY),
-    (dir == 'L' ? AstartX : AstartY), (dir == 'L' ? AendX : AendY), std::forward<CommType>(CommInfo), dir);
+  aggregate(A, matrix_base_case, blocked_data, cyclic_data, localDimension, AstartY, AendY, AstartY, AendY, std::forward<CommType>(CommInfo), cyclic_data.size() != localDimension*CommInfo.d*CommInfo.d*localDimension);
 
-  U fTranDim1 = localDimension*CommInfo.d;
-  std::vector<T>& storeMat = cyclic_data;
-  // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
-  lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, (dir == 'L' ? lapack::UpLo::AlapackLower : lapack::UpLo::AlapackUpper));
-  lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, (dir == 'L' ? lapack::UpLo::AlapackLower : lapack::UpLo::AlapackUpper), lapack::Diag::AlapackNonUnit);
-  lapack::engine::_potrf(&storeMat[0],fTranDim1,fTranDim1,potrfArgs);
-  std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
-  lapack::engine::_trtri(&storeMatInv[0],fTranDim1,fTranDim1,trtriArgs);
+  if ((AendY == trueLocalDimension) && (trueLocalDimension*CommInfo.d - trueGlobalDimension != 0)){
+    U checkDim = localDimension*CommInfo.d;
+    U finalDim = (checkDim - (trueLocalDimension*CommInfo.d - trueGlobalDimension));
+    std::vector<T> deepBaseCase(finalDim*finalDim,0);
+    for (U i=0; i<finalDim; i++){
+      for (U j=0; j<finalDim; j++){
+        deepBaseCase[i*finalDim+j] = cyclic_data[i*checkDim+j];
+      }
+    }
+    lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
+    lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
+    lapack::engine::_potrf(&deepBaseCase[0],finalDim,finalDim,potrfArgs);
+    std::vector<T> deepBaseCaseInv = deepBaseCase;              // true copy because we have to, unless we want to iterate (see below) two different times
+    lapack::engine::_trtri(&deepBaseCaseInv[0],finalDim,finalDim,trtriArgs);
+    std::vector<T> deepBaseCaseFill(checkDim*checkDim,0);
+    std::vector<T> deepBaseCaseInvFill(checkDim*checkDim,0);
+    for (U i=0; i<finalDim; i++){
+      for (U j=0; j<finalDim; j++){
+        deepBaseCaseFill[i*checkDim+j] = deepBaseCase[i*finalDim+j];
+        deepBaseCaseInvFill[i*checkDim+j] = deepBaseCaseInv[i*finalDim+j];
+      }
+    }
+    cyclicToLocalTransformation(deepBaseCaseFill, deepBaseCaseInvFill, localDimension, globalDimension, bcDimension, CommInfo.d, rankSlice, dir);
 
-  // Only truly a "square-to-square" serialization because we store L as a square (no packed storage yet!)
+    matrix<T,U,square,Distribution,Offload> tempMat(&deepBaseCaseFill[0], localDimension, localDimension, CommInfo.d, CommInfo.d);
+    matrix<T,U,square,Distribution,Offload> tempMatInv(&deepBaseCaseInvFill[0], localDimension, localDimension, CommInfo.d, CommInfo.d);
+    serialize<square,square>::invoke(A, tempMat, AstartY, AendY, AstartY, AendY, true);
+    serialize<square,square>::invoke(I, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
+  }
+  else{
+    U fTranDim1 = localDimension*CommInfo.d;
+    std::vector<T>& storeMat = cyclic_data;
+    // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
+    lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
+    lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
+    lapack::engine::_potrf(&storeMat[0],fTranDim1,fTranDim1,potrfArgs);
+    std::vector<T> storeMatInv = storeMat;		// true copy because we have to, unless we want to iterate (see below) two different times
+    lapack::engine::_trtri(&storeMatInv[0],fTranDim1,fTranDim1,trtriArgs);
 
-  // Now, before we can serialize into L and LI, we need to save the values that this processor owns according to the cyclic rule.
-  // Only then can we serialize.
+    // Only truly a "square-to-square" serialization because we store L as a square (no packed storage yet!)
 
-  // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
-  //   Use the "overwrite" trick that I have used in CASI code, as well as other places
+    // Now, before we can serialize into L and LI, we need to save the values that this processor owns according to the cyclic rule.
+    // Only then can we serialize.
 
-  // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
-  //   and then "move" them cheaply into new Matrix structures before I call invoke on them individually.
+    // Iterate and pick out. I would like not to have to create any more memory and I would only like to iterate once, not twice, for storeL and storeLI
+    //   Use the "overwrite" trick that I have used in CASI code, as well as other places
 
-  cyclicToLocalTransformation(storeMat, storeMatInv, localDimension, globalDimension, globalDimension/*bcDimension*/, CommInfo.d,rankSlice,dir);
+    // I am going to use a sneaky trick: I will take the vectorData from storeL and storeLI by reference, overwrite its values,
+    //   and then "move" them cheaply into new Matrix structures before I call invoke on them individually.
 
-  matrix<T,U,square,Distribution,Offload> tempMat(&storeMat[0],localDimension,localDimension,globalDimension,globalDimension,CommInfo.d,CommInfo.d);
-  matrix<T,U,square,Distribution,Offload> tempMatInv(&storeMatInv[0],localDimension,localDimension,globalDimension,globalDimension,CommInfo.d,CommInfo.d);
+    cyclicToLocalTransformation(storeMat, storeMatInv, localDimension, globalDimension, bcDimension, CommInfo.d,rankSlice,dir);
+    matrix<T,U,square,Distribution,Offload> tempMat(&storeMat[0],localDimension,localDimension,CommInfo.d,CommInfo.d);
+    matrix<T,U,square,Distribution,Offload> tempMatInv(&storeMatInv[0],localDimension,localDimension,CommInfo.d,CommInfo.d);
 
-  // invoke into the existing Matrix data structures owned by the user
-  serialize<square,square>::invoke(A, tempMat, (dir == 'L' ? AstartX : AstartY), (dir == 'L' ? AendX : AendY),
-    (dir == 'L' ? AstartX : AstartY), (dir == 'L' ? AendX : AendY), true);
-  serialize<square,square>::invoke(I, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
+    // invoke into the existing Matrix data structures owned by the user
+    serialize<square,square>::invoke(A, tempMat, AstartY, AendY, AstartY, AendY, true);
+    serialize<square,square>::invoke(I, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
+  }
   return;
 }
 
@@ -265,19 +292,25 @@ void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::basecase(
 template<class TrailingMatrixUpdateLocalCompPolicy, class OverlapGatherPolicy>
 template<typename MatrixType, typename BaseCaseMatrixType, typename CommType>
 void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::aggregate(MatrixType& A, BaseCaseMatrixType& matrix_base_case, std::vector<typename MatrixType::ScalarType>& blocked_data,
-                   std::vector<typename MatrixType::ScalarType>& cyclic_data, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType globalDimension,
-                               typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType AstartX, typename MatrixType::DimensionType AendX,
-                               typename MatrixType::DimensionType AstartY, typename MatrixType::DimensionType AendY, CommType&& CommInfo, char dir){
+                   std::vector<typename MatrixType::ScalarType>& cyclic_data, typename MatrixType::DimensionType localDimension,
+                               typename MatrixType::DimensionType AstartX, typename MatrixType::DimensionType AendX,
+                               typename MatrixType::DimensionType AstartY, typename MatrixType::DimensionType AendY, CommType&& CommInfo, bool no_fit){
 
-  //assert(matrix_base_case.num_columns_local() == localDimension);
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
   using Distribution = typename MatrixType::DistributionType;
   using Offload = typename MatrixType::OffloadType;
   using BaseCaseStructure = typename BaseCaseMatrixType::StructureType;
 
-  serialize<square,BaseCaseStructure>::invoke(A, matrix_base_case, AstartX, AendX, AstartY, AendY);
-  policy::cholinv::OverlapGatherPolicyClass<OverlapGatherPolicy>::invoke(matrix_base_case,blocked_data,cyclic_data,std::forward<CommType>(CommInfo));
+  if (!no_fit){
+    serialize<square,BaseCaseStructure>::invoke(A, matrix_base_case, AstartX, AendX, AstartY, AendY);
+    policy::cholinv::OverlapGatherPolicyClass<OverlapGatherPolicy>::invoke(matrix_base_case,blocked_data,cyclic_data,std::forward<CommType>(CommInfo));
+  }
+  else{
+    matrix<T,U,square,Distribution,Offload> temp_base_case(nullptr,AendX-AstartX,AendY-AstartY,CommInfo.d,CommInfo.d);
+    serialize<square,BaseCaseStructure>::invoke(A, temp_base_case, AstartX, AendX, AstartY, AendY);
+    policy::cholinv::OverlapGatherPolicyClass<OverlapGatherPolicy>::invoke(temp_base_case,blocked_data,cyclic_data,std::forward<CommType>(CommInfo));
+  }
 }
 
 
@@ -307,7 +340,7 @@ void cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>::cyclicToL
       // Further improvement: use only triangular matrices and then invoke into a square later?
       U readIndexCol = i*sliceDim + columnOffsetWithinBlock;
       U readIndexRow = j*sliceDim + rowOffsetWithinBlock;
-      if (((dir == 'L') && (readIndexCol <= readIndexRow)) ||  ((dir == 'U') && (readIndexCol >= readIndexRow))){
+      if ((dir == 'U') && (readIndexCol >= readIndexRow)){
         storeT[writeIndex] = storeT[readIndexCol*bcDimension + readIndexRow];
         storeTI[writeIndex] = storeTI[readIndexCol*bcDimension + readIndexRow];
       }

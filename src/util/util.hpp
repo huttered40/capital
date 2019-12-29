@@ -15,13 +15,14 @@ typename MatrixType::ScalarType util::get_identity_residual(MatrixType& Matrix, 
   for (int64_t i=0; i<localNumColumns; i++){
     globalY = CommInfo.y;    // reset
     for (int64_t j=0; j<localNumRows; j++){
-      if (globalX == globalY){
-        res += 1.-Matrix.data()[index++];
-      } else{
-        res += Matrix.data()[index++];
+      if ((globalX<globalNumRows) && (globalY<globalNumColumns)){
+        if (globalX == globalY){
+          res += 1.-Matrix.data()[index++];
+        } else{
+          res += Matrix.data()[index++];
+        }
       }
       globalY += CommInfo.d;
-      
     }
     globalX += CommInfo.d;//TODO: This will not work for a rectangular grid (i.e. CommType is RectTopo)
   }
@@ -36,19 +37,22 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
   using U = typename MatrixType::DimensionType;
   T error = 0;
   T control = 0;
-  U localNumRows = Matrix.num_rows_local();
-  U localNumColumns = Matrix.num_columns_local();
+  U localNumRows = Matrix.num_rows_local(); U globalNumRows = Matrix.num_rows_global();
+  U localNumColumns = Matrix.num_columns_local(); U globalNumColumns = Matrix.num_columns_global();
   U globalX = sliceX;
   U globalY = sliceY;
 
   for (int64_t i=0; i<localNumColumns; i++){
     globalY = sliceY;    // reset
     for (int64_t j=0; j<localNumRows; j++){
-      auto info = Lambda(Matrix, RefMatrix, i*localNumRows+j,globalX, globalY);
-      error += std::abs(info.first*info.first);
-      control += std::abs(info.second*info.second);
+      if ((globalX<globalNumRows) && (globalY<globalNumColumns)){
+        auto info = Lambda(Matrix, RefMatrix, i*localNumRows+j,globalX, globalY);
+        // debug
+        //if (info.first >= 1.e-8){std::cout << i*localNumRows+j << " " << globalX << " " << globalY << " " << info.first << " " << info.second<< " " << sliceX << " " << sliceY << std::endl;}
+        error += std::abs(info.first*info.first);
+        control += std::abs(info.second*info.second);
+      }
       globalY += sliceDimY;
-      //if (rank == 0) std::cout << val << " " << i << " " << j << std::endl;
     }
     globalX += sliceDimX;
   }

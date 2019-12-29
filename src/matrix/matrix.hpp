@@ -29,8 +29,6 @@ matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(T* data, U 
   pHelper = globalDimensionY%globalPgridY;
   this->_dimensionY = {globalDimensionY/globalPgridY + (pHelper ? 1 : 0)};
   bool valid = ((this->_dimensionX==dimensionX) && (this->_dimensionY==dimensionY));
-  // keep assert for now
-  assert(valid);
 
   this->_globalDimensionX = {globalDimensionX};
   this->_globalDimensionY = {globalDimensionY};
@@ -55,8 +53,6 @@ matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(T* data, U 
   // Idea: move the data argument into this_data, and then set up the matrix rows (this_matrix)
   // Note that the owner of data and positions should be aware that the vectors they pass in will be destroyed and the data sucked out upon return.
 
-  assert(data==nullptr);	// this is a dangerous constructor and we must prevent the user from doing questionable things
-
   // If matrix dimensions do not align with what is necessary, we will need to perform a deep copy.
   this->_dimensionX = {dimensionX};
   this->_dimensionY = {dimensionY};
@@ -65,8 +61,14 @@ matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(T* data, U 
   this->_numElems = num_elems(dimensionX, dimensionY);	// will get overwritten if necessary
   this->_data = data;					// will get overwritten if necessary
 
-  StructurePolicy::_assemble(this->_data, this->_scratch, this->_pad, this->_matrix, this->_numElems, dimensionX, dimensionY);
-  this->allocated_data=true;
+  if (data != nullptr){
+    StructurePolicy::_assemble_matrix(this->_data, this->_scratch, this->_pad, this->_matrix, this->_dimensionX, this->_dimensionY);
+    this->allocated_data=false;
+  }
+  else{
+    StructurePolicy::_assemble(this->_data, this->_scratch, this->_pad, this->_matrix, this->_numElems, dimensionX, dimensionY);
+    this->allocated_data=true;
+  }
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
