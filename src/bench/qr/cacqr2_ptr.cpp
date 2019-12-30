@@ -17,8 +17,10 @@ int main(int argc, char** argv){
   U dimensionC = atoi(argv[3]);
   U inverseCutOffMultiplier = atoi(argv[4]);
   U bcMultiplier = atoi(argv[5]);
-  U num_chunks        = atoi(argv[6]);
-  U numIterations=atoi(argv[7]);
+  size_t num_chunks        = atoi(argv[6]);
+  size_t numIterations=atoi(argv[7]);
+  size_t id = atoi(argv[8]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+
   auto mpi_dtype = mpi_type<T>::type;
   using qr_type = typename qr::cacqr2<qr::policy::cacqr::SerializeSymmetricToTriangle>;
   {
@@ -41,12 +43,13 @@ int main(int argc, char** argv){
       auto ptrs = qr_type::invoke(A, R, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, pack, RectTopo);
       critter::stop();
 
-      util::random_fill(ptrs.first, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-      volatile double startTime=MPI_Wtime();
-      auto ptrs2 = qr_type::invoke(ptrs.first, ptrs.second, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, pack, RectTopo);
-      iterTimeLocal = MPI_Wtime() - startTime;
-      MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
-
+      if (id>0){
+        util::random_fill(ptrs.first, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
+        volatile double startTime=MPI_Wtime();
+        auto ptrs2 = qr_type::invoke(ptrs.first, ptrs.second, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, pack, RectTopo);
+        iterTimeLocal = MPI_Wtime() - startTime;
+        MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+      }
       if (rank==0){
         std::cout << iterTimeGlobal << std::endl;
       }

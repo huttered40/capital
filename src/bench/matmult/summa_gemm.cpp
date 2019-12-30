@@ -21,8 +21,9 @@ int main(int argc, char** argv){
   U globalMatrixSizeN = atoi(argv[2]);
   U globalMatrixSizeK = atoi(argv[3]);
   U pGridDimensionC   = atoi(argv[4]);
-  U num_chunks        = atoi(argv[5]);
-  U numIterations     = atoi(argv[6]);
+  size_t num_chunks        = atoi(argv[5]);
+  size_t numIterations     = atoi(argv[6]);
+  size_t id = atoi(argv[7]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   auto mpi_dtype = mpi_type<T>::type;
   U pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
@@ -46,15 +47,12 @@ int main(int argc, char** argv){
       matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
       critter::stop();
 
-      matA.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
-      matB.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
-      matC.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
-      double startTime=MPI_Wtime();
-      matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
-      double iterTimeLocal=MPI_Wtime()-startTime;
-
-      MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
-      //matmult::validate<summa3d>::validateLocal(matA,matB,matC,MPI_COMM_WORLD,blasArgs);
+      if (id>0){
+        double startTime=MPI_Wtime();
+        matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
+        double iterTimeLocal=MPI_Wtime()-startTime;
+        MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+      }
     }
   }
 

@@ -20,8 +20,9 @@ int main(int argc, char** argv){
   U dimensionC = atoi(argv[3]);
   U inverseCutOffMultiplier = atoi(argv[4]);
   U bcMultiplier = atoi(argv[5]);
-  U num_chunks        = atoi(argv[6]);
-  U numIterations=atoi(argv[7]);
+  size_t num_chunks        = atoi(argv[6]);
+  size_t numIterations=atoi(argv[7]);
+  size_t id = atoi(argv[8]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   using qr_type = typename qr::cacqr2<qr::policy::cacqr::SerializeSymmetricToTriangle>;
   {
@@ -43,18 +44,19 @@ int main(int argc, char** argv){
       critter::start();
       qr_type::invoke(A, R, pack, RectTopo);
       critter::stop();
-
-      A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-      volatile double startTime=MPI_Wtime();
-      qr_type::invoke(A, R, pack, RectTopo);
-      iterTimeLocal = MPI_Wtime() - startTime;
-
-      MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
-      saveA.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
-      auto error = qr::validate<qr_type>::invoke(saveA, A, R, RectTopo);
-      MPI_Reduce(&error.first, &residualErrorGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
-      MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
-
+      if (id>0){
+        A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
+        volatile double startTime=MPI_Wtime();
+        qr_type::invoke(A, R, pack, RectTopo);
+        iterTimeLocal = MPI_Wtime() - startTime;
+        MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (id>1){
+          saveA.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
+          auto error = qr::validate<qr_type>::invoke(saveA, A, R, RectTopo);
+          MPI_Reduce(&error.first, &residualErrorGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+          MPI_Reduce(&error.second, &orthogonalityErrorGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+        }
+      }
       if (rank==0){
         std::cout << iterTimeGlobal << " " << residualErrorGlobal << " " << orthogonalityErrorGlobal << std::endl;
       }

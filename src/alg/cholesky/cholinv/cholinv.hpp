@@ -15,11 +15,12 @@ cholinv<SerializePolicy,OverlapRecursivePolicy>::invoke(MatrixAType& A, MatrixTI
   U localDimension = A.num_rows_local();
   U globalDimension = A.num_rows_global();
   U minDimLocal = 1;
-  U bcDimLocal  = std::max(minDimLocal,util::get_next_power2(localDimension/(CommInfo.c*CommInfo.d)));	// min prevents recursing into a 0x0 local matrix
-  U bcDimension = CommInfo.d*bcDimLocal;
+  U bcDimLocal = util::get_next_power2(localDimension/(CommInfo.c*CommInfo.d));
   auto bcMult = args.bc_mult_dim;
-  if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimension/=2;}
-  else{for (int i=0;i<bcMult; i++) bcDimension*=2;}
+  if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal/=2;}
+  else{for (int i=0;i<bcMult; i++) bcDimLocal*=2;}
+  bcDimLocal  = std::max(minDimLocal,bcDimLocal);	// min prevents recursing into a 0x0 local matrix
+  U bcDimension = CommInfo.d*bcDimLocal;
 
   U save = globalDimension;
   for (size_t i=0; i<args.inv_cut_off_dim; i++){

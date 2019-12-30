@@ -19,8 +19,9 @@ int main(int argc, char** argv){
   U pGridDimensionC = atoi(argv[2]);
   U inverseCutOffMultiplier = atoi(argv[3]);
   U bcMultiplier = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
-  U num_chunks        = atoi(argv[5]);
-  U numIterations = atoi(argv[6]);
+  size_t num_chunks        = atoi(argv[5]);
+  size_t numIterations = atoi(argv[6]);
+  size_t id = atoi(argv[7]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   using cholesky_type = typename cholesky::cholinv<>;
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
@@ -42,15 +43,18 @@ int main(int argc, char** argv){
       cholesky_type::invoke(A, T, pack, SquareTopo);
       critter::stop();
 
-      A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
-      double startTime=MPI_Wtime();
-      cholesky_type::invoke(A, T, pack, SquareTopo);
-      double iterTimeLocal=MPI_Wtime() - startTime;
-      MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
-      saveA.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
-      iterErrorLocal = cholesky::validate<cholesky_type>::invoke(saveA, A, dir, SquareTopo);
-      MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
-
+      if (id>0){
+        A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
+        double startTime=MPI_Wtime();
+        cholesky_type::invoke(A, T, pack, SquareTopo);
+        double iterTimeLocal=MPI_Wtime() - startTime;
+        MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (id>1){
+          saveA.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
+          iterErrorLocal = cholesky::validate<cholesky_type>::invoke(saveA, A, dir, SquareTopo);
+          MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+        }
+      }
       if (rank==0){
         std::cout << iterTimeGlobal << " " << iterErrorGlobal << std::endl;
       }
