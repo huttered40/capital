@@ -7,21 +7,16 @@
 #include "./../../matmult/summa/summa.h"
 #include "./../policies/cholinv/policy.h"
 
-// Lets use partial template specialization
-// So only declare the fully templated class
-// Why not just use square? Because later on, I may want to experiment with LowerTriangular Structure.
-// Also note, we do not need an extra template parameter for L-inverse. Presumably if the user wants L to be LowerTriangular, then he wants L-inverse
-//   to be LowerTriangular as well
-
 namespace cholesky{
-template<class TrailingMatrixUpdateLocalCompPolicy = policy::cholinv::TrmmUpdate,
-         class OverlapGatherPolicy = policy::cholinv::NoOverlapGather>
+template<class TrailingMatrixUpdateLocalCompPolicy = policy::cholinv::ReduceFlopUpdate,
+         class SerializePolicy = policy::cholinv::NoSerializeAvoidComm,
+         class OverlapRecursivePolicy = policy::cholinv::NoIntermediateOverlap>
 class cholinv{
 public:
   // cholinv is not parameterized as its not dependent on any lower-level algorithmic type
   class pack{
   public:
-    using alg_type = cholinv<TrailingMatrixUpdateLocalCompPolicy,OverlapGatherPolicy>;
+    using alg_type = cholinv<TrailingMatrixUpdateLocalCompPolicy,SerializePolicy,OverlapRecursivePolicy>;
     pack(const pack& p) : inv_cut_off_dim(p.inv_cut_off_dim), dir(p.dir) {}
     pack(pack&& p) : inv_cut_off_dim(std::move(p.inv_cut_off_dim)), dir(std::move(p.dir)) {}
     pack(int64_t inv_cut_off_dim, char dir) : inv_cut_off_dim(inv_cut_off_dim), dir(dir) {}
@@ -37,33 +32,38 @@ public:
   static std::pair<T*,T*> invoke(T* A, T* TI, U localDim, U globalDim, ArgType&& args, CommType&& CommInfo);
 
 private:
-  template<typename MatrixAType, typename MatrixRIType, typename BaseCaseMatrixType, typename CommType>
-  static void factor(MatrixAType& A, MatrixRIType& RI, BaseCaseMatrixType& _base_case,
-                           std::vector<typename MatrixAType::ScalarType>& blocked_data, std::vector<typename MatrixAType::ScalarType>& cyclic_data,
-                           typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
-                           typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
-                           typename MatrixAType::DimensionType AstartX, typename MatrixAType::DimensionType AendX, typename MatrixAType::DimensionType AstartY,
-                           typename MatrixAType::DimensionType AendY, typename MatrixAType::DimensionType RIstartX, typename MatrixAType::DimensionType RIendX,
-                           typename MatrixAType::DimensionType RIstartY, typename MatrixAType::DimensionType RIendY,
-                           CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension);
+  template<typename MatrixAType, typename MatrixRIType, typename PolicyTableType, typename SquareTableType, typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
+  static void factor(MatrixAType& A, MatrixRIType& RI,
+                     PolicyTableType& policy_table, SquareTableType& square_table1, SquareTableType& square_table2, BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
+                     typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+                     typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
+                     typename MatrixAType::DimensionType AstartX, typename MatrixAType::DimensionType AendX, typename MatrixAType::DimensionType AstartY,
+                     typename MatrixAType::DimensionType AendY, typename MatrixAType::DimensionType RIstartX, typename MatrixAType::DimensionType RIendX,
+                     typename MatrixAType::DimensionType RIstartY, typename MatrixAType::DimensionType RIendY,
+                     CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                     typename MatrixAType::DimensionType inverseCutoffGlobalDimension);
 
-  template<typename MatrixAType, typename MatrixIType, typename BaseCaseMatrixType, typename CommType>
-  static void basecase(MatrixAType& A, MatrixIType& LI, BaseCaseMatrixType& _base_case,
-                       std::vector<typename MatrixAType::ScalarType>& blocked_data, std::vector<typename MatrixAType::ScalarType>& cyclic_data,
-                       typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
-                       typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
-                       typename MatrixAType::DimensionType AstartX, typename MatrixAType::DimensionType AendX, typename MatrixAType::DimensionType AstartY,
-                       typename MatrixAType::DimensionType AendY, typename MatrixAType::DimensionType IstartX, typename MatrixAType::DimensionType IendX,
-                       typename MatrixAType::DimensionType IstartY, typename MatrixAType::DimensionType IendY, CommType&& CommInfo,
-                       bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                       typename MatrixAType::DimensionType inverseCutoffGlobalDimension, char dir);
+  template<typename MatrixAType, typename MatrixIType, typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
+  static void base_case(MatrixAType& A, MatrixIType& I, BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
+                 typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
+                 typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
+                 typename MatrixAType::DimensionType AstartX, typename MatrixAType::DimensionType AendX, typename MatrixAType::DimensionType AstartY,
+                 typename MatrixAType::DimensionType AendY, typename MatrixAType::DimensionType matIstartX, typename MatrixAType::DimensionType matIendX,
+                 typename MatrixAType::DimensionType matIstartY, typename MatrixAType::DimensionType matIendY,
+                 CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
+                 typename MatrixAType::DimensionType inverseCutoffGlobalDimension, char dir);
 
-  template<typename MatrixType, typename BaseCaseMatrixType, typename CommType>
-  static void aggregate(MatrixType& A, BaseCaseMatrixType& _base_case, std::vector<typename MatrixType::ScalarType>& blocked_data,
-                        std::vector<typename MatrixType::ScalarType>& cyclic_data, typename MatrixType::DimensionType localDimension,
-                        typename MatrixType::DimensionType AstartX, typename MatrixType::DimensionType AendX,
-                        typename MatrixType::DimensionType AstartY, typename MatrixType::DimensionType AendY, CommType&& CommInfo, bool no_fit);
+  template<typename PolicyTableType, typename SquareTableType, typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
+  static void simulate(PolicyTableType& policy_table, SquareTableType& square_table1, SquareTableType& square_table2, BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
+                       int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
+                       int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t RIstartX, int64_t RIendX, int64_t RIstartY, int64_t RIendY,
+                       CommType&& CommInfo, bool& isInversePath, int64_t inverseCutoffGlobalDimension);
+
+  template<typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
+  static void simulate_basecase(BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
+                                int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
+                                int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t matIstartX, int64_t matIendX, int64_t matIstartY, int64_t matIendY,
+                                CommType&& CommInfo, bool& isInversePath, int64_t inverseCutoffGlobalDimension, char dir);
 
   template<typename MatrixLType, typename MatrixLIType, typename MatrixAType, typename CommType>
   static void solve_lower_right(MatrixLType& L, MatrixLIType& LI, MatrixAType& A, CommType&& CommInfo,
@@ -71,10 +71,13 @@ private:
                                blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage);
 
   template<typename T, typename U>
-  static void cyclicToLocalTransformation(std::vector<T>& storeT, std::vector<T>& storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice, char dir);
+  static void cyclic_to_local(T* storeT, T* storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice, char dir);
 
   template<typename U>
   static inline void update_inverse_path(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension);
+
+  template<typename U>
+  static inline void update_inverse_path_simulate(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, U localDimension);
 };
 }
 

@@ -48,7 +48,8 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
       if ((globalX<globalNumRows) && (globalY<globalNumColumns)){
         auto info = Lambda(Matrix, RefMatrix, i*localNumRows+j,globalX, globalY);
         // debug
-        //if (info.first >= 1.e-8){std::cout << i*localNumRows+j << " " << globalX << " " << globalY << " " << info.first << " " << info.second<< " " << sliceX << " " << sliceY << std::endl;}
+        //int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+        //if (info.first >= 1.e-8 && rank==0){std::cout << i*localNumRows+j << " " << globalX << " " << globalY << " " << info.first << " " << info.second<< " " << sliceX << " " << sliceY << std::endl;}
         error += std::abs(info.first*info.first);
         control += std::abs(info.second*info.second);
       }
@@ -65,7 +66,7 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
 
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename T, typename U>
-void util::block_to_cyclic(std::vector<T>& blockedData, std::vector<T>& cyclicData, U localDimensionRows, U localDimensionColumns, int64_t sliceDim, char dir){
+void util::block_to_cyclic(std::vector<T>& blockedData, T* cyclicData, U localDimensionRows, U localDimensionColumns, int64_t sliceDim, char dir){
 
   U aggregNumRows = localDimensionRows*sliceDim;
   U aggregNumColumns = localDimensionColumns*sliceDim;

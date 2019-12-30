@@ -13,7 +13,7 @@ public:
     residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, int64_t sliceX, int64_t sliceY, int64_t sliceDimX, int64_t sliceDimY);
 
   template<typename T, typename U>
-  static void block_to_cyclic(std::vector<T>& blockedData, std::vector<T>& cyclicData, U localDimensionRows, U localDimensionColumns, int64_t sliceDim, char dir);
+  static void block_to_cyclic(std::vector<T>& blockedData, T* cyclicData, U localDimensionRows, U localDimensionColumns, int64_t sliceDim, char dir);
 
   template<typename T, typename U>
   static void block_to_cyclic(T* blockedData, T* cyclicData, U localDimensionRows, U localDimensionColumns, int64_t sliceDim);

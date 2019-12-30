@@ -105,6 +105,7 @@ template<typename T, typename U, typename StructurePolicy, typename Distribution
 matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::~matrix(){
   // Actually, now that we are purly using vectors, I don't think we need to delete anything. Once the instance
   //   of the class goes out of scope, the vector data gets deleted automatically.
+//  assert(this->danger==false);
   if (this->_scratch != nullptr){ delete[] this->_scratch; this->_scratch=nullptr;}	// could add an assert here for StructurePolicy==lowertri,uppertri
   if (this->_pad != nullptr){ delete[] this->_pad; this->_pad=nullptr;}	// could add an assert here for StructurePolicy==lowertri,uppertri
   if (this->allocated_data && (this->_data != nullptr)){ delete[] this->_data; this->_data=nullptr;}

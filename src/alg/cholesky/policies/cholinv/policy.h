@@ -8,16 +8,22 @@ namespace cholinv{
 // Policy classes for the policy describing whether or not to serialize from symmetric Gram matrix
 //   to triangular matrix before AllReduction.
 class GemmUpdate;
-class TrmmUpdate;
+class ReduceFlopUpdate;
 
-class NoOverlapGather;
-class OverlapGather;
+class SerializeAvoidComm;
+class NoSerializeAvoidComm;
 
+class NoIntermediateOverlap;
+class IntermediateOverlapComp;
+class IntermediateOverlapComm;
+
+// ***********************************************************************************************************************************************************************
+/*
 template<class PolicyClass>
 class OverlapGatherPolicyClass{
 public:
   template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, std::vector<typename MatrixType::ScalarType>& cyclic, CommType&& CommInfo){
+  static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
     using T = typename MatrixType::ScalarType;
     using U = typename MatrixType::DimensionType;
     U localDimension = Matrix.num_columns_local();
@@ -31,7 +37,7 @@ template<>
 class OverlapGatherPolicyClass<OverlapGather>{
 public:
   template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, std::vector<typename MatrixType::ScalarType>& cyclic, CommType&& CommInfo){
+  static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
     using T = typename MatrixType::ScalarType;
     using U = typename MatrixType::DimensionType;
     using Distribution = typename MatrixType::DistributionType;
@@ -59,6 +65,42 @@ public:
     return;
   }
 };
+*/
+// ***********************************************************************************************************************************************************************
+
+// ***********************************************************************************************************************************************************************
+template<class PolicyClass>
+class SerializePolicyClass{
+public:
+  using structure = uppertri;
+
+  template<typename MatrixType, typename CommType>
+  static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
+    using T = typename MatrixType::ScalarType;
+    using U = typename MatrixType::DimensionType;
+    U localDimension = Matrix.num_columns_local();
+    MPI_Allgather(Matrix.data(), Matrix.num_elems(), mpi_type<T>::type, &blocked[0], Matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
+    util::block_to_cyclic(blocked, cyclic, localDimension, localDimension, CommInfo.d, 'U');
+    return;
+  }
+};
+
+template<>
+class SerializePolicyClass<NoSerializeAvoidComm>{
+public:
+  using structure = square;	// might need 'rect'
+
+  template<typename MatrixType, typename CommType>
+  static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
+    using T = typename MatrixType::ScalarType;
+    using U = typename MatrixType::DimensionType;
+    U localDimension = Matrix.num_columns_local();
+    MPI_Allgather(Matrix.data(), Matrix.num_elems(), mpi_type<T>::type, &blocked[0], Matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
+    util::block_to_cyclic(&blocked[0], cyclic, localDimension, localDimension, CommInfo.d);
+    return;
+  }
+};
+// ***********************************************************************************************************************************************************************
 
 };
 };

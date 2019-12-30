@@ -17,7 +17,7 @@ public:
   using DistributionType = DistributionPolicy;
   using OffloadType = OffloadPolicy;
 
-  explicit matrix() = delete;
+  explicit matrix(){this->danger=true; this->_data=nullptr; this->_scratch=nullptr; this->_pad=nullptr;}// = delete;
   explicit matrix(U globalDimensionX, U globalDimensionY, int64_t globalPgridX, int64_t globalPgridY);	// Regular constructor
   // Injection constructor below assumes data is stored in column-major format
   explicit matrix(T* data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U globalPgridX, U globalPgridY);			// Injection constructor
@@ -70,6 +70,7 @@ private:
   T* _pad;				// Extra storage for uppertri and lowertri structures only used in avoiding extra allocations in summa
   std::vector<T*> _matrix;		// Holds offsets into the columns of 1D array of data. So matrix[1] is the pointer to the starting address of the 1st column.
   bool allocated_data;			// Asks if the raw data was allocated by the user or ourselves
+  bool danger;				// notifies me if default constructor was used.
 
   U _numElems;
   U _dimensionX;			// Number of columns owned locally
