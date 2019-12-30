@@ -7,8 +7,6 @@ namespace cholinv{
 
 // Policy classes for the policy describing whether or not to serialize from symmetric Gram matrix
 //   to triangular matrix before AllReduction.
-class GemmUpdate;
-class ReduceFlopUpdate;
 
 class SerializeAvoidComm;
 class NoSerializeAvoidComm;

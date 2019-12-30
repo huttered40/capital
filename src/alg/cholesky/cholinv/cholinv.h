@@ -8,19 +8,19 @@
 #include "./../policies/cholinv/policy.h"
 
 namespace cholesky{
-template<class TrailingMatrixUpdateLocalCompPolicy = policy::cholinv::ReduceFlopUpdate,
-         class SerializePolicy = policy::cholinv::NoSerializeAvoidComm,
+template<class SerializePolicy = policy::cholinv::SerializeAvoidComm,
          class OverlapRecursivePolicy = policy::cholinv::NoIntermediateOverlap>
 class cholinv{
 public:
   // cholinv is not parameterized as its not dependent on any lower-level algorithmic type
   class pack{
   public:
-    using alg_type = cholinv<TrailingMatrixUpdateLocalCompPolicy,SerializePolicy,OverlapRecursivePolicy>;
-    pack(const pack& p) : inv_cut_off_dim(p.inv_cut_off_dim), dir(p.dir) {}
-    pack(pack&& p) : inv_cut_off_dim(std::move(p.inv_cut_off_dim)), dir(std::move(p.dir)) {}
-    pack(int64_t inv_cut_off_dim, char dir) : inv_cut_off_dim(inv_cut_off_dim), dir(dir) {}
+    using alg_type = cholinv<SerializePolicy,OverlapRecursivePolicy>;
+    pack(const pack& p) : inv_cut_off_dim(p.inv_cut_off_dim), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
+    pack(pack&& p) : inv_cut_off_dim(p.inv_cut_off_dim), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
+    pack(int64_t inv_cut_off_dim, int64_t bc_mult_dim, char dir) : inv_cut_off_dim(inv_cut_off_dim), bc_mult_dim(bc_mult_dim), dir(dir) {}
     int64_t inv_cut_off_dim;
+    int64_t bc_mult_dim;
     char dir;
   };
 

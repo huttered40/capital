@@ -16,15 +16,16 @@ int main(int argc, char** argv){
   U globalMatrixDimensionN = atoi(argv[2]);
   U dimensionC = atoi(argv[3]);
   U inverseCutOffMultiplier = atoi(argv[4]);
-  U num_chunks        = atoi(argv[5]);
-  U numIterations=atoi(argv[6]);
+  U bcMultiplier = atoi(argv[5]);
+  U num_chunks        = atoi(argv[6]);
+  U numIterations=atoi(argv[7]);
   auto mpi_dtype = mpi_type<T>::type;
   using qr_type = typename qr::cacqr2<qr::policy::cacqr::SerializeSymmetricToTriangle>;
   {
     double iterTimeGlobal = 0; double iterTimeLocal = 0;
     auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC, num_chunks);
     // Generate algorithmic structure via instantiating packs
-    cholesky::cholinv<>::pack ci_pack(inverseCutOffMultiplier,'U');
+    cholesky::cholinv<>::pack ci_pack(inverseCutOffMultiplier,bcMultiplier,'U');
     qr_type::pack<decltype(ci_pack)::alg_type> pack(ci_pack);
     //TODO: deal with non-power-2 later
     U localMatrixDimensionM = (globalMatrixDimensionM/RectTopo.d);
