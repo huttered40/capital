@@ -1,10 +1,10 @@
 /* Author: Edward Hutter */
 
 namespace cholesky{
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename MatrixAType, typename MatrixTIType, typename ArgType, typename CommType>
 std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-cholinv<SerializePolicy,OverlapRecursivePolicy>::invoke(MatrixAType& A, MatrixTIType& TI, ArgType&& args, CommType&& CommInfo){
+cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixAType& A, MatrixTIType& TI, ArgType&& args, CommType&& CommInfo){
 
   using T = typename MatrixAType::ScalarType;
   using U = typename MatrixAType::DimensionType;
@@ -30,11 +30,11 @@ cholinv<SerializePolicy,OverlapRecursivePolicy>::invoke(MatrixAType& A, MatrixTI
   std::pair<bool,std::vector<int64_t>> baseCaseDimList;
 
   // Pre-allocate recursive matrix<> instances for intermediate (non-base-case) matrix multiplications
-  std::map<std::pair<U,U>,matrix<T,U,typename policy::cholinv::SerializePolicyClass<SerializePolicy>::structure,Distribution,Offload>> policy_table;
-  std::map<std::pair<U,U>,matrix<T,U,typename policy::cholinv::SerializePolicyClass<SerializePolicy>::structure,Distribution,Offload>> policy_table_diaginv;
+  std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure,Distribution,Offload>> policy_table;
+  std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure,Distribution,Offload>> policy_table_diaginv;
   std::map<std::pair<U,U>,matrix<T,U,Structure,Distribution,Offload>> square_table1;// assume Structure == rect or square
   std::map<std::pair<U,U>,matrix<T,U,Structure,Distribution,Offload>> square_table2;// assume Structure == rect or square
-  std::map<std::pair<U,U>,matrix<T,U,typename policy::cholinv::SerializePolicyClass<SerializePolicy>::structure,Distribution,Offload>> base_case_table;	// assume Structure == rect or square
+  std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure,Distribution,Offload>> base_case_table;	// assume Structure == rect or square
   std::map<std::pair<U,U>,std::vector<T>> base_case_blocked_table;	// assume Structure == rect or square
   std::map<std::pair<U,U>,matrix<T,U,Structure,Distribution,Offload>> base_case_cyclic_table;	// assume Structure == rect or square
 
@@ -49,9 +49,9 @@ cholinv<SerializePolicy,OverlapRecursivePolicy>::invoke(MatrixAType& A, MatrixTI
 }
 
 //TODO: Notice how this routine does not pass back a list of integers like the other invoke method. Should this be supported?
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename T, typename U, typename ArgType, typename CommType>
-std::pair<T*,T*> cholinv<SerializePolicy,OverlapRecursivePolicy>::invoke(T* A, T* TI, U localDim, U globalDim, ArgType&& args, CommType&& CommInfo){
+std::pair<T*,T*> cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(T* A, T* TI, U localDim, U globalDim, ArgType&& args, CommType&& CommInfo){
   //TODO: Test with non-power-of-2 global matrix dimensions
   matrix<T,U,rect,cyclic> mA(A,localDim,localDim,globalDim,globalDim,CommInfo.c,CommInfo.c);	// re-used in SquareTable
   matrix<T,U,rect,cyclic> mTI(R,localDim,localDim,globalDim,globalDim,CommInfo.c,CommInfo.c);
@@ -59,9 +59,9 @@ std::pair<T*,T*> cholinv<SerializePolicy,OverlapRecursivePolicy>::invoke(T* A, T
   return std::make_pair(mA.get_data(),mTI.get_data());
 }
 
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename PolicyTableType, typename SquareTableType, typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
-void cholinv<SerializePolicy,OverlapRecursivePolicy>::simulate(
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate(
                            PolicyTableType& policy_table, PolicyTableType& policy_table_diaginvert, SquareTableType& square_table1, SquareTableType& square_table2,
                            BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
                            int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
@@ -124,9 +124,9 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::simulate(
   isInversePath = saveSwitch;
 }
 
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
-void cholinv<SerializePolicy,OverlapRecursivePolicy>::simulate_basecase(
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate_basecase(
                      BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
                      int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
                      int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t matIstartX, int64_t matIendX, int64_t matIstartY, int64_t matIendY,
@@ -149,9 +149,9 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::simulate_basecase(
 }
 
 // For solving LA=B for A. But note that B is being modified in place and will turn into A
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename SquareTableType, typename CommType>
-void cholinv<SerializePolicy,OverlapRecursivePolicy>::simulate_solve(SquareTableType& square_table1, SquareTableType& square_table2, SquareTableType& square_table3, CommType&& CommInfo, int64_t num_cols_A,
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate_solve(SquareTableType& square_table1, SquareTableType& square_table2, SquareTableType& square_table3, CommType&& CommInfo, int64_t num_cols_A,
                                                                      int64_t num_rows_A, int64_t num_cols_L, std::vector<int64_t>& baseCaseDimList){
 
   using U = int64_t;
@@ -194,9 +194,9 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::simulate_solve(SquareTable
   }
 }
 
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename MatrixAType, typename MatrixRIType, typename PolicyTableType, typename SquareTableType, typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
-void cholinv<SerializePolicy,OverlapRecursivePolicy>::factor(
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(
                            MatrixAType& A, MatrixRIType& RI, PolicyTableType& policy_table, PolicyTableType& policy_table_diaginvert,
                            SquareTableType& square_table1, SquareTableType& square_table2, BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
                            typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
@@ -234,7 +234,7 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::factor(
 
   size_t saveIndexAfter = baseCaseDimList.size();
 
-  serialize<square,typename policy::cholinv::SerializePolicyClass<SerializePolicy>::structure>::invoke(RI, policy_table[std::make_pair(localShift,localShift)], RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift);
+  serialize<square,typename SerializePolicy::structure>::invoke(RI, policy_table[std::make_pair(localShift,localShift)], RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift);
   util::transpose(policy_table[std::make_pair(localShift,localShift)], std::forward<CommType>(CommInfo));
   blas::ArgPack_trmm<T> trmmArgs(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
 
@@ -256,7 +256,7 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::factor(
     // Note: some of these globalShifts are wrong, but I don't know any easy way to fix them. Everything might still work though.
     serialize<square,square>::invoke(A, square_table1[std::make_pair(reverseDimLocal,localShift)], AstartX+localShift, AendX, AstartY, AstartY+localShift);
     // Also need to serialize top-left quadrant of L so that its size matches packedMatrix
-    serialize<square,typename policy::cholinv::SerializePolicyClass<SerializePolicy>::structure>::invoke(A, policy_table_diaginvert[std::make_pair(localShift,localShift)], AstartX, AstartX+localShift, AstartY, AstartY+localShift);
+    serialize<square,typename SerializePolicy::structure>::invoke(A, policy_table_diaginvert[std::make_pair(localShift,localShift)], AstartX, AstartX+localShift, AstartY, AstartY+localShift);
     // Swap, same as we did with inverse
     util::transpose(policy_table_diaginvert[std::make_pair(localShift,localShift)], std::forward<CommType>(CommInfo));
     blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
@@ -280,13 +280,13 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::factor(
   // Next step : temp <- R_{12}*RI_{22}
   if (isInversePath){
     serialize<square,square>::invoke(A, square_table1[std::make_pair(reverseDimLocal,localShift)], AstartX+localShift, AendX, AstartY, AstartY+localShift);
-    serialize<square,typename policy::cholinv::SerializePolicyClass<SerializePolicy>::structure>::invoke(RI, policy_table[std::make_pair(reverseDimLocal,reverseDimLocal)], RIstartX+localShift, RIendX, RIstartY+localShift, RIendY);
+    serialize<square,typename SerializePolicy::structure>::invoke(RI, policy_table[std::make_pair(reverseDimLocal,reverseDimLocal)], RIstartX+localShift, RIendX, RIstartY+localShift, RIendY);
     blas::ArgPack_trmm<T> invPackage1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     matmult::summa::invoke(policy_table[std::make_pair(reverseDimLocal,reverseDimLocal)], square_table1[std::make_pair(reverseDimLocal,localShift)], std::forward<CommType>(CommInfo), invPackage1);
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.;
     invPackage1.side = blas::Side::AblasLeft;
-    serialize<square,typename policy::cholinv::SerializePolicyClass<SerializePolicy>::structure>::invoke(RI, policy_table[std::make_pair(localShift,localShift)], RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift);
+    serialize<square,typename SerializePolicy::structure>::invoke(RI, policy_table[std::make_pair(localShift,localShift)], RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift);
     matmult::summa::invoke(policy_table[std::make_pair(localShift,localShift)], square_table1[std::make_pair(reverseDimLocal,localShift)], std::forward<CommType>(CommInfo), invPackage1);
     serialize<square,square>::invoke(RI, square_table1[std::make_pair(reverseDimLocal,localShift)], RIstartX+localShift, RIendX, RIstartY, RIstartY+localShift, true);
   }
@@ -294,9 +294,9 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::factor(
 }
 
 
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename MatrixAType, typename MatrixIType, typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
-void cholinv<SerializePolicy,OverlapRecursivePolicy>::base_case(
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::base_case(
                      MatrixAType& A, MatrixIType& I, BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
                      typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                      typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
@@ -329,8 +329,8 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::base_case(
   MPI_Comm_rank(CommInfo.slice, &rankSlice);
 
   auto index_pair = std::make_pair(AendX-AstartX,AendY-AstartY);
-  serialize<square,typename policy::cholinv::SerializePolicyClass<SerializePolicy>::structure>::invoke(A, base_case_table[index_pair], AstartX, AendX, AstartY, AendY);
-  policy::cholinv::SerializePolicyClass<SerializePolicy>::invoke(base_case_table[index_pair],base_case_blocked_table[index_pair],base_case_cyclic_table[index_pair].data(),std::forward<CommType>(CommInfo));
+  serialize<square,typename SerializePolicy::structure>::invoke(A, base_case_table[index_pair], AstartX, AendX, AstartY, AendY);
+  SerializePolicy::invoke(base_case_table[index_pair],base_case_blocked_table[index_pair],base_case_cyclic_table[index_pair].data(),std::forward<CommType>(CommInfo));
 
   if ((AendY == trueLocalDimension) && (trueLocalDimension*CommInfo.d - trueGlobalDimension != 0)){
     U checkDim = localDimension*CommInfo.d;
@@ -383,9 +383,9 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::base_case(
 //   when we are really only writing to a triangle. So there is a source of optimization here at least in terms of
 //   number of flops, but in terms of memory accesses and cache lines, not sure. Note that with this optimization,
 //   we may need to separate into two different functions
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename T, typename U>
-void cholinv<SerializePolicy,OverlapRecursivePolicy>::cyclic_to_local(
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::cyclic_to_local(
                  T* storeT, T* storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice, char dir){
 
   U writeIndex = 0;
@@ -410,7 +410,6 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::cyclic_to_local(
         storeTI[writeIndex] = storeTI[readIndexCol*bcDimension + readIndexRow];
       }
       else{
-//        break;
         storeT[writeIndex] = 0.;
         storeTI[writeIndex] = 0.;
       }
@@ -419,9 +418,9 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::cyclic_to_local(
   }
 }
 
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename U>
-void cholinv<SerializePolicy,OverlapRecursivePolicy>::update_inverse_path(U inverseCutoffGlobalDimension, U globalDimension,
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::update_inverse_path(U inverseCutoffGlobalDimension, U globalDimension,
                                                                                      bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension){
   if (inverseCutoffGlobalDimension >= globalDimension){
     if (isInversePath == false){
@@ -431,9 +430,9 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::update_inverse_path(U inve
   }
 }
 
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename U>
-void cholinv<SerializePolicy,OverlapRecursivePolicy>::update_inverse_path_simulate(U inverseCutoffGlobalDimension, U globalDimension,
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::update_inverse_path_simulate(U inverseCutoffGlobalDimension, U globalDimension,
                                                                                      bool& isInversePath, U localDimension){
   if (inverseCutoffGlobalDimension >= globalDimension){
     if (isInversePath == false){
@@ -444,9 +443,10 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::update_inverse_path_simula
 
 
 // For solving LA=B for A. But note that B is being modified in place and will turn into A
-template<class SerializePolicy, class OverlapRecursivePolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename MatrixLType, typename MatrixLIType, typename MatrixAType, typename SquareTableType, typename CommType>
-void cholinv<SerializePolicy,OverlapRecursivePolicy>::solve(MatrixLType& L, MatrixLIType& LI, MatrixAType& A,
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::solve(
+                                  MatrixLType& L, MatrixLIType& LI, MatrixAType& A,
                                   SquareTableType& square_table1, SquareTableType& square_table2, SquareTableType& square_table3, CommType&& CommInfo,
                                   std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
                                   blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
@@ -483,7 +483,7 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::solve(MatrixLType& L, Matr
       // Special handling. This might only work since the triangular matrix is square, which should be ok
 
       arg1 = offset1; arg2 = matLendX; arg3 = offset3; arg4 = offset1;
-      serialize<typename policy::cholinv::SerializePolicyClass<SerializePolicy>::structure,square>::invoke(L, square_table1[std::make_pair(arg2-arg1,arg4-arg3)], arg1, arg2, arg3, arg4);
+      serialize<typename SerializePolicy::structure,square>::invoke(L, square_table1[std::make_pair(arg2-arg1,arg4-arg3)], arg1, arg2, arg3, arg4);
       serialize<square,square>::invoke(A, square_table2[std::make_pair(AendX,offset1-offset3)], 0, AendX, offset3, offset1);
       serialize<square,square>::invoke(A, square_table3[std::make_pair(AendX,AendY-offset1)], 0, AendX, offset1, AendY);
       matmult::summa::invoke(square_table1[std::make_pair(arg2-arg1,arg4-arg3)], square_table2[std::make_pair(AendX,offset1-offset3)], square_table3[std::make_pair(AendX,AendY-offset1)],
@@ -492,7 +492,7 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::solve(MatrixLType& L, Matr
     }
 
     // Solve via MM
-    serialize<typename policy::cholinv::SerializePolicyClass<SerializePolicy>::structure,square>::invoke(LI, square_table1[std::make_pair(offset2-offset1,offset2-offset1)], offset1, offset2, offset1, offset2);
+    serialize<typename SerializePolicy::structure,square>::invoke(LI, square_table1[std::make_pair(offset2-offset1,offset2-offset1)], offset1, offset2, offset1, offset2);
     serialize<square,square>::invoke(A, square_table2[std::make_pair(AendX,offset2-offset1)], 0, AendX, offset1, offset2);
     matmult::summa::invoke(square_table1[std::make_pair(offset2-offset1,offset2-offset1)], square_table2[std::make_pair(AendX,offset2-offset1)], std::forward<CommType>(CommInfo), trmmPackage);
     serialize<square,square>::invoke(A, square_table2[std::make_pair(AendX,offset2-offset1)], 0, AendX, offset1, offset2);

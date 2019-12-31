@@ -15,7 +15,7 @@ void cacqr<SerializeSymmetricPolicy>::invoke_1d(MatrixAType& A, MatrixRType& R, 
   blas::engine::_syrk(A.data(), R.data(), localDimensionN, localDimensionM, localDimensionM, localDimensionN, syrkPack);
 
   // MPI_Allreduce to replicate the dimensionY x dimensionY matrix on each processor
-  policy::cacqr::SerializeSymmetricPolicyClass<SerializeSymmetricPolicy>::invoke(R,CommInfo);
+  SerializeSymmetricPolicy::invoke(R,CommInfo);
 
   lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
   lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);

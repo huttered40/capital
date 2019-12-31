@@ -8,14 +8,15 @@
 #include "./../policies/cholinv/policy.h"
 
 namespace cholesky{
-template<class SerializePolicy = policy::cholinv::SerializeAvoidComm,
-         class OverlapRecursivePolicy = policy::cholinv::NoIntermediateOverlap>
+template<class SerializePolicy        = policy::cholinv::Serialize,
+         class IntermediatesPolicy    = policy::cholinv::SaveIntermediates,
+         class OverlapPolicy = policy::cholinv::NoOverlap>
 class cholinv{
 public:
   // cholinv is not parameterized as its not dependent on any lower-level algorithmic type
   class pack{
   public:
-    using alg_type = cholinv<SerializePolicy,OverlapRecursivePolicy>;
+    using alg_type = cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>;
     pack(const pack& p) : inv_cut_off_dim(p.inv_cut_off_dim), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     pack(pack&& p) : inv_cut_off_dim(p.inv_cut_off_dim), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     pack(int64_t inv_cut_off_dim, int64_t bc_mult_dim, char dir) : inv_cut_off_dim(inv_cut_off_dim), bc_mult_dim(bc_mult_dim), dir(dir) {}

@@ -10,8 +10,7 @@ namespace cacqr{
 class SerializeSymmetricToTriangle;
 class NoSerializeSymmetricToTriangle;
 
-template<class PolicyClass>
-class SerializeSymmetricPolicyClass{
+class NoSerializeSymmetricToTriangle{
 public:
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& Matrix, CommType&& CommInfo){
@@ -23,8 +22,7 @@ public:
   }
 };
 
-template<>
-class SerializeSymmetricPolicyClass<SerializeSymmetricToTriangle>{
+class SerializeSymmetricToTriangle{
 public:
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& Matrix, CommType&& CommInfo){

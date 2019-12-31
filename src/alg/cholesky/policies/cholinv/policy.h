@@ -8,12 +8,15 @@ namespace cholinv{
 // Policy classes for the policy describing whether or not to serialize from symmetric Gram matrix
 //   to triangular matrix before AllReduction.
 
-class SerializeAvoidComm;
-class NoSerializeAvoidComm;
+class Serialize;
+class NoSerialize;
 
-class NoIntermediateOverlap;
-class IntermediateOverlapComp;
-class IntermediateOverlapComm;
+class SaveIntermediates;
+class FlushIntermediates;
+
+class NoOverlap;
+class OverlapComp;
+class OverlapComm;
 
 // ***********************************************************************************************************************************************************************
 /*
@@ -67,8 +70,7 @@ public:
 // ***********************************************************************************************************************************************************************
 
 // ***********************************************************************************************************************************************************************
-template<class PolicyClass>
-class SerializePolicyClass{
+class Serialize{
 public:
   using structure = uppertri;
 
@@ -83,8 +85,7 @@ public:
   }
 };
 
-template<>
-class SerializePolicyClass<NoSerializeAvoidComm>{
+class NoSerialize{
 public:
   using structure = square;	// might need 'rect'
 
@@ -97,6 +98,24 @@ public:
     util::block_to_cyclic(&blocked[0], cyclic, localDimension, localDimension, CommInfo.d);
     return;
   }
+};
+// ***********************************************************************************************************************************************************************
+
+// ***********************************************************************************************************************************************************************
+class SaveIntermediates{
+public:
+
+  static void init(){
+  }
+
+  static void invoke(){
+  }
+
+  static void flush(){}
+};
+
+class FlushIntermediates{
+public:
 };
 // ***********************************************************************************************************************************************************************
 
