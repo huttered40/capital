@@ -64,7 +64,7 @@ private:
   static void simulate_basecase(BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
                                 int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
                                 int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t matIstartX, int64_t matIendX, int64_t matIstartY, int64_t matIendY,
-                                CommType&& CommInfo, bool& isInversePath, int64_t inverseCutoffGlobalDimension, char dir);
+                                CommType&& CommInfo, bool& isInversePath, std::vector<int64_t>& baseCaseDimList, int64_t inverseCutoffGlobalDimension, char dir);
 
   template<typename SquareTableType, typename CommType>
   static void simulate_solve(SquareTableType& square_table1, SquareTableType& square_table2, SquareTableType& square_table3, CommType&& CommInfo, int64_t num_cols_A,

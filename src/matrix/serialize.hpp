@@ -154,7 +154,7 @@ void serialize<square,uppertri>::invoke(BigType& big, SmallType& small, typename
   using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
-  assert(rangeX == rangeY);
+//  assert(rangeX == rangeY);
 
   U bigNumRows = big.num_rows_local();
   U bigNumColumns = big.num_columns_local();
@@ -293,7 +293,7 @@ void serialize<square,lowertri>::invoke(BigType& big, SmallType& small, typename
   using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
-  assert(rangeX == rangeY);
+//  assert(rangeX == rangeY);
 
   U bigNumRows = big.num_rows_local();
   U bigNumColumns = big.num_columns_local();
@@ -514,14 +514,14 @@ void serialize<uppertri,square>::invoke(SrcType& src, DestType& dest){
 }
 
 template<typename BigType, typename SmallType>
-void serialize<uppertri, square>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
+void serialize<uppertri,square>::invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
                                                         typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir){
 
   using T = typename BigType::ScalarType;
   using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
-  assert(rangeX == rangeY);
+//  assert(rangeX == rangeY);
 
   U bigNumRows = big.num_rows_local();
   U bigNumColumns = big.num_columns_local();
@@ -707,7 +707,7 @@ void serialize<uppertri,uppertri>::invoke(BigType& big, SmallType& small, typena
   using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
-  assert(rangeX == rangeY);
+//  assert(rangeX == rangeY);
 
   U bigNumColumns = big.num_columns_local();
 
@@ -800,7 +800,7 @@ void serialize<lowertri,square>::invoke(BigType& big, SmallType& small, typename
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
   std::cout << "rangeX,rangeY - " << rangeX << " " << rangeY << std::endl;
-  assert(rangeX == rangeY);
+//  assert(rangeX == rangeY);
 
   U bigNumRows = big.num_rows_local();
   U bigNumColumns = big.num_columns_local();

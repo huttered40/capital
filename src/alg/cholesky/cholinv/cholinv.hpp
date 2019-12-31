@@ -42,7 +42,7 @@ cholinv<SerializePolicy,OverlapRecursivePolicy>::invoke(MatrixAType& A, MatrixTI
   simulate(policy_table, policy_table_diaginv, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
            0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo), baseCaseDimList.first, baseCaseDimList.second, args.inv_cut_off_dim);
 
-  baseCaseDimList.first = (save >= globalDimension ? true : false);
+  baseCaseDimList.first = (save >= globalDimension ? true : false); baseCaseDimList.second.clear();
   factor(A, TI, policy_table, policy_table_diaginv, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
          0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo), baseCaseDimList.first, baseCaseDimList.second, args.inv_cut_off_dim);
   return baseCaseDimList;
@@ -70,7 +70,7 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::simulate(
 
   if (globalDimension <= bcDimension){
     simulate_basecase(base_case_table, base_case_blocked_table, base_case_cyclic_table, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
-                      AstartX, AendX, AstartY, AendY, RIstartX, RIendX, RIstartY, RIendY, std::forward<CommType>(CommInfo), isInversePath, inverseCutoffGlobalDimension, 'U');
+                      AstartX, AendX, AstartY, AendY, RIstartX, RIendX, RIstartY, RIendY, std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, 'U');
     return;
   }
 
@@ -99,7 +99,7 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::simulate(
     for (U i=saveIndexPrev; i<saveIndexAfter; i++){
       subBaseCaseDimList[i-saveIndexPrev] = baseCaseDimList[i];
     }
-    if (policy_table_diaginvert.find(std::make_pair(localShift,localShift)) == policy_table.end()){
+    if (policy_table_diaginvert.find(std::make_pair(localShift,localShift)) == policy_table_diaginvert.end()){
       policy_table_diaginvert.emplace(std::piecewise_construct,std::forward_as_tuple(std::make_pair(localShift,localShift)),std::forward_as_tuple(nullptr,localShift,localShift,CommInfo.d,CommInfo.d));
     } //TODO: Order of first two integers below might be switched
     simulate_solve(square_table1, square_table2, base_case_cyclic_table, std::forward<CommType>(CommInfo), localShift, reverseDimLocal, localShift, subBaseCaseDimList);
@@ -130,10 +130,13 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::simulate_basecase(
                      BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
                      int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
                      int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t matIstartX, int64_t matIendX, int64_t matIstartY, int64_t matIendY,
-                     CommType&& CommInfo, bool& isInversePath, int64_t inverseCutoffGlobalDimension, char dir){
+                     CommType&& CommInfo, bool& isInversePath, std::vector<int64_t>& baseCaseDimList, int64_t inverseCutoffGlobalDimension, char dir){
 
   using U = int64_t;
   assert(localDimension>0);
+  if (!isInversePath){
+    baseCaseDimList.push_back(localDimension);
+  }
   if (base_case_table.find(std::make_pair(AendX-AstartX,AendY-AstartY)) == base_case_table.end()){
     base_case_table.emplace(std::piecewise_construct,std::forward_as_tuple(std::make_pair(AendX-AstartX,AendY-AstartY)),std::forward_as_tuple(nullptr,AendX-AstartX,AendY-AstartY,CommInfo.d,CommInfo.d));
     // create the blocked and cyclic vectors as well
@@ -309,7 +312,6 @@ void cholinv<SerializePolicy,OverlapRecursivePolicy>::base_case(
   using Offload = typename MatrixAType::OffloadType;
 
   if (!isInversePath){
-    // Only save if we never got onto the inverse path
     baseCaseDimList.push_back(localDimension);
   }
   assert(localDimension>0);
