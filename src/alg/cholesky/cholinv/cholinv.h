@@ -33,8 +33,8 @@ public:
 
 private:
   template<typename MatrixAType, typename MatrixRIType, typename PolicyTableType, typename SquareTableType, typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
-  static void factor(MatrixAType& A, MatrixRIType& RI,
-                     PolicyTableType& policy_table, SquareTableType& square_table1, SquareTableType& square_table2, BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
+  static void factor(MatrixAType& A, MatrixRIType& RI, PolicyTableType& policy_table, PolicyTableType& policy_table_diaginvert,
+                     SquareTableType& square_table1, SquareTableType& square_table2, BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
                      typename MatrixAType::DimensionType localDimension, typename MatrixAType::DimensionType trueLocalDimension,
                      typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                      typename MatrixAType::DimensionType AstartX, typename MatrixAType::DimensionType AendX, typename MatrixAType::DimensionType AstartY,
@@ -54,10 +54,11 @@ private:
                  typename MatrixAType::DimensionType inverseCutoffGlobalDimension, char dir);
 
   template<typename PolicyTableType, typename SquareTableType, typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
-  static void simulate(PolicyTableType& policy_table, SquareTableType& square_table1, SquareTableType& square_table2, BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
+  static void simulate(PolicyTableType& policy_table, PolicyTableType& policy_table_diaginvert, SquareTableType& square_table1, SquareTableType& square_table2,
+                       BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
                        int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
                        int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t RIstartX, int64_t RIendX, int64_t RIstartY, int64_t RIendY,
-                       CommType&& CommInfo, bool& isInversePath, int64_t inverseCutoffGlobalDimension);
+                       CommType&& CommInfo, bool& isInversePath, std::vector<int64_t>& baseCaseDimList, int64_t inverseCutoffGlobalDimension);
 
   template<typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename BaseCaseCyclicTableType, typename CommType>
   static void simulate_basecase(BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
@@ -65,10 +66,13 @@ private:
                                 int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t matIstartX, int64_t matIendX, int64_t matIstartY, int64_t matIendY,
                                 CommType&& CommInfo, bool& isInversePath, int64_t inverseCutoffGlobalDimension, char dir);
 
-  template<typename MatrixLType, typename MatrixLIType, typename MatrixAType, typename CommType>
-  static void solve_lower_right(MatrixLType& L, MatrixLIType& LI, MatrixAType& A, CommType&& CommInfo,
-                               std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                               blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage);
+  template<typename SquareTableType, typename CommType>
+  static void simulate_solve(SquareTableType& square_table1, SquareTableType& square_table2, SquareTableType& square_table3, CommType&& CommInfo, int64_t num_cols_A,
+                             int64_t num_rows_A, int64_t num_cols_L, std::vector<int64_t>& baseCaseDimList);
+
+  template<typename MatrixLType, typename MatrixLIType, typename MatrixAType, typename SquareTableType, typename CommType>
+  static void solve(MatrixLType& L, MatrixLIType& LI, MatrixAType& A, SquareTableType& square_table1, SquareTableType& square_table2, SquareTableType& square_table3, CommType&& CommInfo,
+                    std::vector<typename MatrixAType::DimensionType>& baseCaseDimList, blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage);
 
   template<typename T, typename U>
   static void cyclic_to_local(T* storeT, T* storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice, char dir);
