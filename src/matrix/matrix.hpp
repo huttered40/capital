@@ -14,7 +14,7 @@ matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(U globalDim
   this->_globalDimensionY = {globalDimensionY};
 
   StructurePolicy::_assemble(this->_data, this->_scratch, this->_pad, this->_matrix, this->_numElems, this->_dimensionX, this->_dimensionY);
-  this->allocated_data=true;
+  this->allocated_data=true; this->filled=true;
   return;
 }
 
@@ -46,6 +46,7 @@ matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(T* data, U 
     StructurePolicy::_copy(this->_data, this->_scratch, this->_pad, this->_matrix, data, this->_dimensionX, this->_dimensionY);
     this->allocated_data=true;
   }
+  this->filled=true;
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
@@ -66,14 +67,28 @@ matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(T* data, U 
     this->allocated_data=false;
   }
   else{
-    StructurePolicy::_assemble(this->_data, this->_scratch, this->_pad, this->_matrix, this->_numElems, dimensionX, dimensionY);
+    StructurePolicy::_assemble(this->_data, this->_scratch, this->_pad, this->_matrix, this->_numElems, this->_dimensionX, this->_dimensionY);
     this->allocated_data=true;
   }
+  this->filled=true;
+}
+
+template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
+matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(T* data, U dimensionX, U dimensionY, U globalPgridX, U globalPgridY, bool){
+  this->_dimensionX = {dimensionX};
+  this->_dimensionY = {dimensionY};
+  this->_globalDimensionX = {dimensionX*globalPgridX};
+  this->_globalDimensionY = {dimensionY*globalPgridY};
+  this->_numElems = num_elems(dimensionX, dimensionY);	// will get overwritten if necessary
+  this->_data = data;					// will get overwritten if necessary
+  this->allocated_data=false;
+  this->filled=false;
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
 matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(const matrix& rhs){
   copy(rhs);
+  this->filled=true;
   return;
 }
 
@@ -81,6 +96,7 @@ template<typename T, typename U, typename StructurePolicy, typename Distribution
 matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::matrix(matrix&& rhs){
   // Use std::forward in the future.
   mover(std::move(rhs));
+  this->filled=true;
   return;
 }
 
@@ -89,26 +105,51 @@ matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>& matrix<T,U,Structu
   if (this != &rhs){
     copy(rhs);
   }
+  this->filled=true;
   return *this;
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
 matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>& matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::operator=(matrix&& rhs){
-  // Use std::forward in the future.
   if (this != &rhs){
     mover(std::move(rhs));
   }
+  this->filled=true;
   return *this;
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
 matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::~matrix(){
+  this->destroy();
+}
+
+template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
+void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::fill(){
+  if (this->filled != true){
+    if (this->_data != nullptr){
+      StructurePolicy::_assemble_matrix(this->_data, this->_scratch, this->_pad, this->_matrix, this->_dimensionX, this->_dimensionY);
+      this->allocated_data=false;
+    }
+    else{
+      StructurePolicy::_assemble(this->_data, this->_scratch, this->_pad, this->_matrix, this->_numElems, this->_dimensionX, this->_dimensionY);
+      this->allocated_data=true;
+    }
+    this->filled=true;
+  }
+}
+
+template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
+void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::destroy(){
   // Actually, now that we are purly using vectors, I don't think we need to delete anything. Once the instance
   //   of the class goes out of scope, the vector data gets deleted automatically.
-//  assert(this->danger==false);
-  if (this->_scratch != nullptr){ delete[] this->_scratch; this->_scratch=nullptr;}	// could add an assert here for StructurePolicy==lowertri,uppertri
-  if (this->_pad != nullptr){ delete[] this->_pad; this->_pad=nullptr;}	// could add an assert here for StructurePolicy==lowertri,uppertri
-  if (this->allocated_data && (this->_data != nullptr)){ delete[] this->_data; this->_data=nullptr;}
+  if (this->filled){
+    if (this->_scratch != nullptr){ delete[] this->_scratch; this->_scratch=nullptr;}	// could add an assert here for StructurePolicy==lowertri,uppertri
+    if (this->_pad != nullptr){ delete[] this->_pad; this->_pad=nullptr;}	// could add an assert here for StructurePolicy==lowertri,uppertri
+    if (this->allocated_data && (this->_data != nullptr)){ delete[] this->_data; this->_data=nullptr;}
+    this->allocated_data=false;
+    this->filled=false;
+  }
+  this->filled=false;
 }
 
 template<typename T, typename U, typename StructurePolicy, typename DistributionPolicy, typename OffloadPolicy>
@@ -120,6 +161,7 @@ void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::copy(const ma
   this->_globalDimensionY = {rhs._globalDimensionY};
   StructurePolicy::_copy(this->_data, this->_scratch, this->_pad, this->_matrix, rhs._data, this->_dimensionX, this->_dimensionY);
   this->allocated_data=true;
+  this->filled=true;
   return;
 }
 
@@ -138,6 +180,7 @@ void matrix<T,U,StructurePolicy,DistributionPolicy,OffloadPolicy>::mover(matrix&
   this->_scratch = rhs._scratch; rhs._scratch = nullptr;
   this->_pad = rhs._pad; rhs._pad = nullptr;
   this->allocated_data=rhs.allocated_data;
+  this->filled=rhs.filled_data;
   return;
 }
 

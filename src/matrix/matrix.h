@@ -21,13 +21,15 @@ public:
   explicit matrix(U globalDimensionX, U globalDimensionY, int64_t globalPgridX, int64_t globalPgridY);	// Regular constructor
   // Injection constructor below assumes data is stored in column-major format
   explicit matrix(T* data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U globalPgridX, U globalPgridY);			// Injection constructor
-  // Injection constructor below assumes data is nullptr
   explicit matrix(T* data, U dimensionX, U dimensionY, U globalPgridX, U globalPgridY);			// Injection constructor
+  explicit matrix(T* data, U dimensionX, U dimensionY, U globalPgridX, U globalPgridY, bool);			// Injection constructor
   matrix(const matrix& rhs);
   matrix(matrix&& rhs);
   matrix& operator=(const matrix& rhs);
   matrix& operator=(matrix&& rhs);
   ~matrix();
+  void fill();
+  void destroy();
 
   // automatically inlined
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
@@ -70,6 +72,7 @@ private:
   T* _pad;				// Extra storage for uppertri and lowertri structures only used in avoiding extra allocations in summa
   std::vector<T*> _matrix;		// Holds offsets into the columns of 1D array of data. So matrix[1] is the pointer to the starting address of the 1st column.
   bool allocated_data;			// Asks if the raw data was allocated by the user or ourselves
+  bool filled;				// Tracks whether the matrix instance has been filled with data in the 2-part construction
   bool danger;				// notifies me if default constructor was used.
 
   U _numElems;

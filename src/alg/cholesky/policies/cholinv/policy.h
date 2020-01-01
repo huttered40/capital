@@ -74,13 +74,13 @@ class Serialize{
 public:
   using structure = uppertri;
 
-  template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
-    using T = typename MatrixType::ScalarType;
-    using U = typename MatrixType::DimensionType;
-    U localDimension = Matrix.num_columns_local();
-    MPI_Allgather(Matrix.data(), Matrix.num_elems(), mpi_type<T>::type, &blocked[0], Matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
-    util::block_to_cyclic(blocked, cyclic, localDimension, localDimension, CommInfo.d, 'U');
+  template<typename TriMatrixType, typename SquareMatrixType, typename CommType>
+  static void invoke(TriMatrixType& matrix, std::vector<typename TriMatrixType::ScalarType>& blocked, SquareMatrixType& cyclic, CommType&& CommInfo){
+    using T = typename TriMatrixType::ScalarType;
+    using U = typename TriMatrixType::DimensionType;
+    U localDimension = matrix.num_columns_local();
+    MPI_Allgather(matrix.data(), matrix.num_elems(), mpi_type<T>::type, &blocked[0], matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
+    util::block_to_cyclic(blocked, cyclic.data(), localDimension, localDimension, CommInfo.d, 'U');
     return;
   }
 };
@@ -90,12 +90,12 @@ public:
   using structure = square;	// might need 'rect'
 
   template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
+  static void invoke(MatrixType& matrix, std::vector<typename MatrixType::ScalarType>& blocked, MatrixType& cyclic, CommType&& CommInfo){
     using T = typename MatrixType::ScalarType;
     using U = typename MatrixType::DimensionType;
-    U localDimension = Matrix.num_columns_local();
-    MPI_Allgather(Matrix.data(), Matrix.num_elems(), mpi_type<T>::type, &blocked[0], Matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
-    util::block_to_cyclic(&blocked[0], cyclic, localDimension, localDimension, CommInfo.d);
+    U localDimension = matrix.num_columns_local();
+    MPI_Allgather(matrix.data(), matrix.num_elems(), mpi_type<T>::type, &blocked[0], matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
+    util::block_to_cyclic(&blocked[0], cyclic.data(), localDimension, localDimension, CommInfo.d);
     return;
   }
 };
@@ -104,18 +104,41 @@ public:
 // ***********************************************************************************************************************************************************************
 class SaveIntermediates{
 public:
-
-  static void init(){
+  template<typename TableType, typename KeyType, typename... ValueTypes>
+  static void init(TableType& table, KeyType&& key, ValueTypes&&... values){
+    if (table.find(key) == table.end()){
+      table.emplace(std::piecewise_construct,std::forward_as_tuple(std::forward<KeyType>(key)),std::forward_as_tuple(std::forward<ValueTypes>(values)...));
+    }
   }
 
-  static void invoke(){
+  template<typename TableType, typename KeyType>
+  static inline typename TableType::mapped_type& invoke(TableType& table, KeyType&& key){
+    return table[std::forward<KeyType>(key)];
   }
 
-  static void flush(){}
+  template<typename MatrixType>
+  static void flush(MatrixType& matrix){}
 };
 
 class FlushIntermediates{
 public:
+  template<typename TableType, typename KeyType, typename... ValueTypes>
+  static void init(TableType& table, KeyType&& key, ValueTypes&&... values){
+    if (table.find(key) == table.end()){
+      table.emplace(std::piecewise_construct,std::forward_as_tuple(std::forward<KeyType>(key)),std::forward_as_tuple(std::forward<ValueTypes>(values)...,true));
+    }
+  }
+
+  template<typename TableType, typename KeyType>
+  static inline typename TableType::mapped_type& invoke(TableType& table, KeyType&& key){
+    table[std::forward<KeyType>(key)].fill();
+    return table[std::forward<KeyType>(key)];
+  }
+
+  template<typename MatrixType>
+  static void flush(MatrixType& matrix){
+    matrix.destroy();
+  }
 };
 // ***********************************************************************************************************************************************************************
 

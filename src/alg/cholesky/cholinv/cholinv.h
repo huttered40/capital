@@ -8,9 +8,9 @@
 #include "./../policies/cholinv/policy.h"
 
 namespace cholesky{
-template<class SerializePolicy        = policy::cholinv::Serialize,
-         class IntermediatesPolicy    = policy::cholinv::SaveIntermediates,
-         class OverlapPolicy = policy::cholinv::NoOverlap>
+template<class SerializePolicy     = policy::cholinv::Serialize,
+         class IntermediatesPolicy = policy::cholinv::SaveIntermediates,
+         class OverlapPolicy       = policy::cholinv::NoOverlap>
 class cholinv{
 public:
   // cholinv is not parameterized as its not dependent on any lower-level algorithmic type
