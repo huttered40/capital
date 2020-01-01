@@ -21,7 +21,8 @@ cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixAType& 
   auto bcMult = args.bc_mult_dim;
   if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal/=2;}
   else{for (int i=0;i<bcMult; i++) bcDimLocal*=2;}
-  bcDimLocal  = std::max(minDimLocal,bcDimLocal);	// min prevents recursing into a 0x0 local matrix
+  bcDimLocal  = std::max(minDimLocal,bcDimLocal);
+  bcDimLocal  = std::min(localDimension,bcDimLocal);
   U bcDimension = CommInfo.d*bcDimLocal;
 
   U save = globalDimension;
