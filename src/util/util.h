@@ -18,6 +18,9 @@ public:
   template<typename T, typename U>
   static void block_to_cyclic(T* blockedData, T* cyclicData, U localDimensionRows, U localDimensionColumns, int64_t sliceDim);
 
+  template<typename T, typename U>
+  static void cyclic_to_local(T* storeT, T* storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice);
+
   template<typename MatrixType, typename CommType>
   static void transpose(MatrixType& mat, CommType&& CommInfo);
 

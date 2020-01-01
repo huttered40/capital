@@ -156,6 +156,42 @@ void util::block_to_cyclic(T* blockedData, T* cyclicData, U localDimensionRows, 
   }
 }
 
+// This method can be called from Lower and Upper with one tweak, but note that currently, we iterate over the entire square,
+//   when we are really only writing to a triangle. So there is a source of optimization here at least in terms of
+//   number of flops, but in terms of memory accesses and cache lines, not sure. Note that with this optimization,
+//   we may need to separate into two different functions
+template<typename T, typename U>
+void util::cyclic_to_local(T* storeT, T* storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice){
+
+  U writeIndex = 0;
+  U rowOffsetWithinBlock = rankSlice / sliceDim;
+  U columnOffsetWithinBlock = rankSlice % sliceDim;
+  U numCyclicBlocksPerRowCol = localDimension/*bcDimension/sliceDim*/;
+  // modify bcDimension
+  bcDimension = localDimension*sliceDim;
+  // MACRO loop over all cyclic "blocks"
+  for (U i=0; i<numCyclicBlocksPerRowCol; i++){
+    // We know which row corresponds to our processor in each cyclic "block"
+    // Inner loop over all cyclic "blocks" partitioning up the columns
+    // Future improvement: only need to iterate over lower triangular.
+    for (U j=0; j<numCyclicBlocksPerRowCol; j++){
+      // We know which column corresponds to our processor in each cyclic "block"
+      // Future improvement: get rid of the inner if statement and separate out this inner loop into 2 loops
+      // Further improvement: use only triangular matrices and then invoke into a square later?
+      U readIndexCol = i*sliceDim + columnOffsetWithinBlock;
+      U readIndexRow = j*sliceDim + rowOffsetWithinBlock;
+      if (readIndexCol >= readIndexRow){
+        storeT[writeIndex] = storeT[readIndexCol*bcDimension + readIndexRow];
+        storeTI[writeIndex] = storeTI[readIndexCol*bcDimension + readIndexRow];
+      } else{
+        storeT[writeIndex] = 0.;
+        storeTI[writeIndex] = 0.;
+      }
+      writeIndex++;
+    }
+  }
+}
+
 template<typename MatrixType, typename CommType>
 void util::transpose(MatrixType& mat, CommType&& CommInfo){
 

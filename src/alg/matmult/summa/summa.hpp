@@ -89,6 +89,12 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
   }
   // We will follow the standard here: A is always the triangular matrix. B is always the rectangular matrix
   collect(B,std::forward<CommType>(CommInfo));
+  if (srcPackage.alpha != 0.){
+    // Future optimization: Reduce loop length by half since the update will be a symmetric matrix and only half will be used going forward.
+    for (U i=0; i<B.num_elems(); i++){
+      B.data()[i] = srcPackage.alpha*B.data()[i] + B.scratch()[i];
+    }
+  }
   // Reset before returning
   if (!std::is_same<StructureA,rect>::value){ A.swap_pad(); }
   if (!std::is_same<StructureB,rect>::value){ B.swap_pad(); }
