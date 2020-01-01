@@ -260,14 +260,13 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(
   // Next step : temp <- R_{12}*RI_{22}
   if (isInversePath){
     serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), AstartX+localShift, AendX, AstartY, AstartY+localShift);
-    serialize<square,typename SP::structure>::invoke(RI, IP::invoke(policy_table,std::make_pair(reverseDimLocal,reverseDimLocal)), RIstartX+localShift, RIendX, RIstartY+localShift, RIendY);
-    blas::ArgPack_trmm<T> invPackage1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-    matmult::summa::invoke(IP::invoke(policy_table,std::make_pair(reverseDimLocal,reverseDimLocal)), IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), std::forward<CommType>(CommInfo), invPackage1);
-    // Next step: finish the Triangular inverse calculation
-    invPackage1.alpha = -1.;
-    invPackage1.side = blas::Side::AblasLeft;
     serialize<square,typename SP::structure>::invoke(RI, IP::invoke(policy_table,std::make_pair(localShift,localShift)), RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift);
+    blas::ArgPack_trmm<T> invPackage1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     matmult::summa::invoke(IP::invoke(policy_table,std::make_pair(localShift,localShift)), IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), std::forward<CommType>(CommInfo), invPackage1);
+    // Next step: finish the Triangular inverse calculation
+    invPackage1.alpha = -1.; invPackage1.side = blas::Side::AblasRight;
+    serialize<square,typename SP::structure>::invoke(RI, IP::invoke(policy_table,std::make_pair(reverseDimLocal,reverseDimLocal)), RIstartX+localShift, RIendX, RIstartY+localShift, RIendY);
+    matmult::summa::invoke(IP::invoke(policy_table,std::make_pair(reverseDimLocal,reverseDimLocal)), IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), std::forward<CommType>(CommInfo), invPackage1);
     serialize<square,square>::invoke(RI, IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), RIstartX+localShift, RIendX, RIstartY, RIstartY+localShift, true);
   }
   IP::flush(square_table1[std::make_pair(reverseDimLocal,localShift)]); IP::flush(policy_table_diaginvert[std::make_pair(localShift,localShift)]); IP::flush(policy_table[std::make_pair(localShift,localShift)]);
