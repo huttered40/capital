@@ -19,9 +19,9 @@ public:
     using alg_type = cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>;
     pack(const pack& p) : complete_inv(p.complete_inv), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     pack(pack&& p) : complete_inv(p.complete_inv), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
-    pack(int64_t complete_inv, int64_t bc_mult_dim, char dir) : complete_inv(complete_inv), bc_mult_dim(bc_mult_dim), dir(dir) {}
-    const int64_t complete_inv;
-    const int64_t bc_mult_dim;
+    pack(U complete_inv, U bc_mult_dim, char dir) : complete_inv(complete_inv), bc_mult_dim(bc_mult_dim), dir(dir) {}
+    const U complete_inv;
+    const U bc_mult_dim;
     const char dir;
     std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure>> policy_table;
     std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure>> policy_table_diaginv;
