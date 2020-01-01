@@ -82,7 +82,7 @@ private:
   static inline void update_inverse_path(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension);
 
   template<typename U>
-  static inline void update_inverse_path_simulate(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, U localDimension);
+  static inline void simulate_update_inverse_path(U inverseCutoffGlobalDimension, U globalDimension, bool& isInversePath, U localDimension);
 };
 }
 

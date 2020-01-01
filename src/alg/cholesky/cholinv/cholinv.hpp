@@ -86,7 +86,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate(
   bool saveSwitch = isInversePath;
   size_t saveIndexPrev = baseCaseDimList.size();
 
-  update_inverse_path_simulate(inverseCutoffGlobalDimension, globalDimension, isInversePath, localDimension);
+  simulate_update_inverse_path(inverseCutoffGlobalDimension, globalDimension, isInversePath, localDimension);
   simulate(policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
     AstartX, AstartX+localShift, AstartY, AstartY+localShift, RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift, std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
   size_t saveIndexAfter = baseCaseDimList.size();
@@ -412,7 +412,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::update_inverse_
 
 template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename U>
-void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::update_inverse_path_simulate(U inverseCutoffGlobalDimension, U globalDimension,
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate_update_inverse_path(U inverseCutoffGlobalDimension, U globalDimension,
                                                                                      bool& isInversePath, U localDimension){
   if (inverseCutoffGlobalDimension >= globalDimension){
     if (isInversePath == false){
