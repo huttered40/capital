@@ -5,16 +5,14 @@
 
 // Local includes -- the policy classes
 #include "structure.h"
-#include "distribute.h"
 
-template<typename T, typename U = int64_t, typename StructurePolicy = rect, typename DistributionPolicy = cyclic, typename OffloadPolicy = OffloadEachGemm>
-class matrix : public StructurePolicy, DistributionPolicy{
+template<typename T = double, typename U = int64_t, typename StructurePolicy = rect, typename OffloadPolicy = OffloadEachGemm>
+class matrix : public StructurePolicy{
 public:
   // Type traits (some inherited from matrixBase)
   using ScalarType = T;
   using DimensionType = U;
   using StructureType = StructurePolicy;
-  using DistributionType = DistributionPolicy;
   using OffloadType = OffloadPolicy;
 
   explicit matrix(){this->danger=true; this->_data=nullptr; this->_scratch=nullptr; this->_pad=nullptr;}// = delete;

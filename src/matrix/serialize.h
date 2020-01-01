@@ -14,76 +14,6 @@ template<typename Structure1, typename Structure2>
 class serialize;
 
 template<>
-class serialize<square,square>{
-public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
-  template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
-};
-
-template<>
-class serialize<square,rect>{
-public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
-  template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
-};
-
-template<>
-class serialize<square,uppertri>{
-public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
-  template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
-};
-
-template<>
-class serialize<square,lowertri>{
-public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
-  template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
-};
-
-template<>
-class serialize<rect,square>{
-public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
-  template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
-};
-
-template<>
 class serialize<rect,rect>{
 public:
   template<typename SrcType>
@@ -126,20 +56,6 @@ public:
 };
 
 template<>
-class serialize<uppertri,square>{
-public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
-  template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
-};
-
-template<>
 class serialize<uppertri,rect>{
 public:
   template<typename SrcType>
@@ -155,20 +71,6 @@ public:
 
 template<>
 class serialize<uppertri,uppertri>{
-public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
-  template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
-};
-
-template<>
-class serialize<lowertri,square>{
 public:
   template<typename SrcType>
   static void invoke(SrcType& src);

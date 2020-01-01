@@ -13,7 +13,7 @@ template<class SerializePolicy     = policy::cholinv::Serialize,
          class OverlapPolicy       = policy::cholinv::NoOverlap>
 class cholinv{
 public:
-  // cholinv is not parameterized as its not dependent on any lower-level algorithmic type
+  template<typename T, typename U>
   class pack{
   public:
     using alg_type = cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>;
@@ -23,6 +23,13 @@ public:
     int64_t complete_inv;
     int64_t bc_mult_dim;
     char dir;
+    std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure>> policy_table;
+    std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure>> policy_table_diaginv;
+    std::map<std::pair<U,U>,matrix<T,U,rect>> square_table1;
+    std::map<std::pair<U,U>,matrix<T,U,rect>> square_table2;
+    std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure>> base_case_table;
+    std::map<std::pair<U,U>,std::vector<T>> base_case_blocked_table;
+    std::map<std::pair<U,U>,matrix<T,U,rect>> base_case_cyclic_table;
   };
 
   template<typename MatrixAType, typename MatrixTIType, typename ArgType, typename CommType>

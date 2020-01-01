@@ -11,20 +11,20 @@
 
 namespace qr{
 
-template<class SerializeSymmetricPolicy = policy::cacqr::SerializeSymmetricToTriangle>
+template<class SerializePolicy = policy::cacqr::Serialize>
 class cacqr{
 public:
   // cacqr is parameterized only by its cholesky-inverse factorization algorithm
-  template<typename CholeskyInversionType>
+  template<typename T, typename U, typename CholeskyInversionType>
   class pack{
   public:
-    using alg_type = cacqr<SerializeSymmetricPolicy>;
+    using alg_type = cacqr<SerializePolicy>;
     using cholesky_inverse_type = CholeskyInversionType;
-    pack(const pack& p) : cholesky_inverse_pack(p.cholesky_inverse_pack) {}
-    pack(pack&& p) : cholesky_inverse_pack(std::move(p.cholesky_inverse_pack)) {}
+    pack(const pack& p) : cholesky_inverse_args(p.cholesky_inverse_args) {}
+    pack(pack&& p) : cholesky_inverse_args(std::move(p.cholesky_inverse_args)) {}
     template<typename CholeskyInversionArgType>
     pack(CholeskyInversionArgType&& ci_args) : cholesky_inverse_args(std::forward<CholeskyInversionArgType>(ci_args)) {}
-    typename CholeskyInversionType::pack cholesky_inverse_args;
+    typename CholeskyInversionType::pack<T,U> cholesky_inverse_args;
     // cacqr takes no local parameters
   };
 
@@ -46,25 +46,23 @@ protected:
   static void invoke_3d(MatrixAType& A, MatrixRType& R, MatrixRType& RI, ArgType&& args, CommType&& CommInfo);
 
   template<typename MatrixAType, typename MatrixUType, typename MatrixUIType, typename CommType>
-  static void solve_upper_left(MatrixAType& A, MatrixUType& U, MatrixUIType& UI, CommType&& CommInfo,
-                               std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                               blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage);
+  static void solve(MatrixAType& A, MatrixUType& U, MatrixUIType& UI, CommType&& CommInfo, blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage);
 };
 
-template<class SerializeSymmetricPolicy = policy::cacqr::SerializeSymmetricToTriangle>
-class cacqr2 : public cacqr<SerializeSymmetricPolicy>{
+template<class SerializePolicy = policy::cacqr::Serialize>
+class cacqr2 : public cacqr<SerializePolicy>{
 public:
   // cacqr2 is parameterized only by its cholesky-inverse factorization algorithm
-  template<typename CholeskyInversionType>
+  template<typename T, typename U, typename CholeskyInversionType>
   class pack{
   public:
-    using alg_type = cacqr2<SerializeSymmetricPolicy>;
+    using alg_type = cacqr<SerializePolicy>;
     using cholesky_inverse_type = CholeskyInversionType;
-    pack(const pack& p) : cholesky_inverse_pack = p.cholesky_inverse_pack {}
-    pack(pack&& p) : cholesky_inverse_pack = std::move(p.cholesky_inverse_pack) {}
+    pack(const pack& p) : cholesky_inverse_args(p.cholesky_inverse_args) {}
+    pack(pack&& p) : cholesky_inverse_args(std::move(p.cholesky_inverse_args)) {}
     template<typename CholeskyInversionArgType>
     pack(CholeskyInversionArgType&& ci_args) : cholesky_inverse_args(std::forward<CholeskyInversionArgType>(ci_args)) {}
-    typename CholeskyInversionType::pack cholesky_inverse_args;
+    typename CholeskyInversionType::pack<T,U> cholesky_inverse_args;
     // cacqr2 takes no local parameters
   };
 

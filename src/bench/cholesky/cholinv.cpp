@@ -7,7 +7,7 @@ using namespace std;
 
 int main(int argc, char** argv){
   using T = double; using U = int64_t;
-  using MatrixTypeA = matrix<T,U,square,cyclic>;
+  using MatrixTypeA = matrix<T,U,rect>;
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
@@ -30,23 +30,23 @@ int main(int argc, char** argv){
   { 
     auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC,num_chunks);
     MatrixTypeA A(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
-    MatrixTypeA T(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
+    MatrixTypeA TI(globalMatrixSize,globalMatrixSize, SquareTopo.d, SquareTopo.d);
     MatrixTypeA saveA = A;
     double iterTimeGlobal,iterErrorGlobal;
-    // Generate algorithmic structure via instantiating packs
-    cholesky_type::pack pack(complete_inv,bcMultiplier,dir);
 
     for (size_t i=0; i<numIterations; i++){
+      // Generate algorithmic structure via instantiating packs
+      cholesky_type::pack<T,U> pack(complete_inv,bcMultiplier,dir);
       A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::start();
-      cholesky_type::invoke(A, T, pack, SquareTopo);
+      cholesky_type::invoke(A, TI, pack, SquareTopo);
       critter::stop();
 
       if (id>0){
         A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
         double startTime=MPI_Wtime();
-        cholesky_type::invoke(A, T, pack, SquareTopo);
+        cholesky_type::invoke(A, TI, pack, SquareTopo);
         double iterTimeLocal=MPI_Wtime() - startTime;
         MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
         if (id>1){

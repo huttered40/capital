@@ -41,12 +41,8 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& Co
   }
   // Reset before returning
   srcPackage.beta = save_beta;
-  if ((!std::is_same<StructureA,rect>::value) && (!std::is_same<StructureA,square>::value)){
-    A.swap_pad();
-  }
-  if ((!std::is_same<StructureB,rect>::value) && (!std::is_same<StructureB,square>::value)){
-    B.swap_pad();
-  }
+  if (!std::is_same<StructureA,rect>::value){ A.swap_pad(); }
+  if (!std::is_same<StructureB,rect>::value){ B.swap_pad(); }
   if (isRootRow){ A.swap(); }
   if (isRootColumn){ B.swap(); }
 }
@@ -94,12 +90,8 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
   // We will follow the standard here: A is always the triangular matrix. B is always the rectangular matrix
   collect(B,std::forward<CommType>(CommInfo));
   // Reset before returning
-  if ((!std::is_same<StructureA,rect>::value) && (!std::is_same<StructureA,square>::value)){
-    A.swap_pad();
-  }
-  if ((!std::is_same<StructureB,rect>::value) && (!std::is_same<StructureB,square>::value)){
-    B.swap_pad();
-  }
+  if (!std::is_same<StructureA,rect>::value){ A.swap_pad(); }
+  if (!std::is_same<StructureB,rect>::value){ B.swap_pad(); }
   if (isRootRow && srcPackage.side == blas::Side::AblasLeft){ A.swap(); }
   B.swap();	// unconditional swap, since B holds output
 }
@@ -155,9 +147,7 @@ void summa::invoke(MatrixAType& A, MatrixCType& C, CommType&& CommInfo,
     }
   } else{ C.swap(); }
   // Reset before returning
-  if ((!std::is_same<StructureA,rect>::value) && (!std::is_same<StructureA,square>::value)){
-    A.swap_pad();
-  }
+  if (!std::is_same<StructureA,rect>::value) { A.swap_pad(); }
   if (isRootRow){ A.swap(); }
 }
 
@@ -240,7 +230,6 @@ void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
   using U = typename MatrixAType::DimensionType;
   using StructureA = typename MatrixAType::StructureType;
   using StructureB = typename MatrixBType::StructureType;
-  using Distribution = typename MatrixAType::DistributionType;
   using Offload = typename MatrixAType::OffloadType;
 
   U localDimensionM = A.num_rows_local();
@@ -286,13 +275,11 @@ void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
     }
   }
 
-  if ((!std::is_same<StructureA,rect>::value) && (!std::is_same<StructureA,square>::value)){
-    serialize<StructureA,rect>::invoke(A);
-    A.swap_pad();
+  if (!std::is_same<StructureA,rect>::value){
+    serialize<StructureA,rect>::invoke(A); A.swap_pad();
   }
-  if ((!std::is_same<StructureB,rect>::value) && (!std::is_same<StructureB,square>::value)){
-    serialize<StructureB,rect>::invoke(B);
-    B.swap_pad();
+  if (!std::is_same<StructureB,rect>::value){
+    serialize<StructureB,rect>::invoke(B); B.swap_pad();
   }
 }
 

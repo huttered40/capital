@@ -87,7 +87,7 @@ public:
 
 class NoSerialize{
 public:
-  using structure = square;	// might need 'rect'
+  using structure = rect;	// might need 'rect'
 
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& matrix, std::vector<typename MatrixType::ScalarType>& blocked, MatrixType& cyclic, CommType&& CommInfo){

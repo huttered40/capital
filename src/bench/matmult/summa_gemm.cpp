@@ -7,9 +7,9 @@ using namespace std;
 
 int main(int argc, char** argv){
   using T = double; using U = int64_t;
-  using MatrixTypeR = matrix<T,U,rect,cyclic>;
-  using MatrixTypeLT = matrix<T,U,lowertri,cyclic>;
-  using MatrixTypeUT = matrix<T,U,uppertri,cyclic>;
+  using MatrixTypeR = matrix<T,U,rect>;
+  using MatrixTypeLT = matrix<T,U,lowertri>;
+  using MatrixTypeUT = matrix<T,U,uppertri>;
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);

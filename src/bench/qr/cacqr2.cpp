@@ -7,8 +7,8 @@ using namespace std;
 
 int main(int argc, char** argv){
   using T = double; using U = int64_t;
-  using MatrixTypeS = matrix<T,U,square,cyclic>;
-  using MatrixTypeR = matrix<T,U,rect,cyclic>;
+  using MatrixTypeS = matrix<T,U,rect>;
+  using MatrixTypeR = matrix<T,U,rect>;
 
   int rank,size,provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
@@ -24,20 +24,20 @@ int main(int argc, char** argv){
   size_t numIterations=atoi(argv[7]);
   size_t id = atoi(argv[8]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
-  using qr_type = typename qr::cacqr2<qr::policy::cacqr::SerializeSymmetricToTriangle>;
+  using qr_type = typename qr::cacqr2<>;
   {
     double iterTimeGlobal = 0; double iterTimeLocal = 0;
     T residualErrorGlobal,orthogonalityErrorGlobal;
     auto mpi_dtype = mpi_type<T>::type;
     auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC, num_chunks);
-    // Generate algorithmic structure via instantiating packs
-    cholesky::cholinv<>::pack ci_pack(complete_inv,bcMultiplier,'U');
-    qr_type::pack<decltype(ci_pack)::alg_type> pack(ci_pack);
     MatrixTypeR A(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);
     MatrixTypeS R(globalMatrixDimensionN,globalMatrixDimensionN, RectTopo.c, RectTopo.c);
     MatrixTypeR saveA = A;
 
     for (size_t i=0; i<numIterations; i++){
+      // Generate algorithmic structure via instantiating packs
+      cholesky::cholinv<>::pack<T,U> ci_pack(complete_inv,bcMultiplier,'U');
+      qr_type::pack<T,U,decltype(ci_pack)::alg_type> pack(ci_pack);
       // reset the matrix before timer starts
       A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together

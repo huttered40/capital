@@ -22,13 +22,10 @@ int main(int argc, char** argv){
   size_t id = atoi(argv[8]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   auto mpi_dtype = mpi_type<T>::type;
-  using qr_type = typename qr::cacqr2<qr::policy::cacqr::SerializeSymmetricToTriangle>;
+  using qr_type = typename qr::cacqr2<>;
   {
     double iterTimeGlobal = 0; double iterTimeLocal = 0;
     auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC, num_chunks);
-    // Generate algorithmic structure via instantiating packs
-    cholesky::cholinv<>::pack ci_pack(complete_inv,bcMultiplier,'U');
-    qr_type::pack<decltype(ci_pack)::alg_type> pack(ci_pack);
     //TODO: deal with non-power-2 later
     U localMatrixDimensionM = (globalMatrixDimensionM/RectTopo.d);
     U localMatrixDimensionN = (globalMatrixDimensionN/RectTopo.c);
@@ -36,6 +33,9 @@ int main(int argc, char** argv){
     T* R     = new T[localMatrixDimensionN * localMatrixDimensionN];
 
     for (size_t i=0; i<numIterations; i++){
+      // Generate algorithmic structure via instantiating packs
+      cholesky::cholinv<>::pack<T,U> ci_pack(complete_inv,bcMultiplier,'U');
+      qr_type::pack<T,U,decltype(ci_pack)::alg_type> pack(ci_pack);
       // reset the matrix before timer starts
       util::random_fill(A, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
