@@ -3,8 +3,7 @@
 namespace cholesky{
 template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename MatrixAType, typename MatrixTIType, typename ArgType, typename CommType>
-std::pair<bool,std::vector<typename MatrixAType::DimensionType>>
-cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixAType& A, MatrixTIType& TI, ArgType&& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixAType& A, MatrixTIType& TI, ArgType&& args, CommType&& CommInfo){
 
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
   using T = typename MatrixAType::ScalarType;
@@ -25,13 +24,6 @@ cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixAType& 
   bcDimLocal  = std::min(localDimension,bcDimLocal);
   U bcDimension = CommInfo.d*bcDimLocal;
 
-  U save = globalDimension;
-  for (size_t i=0; i<args.inv_cut_off_dim; i++){
-    save >>= 1;
-  }
-  save = std::max(localDimension*2,save);
-  std::pair<bool,std::vector<int64_t>> baseCaseDimList;
-
   // Pre-allocate recursive matrix<> instances for intermediate (non-base-case) matrix multiplications
   std::map<std::pair<U,U>,matrix<T,U,typename SP::structure,Distribution,Offload>> policy_table;
   std::map<std::pair<U,U>,matrix<T,U,typename SP::structure,Distribution,Offload>> policy_table_diaginv;
@@ -41,17 +33,12 @@ cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixAType& 
   std::map<std::pair<U,U>,std::vector<T>> base_case_blocked_table;
   std::map<std::pair<U,U>,matrix<T,U,Structure,Distribution,Offload>> base_case_cyclic_table;	// assume Structure == rect or square
 
-  baseCaseDimList.first = (save >= globalDimension ? true : false);
   simulate(policy_table, policy_table_diaginv, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-           0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo), baseCaseDimList.first, baseCaseDimList.second, args.inv_cut_off_dim);
-
-  baseCaseDimList.first = (save >= globalDimension ? true : false); baseCaseDimList.second.clear();
+           0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, args.complete_inv, std::forward<CommType>(CommInfo));
   factor(A, TI, policy_table, policy_table_diaginv, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, localDimension, localDimension, bcDimension, globalDimension, globalDimension,
-         0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, std::forward<CommType>(CommInfo), baseCaseDimList.first, baseCaseDimList.second, args.inv_cut_off_dim);
-  return baseCaseDimList;
+         0, localDimension, 0, localDimension, 0, localDimension, 0, localDimension, args.complete_inv, std::forward<CommType>(CommInfo));
 }
 
-//TODO: Notice how this routine does not pass back a list of integers like the other invoke method. Should this be supported?
 template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename T, typename U, typename ArgType, typename CommType>
 std::pair<T*,T*> cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(T* A, T* TI, U localDim, U globalDim, ArgType&& args, CommType&& CommInfo){
@@ -68,54 +55,30 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate(
                            PolicyTableType& policy_table, PolicyTableType& policy_table_diaginvert, SquareTableType& square_table1, SquareTableType& square_table2,
                            BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
                            int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
-                           int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t RIstartX, int64_t RIendX, int64_t RIstartY, int64_t RIendY,
-                           CommType&& CommInfo, bool& isInversePath, std::vector<int64_t>& baseCaseDimList, int64_t inverseCutoffGlobalDimension){
+                           int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t RIstartX, int64_t RIendX, int64_t RIstartY, int64_t RIendY, bool complete_inv, CommType&& CommInfo){
 
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
   using U = int64_t;
   if (globalDimension <= bcDimension){
     simulate_basecase(base_case_table, base_case_blocked_table, base_case_cyclic_table, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
-                      AstartX, AendX, AstartY, AendY, RIstartX, RIendX, RIstartY, RIendY, std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, 'U');
+                      AstartX, AendX, AstartY, AendY, RIstartX, RIendX, RIstartY, RIendY, std::forward<CommType>(CommInfo));
     return;
   }
 
-  U localShift = (localDimension>>1);
-  localShift = util::get_next_power2(localShift);
-  U globalShift = (globalDimension>>1);
-  U reverseDimLocal = localDimension-localShift;
-  U reverseDimGlobal = reverseDimLocal*CommInfo.d;
-  bool saveSwitch = isInversePath;
-  size_t saveIndexPrev = baseCaseDimList.size();
+  U cut1 = (localDimension>>1); cut1 = util::get_next_power2(cut1); U cut2 = localDimension-cut1;
+  simulate(policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, cut1, trueLocalDimension, bcDimension, (globalDimension>>1), trueGlobalDimension,
+    AstartX, AstartX+cut1, AstartY, AstartY+cut1, RIstartX, RIstartX+cut1, RIstartY, RIstartY+cut1, complete_inv, std::forward<CommType>(CommInfo));
 
-  simulate_update_inverse_path(inverseCutoffGlobalDimension, globalDimension, isInversePath, localDimension);
-  simulate(policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
-    AstartX, AstartX+localShift, AstartY, AstartY+localShift, RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift, std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
-  size_t saveIndexAfter = baseCaseDimList.size();
+  IP::init(policy_table,std::make_pair(cut1,cut1),nullptr,cut1,cut1,CommInfo.d,CommInfo.d);
+  IP::init(square_table1,std::make_pair(cut2,cut1),nullptr,cut2,cut1,CommInfo.d,CommInfo.d);
+  IP::init(square_table2,std::make_pair(cut2,cut2),nullptr,cut2,cut2,CommInfo.d,CommInfo.d);	// this might be a problem. It was coupled before
+  simulate(policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, cut2, trueLocalDimension, bcDimension,
+           globalDimension-(globalDimension>>1), trueGlobalDimension, AstartX+cut1, AendX, AstartY+cut1, AendY, RIstartX+cut1, RIendX, RIstartY+cut1, RIendY, complete_inv, std::forward<CommType>(CommInfo));
 
-  IP::init(policy_table,std::make_pair(localShift,localShift),nullptr,localShift,localShift,CommInfo.d,CommInfo.d);
-  if (!((isInversePath) || (globalDimension == inverseCutoffGlobalDimension*2))){
-    // create a new subvector
-    U len = saveIndexAfter - saveIndexPrev;
-    std::vector<U> subBaseCaseDimList(len);
-    for (U i=saveIndexPrev; i<saveIndexAfter; i++){
-      subBaseCaseDimList[i-saveIndexPrev] = baseCaseDimList[i];
-    }
-    IP::init(policy_table_diaginvert,std::make_pair(localShift,localShift),nullptr,localShift,localShift,CommInfo.d,CommInfo.d);
-    //TODO: Order of first two integers below might be switched
-    simulate_solve(square_table1, square_table2, base_case_cyclic_table, std::forward<CommType>(CommInfo), localShift, reverseDimLocal, localShift, subBaseCaseDimList);
+  if (!(!complete_inv && (globalDimension==trueGlobalDimension))){
+    IP::init(policy_table,std::make_pair(cut1,cut1),nullptr,cut1,cut1,CommInfo.d,CommInfo.d);
+    IP::init(policy_table,std::make_pair(cut2,cut2),nullptr,cut2,cut2,CommInfo.d,CommInfo.d);
   }
-
-  IP::init(square_table1,std::make_pair(reverseDimLocal,localShift),nullptr,reverseDimLocal,localShift,CommInfo.d,CommInfo.d);
-  IP::init(square_table2,std::make_pair(reverseDimLocal,reverseDimLocal),nullptr,reverseDimLocal,reverseDimLocal,CommInfo.d,CommInfo.d);	// this might be a problem. It was coupled before
-  simulate(policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table,
-           reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal, trueGlobalDimension,
-           AstartX+localShift, AendX, AstartY+localShift, AendY, RIstartX+localShift, RIendX, RIstartY+localShift, RIendY, std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
-
-  if (isInversePath){
-    IP::init(policy_table,std::make_pair(localShift,localShift),nullptr,localShift,localShift,CommInfo.d,CommInfo.d);
-    IP::init(policy_table,std::make_pair(reverseDimLocal,reverseDimLocal),nullptr,reverseDimLocal,reverseDimLocal,CommInfo.d,CommInfo.d);
-  }
-  isInversePath = saveSwitch;
 }
 
 template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
@@ -123,55 +86,14 @@ template<typename BaseCaseTableType, typename BaseCaseBlockedTableType, typename
 void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate_basecase(
                      BaseCaseTableType& base_case_table, BaseCaseBlockedTableType& base_case_blocked_table, BaseCaseCyclicTableType& base_case_cyclic_table,
                      int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
-                     int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t matIstartX, int64_t matIendX, int64_t matIstartY, int64_t matIendY,
-                     CommType&& CommInfo, bool& isInversePath, std::vector<int64_t>& baseCaseDimList, int64_t inverseCutoffGlobalDimension, char dir){
+                     int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t matIstartX, int64_t matIendX, int64_t matIstartY, int64_t matIendY, CommType&& CommInfo){
 
-  using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
-  using U = int64_t;
+  using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy; using U = int64_t;
   assert(localDimension>0);
-  if (!isInversePath){baseCaseDimList.push_back(localDimension);}
-  IP::init(base_case_table,        std::make_pair(AendX-AstartX,AendY-AstartY), nullptr,AendX-AstartX,AendY-AstartY,CommInfo.d,CommInfo.d);
+  IP::init(base_case_table, std::make_pair(AendX-AstartX,AendY-AstartY), nullptr,AendX-AstartX,AendY-AstartY,CommInfo.d,CommInfo.d);
   U num_elems = base_case_table[std::make_pair(AendX-AstartX,AendY-AstartY)].num_elems()*CommInfo.d*CommInfo.d;
   IP::init(base_case_blocked_table,std::make_pair(AendX-AstartX,AendY-AstartY), num_elems);
   IP::init(base_case_cyclic_table, std::make_pair(AendX-AstartX,AendY-AstartY),nullptr,bcDimension,bcDimension,CommInfo.d,CommInfo.d);
-  return;
-}
-
-// For solving LA=B for A. But note that B is being modified in place and will turn into A
-template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
-template<typename SquareTableType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate_solve(SquareTableType& square_table1, SquareTableType& square_table2, SquareTableType& square_table3, CommType&& CommInfo, int64_t num_cols_A,
-                                                                     int64_t num_rows_A, int64_t num_cols_L, std::vector<int64_t>& baseCaseDimList){
-
-  using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
-  using U = int64_t;
-
-  U AendX = num_cols_A; U AendY = num_rows_A; U matLendX = num_cols_L;
-  U offset1 = 0; U offset2 = baseCaseDimList[0]; U offset3 = 0;
-  // Note that the beginning cases might not be correct. They are not currently used for anything though.
-  U arg1 = offset1; U arg2 = matLendX; U arg3 = offset3; U arg4 = offset1;
-
-  for (U i=0; i<baseCaseDimList.size(); i++){
-    // Only update once first panel is solved
-    if (i>0){
-      // As i increases, the size of these updates gets smaller.
-      // Special handling. This might only work since the triangular matrix is square, which should be ok
-      // Note that the beginning cases might not be correct. They are not currently used for anything though.
-      arg1 = offset1; arg2 = matLendX; arg3 = offset3; arg4 = offset1;
-      IP::init(square_table1,std::make_pair(arg2-arg1,arg4-arg3),nullptr,arg2-arg1,arg4-arg3,CommInfo.d,CommInfo.d);
-      IP::init(square_table2,std::make_pair(AendX,offset1-offset3),nullptr,AendX,offset1-offset3,CommInfo.d,CommInfo.d);
-      IP::init(square_table3,std::make_pair(AendX,AendY-offset1),nullptr,AendX,AendY-offset1,CommInfo.d,CommInfo.d);
-    }
-
-    IP::init(square_table1,std::make_pair(offset2-offset1,offset2-offset1),nullptr,offset2-offset1,offset2-offset1,CommInfo.d,CommInfo.d);
-    IP::init(square_table2,std::make_pair(AendX,offset2-offset1),nullptr,AendX,offset2-offset1,CommInfo.d,CommInfo.d);
-    if ((i+1) < baseCaseDimList.size()){
-      // Update the offsets
-      offset3 = offset1;
-      offset1 = offset2;
-      offset2 += baseCaseDimList[i+1];
-    }
-  }
 }
 
 template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
@@ -183,95 +105,53 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(
                            typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                            typename MatrixAType::DimensionType AstartX, typename MatrixAType::DimensionType AendX, typename MatrixAType::DimensionType AstartY,
                            typename MatrixAType::DimensionType AendY, typename MatrixAType::DimensionType RIstartX, typename MatrixAType::DimensionType RIendX,
-                           typename MatrixAType::DimensionType RIstartY, typename MatrixAType::DimensionType RIendY,
-                           CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                           typename MatrixAType::DimensionType inverseCutoffGlobalDimension){
+                           typename MatrixAType::DimensionType RIstartY, typename MatrixAType::DimensionType RIendY, bool complete_inv, CommType&& CommInfo){
 
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
-  using Distribution = typename MatrixAType::DistributionType;
-  using Offload = typename MatrixAType::OffloadType;
+  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
+  using Distribution = typename MatrixAType::DistributionType; using Offload = typename MatrixAType::OffloadType;
   if (globalDimension <= bcDimension){
     base_case(A, RI, base_case_table, base_case_blocked_table, base_case_cyclic_table, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
-             AstartX, AendX, AstartY, AendY, RIstartX, RIendX, RIstartY, RIendY, std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension, 'U');
+             AstartX, AendX, AstartY, AendY, RIstartX, RIendX, RIstartY, RIendY, std::forward<CommType>(CommInfo));
     return;
   }
 
-  U localShift = (localDimension>>1);
-  // move localShift up to the next power of 2
-  localShift = util::get_next_power2(localShift);
-  U globalShift = (globalDimension>>1);
-  U reverseDimLocal = localDimension-localShift;
-  U reverseDimGlobal = reverseDimLocal*CommInfo.d;
-  bool saveSwitch = isInversePath;
-  size_t saveIndexPrev = baseCaseDimList.size();
+  U cut1 = (localDimension>>1); cut1 = util::get_next_power2(cut1); U cut2 = localDimension-cut1;
+  factor(A, RI, policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, cut1, trueLocalDimension, bcDimension,
+         (globalDimension>>1), trueGlobalDimension, AstartX, AstartX+cut1, AstartY, AstartY+cut1, RIstartX, RIstartX+cut1, RIstartY, RIstartY+cut1, complete_inv, std::forward<CommType>(CommInfo));
 
-  update_inverse_path(inverseCutoffGlobalDimension, globalDimension, isInversePath, baseCaseDimList, localDimension);
-  factor(A, RI, policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, localShift, trueLocalDimension, bcDimension, globalShift, trueGlobalDimension,
-         AstartX, AstartX+localShift, AstartY, AstartY+localShift, RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift,
-         std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
-
-  size_t saveIndexAfter = baseCaseDimList.size();
-
-  serialize<square,typename SP::structure>::invoke(RI, IP::invoke(policy_table,std::make_pair(localShift,localShift)), RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift);
-  util::transpose(IP::invoke(policy_table,std::make_pair(localShift,localShift)), std::forward<CommType>(CommInfo));
+  serialize<square,typename SP::structure>::invoke(RI, IP::invoke(policy_table,std::make_pair(cut1,cut1)), RIstartX, RIstartX+cut1, RIstartY, RIstartY+cut1);
+  util::transpose(IP::invoke(policy_table,std::make_pair(cut1,cut1)), std::forward<CommType>(CommInfo));
   blas::ArgPack_trmm<T> trmmArgs(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
 
   // 2nd case: Extra optimization for the case when we only perform TRSM at the top level.
-  if ((isInversePath) || (globalDimension == inverseCutoffGlobalDimension*2)){
-    serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), AstartX+localShift, AendX, AstartY, AstartY+localShift);
-    matmult::summa::invoke(IP::invoke(policy_table,std::make_pair(localShift,localShift)), IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), std::forward<CommType>(CommInfo), trmmArgs);
-    serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), AstartX+localShift, AendX, AstartY, AstartY+localShift, true);
-  }
-  else{
-    blas::ArgPack_gemm<T> trsmArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasTrans, blas::Transpose::AblasNoTrans, 1., 0.);
-    // create a new subvector
-    U len = saveIndexAfter - saveIndexPrev; std::vector<U> subBaseCaseDimList(len);
-    for (U i=saveIndexPrev; i<saveIndexAfter; i++){
-      subBaseCaseDimList[i-saveIndexPrev] = baseCaseDimList[i];
-    }
-    // make extra copy to avoid corrupting A
-    // Future optimization: Copy a part of A into Acopy, to avoid excessing copying
-    // Note: some of these globalShifts are wrong, but I don't know any easy way to fix them. Everything might still work though.
-    serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), AstartX+localShift, AendX, AstartY, AstartY+localShift);
-    // Also need to serialize top-left quadrant of L so that its size matches packedMatrix
-    serialize<square,typename SP::structure>::invoke(A, IP::invoke(policy_table_diaginvert,std::make_pair(localShift,localShift)), AstartX, AstartX+localShift, AstartY, AstartY+localShift);
-    // Swap, same as we did with inverse
-    util::transpose(IP::invoke(policy_table_diaginvert,std::make_pair(localShift,localShift)), std::forward<CommType>(CommInfo));
-    blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
-      blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
-    solve(IP::invoke(policy_table_diaginvert,std::make_pair(localShift,localShift)), IP::invoke(policy_table,std::make_pair(localShift,localShift)),
-          IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), square_table1, square_table2, base_case_cyclic_table, std::forward<CommType>(CommInfo), subBaseCaseDimList, trsmArgs);
-    // Inject back into R, TODO: Im skeptical that square_table1 is not correct, or was overwritten in solve
-    serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), AstartX+localShift, AendX, AstartY, AstartY+localShift, true);
-  }
+  serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(cut2,cut1)), AstartX+cut1, AendX, AstartY, AstartY+cut1);
+  matmult::summa::invoke(IP::invoke(policy_table,std::make_pair(cut1,cut1)), IP::invoke(square_table1,std::make_pair(cut2,cut1)), std::forward<CommType>(CommInfo), trmmArgs);
+  serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(cut2,cut1)), AstartX+cut1, AendX, AstartY, AstartY+cut1, true);
 
   blas::ArgPack_syrk<T> syrkArgs(blas::Order::AblasColumnMajor, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, -1., 1.);
-  serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), AstartX+localShift, AendX, AstartY, AstartY+localShift);
-  serialize<square,square>::invoke(A, IP::invoke(square_table2,std::make_pair(reverseDimLocal,reverseDimLocal)), AstartX+localShift, AendX, AstartY+localShift, AendY);
-  matmult::summa::invoke(IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), IP::invoke(square_table2,std::make_pair(reverseDimLocal,reverseDimLocal)), std::forward<CommType>(CommInfo), syrkArgs);
-  serialize<square,square>::invoke(A, IP::invoke(square_table2,std::make_pair(reverseDimLocal,reverseDimLocal)), AstartX+localShift, AendX, AstartY+localShift, AendY, true);
+  serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(cut2,cut1)), AstartX+cut1, AendX, AstartY, AstartY+cut1);
+  serialize<square,square>::invoke(A, IP::invoke(square_table2,std::make_pair(cut2,cut2)), AstartX+cut1, AendX, AstartY+cut1, AendY);
+  matmult::summa::invoke(IP::invoke(square_table1,std::make_pair(cut2,cut1)), IP::invoke(square_table2,std::make_pair(cut2,cut2)), std::forward<CommType>(CommInfo), syrkArgs);
+  serialize<square,square>::invoke(A, IP::invoke(square_table2,std::make_pair(cut2,cut2)), AstartX+cut1, AendX, AstartY+cut1, AendY, true);
 
-  factor(A, RI, policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, reverseDimLocal, trueLocalDimension, bcDimension, reverseDimGlobal, trueGlobalDimension,
-         AstartX+localShift, AendX, AstartY+localShift, AendY, RIstartX+localShift, RIendX, RIstartY+localShift, RIendY,
-         std::forward<CommType>(CommInfo), isInversePath, baseCaseDimList, inverseCutoffGlobalDimension);
+  factor(A, RI, policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, cut2, trueLocalDimension, bcDimension,
+         globalDimension-(globalDimension>>1), trueGlobalDimension, AstartX+cut1, AendX, AstartY+cut1, AendY, RIstartX+cut1, RIendX, RIstartY+cut1, RIendY, complete_inv, std::forward<CommType>(CommInfo));
 
   // Next step : temp <- R_{12}*RI_{22}
-  if (isInversePath){
-    serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), AstartX+localShift, AendX, AstartY, AstartY+localShift);
-    serialize<square,typename SP::structure>::invoke(RI, IP::invoke(policy_table,std::make_pair(localShift,localShift)), RIstartX, RIstartX+localShift, RIstartY, RIstartY+localShift);
+  if (!(!complete_inv && (globalDimension==trueGlobalDimension))){
+    serialize<square,square>::invoke(A, IP::invoke(square_table1,std::make_pair(cut2,cut1)), AstartX+cut1, AendX, AstartY, AstartY+cut1);
+    serialize<square,typename SP::structure>::invoke(RI, IP::invoke(policy_table,std::make_pair(cut1,cut1)), RIstartX, RIstartX+cut1, RIstartY, RIstartY+cut1);
     blas::ArgPack_trmm<T> invPackage1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-    matmult::summa::invoke(IP::invoke(policy_table,std::make_pair(localShift,localShift)), IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), std::forward<CommType>(CommInfo), invPackage1);
+    matmult::summa::invoke(IP::invoke(policy_table,std::make_pair(cut1,cut1)), IP::invoke(square_table1,std::make_pair(cut2,cut1)), std::forward<CommType>(CommInfo), invPackage1);
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.; invPackage1.side = blas::Side::AblasRight;
-    serialize<square,typename SP::structure>::invoke(RI, IP::invoke(policy_table,std::make_pair(reverseDimLocal,reverseDimLocal)), RIstartX+localShift, RIendX, RIstartY+localShift, RIendY);
-    matmult::summa::invoke(IP::invoke(policy_table,std::make_pair(reverseDimLocal,reverseDimLocal)), IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), std::forward<CommType>(CommInfo), invPackage1);
-    serialize<square,square>::invoke(RI, IP::invoke(square_table1,std::make_pair(reverseDimLocal,localShift)), RIstartX+localShift, RIendX, RIstartY, RIstartY+localShift, true);
+    serialize<square,typename SP::structure>::invoke(RI, IP::invoke(policy_table,std::make_pair(cut2,cut2)), RIstartX+cut1, RIendX, RIstartY+cut1, RIendY);
+    matmult::summa::invoke(IP::invoke(policy_table,std::make_pair(cut2,cut2)), IP::invoke(square_table1,std::make_pair(cut2,cut1)), std::forward<CommType>(CommInfo), invPackage1);
+    serialize<square,square>::invoke(RI, IP::invoke(square_table1,std::make_pair(cut2,cut1)), RIstartX+cut1, RIendX, RIstartY, RIstartY+cut1, true);
   }
-  IP::flush(square_table1[std::make_pair(reverseDimLocal,localShift)]); IP::flush(policy_table_diaginvert[std::make_pair(localShift,localShift)]); IP::flush(policy_table[std::make_pair(localShift,localShift)]);
-  IP::flush(square_table2[std::make_pair(reverseDimLocal,reverseDimLocal)]); IP::flush(policy_table[std::make_pair(reverseDimLocal,reverseDimLocal)]);
-  isInversePath = saveSwitch;
+  IP::flush(square_table1[std::make_pair(cut2,cut1)]); IP::flush(policy_table_diaginvert[std::make_pair(cut1,cut1)]); IP::flush(policy_table[std::make_pair(cut1,cut1)]);
+  IP::flush(square_table2[std::make_pair(cut2,cut2)]); IP::flush(policy_table[std::make_pair(cut2,cut2)]);
 }
 
 
@@ -283,18 +163,11 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::base_case(
                      typename MatrixAType::DimensionType bcDimension, typename MatrixAType::DimensionType globalDimension, typename MatrixAType::DimensionType trueGlobalDimension,
                      typename MatrixAType::DimensionType AstartX, typename MatrixAType::DimensionType AendX, typename MatrixAType::DimensionType AstartY,
                      typename MatrixAType::DimensionType AendY, typename MatrixAType::DimensionType matIstartX, typename MatrixAType::DimensionType matIendX,
-                     typename MatrixAType::DimensionType matIstartY, typename MatrixAType::DimensionType matIendY,
-                     CommType&& CommInfo, bool& isInversePath, std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                     typename MatrixAType::DimensionType inverseCutoffGlobalDimension, char dir){
+                     typename MatrixAType::DimensionType matIstartY, typename MatrixAType::DimensionType matIendY, CommType&& CommInfo){
 
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
-  using Distribution = typename MatrixAType::DistributionType;
-  using Offload = typename MatrixAType::OffloadType;
-
-  if (!isInversePath){baseCaseDimList.push_back(localDimension);}
-  assert(localDimension>0);
+  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
+  using Distribution = typename MatrixAType::DistributionType; using Offload = typename MatrixAType::OffloadType;
 
   // No matter what path we are on, if we get into the base case, we will do regular Cholesky + Triangular inverse
   // First: AllGather matrix A so that every processor has the same replicated diagonal square partition of matrix A of dimension bcDimension
@@ -306,7 +179,6 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::base_case(
   // Fourth: Save the data that each processor owns according to the cyclic rule.
 
   int rankSlice; MPI_Comm_rank(CommInfo.slice, &rankSlice);
-
   auto index_pair = std::make_pair(AendX-AstartX,AendY-AstartY);
   serialize<square,typename SP::structure>::invoke(A, IP::invoke(base_case_table,index_pair), AstartX, AendX, AstartY, AendY);
   SP::invoke(IP::invoke(base_case_table,index_pair),base_case_blocked_table[index_pair],IP::invoke(base_case_cyclic_table,index_pair),std::forward<CommType>(CommInfo));
@@ -333,22 +205,21 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::base_case(
         deepBaseCaseInvFill[i*checkDim+j] = deepBaseCaseInv[i*finalDim+j];
       }
     }
-    cyclic_to_local(&deepBaseCaseFill[0], &deepBaseCaseInvFill[0], localDimension, globalDimension, bcDimension, CommInfo.d, rankSlice, dir);
+    cyclic_to_local(&deepBaseCaseFill[0], &deepBaseCaseInvFill[0], localDimension, globalDimension, bcDimension, CommInfo.d, rankSlice);
     matrix<T,U,square,Distribution,Offload> tempMat(&deepBaseCaseFill[0], localDimension, localDimension, CommInfo.d, CommInfo.d);
     matrix<T,U,square,Distribution,Offload> tempMatInv(&deepBaseCaseInvFill[0], localDimension, localDimension, CommInfo.d, CommInfo.d);
     serialize<square,square>::invoke(A, tempMat, AstartY, AendY, AstartY, AendY, true);
     serialize<square,square>::invoke(I, tempMatInv, matIstartX, matIendX, matIstartY, matIendY, true);
   }
   else{
-    auto index_pair = std::make_pair(AendX-AstartX,AendY-AstartY);
-    U fTranDim1 = localDimension*CommInfo.d;
+    auto index_pair = std::make_pair(AendX-AstartX,AendY-AstartY); U fTranDim1 = localDimension*CommInfo.d;
     // Until then, assume a double datatype and simply use LAPACKE_dpotrf. Worry about adding more capabilities later.
     lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
     lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
     lapack::engine::_potrf(IP::invoke(base_case_cyclic_table,index_pair).data(),fTranDim1,fTranDim1,potrfArgs);
     std::memcpy(IP::invoke(base_case_cyclic_table,index_pair).scratch(),IP::invoke(base_case_cyclic_table,index_pair).data(),sizeof(T)*IP::invoke(base_case_cyclic_table,index_pair).num_elems());
     lapack::engine::_trtri(IP::invoke(base_case_cyclic_table,index_pair).scratch(),fTranDim1,fTranDim1,trtriArgs);
-    cyclic_to_local(IP::invoke(base_case_cyclic_table,index_pair).data(),IP::invoke(base_case_cyclic_table,index_pair).scratch(), localDimension, globalDimension, bcDimension, CommInfo.d,rankSlice,dir);
+    cyclic_to_local(IP::invoke(base_case_cyclic_table,index_pair).data(),IP::invoke(base_case_cyclic_table,index_pair).scratch(), localDimension, globalDimension, bcDimension, CommInfo.d,rankSlice);
     serialize<square,square>::invoke(A, IP::invoke(base_case_cyclic_table,index_pair), AstartY, AendY, AstartY, AendY, true);
     IP::invoke(base_case_cyclic_table,index_pair).swap();	// puts the inverse buffer into the `data` member before final serialization
     serialize<square,square>::invoke(I, IP::invoke(base_case_cyclic_table,index_pair), matIstartX, matIendX, matIstartY, matIendY, true);
@@ -366,7 +237,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::base_case(
 template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename T, typename U>
 void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::cyclic_to_local(
-                 T* storeT, T* storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice, char dir){
+                 T* storeT, T* storeTI, U localDimension, U globalDimension, U bcDimension, int64_t sliceDim, int64_t rankSlice){
 
   U writeIndex = 0;
   U rowOffsetWithinBlock = rankSlice / sliceDim;
@@ -385,11 +256,10 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::cyclic_to_local
       // Further improvement: use only triangular matrices and then invoke into a square later?
       U readIndexCol = i*sliceDim + columnOffsetWithinBlock;
       U readIndexRow = j*sliceDim + rowOffsetWithinBlock;
-      if ((dir == 'U') && (readIndexCol >= readIndexRow)){
+      if (readIndexCol >= readIndexRow){
         storeT[writeIndex] = storeT[readIndexCol*bcDimension + readIndexRow];
         storeTI[writeIndex] = storeTI[readIndexCol*bcDimension + readIndexRow];
-      }
-      else{
+      } else{
         storeT[writeIndex] = 0.;
         storeTI[writeIndex] = 0.;
       }
@@ -397,95 +267,4 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::cyclic_to_local
     }
   }
 }
-
-template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
-template<typename U>
-void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::update_inverse_path(U inverseCutoffGlobalDimension, U globalDimension,
-                                                                                     bool& isInversePath, std::vector<U>& baseCaseDimList, U localDimension){
-  if (inverseCutoffGlobalDimension >= globalDimension){
-    if (isInversePath == false){
-      baseCaseDimList.push_back(localDimension);
-    }
-    isInversePath = true;
-  }
-}
-
-template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
-template<typename U>
-void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate_update_inverse_path(U inverseCutoffGlobalDimension, U globalDimension,
-                                                                                     bool& isInversePath, U localDimension){
-  if (inverseCutoffGlobalDimension >= globalDimension){
-    if (isInversePath == false){
-    }
-    isInversePath = true;
-  }
-}
-
-
-// For solving LA=B for A. But note that B is being modified in place and will turn into A
-template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
-template<typename MatrixLType, typename MatrixLIType, typename MatrixAType, typename SquareTableType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::solve(
-                                  MatrixLType& L, MatrixLIType& LI, MatrixAType& A,
-                                  SquareTableType& square_table1, SquareTableType& square_table2, SquareTableType& square_table3, CommType&& CommInfo,
-                                  std::vector<typename MatrixAType::DimensionType>& baseCaseDimList,
-                                  blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
-
-  using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
-  using Distribution = typename MatrixAType::DistributionType;
-  using Offload = typename MatrixAType::OffloadType;
-
-  blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
-                                    blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
-  // Lets operate on individual columns at a time
-  // Potential optimization 1): Don't use MM3D if the columns are too skinny in relation to the block size!
-     // Or this could just be taken care of when we tune block sizes?
-  // Potential optimization 2) Lots of serializing going on with each MM3D, this needs to be reduced.
-
-  U AendX = A.num_columns_local();
-  U AendY = A.num_rows_local();
-  U matLendX = L.num_columns_local();
-
-  U offset1 = 0; U offset2 = baseCaseDimList[0]; U offset3 = 0;
-  // Note that the beginning cases might not be correct. They are not currently used for anything though.
-  U arg1 = offset1; U arg2 = matLendX; U arg3 = offset3; U arg4 = offset1;
-
-  for (U i=0; i<baseCaseDimList.size(); i++){
-
-    // Update the current column by accumulating the updates via MM
-    gemmPackage.alpha = -1;
-    gemmPackage.beta = 1.;
-
-    // Only update once first panel is solved
-    if (i>0){
-      // As i increases, the size of these updates gets smaller.
-      // Special handling. This might only work since the triangular matrix is square, which should be ok
-
-      arg1 = offset1; arg2 = matLendX; arg3 = offset3; arg4 = offset1;
-      serialize<typename SP::structure,square>::invoke(L, IP::invoke(square_table1,std::make_pair(arg2-arg1,arg4-arg3)), arg1, arg2, arg3, arg4);
-      serialize<square,square>::invoke(A, IP::invoke(square_table2,std::make_pair(AendX,offset1-offset3)), 0, AendX, offset3, offset1);
-      serialize<square,square>::invoke(A, IP::invoke(square_table3,std::make_pair(AendX,AendY-offset1)), 0, AendX, offset1, AendY);
-      matmult::summa::invoke(IP::invoke(square_table1,std::make_pair(arg2-arg1,arg4-arg3)), IP::invoke(square_table2,std::make_pair(AendX,offset1-offset3)), IP::invoke(square_table3,std::make_pair(AendX,AendY-offset1)),
-                             std::forward<CommType>(CommInfo), gemmPackage);
-      serialize<square,square>::invoke(A, IP::invoke(square_table3,std::make_pair(AendX,AendY-offset1)), 0, AendX, offset1, AendY, true);
-    }
-
-    // Solve via MM
-    serialize<typename SP::structure,square>::invoke(LI, IP::invoke(square_table1,std::make_pair(offset2-offset1,offset2-offset1)), offset1, offset2, offset1, offset2);
-    serialize<square,square>::invoke(A, IP::invoke(square_table2,std::make_pair(AendX,offset2-offset1)), 0, AendX, offset1, offset2);
-    matmult::summa::invoke(IP::invoke(square_table1,std::make_pair(offset2-offset1,offset2-offset1)), IP::invoke(square_table2,std::make_pair(AendX,offset2-offset1)), std::forward<CommType>(CommInfo), trmmPackage);
-    serialize<square,square>::invoke(A, IP::invoke(square_table2,std::make_pair(AendX,offset2-offset1)), 0, AendX, offset1, offset2);
-    if ((i+1) < baseCaseDimList.size()){
-      // Update the offsets
-      offset3 = offset1;
-      offset1 = offset2;
-      offset2 += baseCaseDimList[i+1];
-    }
-    IP::flush(square_table1[std::make_pair(arg2-arg1,arg4-arg3)]); IP::flush(square_table2[std::make_pair(AendX,offset1-offset3)]); IP::flush(square_table3[std::make_pair(AendX,AendY-offset1)]);
-    IP::flush(square_table1[std::make_pair(offset2-offset1,offset2-offset1)]); IP::flush(square_table2[std::make_pair(AendX,offset2-offset1)]);
-  }
-}
-
 }

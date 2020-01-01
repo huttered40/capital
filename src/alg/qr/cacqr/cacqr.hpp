@@ -59,8 +59,7 @@ void cacqr<SerializeSymmetricPolicy>::invoke_3d(MatrixAType& A, MatrixRType& R, 
   MPI_Reduce((isRootColumn ? MPI_IN_PLACE : R.data()), R.data(), localDimensionN*localDimensionN, mpi_type<T>::type, MPI_SUM, CommInfo.z, CommInfo.column);
   MPI_Bcast(R.data(), localDimensionN*localDimensionN, mpi_type<T>::type, CommInfo.y, CommInfo.depth);
 
-  auto baseCaseDimList = std::remove_reference<ArgType>::type::cholesky_inverse_type::invoke(R, RI,
-                                                   args.cholesky_inverse_args, std::forward<CommType>(CommInfo));
+  std::remove_reference<ArgType>::type::cholesky_inverse_type::invoke(R, RI, args.cholesky_inverse_args, std::forward<CommType>(CommInfo));
 // For now, comment this out, because I am experimenting with using TriangularSolve TRSM instead of summa
 //   But later on once it works, use an integer or something to have both available, important when benchmarking
   // Need to be careful here. RI must be truly upper-triangular for this to be correct as I found out in 1D case.
@@ -71,6 +70,7 @@ void cacqr<SerializeSymmetricPolicy>::invoke_3d(MatrixAType& A, MatrixRType& R, 
     matmult::summa::invoke(RI, A, std::forward<CommType>(CommInfo), trmmPack1);
   }
   else{
+/*
     assert(0);
     // Note: there are issues with serializing a square matrix into a rectangular. To bypass that,
     //        and also to communicate only the nonzeros, I will serialize into packed triangular buffers before calling TRSM
@@ -85,6 +85,7 @@ void cacqr<SerializeSymmetricPolicy>::invoke_3d(MatrixAType& A, MatrixRType& R, 
     blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
       blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     solve_upper_left(A, rectR, rectRI, std::forward<CommType>(CommInfo), baseCaseDimList.second, gemmPack1);
+*/
   }
 }
 
@@ -123,14 +124,14 @@ void cacqr<SerializeSymmetricPolicy>::invoke(MatrixAType& A, MatrixRType& R, Mat
   MPI_Allreduce(MPI_IN_PLACE, R.data(), localDimensionN*localDimensionN, mpi_type<T>::type,MPI_SUM, RectCommInfo.column_alt);
   MPI_Bcast(R.data(), localDimensionN*localDimensionN, mpi_type<T>::type, columnContigRank, RectCommInfo.depth);
 
-  auto baseCaseDimList = std::remove_reference<ArgType>::type::cholesky_inverse_type::invoke(R, RI,
-                                                   args.cholesky_inverse_args, std::forward<SquareCommType>(SquareCommInfo));
+  std::remove_reference<ArgType>::type::cholesky_inverse_type::invoke(R, RI, args.cholesky_inverse_args, std::forward<SquareCommType>(SquareCommInfo));
   if (1){//baseCaseDimList.first){
     blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
       blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     matmult::summa::invoke(RI, A, std::forward<SquareCommType>(SquareCommInfo), trmmPack1);
   }
   else{
+/*
     assert(0);
     // Note: there are issues with serializing a square matrix into a rectangular. To bypass that,
     //        and also to communicate only the nonzeros, I will serialize into packed triangular buffers before calling TRSM
@@ -145,6 +146,7 @@ void cacqr<SerializeSymmetricPolicy>::invoke(MatrixAType& A, MatrixRType& R, Mat
     blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
       blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
     solve_upper_left(A, rectR, rectRI, std::forward<SquareCommType>(SquareCommInfo), baseCaseDimList.second, gemmPack1);
+*/
   }
 }
 

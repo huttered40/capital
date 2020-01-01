@@ -18,7 +18,7 @@ int main(int argc, char** argv){
   U globalMatrixDimensionM = atoi(argv[1]);
   U globalMatrixDimensionN = atoi(argv[2]);
   U dimensionC = atoi(argv[3]);
-  U inverseCutOffMultiplier = atoi(argv[4]);
+  bool complete_inv = atoi(argv[4]);
   U bcMultiplier = atoi(argv[5]);
   size_t num_chunks        = atoi(argv[6]);
   size_t numIterations=atoi(argv[7]);
@@ -31,7 +31,7 @@ int main(int argc, char** argv){
     auto mpi_dtype = mpi_type<T>::type;
     auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC, num_chunks);
     // Generate algorithmic structure via instantiating packs
-    cholesky::cholinv<>::pack ci_pack(inverseCutOffMultiplier,bcMultiplier,'U');
+    cholesky::cholinv<>::pack ci_pack(complete_inv,bcMultiplier,'U');
     qr_type::pack<decltype(ci_pack)::alg_type> pack(ci_pack);
     MatrixTypeR A(globalMatrixDimensionN,globalMatrixDimensionM, RectTopo.c, RectTopo.d);
     MatrixTypeS R(globalMatrixDimensionN,globalMatrixDimensionN, RectTopo.c, RectTopo.c);
