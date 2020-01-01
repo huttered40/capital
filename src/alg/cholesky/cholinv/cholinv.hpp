@@ -6,23 +6,16 @@ template<typename MatrixAType, typename MatrixTIType, typename ArgType, typename
 void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixAType& A, MatrixTIType& TI, ArgType&& args, CommType&& CommInfo){
 
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
+  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
   using Structure = typename MatrixAType::StructureType;
   static_assert(std::is_same<Structure,square>::value && std::is_same<typename MatrixTIType::StructureType,square>::value,"cholesky::cholinv requires matrices of square structure");
-  using Distribution = typename MatrixAType::DistributionType;
-  using Offload = typename MatrixAType::OffloadType;
+  using Distribution = typename MatrixAType::DistributionType; using Offload = typename MatrixAType::OffloadType;
   assert(args.dir == 'U');	// Removed support for 'L'. Necessary future support for this case can be handled via a final transpose.
-  U localDimension = A.num_rows_local();
-  U globalDimension = A.num_rows_global();
-  U minDimLocal = 1;
+  U localDimension = A.num_rows_local(); U globalDimension = A.num_rows_global(); U minDimLocal = 1;
   U bcDimLocal = util::get_next_power2(localDimension/(CommInfo.c*CommInfo.d));
-  auto bcMult = args.bc_mult_dim;
-  if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal/=2;}
+  auto bcMult = args.bc_mult_dim; if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal/=2;}
   else{for (int i=0;i<bcMult; i++) bcDimLocal*=2;}
-  bcDimLocal  = std::max(minDimLocal,bcDimLocal);
-  bcDimLocal  = std::min(localDimension,bcDimLocal);
-  U bcDimension = CommInfo.d*bcDimLocal;
+  bcDimLocal  = std::max(minDimLocal,bcDimLocal); bcDimLocal  = std::min(localDimension,bcDimLocal); U bcDimension = CommInfo.d*bcDimLocal;
 
   // Pre-allocate recursive matrix<> instances for intermediate (non-base-case) matrix multiplications
   std::map<std::pair<U,U>,matrix<T,U,typename SP::structure,Distribution,Offload>> policy_table;
@@ -59,7 +52,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate(
 
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
   using U = int64_t;
-  if (globalDimension <= bcDimension){
+  if ((localDimension*CommInfo.d) <= bcDimension){
     simulate_basecase(base_case_table, base_case_blocked_table, base_case_cyclic_table, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
                       AstartX, AendX, AstartY, AendY, RIstartX, RIendX, RIstartY, RIendY, std::forward<CommType>(CommInfo));
     return;
@@ -73,7 +66,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate(
   IP::init(square_table1,std::make_pair(cut2,cut1),nullptr,cut2,cut1,CommInfo.d,CommInfo.d);
   IP::init(square_table2,std::make_pair(cut2,cut2),nullptr,cut2,cut2,CommInfo.d,CommInfo.d);	// this might be a problem. It was coupled before
   simulate(policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, cut2, trueLocalDimension, bcDimension,
-           globalDimension-(globalDimension>>1), trueGlobalDimension, AstartX+cut1, AendX, AstartY+cut1, AendY, RIstartX+cut1, RIendX, RIstartY+cut1, RIendY, complete_inv, std::forward<CommType>(CommInfo));
+           cut2*CommInfo.d, trueGlobalDimension, AstartX+cut1, AendX, AstartY+cut1, AendY, RIstartX+cut1, RIendX, RIstartY+cut1, RIendY, complete_inv, std::forward<CommType>(CommInfo));
 
   if (!(!complete_inv && (globalDimension==trueGlobalDimension))){
     IP::init(policy_table,std::make_pair(cut1,cut1),nullptr,cut1,cut1,CommInfo.d,CommInfo.d);
@@ -89,7 +82,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate_baseca
                      int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t matIstartX, int64_t matIendX, int64_t matIstartY, int64_t matIendY, CommType&& CommInfo){
 
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy; using U = int64_t;
-  assert(localDimension>0);
+  if (localDimension==0) return;
   IP::init(base_case_table, std::make_pair(AendX-AstartX,AendY-AstartY), nullptr,AendX-AstartX,AendY-AstartY,CommInfo.d,CommInfo.d);
   U num_elems = base_case_table[std::make_pair(AendX-AstartX,AendY-AstartY)].num_elems()*CommInfo.d*CommInfo.d;
   IP::init(base_case_blocked_table,std::make_pair(AendX-AstartX,AendY-AstartY), num_elems);
@@ -110,7 +103,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
   using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
   using Distribution = typename MatrixAType::DistributionType; using Offload = typename MatrixAType::OffloadType;
-  if (globalDimension <= bcDimension){
+  if ((localDimension*CommInfo.d) <= bcDimension){
     base_case(A, RI, base_case_table, base_case_blocked_table, base_case_cyclic_table, localDimension, trueLocalDimension, bcDimension, globalDimension, trueGlobalDimension,
              AstartX, AendX, AstartY, AendY, RIstartX, RIendX, RIstartY, RIendY, std::forward<CommType>(CommInfo));
     return;
@@ -136,7 +129,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(
   serialize<square,square>::invoke(A, IP::invoke(square_table2,std::make_pair(cut2,cut2)), AstartX+cut1, AendX, AstartY+cut1, AendY, true);
 
   factor(A, RI, policy_table, policy_table_diaginvert, square_table1, square_table2, base_case_table, base_case_blocked_table, base_case_cyclic_table, cut2, trueLocalDimension, bcDimension,
-         globalDimension-(globalDimension>>1), trueGlobalDimension, AstartX+cut1, AendX, AstartY+cut1, AendY, RIstartX+cut1, RIendX, RIstartY+cut1, RIendY, complete_inv, std::forward<CommType>(CommInfo));
+         cut2*CommInfo.d, trueGlobalDimension, AstartX+cut1, AendX, AstartY+cut1, AendY, RIstartX+cut1, RIendX, RIstartY+cut1, RIendY, complete_inv, std::forward<CommType>(CommInfo));
 
   // Next step : temp <- R_{12}*RI_{22}
   if (!(!complete_inv && (globalDimension==trueGlobalDimension))){
@@ -178,6 +171,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::base_case(
   // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
   // Fourth: Save the data that each processor owns according to the cyclic rule.
 
+  if (localDimension==0) return;
   int rankSlice; MPI_Comm_rank(CommInfo.slice, &rankSlice);
   auto index_pair = std::make_pair(AendX-AstartX,AendY-AstartY);
   serialize<square,typename SP::structure>::invoke(A, IP::invoke(base_case_table,index_pair), AstartX, AendX, AstartY, AendY);
