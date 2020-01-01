@@ -13,30 +13,30 @@ template<class SerializePolicy     = policy::cholinv::Serialize,
          class OverlapPolicy       = policy::cholinv::NoOverlap>
 class cholinv{
 public:
-  template<typename T, typename U>
+  template<typename ScalarType, typename DimensionType>
   class pack{
   public:
     using alg_type = cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>;
     pack(const pack& p) : complete_inv(p.complete_inv), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     pack(pack&& p) : complete_inv(p.complete_inv), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
-    pack(U complete_inv, U bc_mult_dim, char dir) : complete_inv(complete_inv), bc_mult_dim(bc_mult_dim), dir(dir) {}
-    const U complete_inv;
-    const U bc_mult_dim;
+    pack(DimensionType complete_inv, DimensionType bc_mult_dim, char dir) : complete_inv(complete_inv), bc_mult_dim(bc_mult_dim), dir(dir) {}
+    const DimensionType complete_inv;
+    const DimensionType bc_mult_dim;
     const char dir;
-    std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure>> policy_table;
-    std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure>> policy_table_diaginv;
-    std::map<std::pair<U,U>,matrix<T,U,rect>> square_table1;
-    std::map<std::pair<U,U>,matrix<T,U,rect>> square_table2;
-    std::map<std::pair<U,U>,matrix<T,U,typename SerializePolicy::structure>> base_case_table;
-    std::map<std::pair<U,U>,std::vector<T>> base_case_blocked_table;
-    std::map<std::pair<U,U>,matrix<T,U,rect>> base_case_cyclic_table;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table_diaginv;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> square_table1;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> square_table2;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> base_case_table;
+    std::map<std::pair<DimensionType,DimensionType>,std::vector<ScalarType>> base_case_blocked_table;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> base_case_cyclic_table;
   };
 
   template<typename MatrixType, typename ArgType, typename CommType>
   static void invoke(MatrixType& A, MatrixType& TI, ArgType&& args, CommType&& CommInfo);
 
-  template<typename T, typename U, typename ArgType, typename CommType>
-  static std::pair<T*,T*> invoke(T* A, T* TI, U localDim, U globalDim, ArgType&& args, CommType&& CommInfo);
+  template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
+  static std::pair<ScalarType*,ScalarType*> invoke(ScalarType* A, ScalarType* TI, DimensionType localDim, DimensionType globalDim, ArgType&& args, CommType&& CommInfo);
 
 private:
   template<typename MatrixType, typename ArgType, typename CommType>

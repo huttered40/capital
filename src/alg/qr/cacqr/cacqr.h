@@ -11,11 +11,12 @@
 
 namespace qr{
 
-template<class SerializePolicy = policy::cacqr::Serialize>
+template<class SerializePolicy = policy::cacqr::Serialize,
+         class IntermediatesPolicy = policy::cacqr::SaveIntermediates>
 class cacqr{
 public:
   // cacqr is parameterized only by its cholesky-inverse factorization algorithm
-  template<typename T, typename U, typename CholeskyInversionType>
+  template<typename ScalarType, typename DimensionType, typename CholeskyInversionType>
   class pack{
   public:
     using alg_type = cacqr<SerializePolicy>;
@@ -24,36 +25,37 @@ public:
     pack(pack&& p) : cholesky_inverse_args(std::move(p.cholesky_inverse_args)) {}
     template<typename CholeskyInversionArgType>
     pack(CholeskyInversionArgType&& ci_args) : cholesky_inverse_args(std::forward<CholeskyInversionArgType>(ci_args)) {}
-    typename CholeskyInversionType::pack<T,U> cholesky_inverse_args;
-    // cacqr takes no local parameters
+    typename CholeskyInversionType::pack<ScalarType,DimensionType> cholesky_inverse_args;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table1;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table2;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> square_table1;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> square_table2;
   };
 
-  template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo);
+  template<typename MatrixType, typename ArgType, typename CommType>
+  static void invoke(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo);
 
-  template<typename T, typename U, typename ArgType, typename CommType>
-  static std::pair<T*,T*> invoke(T* A, T* R, U localNumRows, U localNumColumns, U globalNumRows, U globalNumColumns, ArgType&& args, CommType&& CommInfo);
+  template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
+  static std::pair<ScalarType*,ScalarType*> invoke(ScalarType* A, ScalarType* R, DimensionType localNumRows, DimensionType localNumColumns, DimensionType globalNumRows, DimensionType globalNumColumns, ArgType&& args, CommType&& CommInfo);
 
 protected:
   // Special overload to avoid recreating MPI communicator topologies
-  template<typename MatrixAType, typename MatrixRType, typename ArgType, typename RectCommType, typename SquareCommType>
-  static void invoke(MatrixAType& A, MatrixRType& R, MatrixRType& RI, ArgType&& args, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
+  template<typename MatrixType, typename ArgType, typename RectCommType, typename SquareCommType>
+  static void invoke(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType&& args, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
 
-  template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke_1d(MatrixAType& A, MatrixRType& R, typename MatrixRType::ScalarType* RI, ArgType&& args, CommType&& CommInfo);
+  template<typename MatrixType, typename ArgType, typename CommType>
+  static void invoke_1d(MatrixType& A, MatrixType& R, typename MatrixType::ScalarType* RI, ArgType&& args, CommType&& CommInfo);
 
-  template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke_3d(MatrixAType& A, MatrixRType& R, MatrixRType& RI, ArgType&& args, CommType&& CommInfo);
-
-  template<typename MatrixAType, typename MatrixUType, typename MatrixUIType, typename CommType>
-  static void solve(MatrixAType& A, MatrixUType& U, MatrixUIType& UI, CommType&& CommInfo, blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage);
+  template<typename MatrixType, typename ArgType, typename CommType>
+  static void invoke_3d(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType&& args, CommType&& CommInfo);
 };
 
-template<class SerializePolicy = policy::cacqr::Serialize>
-class cacqr2 : public cacqr<SerializePolicy>{
+template<class SerializePolicy = policy::cacqr::Serialize,
+         class IntermediatesPolicy = policy::cacqr::SaveIntermediates>
+class cacqr2 : public cacqr<SerializePolicy,IntermediatesPolicy>{
 public:
   // cacqr2 is parameterized only by its cholesky-inverse factorization algorithm
-  template<typename T, typename U, typename CholeskyInversionType>
+  template<typename ScalarType, typename DimensionType, typename CholeskyInversionType>
   class pack{
   public:
     using alg_type = cacqr<SerializePolicy>;
@@ -62,22 +64,25 @@ public:
     pack(pack&& p) : cholesky_inverse_args(std::move(p.cholesky_inverse_args)) {}
     template<typename CholeskyInversionArgType>
     pack(CholeskyInversionArgType&& ci_args) : cholesky_inverse_args(std::forward<CholeskyInversionArgType>(ci_args)) {}
-    typename CholeskyInversionType::pack<T,U> cholesky_inverse_args;
-    // cacqr2 takes no local parameters
+    typename CholeskyInversionType::pack<ScalarType,DimensionType> cholesky_inverse_args;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table1;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table2;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> square_table1;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> square_table2;
   };
 
-  template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo);
+  template<typename MatrixType, typename ArgType, typename CommType>
+  static void invoke(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo);
 
-  template<typename T, typename U, typename ArgType, typename CommType>
-  static std::pair<T*,T*> invoke(T* A, T* R, U localNumRows, U localNumColumns, U globalNumRows, U globalNumColumns, ArgType&& args, CommType&& CommInfo);
+  template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
+  static std::pair<ScalarType*,ScalarType*> invoke(ScalarType* A, ScalarType* R, DimensionType localNumRows, DimensionType localNumColumns, DimensionType globalNumRows, DimensionType globalNumColumns, ArgType&& args, CommType&& CommInfo);
 
 protected:
-  template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke_1d(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo);
+  template<typename MatrixType, typename ArgType, typename CommType>
+  static void invoke_1d(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo);
 
-  template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-  static void invoke_3d(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo);
+  template<typename MatrixType, typename ArgType, typename CommType>
+  static void invoke_3d(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo);
 };
 }
 

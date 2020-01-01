@@ -23,11 +23,11 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixTy
 }
 
 template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
-template<typename T, typename U, typename ArgType, typename CommType>
-std::pair<T*,T*> cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(T* A, T* TI, U localDim, U globalDim, ArgType&& args, CommType&& CommInfo){
+template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
+std::pair<ScalarType*,ScalarType*> cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(ScalarType* A, ScalarType* TI, DimensionType localDim, DimensionType globalDim, ArgType&& args, CommType&& CommInfo){
   //TODO: Test with non-power-of-2 global matrix dimensions
-  matrix<T,U,rect,cyclic> mA(A,localDim,localDim,globalDim,globalDim,CommInfo.c,CommInfo.c);	// re-used in SquareTable
-  matrix<T,U,rect,cyclic> mTI(R,localDim,localDim,globalDim,globalDim,CommInfo.c,CommInfo.c);
+  matrix<ScalarType,DimensionType,rect,cyclic> mA(A,localDim,localDim,globalDim,globalDim,CommInfo.c,CommInfo.c);	// re-used in SquareTable
+  matrix<ScalarType,DimensionType,rect,cyclic> mTI(R,localDim,localDim,globalDim,globalDim,CommInfo.c,CommInfo.c);
   invoke(mA,mTI,std::forward<ArgType>(args),std::forward<CommType>(CommInfo));
   return std::make_pair(mA.get_data(),mTI.get_data());
 }

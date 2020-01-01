@@ -2,18 +2,17 @@
 
 namespace qr{
 
-template<class SerializePolicy>
-template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-void cacqr<SerializePolicy>::invoke_1d(MatrixAType& A, MatrixRType& R, typename MatrixRType::ScalarType* RI, ArgType&& args, CommType&& CommInfo){
+template<class SerializePolicy, class IntermediatesPolicy>
+template<typename MatrixType, typename ArgType, typename CommType>
+void cacqr<SerializePolicy,IntermediatesPolicy>::invoke_1d(MatrixType& A, MatrixType& R, typename MatrixType::ScalarType* RI, ArgType&& args, CommType&& CommInfo){
 
-  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
-  // Changed from syrk to gemm
+  using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
   U localDimensionM = A.num_rows_local(); U localDimensionN = A.num_columns_local();
   blas::ArgPack_syrk<T> syrkPack(blas::Order::AblasColumnMajor, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, 1., 0.);
   blas::engine::_syrk(A.data(), R.data(), localDimensionN, localDimensionM, localDimensionM, localDimensionN, syrkPack);
 
   // MPI_Allreduce to replicate the dimensionY x dimensionY matrix on each processor
-  SerializePolicy::invoke(R,CommInfo);
+  SerializePolicy::gram(R,CommInfo);
 
   lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
   lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
@@ -26,11 +25,11 @@ void cacqr<SerializePolicy>::invoke_1d(MatrixAType& A, MatrixRType& R, typename 
   blas::engine::_trmm(RI, A.data(), localDimensionM, localDimensionN, localDimensionN, localDimensionM, trmmPack1);
 }
 
-template<class SerializePolicy>
-template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-void cacqr<SerializePolicy>::invoke_3d(MatrixAType& A, MatrixRType& R, MatrixRType& RI, ArgType&& args, CommType&& CommInfo){
+template<class SerializePolicy, class IntermediatesPolicy>
+template<typename MatrixType, typename ArgType, typename CommType>
+void cacqr<SerializePolicy,IntermediatesPolicy>::invoke_3d(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType&& args, CommType&& CommInfo){
 
-  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType; using Offload = typename MatrixAType::OffloadType;
+  using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType; using Offload = typename MatrixType::OffloadType;
 
   // Need to perform the multiple steps to get our partition of A
   U localDimensionN = A.num_columns_local(); U localDimensionM = A.num_rows_local();
@@ -60,7 +59,7 @@ void cacqr<SerializePolicy>::invoke_3d(MatrixAType& A, MatrixRType& R, MatrixRTy
   if (args.cholesky_inverse_args.complete_inv){
     blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
       blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-    matmult::summa::invoke(RI, A, std::forward<CommType>(CommInfo), trmmPack1);
+    matmult::summa::invoke(SerializePolicy::invoke(RI,policy_buffer), A, std::forward<CommType>(CommInfo), trmmPack1);
   }
   else{
 /*
@@ -82,11 +81,11 @@ void cacqr<SerializePolicy>::invoke_3d(MatrixAType& A, MatrixRType& R, MatrixRTy
   }
 }
 
-template<class SerializePolicy>
-template<typename MatrixAType, typename MatrixRType, typename ArgType, typename RectCommType, typename SquareCommType>
-void cacqr<SerializePolicy>::invoke(MatrixAType& A, MatrixRType& R, MatrixRType& RI, ArgType&& args, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
+template<class SerializePolicy, class IntermediatesPolicy>
+template<typename MatrixType, typename ArgType, typename RectCommType, typename SquareCommType>
+void cacqr<SerializePolicy,IntermediatesPolicy>::invoke(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType&& args, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
 
-  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType; using Offload = typename MatrixAType::OffloadType;
+  using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType; using Offload = typename MatrixType::OffloadType;
 
   int columnContigRank; MPI_Comm_rank(RectCommInfo.column_contig, &columnContigRank);
 
@@ -139,59 +138,57 @@ void cacqr<SerializePolicy>::invoke(MatrixAType& A, MatrixRType& R, MatrixRType&
   }
 }
 
-template<class SerializePolicy>
-template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-void cacqr<SerializePolicy>::invoke(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo){
-  static_assert(std::is_same<typename MatrixAType::StructureType,rect>::value && std::is_same<typename MatrixRType::StructureType,rect>::value,"qr::cacqr requires matrices of rect structure");
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
+template<class SerializePolicy, class IntermediatesPolicy>
+template<typename MatrixType, typename ArgType, typename CommType>
+void cacqr<SerializePolicy,IntermediatesPolicy>::invoke(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo){
+  static_assert(std::is_same<typename MatrixType::StructureType,rect>::value && std::is_same<typename MatrixType::StructureType,rect>::value,"qr::cacqr requires matrices of rect structure");
+  using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
 
-  U globalDimensionN = A.num_columns_global();
-  U localDimensionN = A.num_columns_local();//globalDimensionN/gridDimensionC;
+  U globalDimensionN = A.num_columns_global(); U localDimensionN = A.num_columns_local();
   if (CommInfo.c == 1){
     std::vector<T> RI(localDimensionN*localDimensionN);
+    ..matrix<T,U,structure,Offload> Packed(globalDimensionN, globalDimensionN, CommInfo.c, CommInfo.c);
     invoke_1d(A,R,&RI[0],std::forward<ArgType>(args),std::forward<CommType>(CommInfo));
     return;
   }
   if (CommInfo.c == CommInfo.d){
-    MatrixRType RI = R;
+    auto RI = R;
     invoke_3d(A,R,RI,std::forward<ArgType>(args),topo::square(CommInfo.cube,CommInfo.c));
     return;
   }
   else{
-    MatrixRType RI = R;
+    auto RI = R;
     invoke(A,R,RI,std::forward<CommType>(CommInfo),topo::square(CommInfo.cube,CommInfo.c));
   }
 }
 
-template<class SerializePolicy>
-template<typename T, typename U, typename ArgType, typename CommType>
-std::pair<T*,T*> cacqr<SerializePolicy>::invoke(T* A, T* R, U localNumRows, U localNumColumns, U globalNumRows, U globalNumColumns, ArgType&& args, CommType&& CommInfo){
+template<class SerializePolicy, class IntermediatesPolicy>
+template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
+std::pair<ScalarType*,ScalarType*> cacqr<SerializePolicy,IntermediatesPolicy>::invoke(ScalarType* A, ScalarType* R, DimensionType localNumRows, DimensionType localNumColumns,
+                                                                                      DimensionType globalNumRows, DimensionType globalNumColumns, ArgType&& args, CommType&& CommInfo){
   //TODO: Test with non-power-of-2 global matrix dimensions
-  matrix<T,U,rect> mA(A,localNumColumns,localNumRows,globalNumColumns,globalNumRows,CommInfo.c,CommInfo.d);
-  matrix<T,U,rect> mR(A,localNumColumns,localNumColumns,globalNumColumns,globalNumColumns,CommInfo.c,CommInfo.c);
+  matrix<ScalarType,DimensionType,rect> mA(A,localNumColumns,localNumRows,globalNumColumns,globalNumRows,CommInfo.c,CommInfo.d);
+  matrix<ScalarType,DimensionType,rect> mR(A,localNumColumns,localNumColumns,globalNumColumns,globalNumColumns,CommInfo.c,CommInfo.c);
   invoke(mA,mR,std::forward<ArgType>(args),std::forward<CommType>(CommInfo));
   return std::make_pair(mA.get_data(),mR.get_data());
 }
 
-template<class SerializePolicy>
-template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-void cacqr2<SerializePolicy>::invoke_1d(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo){
+template<class SerializePolicy, class IntermediatesPolicy>
+template<typename MatrixType, typename ArgType, typename CommType>
+void cacqr2<SerializePolicy,IntermediatesPolicy>::invoke_1d(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo){
   // We assume data is owned relative to a 1D processor grid, so every processor owns a chunk of data consisting of
   //   all columns and a block of rows.
 
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
+  using T = typename MatrixType::ScalarType;
+  using U = typename MatrixType::DimensionType;
 
   U globalDimensionN = A.num_columns_global();
   U localDimensionN = A.num_columns_local();
 
   // Pre-allocate a buffer to use in each invoke_1d call to avoid allocating at each invocation
   std::vector<T> RI(localDimensionN*localDimensionN);
-  cacqr<SerializePolicy>::invoke_1d(A, R, &RI[0], std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
-  R.swap();
-  cacqr<SerializePolicy>::invoke_1d(A, R, &RI[0], std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
-  R.swap();
+  cacqr<SerializePolicy>::invoke_1d(A, R, &RI[0], std::forward<ArgType>(args), std::forward<CommType>(CommInfo)); R.swap();
+  cacqr<SerializePolicy>::invoke_1d(A, R, &RI[0], std::forward<ArgType>(args), std::forward<CommType>(CommInfo)); R.swap();
 
   // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
   //   send half of the data!
@@ -200,33 +197,30 @@ void cacqr2<SerializePolicy>::invoke_1d(MatrixAType& A, MatrixRType& R, ArgType&
   blas::engine::_trmm(R.scratch(), R.data(), localDimensionN, localDimensionN, localDimensionN, localDimensionN, trmmPack1);
 }
 
-template<class SerializePolicy>
-template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-void cacqr2<SerializePolicy>::invoke_3d(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo){
+template<class SerializePolicy, class IntermediatesPolicy>
+template<typename MatrixType, typename ArgType, typename CommType>
+void cacqr2<SerializePolicy,IntermediatesPolicy>::invoke_3d(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo){
 
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
+  using T = typename MatrixType::ScalarType;
+  using U = typename MatrixType::DimensionType;
 
-  U globalDimensionN = A.num_columns_global();
-  U localDimensionN = A.num_columns_local();		// no error check here, but hopefully 
+  U globalDimensionN = A.num_columns_global(); U localDimensionN = A.num_columns_local();
 
   // Pre-allocate a buffer to use for Rinv in each invoke_1d call to avoid allocating at each invocation
-  MatrixRType RI(globalDimensionN, globalDimensionN, CommInfo.c, CommInfo.c);
-  MatrixRType R2(globalDimensionN, globalDimensionN, CommInfo.c, CommInfo.c);
+  MatrixType RI(globalDimensionN, globalDimensionN, CommInfo.c, CommInfo.c);
+  MatrixType R2(globalDimensionN, globalDimensionN, CommInfo.c, CommInfo.c);
   cacqr<SerializePolicy>::invoke_3d(A, R, RI, std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
   cacqr<SerializePolicy>::invoke_3d(A, R2, RI, std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
 
-  blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
-    blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-  // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
-  //   send half of the data!
+  blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
   matmult::summa::invoke(R2, R, std::forward<CommType>(CommInfo), trmmPack1);
 }
 
 template<class SerializePolicy>
-template<typename MatrixAType, typename MatrixRType, typename ArgType, typename CommType>
-void cacqr2<SerializePolicy>::invoke(MatrixAType& A, MatrixRType& R, ArgType&& args, CommType&& CommInfo){
-  static_assert(std::is_same<typename MatrixAType::StructureType,rect>::value && std::is_same<typename MatrixRType::StructureType,rect>::value,"qr::cacqr2 requires matrices of rect structure");
+template<typename MatrixType, typename ArgType, typename CommType>
+void cacqr2<SerializePolicy,IntermediatesPolicy>::invoke(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo){
+  using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
+  static_assert(std::is_same<typename MatrixType::StructureType,rect>::value && std::is_same<typename MatrixType::StructureType,rect>::value,"qr::cacqr2 requires matrices of rect structure");
   if (CommInfo.c == 1){
     cacqr2::invoke_1d(A, R, std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
     return;
@@ -235,106 +229,27 @@ void cacqr2<SerializePolicy>::invoke(MatrixAType& A, MatrixRType& R, ArgType&& a
     cacqr2::invoke_3d(A, R, std::forward<ArgType>(args), topo::square(CommInfo.cube,CommInfo.c));
     return;
   }
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
 
-  U globalDimensionN = A.num_columns_global();
-  U localDimensionN = A.num_columns_local();
-
+  U globalDimensionN = A.num_columns_global(); U localDimensionN = A.num_columns_local();
   auto SquareTopo = topo::square(CommInfo.cube,CommInfo.c);
   // Pre-allocate a buffer to use for Rinv in each invoke_1d call to avoid allocating at each invocation
-  MatrixRType RI(globalDimensionN, globalDimensionN, SquareTopo.c, SquareTopo.c);
-  MatrixRType R2(globalDimensionN, globalDimensionN, SquareTopo.c, SquareTopo.c);
+  MatrixType RI(globalDimensionN, globalDimensionN, SquareTopo.c, SquareTopo.c);
+  MatrixType R2(globalDimensionN, globalDimensionN, SquareTopo.c, SquareTopo.c);
   cacqr<SerializePolicy>::invoke(A, R, RI, std::forward<ArgType>(args), std::forward<CommType>(CommInfo), SquareTopo);
   cacqr<SerializePolicy>::invoke(A, R2, RI, std::forward<ArgType>(args), std::forward<CommType>(CommInfo), SquareTopo);
 
-  blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper,
-    blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-  // Later optimization - Serialize all 3 matrices into UpperTriangular first, then call this with those matrices, so we don't have to
-  //   send half of the data!
+  blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
   matmult::summa::invoke(R2, R, SquareTopo, trmmPack1);
+  //IP::flush(..); 
 }
 
-template<class SerializePolicy>
-template<typename MatrixAType, typename MatrixUType, typename MatrixUIType, typename CommType>
-void cacqr<SerializePolicy>::solve(MatrixAType& A, MatrixUType& U, MatrixUIType& UI, CommType&& CommInfo, blas::ArgPack_gemm<typename MatrixAType::ScalarType>& gemmPackage){
-
-  using T = typename MatrixAType::ScalarType;
-  using V = typename MatrixAType::DimensionType;
-  using StructureTri = typename MatrixUType::StructureType;
-  using Offload = typename MatrixAType::OffloadType;
-
-  blas::ArgPack_trmm<T> trmmPackage(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasLower,
-      blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
-  // to catch debugging issues, assert that this has at least one size
-  assert(baseCaseDimList.size());
-
-  V matAendX = A.num_columns_local();
-  V matAendY = A.num_rows_local();
-  V matUendX = U.num_columns_local();
-
-  // Lets operate on individual columns at a time
-  // Potential optimization 1): Don't use summa if the columns are too skinny in relation to the block size!
-    // Or this could just be taken care of when we tune block sizes?
-  // Potential optimization 2) Lots of serializing going on with each summa, this needs to be reduced.
-  // Communicate A and U and UI immediately.
-  // These 3 matrices should never need to be communicated again.
-  //   B however will need to be AllReduced at each iteration so that final results can be summed and updated before next iteration
-
-  V offset1 = 0; V offset2 = (baseCaseDimList.size() < 1 ? matAendX : baseCaseDimList[0]); V offset3 = 0;
-  V arg1 = offset3;
-  V arg2 = offset1;
-  V arg3 = offset1;
-  V arg4 = matUendX;
-  V save1 = offset2-offset1;
-  matrix<T,V,rect,Offload> Upartition(nullptr, baseCaseDimList[0], arg4-arg3, CommInfo.d, CommInfo.d);
-  matrix<T,V,StructureTri,Offload> UIpartition(nullptr, save1, save1, CommInfo.d, CommInfo.d);
-
-  for (V i=0; i<baseCaseDimList.size()/*numBlockColumns*/; i++){
-    // Update the current column by accumulating the updates via MM
-    gemmPackage.alpha = -1;
-    gemmPackage.beta = 1.;
-    // Only update once first panel is solved
-    if (i>0){
-      // As i increases, the size of these updates gets smaller.
-      // Special handling. This might only work since the triangular matrix is square, which should be ok
-      arg1 = offset3;
-      arg2 = offset1;
-      arg3 = offset1;
-      arg4 = matUendX;
-
-      serialize<StructureTri,rect>::invoke(U, Upartition, arg1, arg2, arg3, arg4);
-
-//      matmult::summa::invoke(A.getRawData()+(offset3*matAendY), Upartition, A.getRawData()+(offset1*matAendY),
-//        offset1-offset3, matAendY, arg2-arg1, arg4-arg3, matAendX-offset1, matAendY, std::forward<CommType>(CommInfo), gemmPackage);
-    }
-
-    // Solve via TRMM
-    save1 = offset2-offset1;
-    // New optimization: prevent this copy if we are doing TRSM only at the top level
-    // Note: this change might be rendered useless now that I modified CFR3D.hpp with a similar optimization for that top level of TRSM
-    if (baseCaseDimList.size() <= 1){
-//      matmult::summa::invoke(UI, A.data()+(offset1*matAendY), save1, save1, save1, matAendY, std::forward<CommType>(CommInfo), trmmPackage);
-    }
-    else{
-      serialize<StructureTri,StructureTri>::invoke(UI, UIpartition, offset1, offset2, offset1, offset2);
-//      matmult::summa::invoke(UIpartition, A.getRawData()+(offset1*matAendY), save1, save1, save1, matAendY, std::forward<CommType>(CommInfo), trmmPackage);
-    }
-    if ((i+1) < baseCaseDimList.size()){
-      // Update the offsets
-      offset3 = offset1;
-      offset1 = offset2;
-      offset2 += baseCaseDimList[i+1];
-    }
-  }
-}
-
-template<class SerializePolicy>
-template<typename T, typename U, typename ArgType, typename CommType>
-std::pair<T*,T*> cacqr2<SerializePolicy>::invoke(T* A, T* R, U localNumRows, U localNumColumns, U globalNumRows, U globalNumColumns, ArgType&& args, CommType&& CommInfo){
+template<class SerializePolicy, class IntermediatesPolicy>
+template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
+std::pair<ScalarType*,ScalarType*> cacqr2<SerializePolicy,IntermediatesPolicy>::invoke(ScalarType* A, ScalarType* R, DimensionType localNumRows, DimensionType localNumColumns,
+                                                                                       DimensionType globalNumRows, DimensionType globalNumColumns, ArgType&& args, CommType&& CommInfo){
   //TODO: Test with non-power-of-2 global matrix dimensions
-  matrix<T,U,rect> mA(A,localNumColumns,localNumRows,globalNumColumns,globalNumRows,CommInfo.c,CommInfo.d);
-  matrix<T,U,rect> mR(R,localNumColumns,localNumColumns,globalNumColumns,globalNumColumns,CommInfo.c,CommInfo.c);
+  matrix<ScalarType,DimensionType,rect> mA(A,localNumColumns,localNumRows,globalNumColumns,globalNumRows,CommInfo.c,CommInfo.d);
+  matrix<ScalarType,DimensionType,rect> mR(R,localNumColumns,localNumColumns,globalNumColumns,globalNumColumns,CommInfo.c,CommInfo.c);
   invoke(mA,mR,std::forward<ArgType>(args),std::forward<CommType>(CommInfo));
   return std::make_pair(mA.get_data(),mR.get_data());
 }

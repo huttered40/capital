@@ -10,34 +10,90 @@ namespace cacqr{
 class Serialize;
 class NoSerialize;
 
+class SaveIntermediates;
+class FlushIntermediates;
+
+// ***********************************************************************************************************************************************************************
 class NoSerialize{
 public:
-  template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& Matrix, CommType&& CommInfo){
-    using T = typename MatrixType::ScalarType;
-    using U = typename MatrixType::DimensionType;
+  using structure = rect;
+
+  template<typename MatrixType, typename BufferType, typename CommType>
+  static void gram(MatrixType& Matrix, BufferType& buffer, CommType&& CommInfo){
+    using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
     U localDimensionN = Matrix.num_columns_local();
     MPI_Allreduce(MPI_IN_PLACE, Matrix.data(), localDimensionN*localDimensionN, mpi_type<T>::type, MPI_SUM, CommInfo.world);
     return;
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static MatrixType& invoke(MatrixType& Matrix, BufferType& buffer){
+    return Matrix;
   }
 };
 
 class Serialize{
 public:
-  template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& Matrix, CommType&& CommInfo){
-    using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
-    using Offload = typename MatrixType::OffloadType;
-    U localDimensionN = Matrix.num_columns_local();
+  using structure = uppertri;
+
+  template<typename MatrixType, typename BufferType, typename CommType>
+  static void gram(MatrixType& Matrix, BufferType& buffer, CommType&& CommInfo){
+    using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType; using Offload = typename MatrixType::OffloadType;
     U globalDimensionN = Matrix.num_columns_global();
-    //TODO: Note that this can be further optimized if necessary to reduce number of allocations from each invocation of cacqr to just 1.
-    matrix<T,U,uppertri,Offload> Packed(globalDimensionN, globalDimensionN, CommInfo.c, CommInfo.c);
-    serialize<rect,uppertri>::invoke(Matrix, Packed);
-    MPI_Allreduce(MPI_IN_PLACE, Packed.data(), Packed.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.world);
-    serialize<uppertri,rect>::invoke(Packed, Matrix);
+    serialize<rect,structure>::invoke(Matrix, buffer);
+    MPI_Allreduce(MPI_IN_PLACE, buffer.data(), buffer.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.world);
+    serialize<structure,rect>::invoke(buffer, Matrix);
     return;
   }
+
+  template<typename MatrixType, typename BufferType>
+  static MatrixType& invoke(MatrixType& Matrix, BufferType& buffer){
+    serialize<rect,structure>::invoke(Matrix, buffer);
+    return buffer;
+  }
 };
+// ***********************************************************************************************************************************************************************
+
+// ***********************************************************************************************************************************************************************
+class SaveIntermediates{
+public:
+  template<typename TableType, typename KeyType, typename... ValueTypes>
+  static void init(TableType& table, KeyType&& key, ValueTypes&&... values){
+    if (table.find(key) == table.end()){
+      table.emplace(std::piecewise_construct,std::forward_as_tuple(std::forward<KeyType>(key)),std::forward_as_tuple(std::forward<ValueTypes>(values)...));
+    }
+  }
+
+  template<typename TableType, typename KeyType>
+  static inline typename TableType::mapped_type& invoke(TableType& table, KeyType&& key){
+    return table[std::forward<KeyType>(key)];
+  }
+
+  template<typename MatrixType>
+  static void flush(MatrixType& matrix){}
+};
+
+class FlushIntermediates{
+public:
+  template<typename TableType, typename KeyType, typename... ValueTypes>
+  static void init(TableType& table, KeyType&& key, ValueTypes&&... values){
+    if (table.find(key) == table.end()){
+      table.emplace(std::piecewise_construct,std::forward_as_tuple(std::forward<KeyType>(key)),std::forward_as_tuple(std::forward<ValueTypes>(values)...,true));
+    }
+  }
+
+  template<typename TableType, typename KeyType>
+  static inline typename TableType::mapped_type& invoke(TableType& table, KeyType&& key){
+    table[std::forward<KeyType>(key)].fill();
+    return table[std::forward<KeyType>(key)];
+  }
+
+  template<typename MatrixType>
+  static void flush(MatrixType& matrix){
+    matrix.destroy();
+  }
+};
+// ***********************************************************************************************************************************************************************
 
 };
 };

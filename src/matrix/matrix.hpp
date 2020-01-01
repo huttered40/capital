@@ -2,8 +2,8 @@
 
 // #include "matrix.h"  -> Compiler needs the full definition of the templated class in order to instantiate it.
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-matrix<T,U,StructurePolicy,OffloadPolicy>::matrix(U globalDimensionX, U globalDimensionY, int64_t globalPgridX, int64_t globalPgridY){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::matrix(DimensionType globalDimensionX, DimensionType globalDimensionY, int64_t globalPgridX, int64_t globalPgridY){
   // Extra padding of zeros is at most 1 in either dimension
   int64_t pHelper = globalDimensionX%globalPgridX;
   this->_dimensionX = {globalDimensionX/globalPgridX + (pHelper ? 1 : 0)};
@@ -18,8 +18,8 @@ matrix<T,U,StructurePolicy,OffloadPolicy>::matrix(U globalDimensionX, U globalDi
   return;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-matrix<T,U,StructurePolicy,OffloadPolicy>::matrix(T* data, U dimensionX, U dimensionY, U globalDimensionX, U globalDimensionY, U globalPgridX, U globalPgridY){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::matrix(ScalarType* data, DimensionType dimensionX, DimensionType dimensionY, DimensionType globalDimensionX, DimensionType globalDimensionY, DimensionType globalPgridX, DimensionType globalPgridY){
   // Idea: move the data argument into this_data, and then set up the matrix rows (this_matrix)
   // Note that the owner of data and positions should be aware that the vectors they pass in will be destroyed and the data sucked out upon return.
 
@@ -49,8 +49,8 @@ matrix<T,U,StructurePolicy,OffloadPolicy>::matrix(T* data, U dimensionX, U dimen
   this->filled=true;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-matrix<T,U,StructurePolicy,OffloadPolicy>::matrix(T* data, U dimensionX, U dimensionY, U globalPgridX, U globalPgridY){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::matrix(ScalarType* data, DimensionType dimensionX, DimensionType dimensionY, DimensionType globalPgridX, DimensionType globalPgridY){
   // Idea: move the data argument into this_data, and then set up the matrix rows (this_matrix)
   // Note that the owner of data and positions should be aware that the vectors they pass in will be destroyed and the data sucked out upon return.
 
@@ -73,8 +73,8 @@ matrix<T,U,StructurePolicy,OffloadPolicy>::matrix(T* data, U dimensionX, U dimen
   this->filled=true;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-matrix<T,U,StructurePolicy,OffloadPolicy>::matrix(T* data, U dimensionX, U dimensionY, U globalPgridX, U globalPgridY, bool){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::matrix(ScalarType* data, DimensionType dimensionX, DimensionType dimensionY, DimensionType globalPgridX, DimensionType globalPgridY, bool){
   this->_dimensionX = {dimensionX};
   this->_dimensionY = {dimensionY};
   this->_globalDimensionX = {dimensionX*globalPgridX};
@@ -85,23 +85,23 @@ matrix<T,U,StructurePolicy,OffloadPolicy>::matrix(T* data, U dimensionX, U dimen
   this->filled=false;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-matrix<T,U,StructurePolicy,OffloadPolicy>::matrix(const matrix& rhs){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::matrix(const matrix& rhs){
   copy(rhs);
   this->filled=true;
   return;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-matrix<T,U,StructurePolicy,OffloadPolicy>::matrix(matrix&& rhs){
-  // Use std::forward in the future.
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::matrix(matrix&& rhs){
+  // DimensionTypese std::forward in the future.
   mover(std::move(rhs));
   this->filled=true;
   return;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-matrix<T,U,StructurePolicy,OffloadPolicy>& matrix<T,U,StructurePolicy,OffloadPolicy>::operator=(const matrix& rhs){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>& matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::operator=(const matrix& rhs){
   if (this != &rhs){
     copy(rhs);
   }
@@ -109,8 +109,8 @@ matrix<T,U,StructurePolicy,OffloadPolicy>& matrix<T,U,StructurePolicy,OffloadPol
   return *this;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-matrix<T,U,StructurePolicy,OffloadPolicy>& matrix<T,U,StructurePolicy,OffloadPolicy>::operator=(matrix&& rhs){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>& matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::operator=(matrix&& rhs){
   if (this != &rhs){
     mover(std::move(rhs));
   }
@@ -118,13 +118,13 @@ matrix<T,U,StructurePolicy,OffloadPolicy>& matrix<T,U,StructurePolicy,OffloadPol
   return *this;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-matrix<T,U,StructurePolicy,OffloadPolicy>::~matrix(){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::~matrix(){
   this->destroy();
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::fill(){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::fill(){
   if (this->filled != true){
     if (this->_data != nullptr){
       StructurePolicy::_assemble_matrix(this->_data, this->_scratch, this->_pad, this->_matrix, this->_dimensionX, this->_dimensionY);
@@ -138,8 +138,8 @@ void matrix<T,U,StructurePolicy,OffloadPolicy>::fill(){
   }
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::destroy(){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::destroy(){
   // Actually, now that we are purly using vectors, I don't think we need to delete anything. Once the instance
   //   of the class goes out of scope, the vector data gets deleted automatically.
   if (this->filled){
@@ -152,8 +152,8 @@ void matrix<T,U,StructurePolicy,OffloadPolicy>::destroy(){
   this->filled=false;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::copy(const matrix& rhs){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::copy(const matrix& rhs){
   this->_dimensionX = {rhs._dimensionX};
   this->_dimensionY = {rhs._dimensionY};
   this->_numElems = {rhs._numElems};
@@ -165,8 +165,8 @@ void matrix<T,U,StructurePolicy,OffloadPolicy>::copy(const matrix& rhs){
   return;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::mover(matrix&& rhs){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::mover(matrix&& rhs){
   assert(rhs.allocated_data);	// we don't support "move"ing from pointer-generated matrix instances
   this->_dimensionX = {rhs._dimensionX};
   this->_dimensionY = {rhs._dimensionY};
@@ -184,48 +184,48 @@ void matrix<T,U,StructurePolicy,OffloadPolicy>::mover(matrix&& rhs){
   return;
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::distribute_random(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::distribute_random(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key){
   // matrix must be already constructed with memory. Add a check for this later.
   StructurePolicy::_distribute_random(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,key);
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::distribute_symmetric(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key, bool diagonallyDominant){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::distribute_symmetric(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key, bool diagonallyDominant){
   // matrix must be already constructed with memory. Add a check for this later.
   StructurePolicy::_distribute_symmetric(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,key,diagonallyDominant);
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::distribute_identity(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, T val){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::distribute_identity(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, ScalarType val){
   // matrix must be already constructed with memory. Add a check for this later.
   StructurePolicy::_distribute_identity(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,val);
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::distribute_debug(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY){
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::distribute_debug(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY){
   // matrix must be already constructed with memory. Add a check for this later.
   StructurePolicy::_distribute_debug(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY);
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::print() const{
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::print() const{
   StructurePolicy::_print(this->_matrix,this->_dimensionX,this->_dimensionY);
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::print_data() const{
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::print_data() const{
   StructurePolicy::_print(this->_matrix,this->_dimensionX,this->_dimensionY);
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::print_scratch() const{
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::print_scratch() const{
   for (int i=0; i<this->_numElems; i++){ std::cout << this->_scratch[i] << std::endl;}
   std::cout << "\n\n";
 }
 
-template<typename T, typename U, typename StructurePolicy, typename OffloadPolicy>
-void matrix<T,U,StructurePolicy,OffloadPolicy>::print_pad() const{
+template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
+void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::print_pad() const{
   for (int i=0; i<this->_dimensionX*this->_dimensionY; i++){ std::cout << this->_pad[i] << std::endl;}
   std::cout << "\n\n";
 }
