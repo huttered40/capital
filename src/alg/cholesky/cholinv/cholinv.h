@@ -16,6 +16,8 @@ public:
   template<typename ScalarType, typename DimensionType>
   class pack{
   public:
+    using ScalarType = ScalarType;
+    using DimensionType = DimensionType;
     using alg_type = cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>;
     pack(const pack& p) : complete_inv(p.complete_inv), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     pack(pack&& p) : complete_inv(p.complete_inv), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
@@ -30,6 +32,8 @@ public:
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> base_case_table;
     std::map<std::pair<DimensionType,DimensionType>,std::vector<ScalarType>> base_case_blocked_table;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> base_case_cyclic_table;
+    DimensionType localDimension,globalDimension,trueLocalDimension,trueGlobalDimension,bcDimension;
+    DimensionType AstartX,AendX,AstartY,AendY,TIstartX,TIendX,TIstartY,TIendY;
   };
 
   template<typename MatrixType, typename ArgType, typename CommType>
@@ -40,26 +44,16 @@ public:
 
 private:
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void factor(MatrixType& A, MatrixType& RI, ArgType&& args, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType trueLocalDimension,
-                     typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType globalDimension, typename MatrixType::DimensionType trueGlobalDimension,
-                     typename MatrixType::DimensionType AstartX, typename MatrixType::DimensionType AendX, typename MatrixType::DimensionType AstartY,
-                     typename MatrixType::DimensionType AendY, typename MatrixType::DimensionType RIstartX, typename MatrixType::DimensionType RIendX,
-                     typename MatrixType::DimensionType RIstartY, typename MatrixType::DimensionType RIendY, bool complete_inv, CommType&& CommInfo);
+  static void factor(MatrixType& A, MatrixType& TI, ArgType&& args, CommType&& CommInfo);
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void base_case(MatrixType& A, MatrixType& I, ArgType&& args, typename MatrixType::DimensionType localDimension, typename MatrixType::DimensionType trueLocalDimension,
-                        typename MatrixType::DimensionType bcDimension, typename MatrixType::DimensionType globalDimension, typename MatrixType::DimensionType trueGlobalDimension,
-                        typename MatrixType::DimensionType AstartX, typename MatrixType::DimensionType AendX, typename MatrixType::DimensionType AstartY,
-                        typename MatrixType::DimensionType AendY, typename MatrixType::DimensionType matIstartX, typename MatrixType::DimensionType matIendX,
-                        typename MatrixType::DimensionType matIstartY, typename MatrixType::DimensionType matIendY, CommType&& CommInfo);
+  static void base_case(MatrixType& A, MatrixType& TI, ArgType&& args, CommType&& CommInfo);
 
   template<typename ArgType, typename CommType>
-  static void simulate(ArgType&& args, int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
-                       int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t RIstartX, int64_t RIendX, int64_t RIstartY, int64_t RIendY, bool complete_inv, CommType&& CommInfo);
+  static void simulate(ArgType&& args, CommType&& CommInfo);
 
   template<typename ArgType, typename CommType>
-  static void simulate_basecase(ArgType&& args, int64_t localDimension, int64_t trueLocalDimension, int64_t bcDimension, int64_t globalDimension, int64_t trueGlobalDimension,
-                                int64_t AstartX, int64_t AendX, int64_t AstartY, int64_t AendY, int64_t matIstartX, int64_t matIendX, int64_t matIstartY, int64_t matIendY, CommType&& CommInfo);
+  static void simulate_basecase(ArgType&& args, CommType&& CommInfo);
 };
 }
 
