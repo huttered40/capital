@@ -1,24 +1,26 @@
 /* Author: Edward Hutter */
 
-#ifndef CHOLESKY__VALIDATE_H_
-#define CHOLESKY__VALIDATE_H_
+#ifndef INVERSE__VALIDATE_H_
+#define INVERSE__VALIDATE_H_
 
-#include "../../../alg/alg.h"
+#include "../../alg/alg.h"
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
 
-namespace cholesky{
+namespace inverse{
 
 template<typename AlgType>
 class validate{
 public:
-  template<typename MatrixAType, typename MatrixTriType, typename CommType>
-  static typename MatrixAType::ScalarType invoke(MatrixAType& A, MatrixTriType& Tri, char dir, CommType&& CommInfo);
+  template<typename MatrixType, typename CommType>
+  static typename MatrixType::ScalarType invoke(MatrixType& matrixA, MatrixType& matrixB, CommType&& CommInfo);
+
+private:
 };
 }
 
 // Templated classes require method definition within the same unit as method declarations (correct wording?)
 #include "validate.hpp"
 
-#endif /* CHOLESKY__VALIDATE_H_ */
+#endif /* INVERSE__VALIDATE_H_ */

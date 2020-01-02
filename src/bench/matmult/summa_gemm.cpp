@@ -1,7 +1,6 @@
 /* Author: Edward Hutter */
 
 #include "../../alg/matmult/summa/summa.h"
-#include "validate/validate.h"
 
 using namespace std;
 

@@ -1,7 +1,7 @@
 /* Author: Edward Hutter */
 
 #include "../../alg/inverse/newton/newton.h"
-#include "validate/validate.h"
+#include "../../test/inverse/validate.h"
 
 using namespace std;
 
