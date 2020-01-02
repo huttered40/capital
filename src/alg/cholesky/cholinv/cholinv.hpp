@@ -9,7 +9,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixTy
   using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
   using Offload = typename MatrixType::OffloadType;
   static_assert(std::is_same<typename MatrixType::StructureType,rect>::value,"cholesky::cholinv requires non-packed matrices\n");
-  assert(args.dir == 'U');	// Removed support for 'L'. Necessary future support for this case can be handled via a final transpose.
+  assert(args.split>0); assert(args.dir == 'U');	// Removed support for 'L'. Necessary future support for this case can be handled via a final transpose.
   U localDimension = A.num_rows_local(); U globalDimension = A.num_rows_global(); U minDimLocal = 1;
   U bcDimLocal = util::get_next_power2(localDimension/(CommInfo.c*CommInfo.d));
   auto bcMult = args.bc_mult_dim;
