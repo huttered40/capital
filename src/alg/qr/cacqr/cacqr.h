@@ -31,8 +31,8 @@ public:
     typename CholeskyInversionType::pack<ScalarType,DimensionType> cholesky_inverse_args;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table1;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table2;
-    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> square_table1;
-    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> square_table2;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> rect_table1;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> rect_table2;
   };
 
   template<typename MatrixType, typename ArgType, typename CommType>
@@ -56,6 +56,12 @@ protected:
 
   template<typename MatrixType, typename ArgType, typename RectCommType, typename SquareCommType>
   static void sweep_tune(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType&& args, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
+
+  template<typename MatrixType, typename ArgType, typename CommType>
+  static void solve(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType&& args, CommType&& CommInfo);
+
+  template<typename MatrixType, typename ArgType, typename CommType>
+  static void simulate_solve(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo);
 };
 }
 
