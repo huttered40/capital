@@ -163,9 +163,10 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::invoke_3d(MatrixType& A, Matrix
     sweep_3d(A, IP::invoke(args.square_table2,std::make_pair(globalDimensionN,globalDimensionN)), IP::invoke(args.square_table1,std::make_pair(globalDimensionN,globalDimensionN)),
                            std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
     blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-    matmult::summa::invoke(IP::invoke(args.square_table2,std::make_pair(globalDimensionN,globalDimensionN)), R, std::forward<CommType>(CommInfo), trmmPack1);
+    matmult::summa::invoke(SP::invoke(IP::invoke(args.square_table2,std::make_pair(globalDimensionN,globalDimensionN)),IP::invoke(args.policy_table1,std::make_pair(globalDimensionN,globalDimensionN))),
+                           SP::invoke(R, IP::invoke(args.policy_table2,std::make_pair(globalDimensionN,globalDimensionN))), std::forward<CommType>(CommInfo), trmmPack1);
+    SP::complete(R, IP::invoke(args.policy_table2,std::make_pair(globalDimensionN,globalDimensionN)));
   }
-  IP::flush(IP::invoke(args.square_table1,std::make_pair(globalDimensionN,globalDimensionN))); IP::flush(IP::invoke(args.square_table2,std::make_pair(globalDimensionN,globalDimensionN)));
 }
 
 template<class SerializePolicy, class IntermediatesPolicy>
@@ -174,20 +175,26 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::invoke(MatrixType& A, MatrixTyp
   using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
   static_assert(std::is_same<typename MatrixType::StructureType,rect>::value,"qr::cacqr requires matrices of rect structure");
   U globalDimensionN = A.num_columns_global(); U localDimensionN = A.num_columns_local();
-  IP::init(args.policy_table1,std::make_pair(globalDimensionN,globalDimensionN),globalDimensionN,globalDimensionN,CommInfo.c,CommInfo.c);
+  if (std::is_same<SerializePolicy,policy::cacqr::Serialize>::value){ IP::init(args.policy_table1,std::make_pair(globalDimensionN,globalDimensionN),globalDimensionN,globalDimensionN,CommInfo.c,CommInfo.c); }
   IP::init(args.square_table1,std::make_pair(globalDimensionN,globalDimensionN),globalDimensionN,globalDimensionN,CommInfo.c,CommInfo.c);
   IP::init(args.square_table2,std::make_pair(globalDimensionN,globalDimensionN),globalDimensionN,globalDimensionN,CommInfo.c,CommInfo.c);
-  if (CommInfo.c == 1){ invoke_1d(A, R, std::forward<ArgType>(args), std::forward<CommType>(CommInfo)); return; }
-  if (CommInfo.c == CommInfo.d){ invoke_3d(A, R, std::forward<ArgType>(args), topo::square(CommInfo.cube,CommInfo.c)); return; }
+  if (CommInfo.c == 1){ invoke_1d(A, R, std::forward<ArgType>(args), std::forward<CommType>(CommInfo)); }
+  else{
+    if (std::is_same<SerializePolicy,policy::cacqr::Serialize>::value){ IP::init(args.policy_table2,std::make_pair(globalDimensionN,globalDimensionN),globalDimensionN,globalDimensionN,CommInfo.c,CommInfo.c); }
+    if (CommInfo.c == CommInfo.d){ invoke_3d(A, R, std::forward<ArgType>(args), topo::square(CommInfo.cube,CommInfo.c)); }
+    else{
+      auto SquareTopo = topo::square(CommInfo.cube,CommInfo.c);
+      sweep_tune(A, R, IP::invoke(args.square_table1,std::make_pair(globalDimensionN,globalDimensionN)), std::forward<ArgType>(args), std::forward<CommType>(CommInfo), SquareTopo);
+      if (args.num_iter>1){
+        sweep_tune(A, IP::invoke(args.square_table2,std::make_pair(globalDimensionN,globalDimensionN)), IP::invoke(args.square_table1,std::make_pair(globalDimensionN,globalDimensionN)),
+                                 std::forward<ArgType>(args), std::forward<CommType>(CommInfo), SquareTopo);
 
-  auto SquareTopo = topo::square(CommInfo.cube,CommInfo.c);
-  sweep_tune(A, R, IP::invoke(args.square_table1,std::make_pair(globalDimensionN,globalDimensionN)), std::forward<ArgType>(args), std::forward<CommType>(CommInfo), SquareTopo);
-  if (args.num_iter>1){
-    sweep_tune(A, IP::invoke(args.square_table2,std::make_pair(globalDimensionN,globalDimensionN)), IP::invoke(args.square_table1,std::make_pair(globalDimensionN,globalDimensionN)),
-                             std::forward<ArgType>(args), std::forward<CommType>(CommInfo), SquareTopo);
-
-    blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-    matmult::summa::invoke(IP::invoke(args.square_table2,std::make_pair(globalDimensionN,globalDimensionN)), R, SquareTopo, trmmPack1);
+        blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
+        matmult::summa::invoke(SP::invoke(IP::invoke(args.square_table2,std::make_pair(globalDimensionN,globalDimensionN)),IP::invoke(args.policy_table1,std::make_pair(globalDimensionN,globalDimensionN))),
+                               SP::invoke(R, IP::invoke(args.policy_table2,std::make_pair(globalDimensionN,globalDimensionN))), SquareTopo, trmmPack1);
+        SP::complete(R, IP::invoke(args.policy_table2,std::make_pair(globalDimensionN,globalDimensionN)));
+      }
+    }
   }
   IP::flush(IP::invoke(args.square_table1,std::make_pair(globalDimensionN,globalDimensionN))); IP::flush(IP::invoke(args.square_table2,std::make_pair(globalDimensionN,globalDimensionN)));
 }

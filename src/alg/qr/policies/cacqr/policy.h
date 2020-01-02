@@ -30,6 +30,9 @@ public:
   static MatrixType& invoke(MatrixType& Matrix, BufferType& buffer){
     return Matrix;
   }
+
+  template<typename MatrixType, typename BufferType>
+  static void complete(MatrixType& Matrix, BufferType& buffer){}
 };
 
 class Serialize{
@@ -50,6 +53,11 @@ public:
   static BufferType& invoke(MatrixType& Matrix, BufferType& buffer){
     serialize<rect,structure>::invoke(Matrix, buffer);
     return buffer;
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static void complete(MatrixType& Matrix, BufferType& buffer){
+    serialize<structure,rect>::invoke(buffer,Matrix);
   }
 };
 // ***********************************************************************************************************************************************************************
