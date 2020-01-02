@@ -17,18 +17,18 @@ class cacqr{
 public:
   // cacqr is parameterized only by its cholesky-inverse factorization algorithm
   template<typename ScalarType, typename DimensionType, typename CholeskyInversionType>
-  class pack{
+  class info{
   public:
     using ScalarType = ScalarType;
     using DimensionType = DimensionType;
     using alg_type = cacqr<SerializePolicy,IntermediatesPolicy>;
     using cholesky_inverse_type = CholeskyInversionType;
-    pack(const pack& p) : cholesky_inverse_args(p.cholesky_inverse_args) {}
-    pack(pack&& p) : cholesky_inverse_args(std::move(p.cholesky_inverse_args)) {}
+    info(const info& p) : cholesky_inverse_args(p.cholesky_inverse_args) {}
+    info(info&& p) : cholesky_inverse_args(std::move(p.cholesky_inverse_args)) {}
     template<typename CholeskyInversionArgType>
-    pack(size_t num_iter, CholeskyInversionArgType&& ci_args) : num_iter(num_iter),cholesky_inverse_args(std::forward<CholeskyInversionArgType>(ci_args)) {}
+    info(size_t num_iter, CholeskyInversionArgType&& ci_args) : num_iter(num_iter),cholesky_inverse_args(std::forward<CholeskyInversionArgType>(ci_args)) {}
     const size_t num_iter;
-    typename CholeskyInversionType::pack<ScalarType,DimensionType> cholesky_inverse_args;
+    typename CholeskyInversionType::info<ScalarType,DimensionType> cholesky_inverse_args;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table1;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table2;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> rect_table1;

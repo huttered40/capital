@@ -37,7 +37,7 @@ int main(int argc, char** argv){
 
     for (size_t i=0; i<numIterations; i++){
       // Generate algorithmic structure via instantiating packs
-      cholesky_type::pack<T,U> pack(complete_inv,split,bcMultiplier,dir);
+      cholesky_type::info<T,U> pack(complete_inv,split,bcMultiplier,dir);
       A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::start();

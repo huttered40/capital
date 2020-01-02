@@ -34,8 +34,8 @@ int main(int argc, char** argv){
 
     for (size_t i=0; i<numIterations; i++){
       // Generate algorithmic structure via instantiating packs
-      cholesky::cholinv<>::pack<T,U> ci_pack(complete_inv,bcMultiplier,'U');
-      qr_type::pack<T,U,decltype(ci_pack)::alg_type> pack(ci_pack);
+      cholesky::cholinv<>::info<T,U> ci_pack(complete_inv,bcMultiplier,'U');
+      qr_type::info<T,U,decltype(ci_pack)::alg_type> pack(ci_pack);
       // reset the matrix before timer starts
       util::random_fill(A, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
