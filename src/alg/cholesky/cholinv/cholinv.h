@@ -37,23 +37,23 @@ public:
   };
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void invoke(MatrixType& A, MatrixType& TI, ArgType&& args, CommType&& CommInfo);
+  static void invoke(MatrixType& A, MatrixType& TI, ArgType& args, CommType&& CommInfo);
 
   template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
-  static std::pair<ScalarType*,ScalarType*> invoke(ScalarType* A, ScalarType* TI, DimensionType localDim, DimensionType globalDim, ArgType&& args, CommType&& CommInfo);
+  static std::pair<ScalarType*,ScalarType*> invoke(ScalarType* A, ScalarType* TI, DimensionType localDim, DimensionType globalDim, ArgType& args, CommType&& CommInfo);
 
 private:
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void factor(MatrixType& A, MatrixType& TI, ArgType&& args, CommType&& CommInfo);
+  static void factor(MatrixType& A, MatrixType& TI, ArgType& args, CommType&& CommInfo);
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void base_case(MatrixType& A, MatrixType& TI, ArgType&& args, CommType&& CommInfo);
+  static void base_case(MatrixType& A, MatrixType& TI, ArgType& args, CommType&& CommInfo);
 
   template<typename ArgType, typename CommType>
-  static void simulate(ArgType&& args, CommType&& CommInfo);
+  static void simulate(ArgType& args, CommType&& CommInfo);
 
   template<typename ArgType, typename CommType>
-  static void simulate_basecase(ArgType&& args, CommType&& CommInfo);
+  static void simulate_basecase(ArgType& args, CommType&& CommInfo);
 };
 }
 

@@ -36,32 +36,32 @@ public:
   };
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void invoke(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo);
+  static void invoke(MatrixType& A, MatrixType& R, ArgType& args, CommType&& CommInfo);
 
   template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
-  static std::pair<ScalarType*,ScalarType*> invoke(ScalarType* A, ScalarType* R, DimensionType localNumRows, DimensionType localNumColumns, DimensionType globalNumRows, DimensionType globalNumColumns, ArgType&& args, CommType&& CommInfo);
+  static std::pair<ScalarType*,ScalarType*> invoke(ScalarType* A, ScalarType* R, DimensionType localNumRows, DimensionType localNumColumns, DimensionType globalNumRows, DimensionType globalNumColumns, ArgType& args, CommType&& CommInfo);
 
 protected:
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void invoke_1d(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo);
+  static void invoke_1d(MatrixType& A, MatrixType& R, ArgType& args, CommType&& CommInfo);
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void invoke_3d(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo);
+  static void invoke_3d(MatrixType& A, MatrixType& R, ArgType& args, CommType&& CommInfo);
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void sweep_1d(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType&& args, CommType&& CommInfo);
+  static void sweep_1d(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType& args, CommType&& CommInfo);
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void sweep_3d(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType&& args, CommType&& CommInfo);
+  static void sweep_3d(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType& args, CommType&& CommInfo);
 
   template<typename MatrixType, typename ArgType, typename RectCommType, typename SquareCommType>
-  static void sweep_tune(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType&& args, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
+  static void sweep_tune(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType& args, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void solve(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType&& args, CommType&& CommInfo);
+  static void solve(MatrixType& A, MatrixType& R, MatrixType& RI, ArgType& args, CommType&& CommInfo);
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void simulate_solve(MatrixType& A, MatrixType& R, ArgType&& args, CommType&& CommInfo);
+  static void simulate_solve(MatrixType& A, MatrixType& R, ArgType& args, CommType&& CommInfo);
 };
 }
 

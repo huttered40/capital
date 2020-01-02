@@ -21,7 +21,7 @@ public:
   };
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void invoke(MatrixType& matrix, ArgType&& args, CommType&& CommInfo);
+  static void invoke(MatrixType& matrix, ArgType& args, CommType&& CommInfo);
 protected:
 };
 }
