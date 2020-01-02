@@ -25,15 +25,15 @@ ifneq ($(PORTER),)
   LIB_PATH=-L/home/hutter2/hutter2/critter/lib
   LIBS=~/hutter2/external/BLAS/OpenBLAS/libopenblas_haswellp-r0.3.0.dev.a -lgfortran -lpthread -lcritter
 
-  OBJS = cacqr2
+  OBJS = cacqr
 
   $(OBJS): $(OBJS).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS) $(OBJS).o $(LIB_PATH) $(LIBS)
 	rm *.o
 	#mv charmrun $(BIN)charmrun	# Note: this will just not work for MPI, but that shouldn't cause a problem
 
-  $(OBJS).o: cacqr2.cpp $(ALG)cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS).o -c cacqr2.cpp
+  $(OBJS).o: cacqr.cpp $(ALG)cacqr.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS).o -c cacqr.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)charmrun $(BIN)$(OBJS)
@@ -47,14 +47,14 @@ ifneq ($(BGQ),)
   LIB_PATH=-L../../../../CritterBlueGene/critter/lib -L/soft/libraries/alcf/current/xl/LAPACK/lib -L/soft/libraries/alcf/current/xl/BLAS/lib -L/soft/libraries/alcf/current/xl/CBLAS/lib -L/soft/libraries/essl/current/essl/5.1/lib64/ -L/soft/compilers/ibmcmp-may2016/xlf/bg/14.1/lib64
   LIBS=-llapack -lcblas -lblas -lesslbg -lgfortran -lxlopt -lxlf90_r -lxlfmath -lxl -lcritter
 
-  OBJS1 = cacqr2
+  OBJS1 = cacqr
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(INCLUDES) $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cacqr2.cpp
+  $(OBJS1).o: cacqr.cpp $(ALG)cacqr.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cacqr.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -68,14 +68,14 @@ ifneq ($(THETA),)
   LIB_PATH=-L../../../../CritterXC40/critter/lib
   LIBS=-lcritter
 
-  OBJS1 = cacqr2
+  OBJS1 = cacqr
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cacqr2.cpp
+  $(OBJS1).o: cacqr.cpp $(ALG)cacqr.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cacqr.cpp
 
   clean:
 	-rm -f *.o *.gch $(BIN)$(OBJS1)
@@ -88,13 +88,13 @@ ifneq ($(STAMPEDE2),)
   LIB_PATH=-L../../../../critter/lib
   LIBS=-lcritter
 
-  OBJS1 = cacqr2
+  OBJS1 = cacqr
 
   $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o:# cacqr2.cpp $(ALG)cacqr.h
+  $(OBJS1).o:# cacqr.cpp $(ALG)cacqr.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c $(OBJS1).cpp
 
   clean:
@@ -125,13 +125,13 @@ ifneq ($(BLUEWATERS),)
     CFLAGS = -O3 -ffast-math -funroll-loops -ftree-vectorize -std=gnu++1y
   endif
 
-  OBJS1 = cacqr2
+  OBJS1 = cacqr
 
   $(OBJS1): $(OBJS1).o #offload.o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 
-  $(OBJS1).o: cacqr2.cpp $(ALG)cacqr.h
+  $(OBJS1).o: cacqr.cpp $(ALG)cacqr.h
 	$(CCMPI) $(CFLAGS) $(ENVS) -o $(OBJS1).o -c $(OBJS1).cpp
 
   offload.o: ../../../Offload/offload.h

@@ -42,12 +42,12 @@ public:
     U globalDimensionN = Matrix.num_columns_global();
     serialize<rect,structure>::invoke(Matrix, buffer);
     MPI_Allreduce(MPI_IN_PLACE, buffer.data(), buffer.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.world);
-    serialize<structure,rect>::invoke(buffer, Matrix);
+    serialize<structure,rect>::invoke(buffer,Matrix);
     return;
   }
 
   template<typename MatrixType, typename BufferType>
-  static MatrixType& invoke(MatrixType& Matrix, BufferType& buffer){
+  static BufferType& invoke(MatrixType& Matrix, BufferType& buffer){
     serialize<rect,structure>::invoke(Matrix, buffer);
     return buffer;
   }

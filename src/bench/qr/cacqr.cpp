@@ -15,16 +15,17 @@ int main(int argc, char** argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  U globalMatrixDimensionM = atoi(argv[1]);
-  U globalMatrixDimensionN = atoi(argv[2]);
-  U dimensionC = atoi(argv[3]);
-  bool complete_inv = atoi(argv[4]);
-  U bcMultiplier = atoi(argv[5]);
-  size_t num_chunks        = atoi(argv[6]);
-  size_t numIterations=atoi(argv[7]);
-  size_t id = atoi(argv[8]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+  size_t num_iter = atoi(argv[1]);
+  U globalMatrixDimensionM = atoi(argv[2]);
+  U globalMatrixDimensionN = atoi(argv[3]);
+  U dimensionC = atoi(argv[4]);
+  bool complete_inv = atoi(argv[5]);
+  U bcMultiplier = atoi(argv[6]);
+  size_t num_chunks        = atoi(argv[7]);
+  size_t numIterations=atoi(argv[8]);
+  size_t id = atoi(argv[9]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
-  using qr_type = typename qr::cacqr2<>;
+  using qr_type = typename qr::cacqr<>;
   {
     double iterTimeGlobal = 0; double iterTimeLocal = 0;
     T residualErrorGlobal,orthogonalityErrorGlobal;
@@ -37,7 +38,7 @@ int main(int argc, char** argv){
     for (size_t i=0; i<numIterations; i++){
       // Generate algorithmic structure via instantiating packs
       cholesky::cholinv<>::pack<T,U> ci_pack(complete_inv,bcMultiplier,'U');
-      qr_type::pack<T,U,decltype(ci_pack)::alg_type> pack(ci_pack);
+      qr_type::pack<T,U,decltype(ci_pack)::alg_type> pack(num_iter,ci_pack);
       // reset the matrix before timer starts
       A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together

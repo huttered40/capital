@@ -22,7 +22,7 @@ int main(int argc, char** argv){
   size_t id = atoi(argv[8]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   auto mpi_dtype = mpi_type<T>::type;
-  using qr_type = typename qr::cacqr2<>;
+  using qr_type = typename qr::cacqr<>;
   {
     double iterTimeGlobal = 0; double iterTimeLocal = 0;
     auto RectTopo = topo::rect(MPI_COMM_WORLD,dimensionC, num_chunks);
