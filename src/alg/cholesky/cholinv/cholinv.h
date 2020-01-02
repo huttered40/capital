@@ -27,8 +27,7 @@ public:
     const char dir;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table_diaginv;
-    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> square_table1;
-    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> square_table2;
+    std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> rect_table;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> base_case_table;
     std::map<std::pair<DimensionType,DimensionType>,std::vector<ScalarType>> base_case_blocked_table;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> base_case_cyclic_table;

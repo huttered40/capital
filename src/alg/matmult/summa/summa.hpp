@@ -132,7 +132,8 @@ void summa::invoke(MatrixAType& A, MatrixCType& C, CommType&& CommInfo,
     if (isRootColumn){ A.swap(); }
     distribute(B,A,std::forward<CommType>(CommInfo)); }
 
-  for (U i=0; i<C.num_elems(); i++) { C.scratch()[i] = 0.; }
+  if (!std::is_same<StructureC,rect>::value) { C.swap_pad(); }
+  for (U i=0; i<(localDimensionN*localDimensionN); i++) { C.scratch()[i] = 0.; }
   // This cancels out any affect beta could have. Beta is just not compatable with summa and must be handled separately
   if (srcPackage.transposeA == blas::Transpose::AblasNoTrans){
     blas::ArgPack_gemm<T> gemmArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasTrans, srcPackage.alpha,srcPackage.beta);
@@ -144,6 +145,8 @@ void summa::invoke(MatrixAType& A, MatrixCType& C, CommType&& CommInfo,
     blas::engine::_gemm(B.scratch(), A.scratch(), C.scratch(), localDimensionN, localDimensionN, localDimensionK,
                         localDimensionK, localDimensionK, localDimensionN, gemmArgs);
   }
+  if (std::is_same<StructureC,uppertri>::value) { C.swap_pad(); U counter=0; for (U i=0; i<localDimensionN; i++) { for (U j=0; j<(i+1); j++) C.scratch()[counter++] = C.pad()[i*localDimensionN+j]; } }
+  if (std::is_same<StructureC,lowertri>::value) { C.swap_pad(); U counter=0; for (U i=0; i<localDimensionN; i++) { for (U j=0; j<(localDimensionN-i); j++) C.scratch()[counter++] = C.pad()[i*localDimensionN+j]; } }
   collect(C,std::forward<CommType>(CommInfo));
 
   if (srcPackage.beta != 0.){

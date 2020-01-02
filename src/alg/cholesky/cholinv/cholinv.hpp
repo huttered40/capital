@@ -46,24 +46,24 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate(ArgTyp
     return;
   }
 
-  U cut1 = (args.localDimension>>1); cut1 = util::get_next_power2(cut1); U cut2 = args.localDimension-cut1;
+  U split1 = (args.localDimension>>1); split1 = util::get_next_power2(split1); U split2 = args.localDimension-split1;
   U save1 = args.localDimension; U save2 = args.globalDimension; U save3=args.AendX; U save4=args.AendY; U save5=args.TIendX; U save6=args.TIendY;
-  args.localDimension=cut1; args.globalDimension=(args.globalDimension>>1); args.AendX=args.AstartX+cut1; args.AendY=args.AstartY+cut1; args.TIendX=args.TIstartX+cut1; args.TIendY=args.TIstartY+cut1;
+  args.localDimension=split1; args.globalDimension=(args.globalDimension>>1); args.AendX=args.AstartX+split1; args.AendY=args.AstartY+split1; args.TIendX=args.TIstartX+split1; args.TIendY=args.TIstartY+split1;
   simulate(std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
   args.localDimension=save1; args.globalDimension=save2; args.AendX=save3; args.AendY=save4; args.TIendX=save5; args.TIendY=save6;
 
-  IP::init(args.policy_table,std::make_pair(cut1,cut1),nullptr,cut1,cut1,CommInfo.d,CommInfo.d);
-  IP::init(args.square_table1,std::make_pair(cut2,cut1),nullptr,cut2,cut1,CommInfo.d,CommInfo.d);
-  IP::init(args.square_table2,std::make_pair(cut2,cut2),nullptr,cut2,cut2,CommInfo.d,CommInfo.d);	// this might be a problem. It was coupled before
+  IP::init(args.policy_table,std::make_pair(split1,split1),nullptr,split1,split1,CommInfo.d,CommInfo.d);
+  IP::init(args.rect_table,std::make_pair(split2,split1),nullptr,split2,split1,CommInfo.d,CommInfo.d);
+  IP::init(args.policy_table,std::make_pair(split2,split2),nullptr,split2,split2,CommInfo.d,CommInfo.d);	// this might be a problem. It was coupled before
 
   save1 = args.localDimension; save2 = args.globalDimension; save3=args.AstartX; save4=args.AstartY; save5=args.TIstartX; save6=args.TIstartY;
-  args.localDimension=cut2; args.globalDimension=cut2*CommInfo.d; args.AstartX=args.AstartX+cut1; args.AstartY=args.AstartY+cut1; args.TIstartX=args.TIstartX+cut1; args.TIstartY=args.TIstartY+cut1;
+  args.localDimension=split2; args.globalDimension=split2*CommInfo.d; args.AstartX=args.AstartX+split1; args.AstartY=args.AstartY+split1; args.TIstartX=args.TIstartX+split1; args.TIstartY=args.TIstartY+split1;
   simulate(std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
   args.localDimension=save1; args.globalDimension=save2; args.AstartX=save3; args.AstartY=save4; args.TIstartX=save5; args.TIstartY=save6;
 
   if (!(!args.complete_inv && (args.globalDimension==args.trueGlobalDimension))){
-    IP::init(args.policy_table,std::make_pair(cut1,cut1),nullptr,cut1,cut1,CommInfo.d,CommInfo.d);
-    IP::init(args.policy_table,std::make_pair(cut2,cut2),nullptr,cut2,cut2,CommInfo.d,CommInfo.d);
+    IP::init(args.policy_table,std::make_pair(split1,split1),nullptr,split1,split1,CommInfo.d,CommInfo.d);
+    IP::init(args.policy_table,std::make_pair(split2,split2),nullptr,split2,split2,CommInfo.d,CommInfo.d);
   }
 }
 
@@ -91,46 +91,46 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(MatrixTy
     return;
   }
 
-  U cut1 = (args.localDimension>>1); cut1 = util::get_next_power2(cut1); U cut2 = args.localDimension-cut1;
+  U split1 = (args.localDimension>>1); split1 = util::get_next_power2(split1); U split2 = args.localDimension-split1;
   U save1 = args.localDimension; U save2 = args.globalDimension; U save3=args.AendX; U save4=args.AendY; U save5=args.TIendX; U save6=args.TIendY;
-  args.localDimension=cut1; args.globalDimension=(args.globalDimension>>1); args.AendX=args.AstartX+cut1; args.AendY=args.AstartY+cut1; args.TIendX=args.TIstartX+cut1; args.TIendY=args.TIstartY+cut1;
+  args.localDimension=split1; args.globalDimension=(args.globalDimension>>1); args.AendX=args.AstartX+split1; args.AendY=args.AstartY+split1; args.TIendX=args.TIstartX+split1; args.TIendY=args.TIstartY+split1;
   factor(A, TI, std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
   args.localDimension=save1; args.globalDimension=save2; args.AendX=save3; args.AendY=save4; args.TIendX=save5; args.TIendY=save6;
 
-  serialize<rect,typename SP::structure>::invoke(TI, IP::invoke(args.policy_table,std::make_pair(cut1,cut1)), args.TIstartX, args.TIstartX+cut1, args.TIstartY, args.TIstartY+cut1);
-  util::transpose(IP::invoke(args.policy_table,std::make_pair(cut1,cut1)), std::forward<CommType>(CommInfo));
+  serialize<rect,typename SP::structure>::invoke(TI, IP::invoke(args.policy_table,std::make_pair(split1,split1)), args.TIstartX, args.TIstartX+split1, args.TIstartY, args.TIstartY+split1);
+  util::transpose(IP::invoke(args.policy_table,std::make_pair(split1,split1)), std::forward<CommType>(CommInfo));
   blas::ArgPack_trmm<T> trmmArgs(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
 
   // 2nd case: Extra optimization for the case when we only perform TRSM at the top level.
-  serialize<rect,rect>::invoke(A, IP::invoke(args.square_table1,std::make_pair(cut2,cut1)), args.AstartX+cut1, args.AendX, args.AstartY, args.AstartY+cut1);
-  matmult::summa::invoke(IP::invoke(args.policy_table,std::make_pair(cut1,cut1)), IP::invoke(args.square_table1,std::make_pair(cut2,cut1)), std::forward<CommType>(CommInfo), trmmArgs);
-  serialize<rect,rect>::invoke(A, IP::invoke(args.square_table1,std::make_pair(cut2,cut1)), args.AstartX+cut1, args.AendX, args.AstartY, args.AstartY+cut1, true);
+  serialize<rect,rect>::invoke(A, IP::invoke(args.rect_table,std::make_pair(split2,split1)), args.AstartX+split1, args.AendX, args.AstartY, args.AstartY+split1);
+  matmult::summa::invoke(IP::invoke(args.policy_table,std::make_pair(split1,split1)), IP::invoke(args.rect_table,std::make_pair(split2,split1)), std::forward<CommType>(CommInfo), trmmArgs);
+  serialize<rect,rect>::invoke(A, IP::invoke(args.rect_table,std::make_pair(split2,split1)), args.AstartX+split1, args.AendX, args.AstartY, args.AstartY+split1, true);
 
   blas::ArgPack_syrk<T> syrkArgs(blas::Order::AblasColumnMajor, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, -1., 1.);
-  serialize<rect,rect>::invoke(A, IP::invoke(args.square_table1,std::make_pair(cut2,cut1)), args.AstartX+cut1, args.AendX, args.AstartY, args.AstartY+cut1);
-  serialize<rect,rect>::invoke(A, IP::invoke(args.square_table2,std::make_pair(cut2,cut2)), args.AstartX+cut1, args.AendX, args.AstartY+cut1, args.AendY);
-  matmult::summa::invoke(IP::invoke(args.square_table1,std::make_pair(cut2,cut1)), IP::invoke(args.square_table2,std::make_pair(cut2,cut2)), std::forward<CommType>(CommInfo), syrkArgs);
-  serialize<rect,rect>::invoke(A, IP::invoke(args.square_table2,std::make_pair(cut2,cut2)), args.AstartX+cut1, args.AendX, args.AstartY+cut1, args.AendY, true);
+  serialize<rect,rect>::invoke(A, IP::invoke(args.rect_table,std::make_pair(split2,split1)), args.AstartX+split1, args.AendX, args.AstartY, args.AstartY+split1);
+  serialize<rect,typename SP::structure>::invoke(A, IP::invoke(args.policy_table,std::make_pair(split2,split2)), args.AstartX+split1, args.AendX, args.AstartY+split1, args.AendY);
+  matmult::summa::invoke(IP::invoke(args.rect_table,std::make_pair(split2,split1)), IP::invoke(args.policy_table,std::make_pair(split2,split2)), std::forward<CommType>(CommInfo), syrkArgs);
+  serialize<rect,typename SP::structure>::invoke(A, IP::invoke(args.policy_table,std::make_pair(split2,split2)), args.AstartX+split1, args.AendX, args.AstartY+split1, args.AendY, true);
 
   save1 = args.localDimension; save2 = args.globalDimension; save3=args.AstartX; save4=args.AstartY; save5=args.TIstartX; save6=args.TIstartY;
-  args.localDimension=cut2; args.globalDimension=cut2*CommInfo.d; args.AstartX=args.AstartX+cut1; args.AstartY=args.AstartY+cut1; args.TIstartX=args.TIstartX+cut1; args.TIstartY=args.TIstartY+cut1;
+  args.localDimension=split2; args.globalDimension=split2*CommInfo.d; args.AstartX=args.AstartX+split1; args.AstartY=args.AstartY+split1; args.TIstartX=args.TIstartX+split1; args.TIstartY=args.TIstartY+split1;
   factor(A, TI, std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
   args.localDimension=save1; args.globalDimension=save2; args.AstartX=save3; args.AstartY=save4; args.TIstartX=save5; args.TIstartY=save6;
 
   // Next step : temp <- R_{12}*TI_{22}
   if (!(!args.complete_inv && (args.globalDimension==args.trueGlobalDimension))){
-    serialize<rect,rect>::invoke(A, IP::invoke(args.square_table1,std::make_pair(cut2,cut1)), args.AstartX+cut1, args.AendX, args.AstartY, args.AstartY+cut1);
-    serialize<rect,typename SP::structure>::invoke(TI, IP::invoke(args.policy_table,std::make_pair(cut1,cut1)), args.TIstartX, args.TIstartX+cut1, args.TIstartY, args.TIstartY+cut1);
+    serialize<rect,rect>::invoke(A, IP::invoke(args.rect_table,std::make_pair(split2,split1)), args.AstartX+split1, args.AendX, args.AstartY, args.AstartY+split1);
+    serialize<rect,typename SP::structure>::invoke(TI, IP::invoke(args.policy_table,std::make_pair(split1,split1)), args.TIstartX, args.TIstartX+split1, args.TIstartY, args.TIstartY+split1);
     blas::ArgPack_trmm<T> invPackage1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
-    matmult::summa::invoke(IP::invoke(args.policy_table,std::make_pair(cut1,cut1)), IP::invoke(args.square_table1,std::make_pair(cut2,cut1)), std::forward<CommType>(CommInfo), invPackage1);
+    matmult::summa::invoke(IP::invoke(args.policy_table,std::make_pair(split1,split1)), IP::invoke(args.rect_table,std::make_pair(split2,split1)), std::forward<CommType>(CommInfo), invPackage1);
     // Next step: finish the Triangular inverse calculation
     invPackage1.alpha = -1.; invPackage1.side = blas::Side::AblasRight;
-    serialize<rect,typename SP::structure>::invoke(TI, IP::invoke(args.policy_table,std::make_pair(cut2,cut2)), args.TIstartX+cut1, args.TIendX, args.TIstartY+cut1, args.TIendY);
-    matmult::summa::invoke(IP::invoke(args.policy_table,std::make_pair(cut2,cut2)), IP::invoke(args.square_table1,std::make_pair(cut2,cut1)), std::forward<CommType>(CommInfo), invPackage1);
-    serialize<rect,rect>::invoke(TI, IP::invoke(args.square_table1,std::make_pair(cut2,cut1)), args.TIstartX+cut1, args.TIendX, args.TIstartY, args.TIstartY+cut1, true);
+    serialize<rect,typename SP::structure>::invoke(TI, IP::invoke(args.policy_table,std::make_pair(split2,split2)), args.TIstartX+split1, args.TIendX, args.TIstartY+split1, args.TIendY);
+    matmult::summa::invoke(IP::invoke(args.policy_table,std::make_pair(split2,split2)), IP::invoke(args.rect_table,std::make_pair(split2,split1)), std::forward<CommType>(CommInfo), invPackage1);
+    serialize<rect,rect>::invoke(TI, IP::invoke(args.rect_table,std::make_pair(split2,split1)), args.TIstartX+split1, args.TIendX, args.TIstartY, args.TIstartY+split1, true);
   }
-  IP::flush(args.square_table1[std::make_pair(cut2,cut1)]); IP::flush(args.policy_table_diaginv[std::make_pair(cut1,cut1)]); IP::flush(args.policy_table[std::make_pair(cut1,cut1)]);
-  IP::flush(args.square_table2[std::make_pair(cut2,cut2)]); IP::flush(args.policy_table[std::make_pair(cut2,cut2)]);
+  IP::flush(args.rect_table[std::make_pair(split2,split1)]); IP::flush(args.policy_table_diaginv[std::make_pair(split1,split1)]); IP::flush(args.policy_table[std::make_pair(split1,split1)]);
+  IP::flush(args.policy_table[std::make_pair(split2,split2)]);
 }
 
 

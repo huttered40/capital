@@ -98,7 +98,6 @@ void serialize<rect,uppertri>::invoke(BigType& src, SmallType& dest, typename Bi
   using U = typename BigType::DimensionType;
   U rangeX = cutDimensionXend-cutDimensionXstart;
   U rangeY = cutDimensionYend-cutDimensionYstart;
-//  assert(rangeX == rangeY);
 
   U bigNumRows = src.num_rows_local();
   U bigNumColumns = src.num_columns_local();
