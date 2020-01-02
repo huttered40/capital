@@ -19,10 +19,11 @@ public:
     using ScalarType = ScalarType;
     using DimensionType = DimensionType;
     using alg_type = cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>;
-    pack(const pack& p) : complete_inv(p.complete_inv), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
-    pack(pack&& p) : complete_inv(p.complete_inv), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
-    pack(DimensionType complete_inv, DimensionType bc_mult_dim, char dir) : complete_inv(complete_inv), bc_mult_dim(bc_mult_dim), dir(dir) {}
+    pack(const pack& p) : complete_inv(p.complete_inv), split(p.split), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
+    pack(pack&& p) : complete_inv(p.complete_inv), split(p.split), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
+    pack(DimensionType complete_inv, DimensionType split, DimensionType bc_mult_dim, char dir) : complete_inv(complete_inv), split(split), bc_mult_dim(bc_mult_dim), dir(dir) {}
     const DimensionType complete_inv;
+    const DimensionType split;
     const DimensionType bc_mult_dim;
     const char dir;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table;

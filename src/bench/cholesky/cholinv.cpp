@@ -18,10 +18,11 @@ int main(int argc, char** argv){
   U globalMatrixSize = atoi(argv[1]);
   U pGridDimensionC = atoi(argv[2]);
   bool complete_inv = atoi(argv[3]);
-  U bcMultiplier = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
-  size_t num_chunks        = atoi(argv[5]);
-  size_t numIterations = atoi(argv[6]);
-  size_t id = atoi(argv[7]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+  U split = atoi(argv[4]); // multiplies baseCase dimension by sucessive 2
+  U bcMultiplier = atoi(argv[5]); // multiplies baseCase dimension by sucessive 2
+  size_t num_chunks        = atoi(argv[6]);
+  size_t numIterations = atoi(argv[7]);
+  size_t id = atoi(argv[8]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   using cholesky_type = typename cholesky::cholinv<>;
   size_t pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
@@ -36,7 +37,7 @@ int main(int argc, char** argv){
 
     for (size_t i=0; i<numIterations; i++){
       // Generate algorithmic structure via instantiating packs
-      cholesky_type::pack<T,U> pack(complete_inv,bcMultiplier,dir);
+      cholesky_type::pack<T,U> pack(complete_inv,split,bcMultiplier,dir);
       A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::start();

@@ -20,10 +20,11 @@ int main(int argc, char** argv){
   U globalMatrixDimensionN = atoi(argv[3]);
   U dimensionC = atoi(argv[4]);
   bool complete_inv = atoi(argv[5]);
-  U bcMultiplier = atoi(argv[6]);
-  size_t num_chunks        = atoi(argv[7]);
-  size_t numIterations=atoi(argv[8]);
-  size_t id = atoi(argv[9]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+  U split = atoi(argv[6]);
+  U bcMultiplier = atoi(argv[7]);
+  size_t num_chunks        = atoi(argv[8]);
+  size_t numIterations=atoi(argv[9]);
+  size_t id = atoi(argv[10]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   using qr_type = typename qr::cacqr<>;
   {
@@ -37,7 +38,7 @@ int main(int argc, char** argv){
 
     for (size_t i=0; i<numIterations; i++){
       // Generate algorithmic structure via instantiating packs
-      cholesky::cholinv<>::pack<T,U> ci_pack(complete_inv,bcMultiplier,'U');
+      cholesky::cholinv<>::pack<T,U> ci_pack(complete_inv,split,bcMultiplier,'U');
       qr_type::pack<T,U,decltype(ci_pack)::alg_type> pack(num_iter,ci_pack);
       // reset the matrix before timer starts
       A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);

@@ -12,8 +12,8 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixTy
   assert(args.dir == 'U');	// Removed support for 'L'. Necessary future support for this case can be handled via a final transpose.
   U localDimension = A.num_rows_local(); U globalDimension = A.num_rows_global(); U minDimLocal = 1;
   U bcDimLocal = util::get_next_power2(localDimension/(CommInfo.c*CommInfo.d));
-  auto bcMult = args.bc_mult_dim; if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal/=2;}
-  else{for (int i=0;i<bcMult; i++) bcDimLocal*=2;}
+  auto bcMult = args.bc_mult_dim;
+  if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal/=2;} else {for (int i=0;i<bcMult; i++) bcDimLocal*=2;}
   bcDimLocal  = std::max(minDimLocal,bcDimLocal); bcDimLocal  = std::min(localDimension,bcDimLocal); U bcDimension = CommInfo.d*bcDimLocal;
 
   args.localDimension=localDimension; args.trueLocalDimension=localDimension; args.globalDimension=globalDimension; args.trueGlobalDimension=globalDimension; args.bcDimension=bcDimension;
@@ -46,7 +46,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate(ArgTyp
     return;
   }
 
-  U split1 = (args.localDimension>>1); split1 = util::get_next_power2(split1); U split2 = args.localDimension-split1;
+  U split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1); U split2 = args.localDimension-split1;
   U save1 = args.localDimension; U save2 = args.globalDimension; U save3=args.AendX; U save4=args.AendY; U save5=args.TIendX; U save6=args.TIendY;
   args.localDimension=split1; args.globalDimension=(args.globalDimension>>1); args.AendX=args.AstartX+split1; args.AendY=args.AstartY+split1; args.TIendX=args.TIstartX+split1; args.TIendY=args.TIstartY+split1;
   simulate(std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
@@ -91,7 +91,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(MatrixTy
     return;
   }
 
-  U split1 = (args.localDimension>>1); split1 = util::get_next_power2(split1); U split2 = args.localDimension-split1;
+  U split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1); U split2 = args.localDimension-split1;
   U save1 = args.localDimension; U save2 = args.globalDimension; U save3=args.AendX; U save4=args.AendY; U save5=args.TIendX; U save6=args.TIendY;
   args.localDimension=split1; args.globalDimension=(args.globalDimension>>1); args.AendX=args.AstartX+split1; args.AendY=args.AstartY+split1; args.TIendX=args.TIstartX+split1; args.TIendY=args.TIstartY+split1;
   factor(A, TI, std::forward<ArgType>(args), std::forward<CommType>(CommInfo));
