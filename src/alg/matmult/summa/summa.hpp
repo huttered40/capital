@@ -9,15 +9,13 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& Co
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
+  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
   using StructureA = typename MatrixAType::StructureType;
   using StructureB = typename MatrixBType::StructureType;
 
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
-  if (isRootRow){ A.swap(); }
-  if (isRootColumn){ B.swap(); }
+  if (isRootRow){ A.swap(); } if (isRootColumn){ B.swap(); }
   U localDimensionM = (srcPackage.transposeA == blas::Transpose::AblasNoTrans ? A.num_rows_local() : A.num_columns_local());
   U localDimensionN = (srcPackage.transposeB == blas::Transpose::AblasNoTrans ? B.num_columns_local() : B.num_rows_local());
   U localDimensionK = (srcPackage.transposeA == blas::Transpose::AblasNoTrans ? A.num_columns_local() : A.num_rows_local());
@@ -32,19 +30,14 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& Co
                       (srcPackage.transposeB == blas::Transpose::AblasNoTrans ? localDimensionK : localDimensionN), localDimensionM, srcPackage);
   collect(C,std::forward<CommType>(CommInfo));
   if (save_beta != 0){
-    for (U i=0; i<C.num_elems(); i++){
-      C.data()[i] = save_beta*C.data()[i] + C.scratch()[i];
-    }
+    for (U i=0; i<C.num_elems(); i++){ C.data()[i] = save_beta*C.data()[i] + C.scratch()[i]; }
   }
-  else{
-    C.swap();
-  }
+  else{ C.swap(); }
   // Reset before returning
   srcPackage.beta = save_beta;
   if (!std::is_same<StructureA,rect>::value){ A.swap_pad(); }
   if (!std::is_same<StructureB,rect>::value){ B.swap_pad(); }
-  if (isRootRow){ A.swap(); }
-  if (isRootColumn){ B.swap(); }
+  if (isRootRow){ A.swap(); } if (isRootColumn){ B.swap(); }
 }
   
 template<typename MatrixAType, typename MatrixBType, typename CommType>
@@ -53,27 +46,23 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
+  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
   using StructureA = typename MatrixAType::StructureType;
   using StructureB = typename MatrixBType::StructureType;
 
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
-  U localDimensionM = B.num_rows_local();
-  U localDimensionN = B.num_columns_local();
+  U localDimensionM = B.num_rows_local(); U localDimensionN = B.num_columns_local();
 
   // Communicated data lives in the _scratch members of A,B
   if (srcPackage.side == blas::Side::AblasLeft){
-    if (isRootRow){ A.swap(); }
-    if (isRootColumn){ B.swap(); }
+    if (isRootRow){ A.swap(); } if (isRootColumn){ B.swap(); }
     distribute(A, B, std::forward<CommType>(CommInfo));
     blas::engine::_trmm(A.scratch(), B.scratch(), localDimensionM, localDimensionN, localDimensionM,
     (srcPackage.order == blas::Order::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
   else{
-    if (isRootRow){ B.swap(); }
-    if (isRootColumn){ A.swap(); }
+    if (isRootRow){ B.swap(); } if (isRootColumn){ A.swap(); }
     distribute(B,A,std::forward<CommType>(CommInfo));
     blas::engine::_trmm(A.scratch(), B.scratch(), localDimensionM, localDimensionN, localDimensionN,
     (srcPackage.order == blas::Order::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
@@ -82,9 +71,7 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
   collect(B,std::forward<CommType>(CommInfo));
   if (srcPackage.alpha != 0.){
     // Future optimization: Reduce loop length by half since the update will be a symmetric matrix and only half will be used going forward.
-    for (U i=0; i<B.num_elems(); i++){
-      B.data()[i] = srcPackage.alpha*B.data()[i] + B.scratch()[i];
-    }
+    for (U i=0; i<B.num_elems(); i++){ B.data()[i] = srcPackage.alpha*B.data()[i] + B.scratch()[i]; }
   }
   // Reset before returning
   if (!std::is_same<StructureA,rect>::value){ A.swap_pad(); }
@@ -99,14 +86,12 @@ void summa::invoke(MatrixAType& A, MatrixCType& C, CommType&& CommInfo,
   // Note: Internally, this routine uses gemm, not syrk, as its not possible for each processor to perform local MM with symmetric matrices
   //         given the data layout over the processor grid.
 
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
+  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
   using StructureA = typename MatrixAType::StructureType;
   using StructureC = typename MatrixCType::StructureType;
 
   // No choice but to incur the copy cost below.
-  MatrixAType B = A;
-  util::transpose(B, std::forward<CommType>(CommInfo));
+  MatrixAType B = A; util::transpose(B, std::forward<CommType>(CommInfo));
 
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
@@ -115,12 +100,10 @@ void summa::invoke(MatrixAType& A, MatrixCType& C, CommType&& CommInfo,
   U localDimensionK = (srcPackage.transposeA == blas::Transpose::AblasNoTrans ? A.num_columns_local() : A.num_rows_local());
 
   if (srcPackage.transposeA == blas::Transpose::AblasNoTrans){
-    if (isRootRow){ A.swap(); }
-    if (isRootColumn){ B.swap(); }
+    if (isRootRow){ A.swap(); } if (isRootColumn){ B.swap(); }
     distribute(A,B,std::forward<CommType>(CommInfo)); }
   else{
-    if (isRootRow){ B.swap(); }
-    if (isRootColumn){ A.swap(); }
+    if (isRootRow){ B.swap(); } if (isRootColumn){ A.swap(); }
     distribute(B,A,std::forward<CommType>(CommInfo)); }
 
   if (!std::is_same<StructureC,rect>::value) { C.swap_pad(); }
@@ -142,9 +125,7 @@ void summa::invoke(MatrixAType& A, MatrixCType& C, CommType&& CommInfo,
 
   if (srcPackage.beta != 0.){
     // Future optimization: Reduce loop length by half since the update will be a symmetric matrix and only half will be used going forward.
-    for (U i=0; i<C.num_elems(); i++){
-      C.data()[i] = srcPackage.beta*C.data()[i] + C.scratch()[i];
-    }
+    for (U i=0; i<C.num_elems(); i++){ C.data()[i] = srcPackage.beta*C.data()[i] + C.scratch()[i]; }
   } else{ C.swap(); }
   // Reset before returning
   if (!std::is_same<StructureA,rect>::value) { A.swap_pad(); }
@@ -154,17 +135,13 @@ void summa::invoke(MatrixAType& A, MatrixCType& C, CommType&& CommInfo,
 template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
 
-  using T = typename MatrixAType::ScalarType;
-  using U = typename MatrixAType::DimensionType;
+  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
   using StructureA = typename MatrixAType::StructureType;
   using StructureB = typename MatrixBType::StructureType;
   using Offload = typename MatrixAType::OffloadType;
 
-  U localDimensionM = A.num_rows_local();
-  U localDimensionN = B.num_columns_local();
-  U localDimensionK = A.num_columns_local();
-  U sizeA  = A.num_elems();
-  U sizeB  = B.num_elems();
+  U localDimensionM = A.num_rows_local(); U localDimensionN = B.num_columns_local();
+  U localDimensionK = A.num_columns_local(); U sizeA  = A.num_elems(); U sizeB  = B.num_elems();
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
 
@@ -181,16 +158,14 @@ void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
     std::vector<MPI_Request> column_req(CommInfo.num_chunks);
     std::vector<MPI_Status> row_stat(CommInfo.num_chunks);
     std::vector<MPI_Status> column_stat(CommInfo.num_chunks);
-    int64_t offset = sizeA%CommInfo.num_chunks;
-    int64_t progress=0;
+    int64_t offset = sizeA%CommInfo.num_chunks; int64_t progress=0;
     for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){
       MPI_Ibcast(&A.scratch()[progress], idx==(CommInfo.num_chunks-1) ? sizeA/CommInfo.num_chunks+offset : sizeA/CommInfo.num_chunks,
                  mpi_type<T>::type, CommInfo.z, CommInfo.row, &row_req[idx]);
       progress += sizeA/CommInfo.num_chunks;
     }
     // initiate distribution along columns and complete distribution across rows
-    offset = sizeB%CommInfo.num_chunks;
-    progress=0;
+    offset = sizeB%CommInfo.num_chunks; progress=0;
     for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){
      MPI_Ibcast(&B.scratch()[progress], idx==(CommInfo.num_chunks-1) ? sizeB/CommInfo.num_chunks+offset : sizeB/CommInfo.num_chunks,
                 mpi_type<T>::type, CommInfo.z, CommInfo.column, &column_req[idx]);
@@ -198,25 +173,17 @@ void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
       MPI_Wait(&row_req[idx],&row_stat[idx]);
     }
     // complete distribution along columns
-    for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){
-      MPI_Wait(&column_req[idx],&column_stat[idx]);
-    }
+    for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){ MPI_Wait(&column_req[idx],&column_stat[idx]); }
   }
 
-  if (!std::is_same<StructureA,rect>::value){
-    serialize<StructureA,rect>::invoke(A); A.swap_pad();
-  }
-  if (!std::is_same<StructureB,rect>::value){
-    serialize<StructureB,rect>::invoke(B); B.swap_pad();
-  }
+  if (!std::is_same<StructureA,rect>::value){ serialize<StructureA,rect>::invoke(A); A.swap_pad(); }
+  if (!std::is_same<StructureB,rect>::value){ serialize<StructureB,rect>::invoke(B); B.swap_pad(); }
 }
 
 template<typename MatrixType, typename CommType>
 void summa::collect(MatrixType& matrix, CommType&& CommInfo){
 
-  using T = typename MatrixType::ScalarType;
-  using U = typename MatrixType::DimensionType;
-
+  using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
   U numElems = matrix.num_elems();
   MPI_Allreduce(MPI_IN_PLACE,matrix.scratch(), numElems, mpi_type<T>::type, MPI_SUM, CommInfo.depth);
 }
