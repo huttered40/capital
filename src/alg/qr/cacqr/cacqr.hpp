@@ -50,7 +50,7 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::sweep_3d(MatrixType& A, MatrixT
   MPI_Reduce((isRootColumn ? MPI_IN_PLACE : R.data()), R.data(), localDimensionN*localDimensionN, mpi_type<T>::type, MPI_SUM, CommInfo.z, CommInfo.column);
   MPI_Bcast(R.data(), localDimensionN*localDimensionN, mpi_type<T>::type, CommInfo.y, CommInfo.depth);
 
-  std::remove_reference<ArgType>::type::cholesky_inverse_type::invoke(R, RI, args.cholesky_inverse_args, std::forward<CommType>(CommInfo));
+  std::remove_reference<ArgType>::type::cholesky_inverse_type::factor(R, RI, args.cholesky_inverse_args, std::forward<CommType>(CommInfo));
 // For now, comment this out, because I am experimenting with using TriangularSolve TRSM instead of summa
 //   But later on once it works, use an integer or something to have both available, important when benchmarking
   // Need to be careful here. RI must be truly upper-triangular for this to be correct as I found out in 1D case.
@@ -92,7 +92,7 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::sweep_tune(MatrixType& A, Matri
   MPI_Allreduce(MPI_IN_PLACE, R.data(), localDimensionN*localDimensionN, mpi_type<T>::type,MPI_SUM, RectCommInfo.column_alt);
   MPI_Bcast(R.data(), localDimensionN*localDimensionN, mpi_type<T>::type, columnContigRank, RectCommInfo.depth);
 
-  std::remove_reference<ArgType>::type::cholesky_inverse_type::invoke(R, RI, args.cholesky_inverse_args, std::forward<SquareCommType>(SquareCommInfo));
+  std::remove_reference<ArgType>::type::cholesky_inverse_type::factor(R, RI, args.cholesky_inverse_args, std::forward<SquareCommType>(SquareCommInfo));
   if (args.cholesky_inverse_args.complete_inv){
     blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
                                     blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
@@ -141,7 +141,7 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::invoke_3d(MatrixType& A, Matrix
 
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
-void cacqr<SerializePolicy,IntermediatesPolicy>::invoke(MatrixType& A, MatrixType& R, ArgType& args, CommType&& CommInfo){
+void cacqr<SerializePolicy,IntermediatesPolicy>::factor(MatrixType& A, MatrixType& R, ArgType& args, CommType&& CommInfo){
   using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
   static_assert(std::is_same<typename MatrixType::StructureType,rect>::value,"qr::cacqr requires matrices of rect structure");
   U globalDimensionN = A.num_columns_global(); U localDimensionN = A.num_columns_local();
@@ -211,12 +211,12 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::solve(MatrixType& A, MatrixType
 
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
-std::pair<ScalarType*,ScalarType*> cacqr<SerializePolicy,IntermediatesPolicy>::invoke(ScalarType* A, ScalarType* R, DimensionType localNumRows, DimensionType localNumColumns,
+std::pair<ScalarType*,ScalarType*> cacqr<SerializePolicy,IntermediatesPolicy>::factor(ScalarType* A, ScalarType* R, DimensionType localNumRows, DimensionType localNumColumns,
                                                                                       DimensionType globalNumRows, DimensionType globalNumColumns, ArgType& args, CommType&& CommInfo){
   //TODO: Test with non-power-of-2 global matrix dimensions
   matrix<ScalarType,DimensionType,rect> mA(A,localNumColumns,localNumRows,globalNumColumns,globalNumRows,CommInfo.c,CommInfo.d);
   matrix<ScalarType,DimensionType,rect> mR(A,localNumColumns,localNumColumns,globalNumColumns,globalNumColumns,CommInfo.c,CommInfo.c);
-  invoke(mA,mR,args,std::forward<CommType>(CommInfo));
+  factor(mA,mR,args,std::forward<CommType>(CommInfo));
   return std::make_pair(mA.get_data(),mR.get_data());
 }
 }

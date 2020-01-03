@@ -40,13 +40,13 @@ int main(int argc, char** argv){
       util::random_fill(A, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
       critter::start();
-      auto ptrs = qr_type::invoke(A, R, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, pack, RectTopo);
+      auto ptrs = qr_type::factor(A, R, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, pack, RectTopo);
       critter::stop();
 
       if (id>0){
         util::random_fill(ptrs.first, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
         volatile double startTime=MPI_Wtime();
-        auto ptrs2 = qr_type::invoke(ptrs.first, ptrs.second, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, pack, RectTopo);
+        auto ptrs2 = qr_type::factor(ptrs.first, ptrs.second, localMatrixDimensionM, localMatrixDimensionN, globalMatrixDimensionM, globalMatrixDimensionN, pack, RectTopo);
         iterTimeLocal = MPI_Wtime() - startTime;
         MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
       }

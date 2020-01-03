@@ -36,10 +36,10 @@ public:
   };
 
   template<typename MatrixType, typename ArgType, typename CommType>
-  static void invoke(MatrixType& A, MatrixType& R, ArgType& args, CommType&& CommInfo);
+  static void factor(MatrixType& A, MatrixType& R, ArgType& args, CommType&& CommInfo);
 
   template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
-  static std::pair<ScalarType*,ScalarType*> invoke(ScalarType* A, ScalarType* R, DimensionType localNumRows, DimensionType localNumColumns, DimensionType globalNumRows, DimensionType globalNumColumns, ArgType& args, CommType&& CommInfo);
+  static std::pair<ScalarType*,ScalarType*> factor(ScalarType* A, ScalarType* R, DimensionType localNumRows, DimensionType localNumColumns, DimensionType globalNumRows, DimensionType globalNumColumns, ArgType& args, CommType&& CommInfo);
 
 protected:
   template<typename MatrixType, typename ArgType, typename CommType>

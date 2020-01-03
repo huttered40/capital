@@ -3,7 +3,7 @@
 namespace cholesky{
 template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixType& A, MatrixType& TI, ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(MatrixType& A, MatrixType& TI, ArgType& args, CommType&& CommInfo){
 
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
   using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
@@ -22,16 +22,16 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixTy
 
   args.localDimension=localDimension; args.trueLocalDimension=localDimension; args.globalDimension=globalDimension; args.trueGlobalDimension=globalDimension; args.bcDimension=bcDimension;
   args.AstartX=0; args.AendX=localDimension; args.AstartY=0; args.AendY=localDimension; args.TIstartX=0; args.TIendX=localDimension; args.TIstartY=0; args.TIendY=localDimension;
-  factor(A, TI, args, std::forward<CommType>(CommInfo));
+  invoke(A, TI, args, std::forward<CommType>(CommInfo));
 }
 
 template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename ScalarType, typename DimensionType, typename ArgType, typename CommType>
-std::pair<ScalarType*,ScalarType*> cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(ScalarType* A, ScalarType* TI, DimensionType localDim, DimensionType globalDim, ArgType& args, CommType&& CommInfo){
+std::pair<ScalarType*,ScalarType*> cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(ScalarType* A, ScalarType* TI, DimensionType localDim, DimensionType globalDim, ArgType& args, CommType&& CommInfo){
   //TODO: Test with non-power-of-2 global matrix dimensions
   matrix<ScalarType,DimensionType,rect,cyclic> mA(A,localDim,localDim,globalDim,globalDim,CommInfo.c,CommInfo.c);	// re-used in SquareTable
   matrix<ScalarType,DimensionType,rect,cyclic> mTI(R,localDim,localDim,globalDim,globalDim,CommInfo.c,CommInfo.c);
-  invoke(mA,mTI,args,std::forward<CommType>(CommInfo));
+  factor(mA,mTI,args,std::forward<CommType>(CommInfo));
   return std::make_pair(mA.get_data(),mTI.get_data());
 }
 
@@ -82,7 +82,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate_baseca
 
 template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(MatrixType& A, MatrixType& TI, ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(MatrixType& A, MatrixType& TI, ArgType& args, CommType&& CommInfo){
 
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
   using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType; using Offload = typename MatrixType::OffloadType;
@@ -94,7 +94,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(MatrixTy
   U split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1); U split2 = args.localDimension-split1;
   U save1 = args.localDimension; U save2 = args.globalDimension; U save3=args.AendX; U save4=args.AendY; U save5=args.TIendX; U save6=args.TIendY;
   args.localDimension=split1; args.globalDimension=(args.globalDimension>>1); args.AendX=args.AstartX+split1; args.AendY=args.AstartY+split1; args.TIendX=args.TIstartX+split1; args.TIendY=args.TIstartY+split1;
-  factor(A, TI, args, std::forward<CommType>(CommInfo));
+  invoke(A, TI, args, std::forward<CommType>(CommInfo));
   args.localDimension=save1; args.globalDimension=save2; args.AendX=save3; args.AendY=save4; args.TIendX=save5; args.TIendY=save6;
 
   serialize<rect,typename SP::structure>::invoke(TI, IP::invoke(args.policy_table,std::make_pair(split1,split1)), args.TIstartX, args.TIstartX+split1, args.TIstartY, args.TIstartY+split1);
@@ -114,7 +114,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(MatrixTy
 
   save1 = args.localDimension; save2 = args.globalDimension; save3=args.AstartX; save4=args.AstartY; save5=args.TIstartX; save6=args.TIstartY;
   args.localDimension=split2; args.globalDimension=split2*CommInfo.d; args.AstartX=args.AstartX+split1; args.AstartY=args.AstartY+split1; args.TIstartX=args.TIstartX+split1; args.TIstartY=args.TIstartY+split1;
-  factor(A, TI, args, std::forward<CommType>(CommInfo));
+  invoke(A, TI, args, std::forward<CommType>(CommInfo));
   args.localDimension=save1; args.globalDimension=save2; args.AstartX=save3; args.AstartY=save4; args.TIstartX=save5; args.TIstartY=save6;
 
   // Next step : temp <- R_{12}*TI_{22}

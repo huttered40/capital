@@ -41,13 +41,13 @@ int main(int argc, char** argv){
       A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
       critter::start();
-      cholesky_type::invoke(A, TI, pack, SquareTopo);
+      cholesky_type::factor(A, TI, pack, SquareTopo);
       critter::stop();
 
       if (id>0){
         A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
         double startTime=MPI_Wtime();
-        cholesky_type::invoke(A, TI, pack, SquareTopo);
+        cholesky_type::factor(A, TI, pack, SquareTopo);
         double iterTimeLocal=MPI_Wtime() - startTime;
         MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
         if (id>1){

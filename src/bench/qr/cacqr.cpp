@@ -44,12 +44,12 @@ int main(int argc, char** argv){
       A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
       MPI_Barrier(MPI_COMM_WORLD);	// make sure each process starts together
       critter::start();
-      qr_type::invoke(A, R, pack, RectTopo);
+      qr_type::factor(A, R, pack, RectTopo);
       critter::stop();
       if (id>0){
         A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
         volatile double startTime=MPI_Wtime();
-        qr_type::invoke(A, R, pack, RectTopo);
+        qr_type::factor(A, R, pack, RectTopo);
         iterTimeLocal = MPI_Wtime() - startTime;
         MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
         if (id>1){
