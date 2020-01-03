@@ -5,14 +5,6 @@ namespace qr{
 namespace policy{
 namespace cacqr{
 
-// Policy classes for the policy describing whether or not to serialize from symmetric Gram matrix
-//   to triangular matrix before AllReduction.
-class Serialize;
-class NoSerialize;
-
-class SaveIntermediates;
-class FlushIntermediates;
-
 // ***********************************************************************************************************************************************************************
 class NoSerialize{
 public:
