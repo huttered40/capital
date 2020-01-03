@@ -4,23 +4,15 @@ template<typename MatrixType, typename CommType>
 typename MatrixType::ScalarType util::get_identity_residual(MatrixType& Matrix, CommType&& CommInfo, MPI_Comm comm){
   // Should be offloaded to Matrix definition, which knows how best to iterate over matrix?
   // Should this be made more general so that user can supply a Lambda and more than the max can be obtained in this interface?
-  using T = typename MatrixType::ScalarType;
-  using U = typename MatrixType::DimensionType;
-  T res = 0;
-  U localNumRows = Matrix.num_rows_local();
-  U localNumColumns = Matrix.num_columns_local();
-  U globalX = CommInfo.x;
-  U globalY = CommInfo.y;
-  U index=0;
+  using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
+  T res = 0; U localNumRows = Matrix.num_rows_local(); U localNumColumns = Matrix.num_columns_local();
+  U globalX = CommInfo.x; U globalY = CommInfo.y; U index=0;
   for (int64_t i=0; i<localNumColumns; i++){
-    globalY = CommInfo.y;    // reset
+    globalY = CommInfo.y;// reset
     for (int64_t j=0; j<localNumRows; j++){
       if ((globalX<globalNumRows) && (globalY<globalNumColumns)){
-        if (globalX == globalY){
-          res += 1.-Matrix.data()[index++];
-        } else{
-          res += Matrix.data()[index++];
-        }
+        if (globalX == globalY){ res += 1.-Matrix.data()[index++]; }
+        else { res += Matrix.data()[index++]; }
       }
       globalY += CommInfo.d;
     }
@@ -33,26 +25,20 @@ typename MatrixType::ScalarType util::get_identity_residual(MatrixType& Matrix, 
 template<typename MatrixType, typename RefMatrixType, typename LambdaType>
 typename MatrixType::ScalarType
 util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, int64_t sliceX, int64_t sliceY, int64_t sliceDimX, int64_t sliceDimY){
-  using T = typename MatrixType::ScalarType;
-  using U = typename MatrixType::DimensionType;
-  int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-  T error = 0;
-  T control = 0;
+  using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
+  int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank); T error = 0; T control = 0;
   U localNumRows = Matrix.num_rows_local(); U globalNumRows = Matrix.num_rows_global();
   U localNumColumns = Matrix.num_columns_local(); U globalNumColumns = Matrix.num_columns_global();
-  U globalX = sliceX;
-  U globalY = sliceY;
+  U globalX = sliceX; U globalY = sliceY;
 
   for (int64_t i=0; i<localNumColumns; i++){
     globalY = sliceY;    // reset
     for (int64_t j=0; j<localNumRows; j++){
       if ((globalX<globalNumRows) && (globalY<globalNumColumns)){
         auto info = Lambda(Matrix, RefMatrix, i*localNumRows+j,globalX, globalY);
-        // debug
         //int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-        error += std::abs(info.first*info.first);
-        control += std::abs(info.second*info.second);
-        if (info.first >= 1.e-8 && rank==0){std::cout << "current error - " << error << " " << i*localNumRows+j << " " << globalX << " " << globalY << " " << info.first << " " << info.second << " " << sliceX << " " << sliceY << std::endl;}
+        error += std::abs(info.first*info.first); control += std::abs(info.second*info.second);
+        //if (info.first >= 1.e-8 && rank==0){std::cout << "current error - " << error << " " << i*localNumRows+j << " " << globalX << " " << globalY << " " << info.first << " " << info.second << " " << sliceX << " " << sliceY << std::endl;}
       }
       globalY += sliceDimY;
     }
@@ -74,67 +60,31 @@ void util::block_to_cyclic(std::vector<ScalarType>& blockedData, ScalarType* cyc
   DimensionType aggregSize = aggregNumRows*aggregNumColumns;
   DimensionType numCyclicBlocksPerRow = localDimensionRows;
   DimensionType numCyclicBlocksPerCol = localDimensionColumns;
-  DimensionType write_idx=0;
-  DimensionType read_idx=0;
+  DimensionType write_idx=0; DimensionType read_idx=0;
 
-  if (dir == 'L'){
-    write_idx = 0;
-    DimensionType recvDataOffset = blockedData.size()/(sliceDim*sliceDim);
-    DimensionType off1 = (-1)*numCyclicBlocksPerRow-1;
-    DimensionType off3 = sliceDim*recvDataOffset;
-    // MACRO loop over all cyclic "blocks" (dimensionX direction)
-    for (DimensionType i=0; i<numCyclicBlocksPerCol; i++){
-      off1 += (numCyclicBlocksPerRow-i+1);
-      // Inner loop over all columns in a cyclic "block"
-      for (DimensionType j=0; j<sliceDim; j++){
-        DimensionType off2 = j*recvDataOffset + off1;
-        write_idx += (i*sliceDim) + j;
-        // Treat first block separately
-        for (DimensionType z=j; z<sliceDim; z++){
-          read_idx = off2 + z*off3;
-          cyclicData[write_idx++] = blockedData[read_idx];
-        }
-        // Inner loop over all cyclic "blocks"
-        for (DimensionType k=(i+1); k<numCyclicBlocksPerRow; k++){
-          DimensionType off4 = off2;
-          // Inner loop over all elements along columns
-          for (DimensionType z=0; z<sliceDim; z++){
-            read_idx = off4 + z*off3 + (k-i);
-            cyclicData[write_idx++] = blockedData[read_idx];
-          }
-        }
-      }
-    }
-  }
-  else{
-    write_idx = 0;
-    DimensionType recvDataOffset = blockedData.size()/(sliceDim*sliceDim);
-    DimensionType off1 = 0;
-    DimensionType off3 = sliceDim*recvDataOffset;
-    // MACRO loop over all cyclic "blocks" (dimensionX direction)
-    for (DimensionType i=0; i<numCyclicBlocksPerCol; i++){
-      off1 += i;
-      // Inner loop over all columns in a cyclic "block"
-      for (DimensionType j=0; j<sliceDim; j++){
-        DimensionType off2 = j*recvDataOffset + off1;
-        write_idx = ((i*sliceDim)+j)*aggregNumRows;    //  reset each time
-        // Inner loop over all cyclic "blocks"
-        for (DimensionType k=0; k<i; k++){
-          DimensionType off4 = off2;
-          // Inner loop over all elements along columns
-          for (DimensionType z=0; z<sliceDim; z++){
-            read_idx = off4 + z*off3 + k;
-            cyclicData[write_idx++] = blockedData[read_idx];
-          }
-        }
-        
-        // Special final block
+  write_idx = 0; DimensionType recvDataOffset = blockedData.size()/(sliceDim*sliceDim);
+  DimensionType off1 = 0; DimensionType off3 = sliceDim*recvDataOffset;
+  // MACRO loop over all cyclic "blocks" (dimensionX direction)
+  for (DimensionType i=0; i<numCyclicBlocksPerCol; i++){
+    off1 += i;
+    // Inner loop over all columns in a cyclic "block"
+    for (DimensionType j=0; j<sliceDim; j++){
+      DimensionType off2 = j*recvDataOffset + off1;
+      write_idx = ((i*sliceDim)+j)*aggregNumRows;    //  reset each time
+      // Inner loop over all cyclic "blocks"
+      for (DimensionType k=0; k<i; k++){
         DimensionType off4 = off2;
         // Inner loop over all elements along columns
-        for (DimensionType z=0; z<=j; z++){
-          read_idx = off4 + z*off3 + i;
+        for (DimensionType z=0; z<sliceDim; z++){
+          read_idx = off4 + z*off3 + k;
           cyclicData[write_idx++] = blockedData[read_idx];
         }
+      }
+      // Special final block
+      DimensionType off4 = off2;
+      // Inner loop over all elements along columns
+      for (DimensionType z=0; z<=j; z++){
+        read_idx = off4 + z*off3 + i; cyclicData[write_idx++] = blockedData[read_idx];
       }
     }
   }
@@ -142,8 +92,7 @@ void util::block_to_cyclic(std::vector<ScalarType>& blockedData, ScalarType* cyc
 
 template<typename ScalarType, typename DimensionType>
 void util::block_to_cyclic(ScalarType* blockedData, ScalarType* cyclicData, DimensionType localDimensionRows, DimensionType localDimensionColumns, int64_t sliceDim){
-  DimensionType write_idx = 0;
-  DimensionType read_idx = 0;
+  DimensionType write_idx = 0; DimensionType read_idx = 0;
   DimensionType readDataOffset = localDimensionRows*localDimensionColumns;
   for (DimensionType i=0; i<localDimensionColumns; i++){
     for (DimensionType j=0; j<sliceDim; j++){
@@ -173,11 +122,7 @@ void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, DimensionTyp
   for (DimensionType i=0; i<localDimension; i++){
     // We know which row corresponds to our processor in each cyclic "block"
     // Inner loop over all cyclic "blocks" partitioning up the columns
-    // Future improvement: only need to iterate over lower triangular.
     for (DimensionType j=0; j<localDimension; j++){
-      // We know which column corresponds to our processor in each cyclic "block"
-      // Future improvement: get rid of the inner if statement and separate out this inner loop into 2 loops
-      // Further improvement: use only triangular matrices and then invoke into a square later?
       readIndexCol = i*sliceDim + columnOffsetWithinBlock;
       readIndexRow = j*sliceDim + rowOffsetWithinBlock;
       writeIndex = i*bcDimension+j;
@@ -185,8 +130,7 @@ void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, DimensionTyp
         storeT[writeIndex] = storeT[readIndexCol*bcDimension + readIndexRow];
         storeTI[writeIndex] = storeTI[readIndexCol*bcDimension + readIndexRow];
       } else{
-        storeT[writeIndex] = 0.;
-        storeTI[writeIndex] = 0.;
+        storeT[writeIndex] = 0.; storeTI[writeIndex] = 0.;
       }
       writeIndex++;
     }
@@ -199,16 +143,10 @@ void util::transpose(MatrixType& mat, CommType&& CommInfo){
   using T = typename MatrixType::ScalarType;
   int64_t SquareFaceSize = CommInfo.c*CommInfo.d;
   int64_t transposePartner = CommInfo.x*SquareFaceSize + CommInfo.y*CommInfo.c + CommInfo.z;
-  //if (myRank != transposeRank)
-  //{
-    // Transfer with transpose rank
     MPI_Sendrecv_replace(mat.data(), mat.num_elems(), mpi_type<T>::type, transposePartner, 0, transposePartner, 0, CommInfo.world, MPI_STATUS_IGNORE);
-
     // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
     //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
     //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
-
-  //}
 }
 
 template<typename DimensionType>
@@ -233,8 +171,7 @@ template<typename MatrixType>
 void util::remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir){
   using U = typename MatrixType::DimensionType;
 
-  U globalDimVert = sliceY;
-  U globalDimHoriz = sliceX;
+  U globalDimVert = sliceY; U globalDimHoriz = sliceX;
   U localVert = matrix.num_rows_local();
   U localHoriz = matrix.num_columns_local();
   for (U i=0; i<localHoriz; i++){
@@ -250,53 +187,4 @@ void util::remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, i
     }
     globalDimHoriz += sliceDim;
   }
-}
-
-template<typename ScalarType, typename DimensionType>
-void util::random_fill(ScalarType* A, DimensionType dimensionX, DimensionType dimensionY, DimensionType globalDimensionX, int64_t globalDimensionY, int64_t localPgridDimX,
-                       int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key){
-  
-  srand48(key);
-  DimensionType padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
-  DimensionType padYlen = (((globalDimensionY % globalPgridDimY != 0) && ((dimensionY-1)*globalPgridDimY + localPgridDimY >= globalDimensionY)) ? dimensionY-1 : dimensionY);
-  for (DimensionType i=0; i<padXlen*padYlen; i++){
-    A[i] = drand48();
-  }
-  //TODO: Note that I am missing zero-setting code in the 
-  return;
-}
-
-template<typename ScalarType, typename DimensionType>
-void util::random_fill_symmetric(ScalarType* A, DimensionType dimensionX, DimensionType dimensionY, DimensionType globalDimensionX, DimensionType globalDimensionY, int64_t localPgridDimX, int64_t localPgridDimY,
-                                 int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key){
-/*
-  srand48(key);
-  U saveGlobalPosition = localPgridDimY + localPgridDimX*globalDimensionY;		// Watch for 64-bit problems later with temporaries being implicitely casted.
-  U padXlen = (((globalDimensionX % globalPgridDimX != 0) && ((dimensionX-1)*globalPgridDimX + localPgridDimX >= globalDimensionX)) ? dimensionX-1 : dimensionX);
-  U counter{1};
-  U startIter;
-  U endIter;
-  for (U i=0; i<padXlen; i++){
-    U globalPosition = saveGlobalPosition;
-    startIter = 0;
-    endIter = counter;
-    for (U j=startIter; j<endIter; j++){
-      A[counter-1] = drand48();			// Change this later.
-      globalPosition += globalPgridDimY;
-    }
-    // Special corner case: If a processor's first data on each row is out of bounds of the UT structure, then give a 0 value
-    if (localPgridDimY > localPgridDimX){
-      A[counter-1] = 0;			// reset this to 0 instead of whatever was set in the last iteration of the loop above.
-    }
-    counter++;
-    saveGlobalPosition += (globalPgridDimX*globalDimensionY);
-  }
-  if (padXlen != dimensionX){
-    // fill in the last column with zeros
-    for (U j=0; j<dimensionY; j++){
-      matrix[dimensionX-1][j] = 0;
-    }
-  }
-*/
-  return;
 }
