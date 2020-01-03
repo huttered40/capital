@@ -121,13 +121,13 @@ protected:
 
   template<typename TableType, typename KeyType>
   static inline typename TableType::mapped_type& invoke(TableType& table, KeyType&& key){
-    table[std::forward<KeyType>(key)].fill();
+    table[std::forward<KeyType>(key)]._fill_();
     return table[std::forward<KeyType>(key)];
   }
 
   template<typename MatrixType>
   static void flush(MatrixType& matrix){
-    matrix.destroy();
+    matrix._destroy_();
   }
 };
 // ***********************************************************************************************************************************************************************

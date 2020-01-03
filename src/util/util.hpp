@@ -35,6 +35,7 @@ typename MatrixType::ScalarType
 util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, int64_t sliceX, int64_t sliceY, int64_t sliceDimX, int64_t sliceDimY){
   using T = typename MatrixType::ScalarType;
   using U = typename MatrixType::DimensionType;
+  int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
   T error = 0;
   T control = 0;
   U localNumRows = Matrix.num_rows_local(); U globalNumRows = Matrix.num_rows_global();
@@ -49,9 +50,9 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
         auto info = Lambda(Matrix, RefMatrix, i*localNumRows+j,globalX, globalY);
         // debug
         //int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-        //if (info.first >= 1.e-8 && rank==0){std::cout << i*localNumRows+j << " " << globalX << " " << globalY << " " << info.first << " " << info.second<< " " << sliceX << " " << sliceY << std::endl;}
         error += std::abs(info.first*info.first);
         control += std::abs(info.second*info.second);
+        if (info.first >= 1.e-8 && rank==0){std::cout << "current error - " << error << " " << i*localNumRows+j << " " << globalX << " " << globalY << " " << info.first << " " << info.second << " " << sliceX << " " << sliceY << std::endl;}
       }
       globalY += sliceDimY;
     }
@@ -163,23 +164,23 @@ void util::block_to_cyclic(ScalarType* blockedData, ScalarType* cyclicData, Dime
 template<typename ScalarType, typename DimensionType>
 void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, DimensionType localDimension, DimensionType globalDimension, DimensionType bcDimension, int64_t sliceDim, int64_t rankSlice){
 
-  DimensionType writeIndex = 0;
+  DimensionType writeIndex,readIndexCol,readIndexRow;
   DimensionType rowOffsetWithinBlock = rankSlice / sliceDim;
   DimensionType columnOffsetWithinBlock = rankSlice % sliceDim;
-  DimensionType numCyclicBlocksPerRowCol = localDimension/*bcDimension/sliceDim*/;
   // modify bcDimension
   bcDimension = localDimension*sliceDim;
   // MACRO loop over all cyclic "blocks"
-  for (DimensionType i=0; i<numCyclicBlocksPerRowCol; i++){
+  for (DimensionType i=0; i<localDimension; i++){
     // We know which row corresponds to our processor in each cyclic "block"
     // Inner loop over all cyclic "blocks" partitioning up the columns
     // Future improvement: only need to iterate over lower triangular.
-    for (DimensionType j=0; j<numCyclicBlocksPerRowCol; j++){
+    for (DimensionType j=0; j<localDimension; j++){
       // We know which column corresponds to our processor in each cyclic "block"
       // Future improvement: get rid of the inner if statement and separate out this inner loop into 2 loops
       // Further improvement: use only triangular matrices and then invoke into a square later?
-      DimensionType readIndexCol = i*sliceDim + columnOffsetWithinBlock;
-      DimensionType readIndexRow = j*sliceDim + rowOffsetWithinBlock;
+      readIndexCol = i*sliceDim + columnOffsetWithinBlock;
+      readIndexRow = j*sliceDim + rowOffsetWithinBlock;
+      writeIndex = i*bcDimension+j;
       if (readIndexCol >= readIndexRow){
         storeT[writeIndex] = storeT[readIndexCol*bcDimension + readIndexRow];
         storeTI[writeIndex] = storeTI[readIndexCol*bcDimension + readIndexRow];

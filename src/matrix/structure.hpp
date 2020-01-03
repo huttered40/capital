@@ -135,9 +135,6 @@ void rect::_distribute_random(std::vector<ScalarType*>& matrix, DimensionType di
 
 template<typename ScalarType, typename DimensionType>
 void uppertri::_assemble(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, std::vector<ScalarType*>& matrix, DimensionType& matrixNumElems, DimensionType dimensionX, DimensionType dimensionY){
-  // dimensionY must be equal to dimensionX
-  assert(dimensionX == dimensionY);
-
   matrix.resize(dimensionY);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
   data = new ScalarType[matrixNumElems];
@@ -163,7 +160,7 @@ template<typename ScalarType, typename DimensionType>
 void uppertri::_copy(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, std::vector<ScalarType*>& matrix, ScalarType* const & source, DimensionType dimensionX, DimensionType dimensionY){
   DimensionType numElems = 0;
   _assemble(data, scratch, pad, matrix, numElems, dimensionX, dimensionY);
-  std::memcpy(&data[0], &source[0], numElems*sizeof(T));
+  std::memcpy(&data[0], &source[0], numElems*sizeof(ScalarType));
 }
 
 template<typename ScalarType, typename DimensionType>
@@ -219,9 +216,6 @@ void uppertri::_distribute_random(std::vector<ScalarType*>& matrix, DimensionTyp
 
 template<typename ScalarType, typename DimensionType>
 void lowertri::_assemble(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, std::vector<ScalarType*>& matrix, DimensionType& matrixNumElems, DimensionType dimensionX, DimensionType dimensionY){
-  // dimensionY must be equal to dimensionX
-  assert(dimensionX == dimensionY);
-
   matrix.resize(dimensionX);
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
   data = new ScalarType[matrixNumElems];

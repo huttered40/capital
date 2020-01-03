@@ -47,15 +47,6 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& Co
   if (isRootColumn){ B.swap(); }
 }
   
-template<typename T, typename U, typename ArgType, typename CommType>
-T* summa::invoke(T* A, T* B, T* C, U localNumRowsA, U localNumColumnsA, U localNumColumnsB, U globalNumRowsA, U globalNumColumnsA, U globalNumColumnsB, ArgType&& args, CommType&& CommInfo){
-  matrix<T,U,rect,cyclic> mA(A,localNumColumnsA,localNumRowsA,globalNumColumnsA,globalNumRowsA,CommInfo.d,CommInfo.d);
-  matrix<T,U,rect,cyclic> mB(B,localNumColumnsB,localNumColumnsA,globalNumColumnsB,globalNumColumnsA,CommInfo.d,CommInfo.d);
-  matrix<T,U,rect,cyclic> mC(C,localNumColumnsB,localNumRowsA,globalNumColumnsB,globalNumRowsA,CommInfo.d,CommInfo.d);
-  invoke(mA,mB,mC,std::forward<ArgType>(args),std::forward<CommType>(CommInfo));
-  return mC.get_data();
-}
-
 template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
                    blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage){
@@ -160,78 +151,6 @@ void summa::invoke(MatrixAType& A, MatrixCType& C, CommType&& CommInfo,
   if (isRootRow){ A.swap(); }
 }
 
-template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
-void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, typename MatrixAType::DimensionType AcutXstart,
-                    typename MatrixAType::DimensionType AcutXend, typename MatrixAType::DimensionType AcutYstart,
-                    typename MatrixAType::DimensionType AcutYend, typename MatrixBType::DimensionType BcutZstart,
-                    typename MatrixBType::DimensionType BcutZend, typename MatrixBType::DimensionType BcutXstart,
-                    typename MatrixBType::DimensionType BcutXend, typename MatrixCType::DimensionType CcutZstart,
-                    typename MatrixCType::DimensionType CcutZend, typename MatrixCType::DimensionType CcutYstart,
-                    typename MatrixCType::DimensionType CcutYend, CommType&& CommInfo,
-                    blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB, bool cutC){
-  // We will set up 3 matrices and call the method above.
-
-  using StructureC = typename MatrixCType::StructureType;
-
-  // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  MatrixAType matA = extract(A, AcutXstart, AcutXend, AcutYstart, AcutYend, CommInfo.d, cutA);
-  MatrixBType matB = extract(B, BcutZstart, BcutZend, BcutXstart, BcutXend, CommInfo.d, cutB);
-  MatrixCType matC = extract(C, CcutZstart, CcutZend, CcutYstart, CcutYend, CommInfo.d, cutC);
-
-  invoke((cutA ? matA : A), (cutB ? matB : B), (cutC ? matC : C), std::forward<CommType>(CommInfo), srcPackage);
-
-  // reverse serialize, to put the solved piece of C into where it should go.
-  if (cutC){
-    serialize<StructureC,StructureC>::invoke(C, matC, CcutZstart, CcutZend, CcutYstart, CcutYend, true);
-  }
-}
-
-
-template<typename MatrixAType, typename MatrixBType, typename CommType>
-void summa::invoke(MatrixAType& A, MatrixBType& B, typename MatrixAType::DimensionType AcutXstart,
-                    typename MatrixAType::DimensionType AcutXend, typename MatrixAType::DimensionType AcutYstart,
-                    typename MatrixAType::DimensionType AcutYend, typename MatrixBType::DimensionType BcutZstart,
-                    typename MatrixBType::DimensionType BcutZend, typename MatrixBType::DimensionType BcutXstart,
-                    typename MatrixBType::DimensionType BcutXend, CommType&& CommInfo,
-                    blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutB){
-  // We will set up 2 matrices and call the method above.
-
-  using StructureB = typename MatrixBType::StructureType;
-
-  // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  MatrixAType matA = extract(A, AcutXstart, AcutXend, AcutYstart, AcutYend, CommInfo.d, cutA);
-  MatrixBType matB = extract(B, BcutZstart, BcutZend, BcutXstart, BcutXend, CommInfo.d, cutB);
-  invoke((cutA ? matA : A), (cutB ? matB : B), std::forward<CommType>(CommInfo), srcPackage);
-
-  // reverse serialize, to put the solved piece of C into where it should go. Only if we need to
-  if (cutB){
-    serialize<StructureB,StructureB>::invoke(B, matB, BcutZstart, BcutZend, BcutXstart, BcutXend, true);
-  }
-}
-
-template<typename MatrixAType, typename MatrixCType, typename CommType>
-void summa::invoke(MatrixAType& A, MatrixCType& C, typename MatrixAType::DimensionType AcutXstart,
-                   typename MatrixAType::DimensionType AcutXend, typename MatrixAType::DimensionType AcutYstart,
-                   typename MatrixAType::DimensionType AcutYend, typename MatrixCType::DimensionType CcutZstart,
-                   typename MatrixCType::DimensionType CcutZend, typename MatrixCType::DimensionType CcutXstart,
-                   typename MatrixCType::DimensionType CcutXend, CommType&& CommInfo,
-                   blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage, bool cutA, bool cutC){
-  // We will set up 2 matrices and call the method above.
-
-  using StructureC = typename MatrixCType::StructureType;
-
-  // I cannot use a fast-pass-by-value via move constructor because I don't want to corrupt the true matrices A,B,C. Other reasons as well.
-  MatrixAType matA = extract(A, AcutXstart, AcutXend, AcutYstart, AcutYend, CommInfo.d, cutA);
-  MatrixAType matC = extract(C, CcutZstart, CcutZend, CcutXstart, CcutXend, CommInfo.d, cutC);
-
-  invoke((cutA ? matA : A), (cutC ? matC : C), std::forward<CommType>(CommInfo), srcPackage);
-
-  // reverse serialize, to put the solved piece of C into where it should go.
-  if (cutC){
-    serialize<StructureC,StructureC>::invoke(C, matC, CcutZstart, CcutZend, CcutXstart, CcutXend, true);
-  }
-}
-
 template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
 
@@ -300,27 +219,5 @@ void summa::collect(MatrixType& matrix, CommType&& CommInfo){
 
   U numElems = matrix.num_elems();
   MPI_Allreduce(MPI_IN_PLACE,matrix.scratch(), numElems, mpi_type<T>::type, MPI_SUM, CommInfo.depth);
-}
-
-template<typename MatrixType>
-MatrixType summa::extract(MatrixType& srcMatrix, typename MatrixType::DimensionType matrixArgColumnStart, typename MatrixType::DimensionType matrixArgColumnEnd,
-                              typename MatrixType::DimensionType matrixArgRowStart, typename MatrixType::DimensionType matrixArgRowEnd,
-		              int64_t sliceDim, bool getSub){
-
-  using T = typename MatrixType::ScalarType;
-  using U = typename MatrixType::DimensionType;
-  using Structure = typename MatrixType::StructureType;
-
-  if (getSub){
-    U numColumns = matrixArgColumnEnd - matrixArgColumnStart;
-    U numRows = matrixArgRowEnd - matrixArgRowStart;
-    MatrixType fillMatrix(numColumns*sliceDim,numRows*sliceDim,sliceDim,sliceDim);
-    serialize<Structure,Structure>::invoke(srcMatrix, fillMatrix, matrixArgColumnStart, matrixArgColumnEnd, matrixArgRowStart, matrixArgRowEnd);
-    return fillMatrix;			// I am returning an rvalue
-  }
-  else{
-    // return cheap garbage.
-    return MatrixType(1,1,2,2);
-  }
 }
 }

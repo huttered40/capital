@@ -33,7 +33,7 @@ validate<AlgType>::orth(MatrixType& Q, RectCommType&& RectCommInfo, SquareCommTy
     }
     else{
       val = matrix.data()[index];
-      control = 0;
+      control = 1.;
     }
     return std::make_pair(val,control);
   };

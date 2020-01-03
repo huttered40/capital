@@ -20,11 +20,8 @@ public:
   static void invoke(SrcType& src);
 
   template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
+  static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
+                     typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey);
 };
 
 template<>
@@ -34,11 +31,8 @@ public:
   static void invoke(SrcType& src);
 
   template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
+  static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
+                     typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey);
 };
 
 template<>
@@ -48,11 +42,8 @@ public:
   static void invoke(SrcType& src);
 
   template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
+  static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
+                     typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey);
 };
 
 template<>
@@ -62,11 +53,8 @@ public:
   static void invoke(SrcType& src);
 
   template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
+  static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
+                     typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey);
 };
 
 template<>
@@ -76,11 +64,8 @@ public:
   static void invoke(SrcType& src);
 
   template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
+  static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
+                     typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey);
 };
 
 template<>
@@ -90,11 +75,8 @@ public:
   static void invoke(SrcType& src);
 
   template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
+  static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
+                     typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey);
 };
 
 template<>
@@ -104,11 +86,8 @@ public:
   static void invoke(SrcType& src);
 
   template<typename SrcType, typename DestType>
-  static void invoke(SrcType& src, DestType& dest);
-
-  template<typename BigType, typename SmallType>
-  static void invoke(BigType& big, SmallType& small, typename BigType::DimensionType cutDimensionXstart, typename BigType::DimensionType cutDimensionXend,
-                        typename BigType::DimensionType cutDimensionYstart, typename BigType::DimensionType cutDimensionYend, bool dir = false);
+  static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
+                     typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey);
 };
 
 #include "serialize.hpp"

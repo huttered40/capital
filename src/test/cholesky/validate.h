@@ -13,8 +13,8 @@ namespace cholesky{
 template<typename AlgType>
 class validate{
 public:
-  template<typename MatrixAType, typename MatrixTriType, typename CommType>
-  static typename MatrixAType::ScalarType invoke(MatrixAType& A, MatrixTriType& Tri, char dir, CommType&& CommInfo);
+  template<typename MatrixType, typename TriMatrixType, typename ArgType, typename CommType>
+  static typename MatrixType::ScalarType invoke(const MatrixType& A, TriMatrixType&& Tri, ArgType&& args, CommType&& CommInfo);
 };
 }
 

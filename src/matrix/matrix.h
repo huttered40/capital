@@ -15,7 +15,7 @@ public:
   using StructureType = StructurePolicy;
   using OffloadType = OffloadPolicy;
 
-  explicit matrix(){this->danger=true; this->_data=nullptr; this->_scratch=nullptr; this->_pad=nullptr;}// = delete;
+  explicit matrix(){this->filled=false; this->danger=true; this->_data=nullptr; this->_scratch=nullptr; this->_pad=nullptr;}// = delete;
   explicit matrix(DimensionType globalDimensionX, DimensionType globalDimensionY, int64_t globalPgridX, int64_t globalPgridY);	// Regular constructor
   // Injection constructor below assumes data is stored in column-major format
   explicit matrix(ScalarType* data, DimensionType dimensionX, DimensionType dimensionY, DimensionType globalDimensionX, DimensionType globalDimensionY, DimensionType globalPgridX, DimensionType globalPgridY);			// Injection constructor
@@ -26,21 +26,28 @@ public:
   matrix& operator=(const matrix& rhs);
   matrix& operator=(matrix&& rhs);
   ~matrix();
-  void fill();
-  void destroy();
+  // Special methods used for policy optimizations
+  void _fill_();
+  void _register_(DimensionType globalDimensionX, DimensionType globalDimensionY, int64_t globalPgridX, int64_t globalPgridY);
+  void _destroy_();
 
   // automatically inlined
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
   inline ScalarType*& data() { return this->_data; }
-  inline ScalarType* get_data() { ScalarType* data = this->_data; this->_data=nullptr; return data; }	// only to be used if internal pointer is needed and instance is never to be used again
+  inline ScalarType* data() const { return this->_data; }
+  //inline ScalarType* get_data() { ScalarType* data = this->_data; this->_data=nullptr; return data; }	// only to be used if internal pointer is needed and instance is never to be used again
   inline ScalarType*& scratch() { return this->_scratch; }
+  inline ScalarType* scratch() const { return this->_scratch; }
   inline ScalarType*& pad() { return this->_pad; }
-  inline DimensionType num_elems() { return this->_numElems; }
-  inline DimensionType num_elems(DimensionType rangeX, DimensionType rangeY) { return StructurePolicy::_num_elems(rangeX, rangeY); }
-  inline DimensionType num_rows_local() { return this->_dimensionY; }
-  inline DimensionType num_columns_local() { return this->_dimensionX; }
-  inline DimensionType num_rows_global() { return this->_globalDimensionY; }
-  inline DimensionType num_columns_global() { return this->_globalDimensionX; }
+  inline ScalarType* pad() const { return this->_pad; }
+  inline DimensionType num_elems() const { return this->_numElems; }
+  inline DimensionType num_elems(DimensionType rangeX, DimensionType rangeY) const { return _num_elems(rangeX, rangeY); }
+  inline DimensionType num_rows_local() const { return this->_dimensionY; }
+  inline DimensionType num_columns_local() const { return this->_dimensionX; }
+  inline DimensionType num_rows_global() const { return this->_globalDimensionY; }
+  inline DimensionType num_columns_global() const { return this->_globalDimensionX; }
+
+  inline DimensionType offset(DimensionType coordX, DimensionType coordY) const { return _offset(coordX,coordY,this->_dimensionX,this->_dimensionY);}
 
   inline void swap() { ScalarType* ptr = this->data(); this->data() = this->scratch(); this->scratch() = ptr; } 
   inline void swap_pad() { ScalarType* ptr = this->scratch(); this->scratch() = this->pad(); this->pad() = ptr; } 
