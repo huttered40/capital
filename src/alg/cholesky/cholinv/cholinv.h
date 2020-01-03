@@ -27,11 +27,9 @@ public:
     const DimensionType split;
     const DimensionType bc_mult_dim;
     const char dir;
-
     // Factor members
     matrix<ScalarType,DimensionType,typename SerializePolicy::structure> R;
     matrix<ScalarType,DimensionType,typename SerializePolicy::structure> Rinv;
-
     // Optimizing members
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table;
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,typename SerializePolicy::structure>> policy_table_diaginv;
