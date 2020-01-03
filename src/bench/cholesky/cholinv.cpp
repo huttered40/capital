@@ -49,7 +49,7 @@ int main(int argc, char** argv){
         double iterTimeLocal=MPI_Wtime() - startTime;
         MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
         if (id>1){
-          iterErrorLocal = cholesky::validate<cholesky_type>::invoke(A, cholesky_type::construct_R(pack,SquareTopo), pack, SquareTopo);
+          iterErrorLocal = cholesky::validate<cholesky_type>::invoke(A, pack, SquareTopo);
           MPI_Reduce(&iterErrorLocal, &iterErrorGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
         }
       }
