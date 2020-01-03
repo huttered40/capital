@@ -12,7 +12,7 @@ namespace cholinv{
 /*
 template<class PolicyClass>
 class OverlapGatherPolicyClass{
-public:
+protected:
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
     using T = typename MatrixType::ScalarType;
@@ -26,7 +26,7 @@ public:
 
 template<>
 class OverlapGatherPolicyClass<OverlapGather>{
-public:
+protected:
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
     using T = typename MatrixType::ScalarType;
@@ -61,7 +61,7 @@ public:
 
 // ***********************************************************************************************************************************************************************
 class Serialize{
-public:
+protected:
   using structure = uppertri;
 
   template<typename TriMatrixType, typename SquareMatrixType, typename CommType>
@@ -76,7 +76,7 @@ public:
 };
 
 class NoSerialize{
-public:
+protected:
   using structure = rect;	// might need 'rect'
 
   template<typename MatrixType, typename CommType>
@@ -93,7 +93,7 @@ public:
 
 // ***********************************************************************************************************************************************************************
 class SaveIntermediates{
-public:
+protected:
   template<typename TableType, typename KeyType, typename... ValueTypes>
   static void init(TableType& table, KeyType&& key, ValueTypes&&... values){
     if (table.find(key) == table.end()){
@@ -111,7 +111,7 @@ public:
 };
 
 class FlushIntermediates{
-public:
+protected:
   template<typename TableType, typename KeyType, typename... ValueTypes>
   static void init(TableType& table, KeyType&& key, ValueTypes&&... values){
     if (table.find(key) == table.end()){
@@ -134,7 +134,7 @@ public:
 
 // ***********************************************************************************************************************************************************************
 class NoOverlap{
-public:
+protected:
   static void invoke_stage1(){
   }
   static void invoke_stage2(){

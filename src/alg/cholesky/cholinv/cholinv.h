@@ -11,7 +11,7 @@ namespace cholesky{
 template<class SerializePolicy     = policy::cholinv::Serialize,
          class IntermediatesPolicy = policy::cholinv::SaveIntermediates,
          class OverlapPolicy       = policy::cholinv::NoOverlap>
-class cholinv{
+class cholinv : public SerializePolicy, public IntermediatesPolicy, public OverlapPolicy{
 public:
   template<typename ScalarType, typename DimensionType>
   class info{

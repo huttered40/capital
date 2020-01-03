@@ -13,7 +13,7 @@ namespace qr{
 
 template<class SerializePolicy = policy::cacqr::Serialize,
          class IntermediatesPolicy = policy::cacqr::SaveIntermediates>
-class cacqr{
+class cacqr : public SerializePolicy, public IntermediatesPolicy{
 public:
   // cacqr is parameterized only by its cholesky-inverse factorization algorithm
   template<typename ScalarType, typename DimensionType, typename CholeskyInversionType>

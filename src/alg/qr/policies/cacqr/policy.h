@@ -7,7 +7,7 @@ namespace cacqr{
 
 // ***********************************************************************************************************************************************************************
 class NoSerialize{
-public:
+protected:
   using structure = rect;
 
   template<typename MatrixType, typename BufferType, typename CommType>
@@ -28,7 +28,7 @@ public:
 };
 
 class Serialize{
-public:
+protected:
   using structure = uppertri;
 
   template<typename MatrixType, typename BufferType, typename CommType>
@@ -56,7 +56,7 @@ public:
 
 // ***********************************************************************************************************************************************************************
 class SaveIntermediates{
-public:
+protected:
   template<typename TableType, typename KeyType, typename... ValueTypes>
   static void init(TableType& table, KeyType&& key, ValueTypes&&... values){
     if (table.find(key) == table.end()){
@@ -74,7 +74,7 @@ public:
 };
 
 class FlushIntermediates{
-public:
+protected:
   template<typename TableType, typename KeyType, typename... ValueTypes>
   static void init(TableType& table, KeyType&& key, ValueTypes&&... values){
     if (table.find(key) == table.end()){
