@@ -162,48 +162,16 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::base_case(ArgTy
   auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
   serialize<uppertri,uppertri>::invoke(args.R, IP::invoke(args.base_case_table,index_pair), args.AstartX, args.AendX, args.AstartY, args.AendY,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY);
   SP::invoke(IP::invoke(args.base_case_table,index_pair),args.base_case_blocked_table[index_pair],IP::invoke(args.base_case_cyclic_table,index_pair),std::forward<CommType>(CommInfo));
-
-  if ((args.AendY == args.trueLocalDimension) && (args.trueLocalDimension*CommInfo.d-args.trueGlobalDimension != 0)){
-    U checkDim = args.localDimension*CommInfo.d;
-    U finalDim = (checkDim - (args.trueLocalDimension*CommInfo.d - args.trueGlobalDimension));
-    std::vector<T> deepBaseCase(finalDim*finalDim,0);
-    for (U i=0; i<finalDim; i++){
-      for (U j=0; j<finalDim; j++){
-        deepBaseCase[i*finalDim+j] = IP::invoke(args.base_case_cyclic_table,index_pair).data()[i*checkDim+j];
-      }
-    }
-    lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
-    lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
-    lapack::engine::_potrf(&deepBaseCase[0],finalDim,finalDim,potrfArgs);
-    std::vector<T> deepBaseCaseInv = deepBaseCase;
-    lapack::engine::_trtri(&deepBaseCaseInv[0],finalDim,finalDim,trtriArgs);
-    std::vector<T> deepBaseCaseFill(checkDim*checkDim,0);
-    std::vector<T> deepBaseCaseInvFill(checkDim*checkDim,0);
-    for (U i=0; i<finalDim; i++){
-      for (U j=0; j<finalDim; j++){
-        deepBaseCaseFill[i*checkDim+j] = deepBaseCase[i*finalDim+j];
-        deepBaseCaseInvFill[i*checkDim+j] = deepBaseCaseInv[i*finalDim+j];
-      }
-    }
-    util::cyclic_to_local(&deepBaseCaseFill[0], &deepBaseCaseInvFill[0], args.localDimension, args.globalDimension, aggregDim, CommInfo.d, rankSlice);
-    matrix<T,U,rect> tempMat(&deepBaseCaseFill[0], args.localDimension, args.localDimension, CommInfo.d, CommInfo.d);
-    matrix<T,U,rect> tempMatInv(&deepBaseCaseInvFill[0], args.localDimension, args.localDimension, CommInfo.d, CommInfo.d);
-    serialize<uppertri,uppertri>::invoke(tempMat, args.R, 0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.AstartY, args.AendY, args.AstartY, args.AendY);
-    serialize<uppertri,uppertri>::invoke(tempMatInv, args.Rinv, 0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
-  }
-  else{
-    U fTranDim1 = args.localDimension*CommInfo.d;
-    lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
-    lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
-    lapack::engine::_potrf(IP::invoke(args.base_case_cyclic_table,index_pair).data(),fTranDim1,fTranDim1,potrfArgs);
-    std::memcpy(IP::invoke(args.base_case_cyclic_table,index_pair).scratch(),IP::invoke(args.base_case_cyclic_table,index_pair).data(),sizeof(T)*IP::invoke(args.base_case_cyclic_table,index_pair).num_elems());
-    lapack::engine::_trtri(IP::invoke(args.base_case_cyclic_table,index_pair).scratch(),fTranDim1,fTranDim1,trtriArgs);
-    util::cyclic_to_local(IP::invoke(args.base_case_cyclic_table,index_pair).data(),IP::invoke(args.base_case_cyclic_table,index_pair).scratch(), args.localDimension, args.globalDimension, aggregDim, CommInfo.d,rankSlice);
-    serialize<uppertri,uppertri>::invoke(IP::invoke(args.base_case_cyclic_table,index_pair), args.R, 0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.AstartY, args.AendY, args.AstartY, args.AendY);
-    IP::invoke(args.base_case_cyclic_table,index_pair).swap();	// puts the inverse buffer into the `data` member before final serialization
-    serialize<uppertri,uppertri>::invoke(IP::invoke(args.base_case_cyclic_table,index_pair), args.Rinv,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
-    IP::invoke(args.base_case_cyclic_table,index_pair).swap();	// puts the inverse buffer into the `data` member before final serialization
-  }
+  lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
+  lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
+  lapack::engine::_potrf(IP::invoke(args.base_case_cyclic_table,index_pair).data(),aggregDim,aggregDim,potrfArgs);
+  std::memcpy(IP::invoke(args.base_case_cyclic_table,index_pair).scratch(),IP::invoke(args.base_case_cyclic_table,index_pair).data(),sizeof(T)*IP::invoke(args.base_case_cyclic_table,index_pair).num_elems());
+  lapack::engine::_trtri(IP::invoke(args.base_case_cyclic_table,index_pair).scratch(),aggregDim,aggregDim,trtriArgs);
+  util::cyclic_to_local(IP::invoke(args.base_case_cyclic_table,index_pair).data(),IP::invoke(args.base_case_cyclic_table,index_pair).scratch(), args.localDimension, args.globalDimension, aggregDim, CommInfo.d,rankSlice);
+  serialize<uppertri,uppertri>::invoke(IP::invoke(args.base_case_cyclic_table,index_pair), args.R, 0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.AstartY, args.AendY, args.AstartY, args.AendY);
+  IP::invoke(args.base_case_cyclic_table,index_pair).swap();	// puts the inverse buffer into the `data` member before final serialization
+  serialize<uppertri,uppertri>::invoke(IP::invoke(args.base_case_cyclic_table,index_pair), args.Rinv,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
+  IP::invoke(args.base_case_cyclic_table,index_pair).swap();	// puts the inverse buffer into the `data` member before final serialization
   IP::flush(args.base_case_table[index_pair]); IP::flush(args.base_case_cyclic_table[index_pair]);
   return;
 }

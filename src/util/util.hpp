@@ -36,9 +36,10 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
     for (int64_t j=0; j<localNumRows; j++){
       if ((globalX<globalNumRows) && (globalY<globalNumColumns)){
         auto info = Lambda(Matrix, RefMatrix, i*localNumRows+j,globalX, globalY);
-        //int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
         error += std::abs(info.first*info.first); control += std::abs(info.second*info.second);
-        //if (info.first >= 1.e-8 && rank==0){std::cout << "current error - " << error << " " << i*localNumRows+j << " " << globalX << " " << globalY << " " << info.first << " " << info.second << " " << sliceX << " " << sliceY << std::endl;}
+        /*int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+        if (info.first >= 1.e-8 && rank==0){std::cout << "current error - " << error << " global index - " << i*localNumRows+j << " local index - (" << i << "," << j << ") global index - ("\
+                                                      << globalX << "," << globalY << ")\n\t\t\tlocal dimensions - (" << localNumColumns << "," << localNumRows << ") global dimensions - (" << globalNumColumns << "," << globalNumRows << ")\n\t\t\t error - " << info.first << " A value - " << info.second << " process grid id - (" << sliceX << "," << sliceY << ")\n";}*/
       }
       globalY += sliceDimY;
     }
@@ -116,8 +117,6 @@ void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, DimensionTyp
   DimensionType writeIndex,readIndexCol,readIndexRow;
   DimensionType rowOffsetWithinBlock = rankSlice / sliceDim;
   DimensionType columnOffsetWithinBlock = rankSlice % sliceDim;
-  // modify bcDimension
-  bcDimension = localDimension*sliceDim;
   // MACRO loop over all cyclic "blocks"
   for (DimensionType i=0; i<localDimension; i++){
     // We know which row corresponds to our processor in each cyclic "block"

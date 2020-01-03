@@ -43,12 +43,13 @@ int main(int argc, char** argv){
         cholesky_type::factor(A, pack, SquareTopo);
         time_local=MPI_Wtime()-time_local;
         MPI_Reduce(&time_local, &time_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank==0){ std::cout << time_global << std::endl; }
         if (id>1){
           residual_error_local = cholesky::validate<cholesky_type>::invoke(A, pack, SquareTopo);
           MPI_Reduce(&residual_error_local, &residual_error_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+          if (rank==0){ std::cout << residual_error_global << std::endl; }
         }
       }
-      if (rank==0){ std::cout << time_global << " " << residual_error_global << std::endl; }
     }
   }
   MPI_Finalize();
