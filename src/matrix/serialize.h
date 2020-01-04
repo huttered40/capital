@@ -16,9 +16,6 @@ class serialize;
 template<>
 class serialize<rect,rect>{
 public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
   template<typename SrcType, typename DestType>
   static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
                      typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey, size_t src_buffer=0, size_t dest_buffer=0);
@@ -27,9 +24,6 @@ public:
 template<>
 class serialize<rect,uppertri>{
 public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
   template<typename SrcType, typename DestType>
   static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
                      typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey, size_t src_buffer=0, size_t dest_buffer=0);
@@ -38,9 +32,6 @@ public:
 template<>
 class serialize<rect,lowertri>{
 public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
   template<typename SrcType, typename DestType>
   static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
                      typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey, size_t src_buffer=0, size_t dest_buffer=0);
@@ -49,9 +40,6 @@ public:
 template<>
 class serialize<uppertri,rect>{
 public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
   template<typename SrcType, typename DestType>
   static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
                      typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey, size_t src_buffer=0, size_t dest_buffer=0);
@@ -60,9 +48,6 @@ public:
 template<>
 class serialize<uppertri,uppertri>{
 public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
   template<typename SrcType, typename DestType>
   static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
                      typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey, size_t src_buffer=0, size_t dest_buffer=0);
@@ -71,9 +56,6 @@ public:
 template<>
 class serialize<lowertri,rect>{
 public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
   template<typename SrcType, typename DestType>
   static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
                      typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey, size_t src_buffer=0, size_t dest_buffer=0);
@@ -82,9 +64,6 @@ public:
 template<>
 class serialize<lowertri,lowertri>{
 public:
-  template<typename SrcType>
-  static void invoke(SrcType& src);
-
   template<typename SrcType, typename DestType>
   static void invoke(const SrcType& src, DestType& dest, typename SrcType::DimensionType ssx, typename SrcType::DimensionType sex, typename SrcType::DimensionType ssy, typename SrcType::DimensionType sey,
                      typename SrcType::DimensionType dsx, typename SrcType::DimensionType dex, typename SrcType::DimensionType dsy, typename SrcType::DimensionType dey, size_t src_buffer=0, size_t dest_buffer=0);

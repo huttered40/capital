@@ -18,7 +18,7 @@ void serialize<rect,rect>::invoke(const SrcType& src, DestType& dest, typename S
   T* s; if (src_buffer==0) s=src.data(); else if (src_buffer==1) s=src.scratch(); else s=src.pad();
   T* d; if (dest_buffer==0) d=dest.data(); else if (dest_buffer==1) d=dest.scratch(); else d=dest.pad();
   for (U i=0; i<rangeX; i++){
-    U dest_idx = dest.offset_local(dsx+i,dsy); U src_idx = src.offset_local(ssx+i,ssy);
+    U dest_idx = dest.offset_local(dsx+i,dsy,dest_buffer); U src_idx = src.offset_local(ssx+i,ssy,src_buffer);
     memcpy(&d[dest_idx],&s[src_idx],rangeY*sizeof(T));
   }
 }
@@ -32,7 +32,7 @@ void serialize<rect,uppertri>::invoke(const SrcType& src, DestType& dest, typena
   T* s; if (src_buffer==0) s=src.data(); else if (src_buffer==1) s=src.scratch(); else s=src.pad();
   T* d; if (dest_buffer==0) d=dest.data(); else if (dest_buffer==1) d=dest.scratch(); else d=dest.pad();
   for (U i=0; i<rangeX; i++){
-    U dest_idx = dest.offset_local(dsx+i,dsy); U src_idx = src.offset_local(ssx+i,ssy);
+    U dest_idx = dest.offset_local(dsx+i,dsy,dest_buffer); U src_idx = src.offset_local(ssx+i,ssy,src_buffer);
     memcpy(&d[dest_idx],&s[src_idx],(i+1)*sizeof(T));
   }
 }
@@ -46,7 +46,7 @@ void serialize<rect,lowertri>::invoke(const SrcType& src, DestType& dest, typena
   T* s; if (src_buffer==0) s=src.data(); else if (src_buffer==1) s=src.scratch(); else s=src.pad();
   T* d; if (dest_buffer==0) d=dest.data(); else if (dest_buffer==1) d=dest.scratch(); else d=dest.pad();
   for (U i=0; i<rangeX; i++){
-    U dest_idx = dest.offset_local(dsx+i,dsy+i); U src_idx = src.offset_local(ssx+i,ssy+i);
+    U dest_idx = dest.offset_local(dsx+i,dsy+i,dest_buffer); U src_idx = src.offset_local(ssx+i,ssy+i,src_buffer);
     memcpy(&d[dest_idx],&s[src_idx],(rangeY-i)*sizeof(T));
   }
 }
@@ -60,7 +60,7 @@ void serialize<uppertri,rect>::invoke(const SrcType& src, DestType& dest, typena
   T* s; if (src_buffer==0) s=src.data(); else if (src_buffer==1) s=src.scratch(); else s=src.pad();
   T* d; if (dest_buffer==0) d=dest.data(); else if (dest_buffer==1) d=dest.scratch(); else d=dest.pad();
   for (U i=0; i<rangeX; i++){
-    U dest_idx = dest.offset_local(dsx+i,dsy); U src_idx = src.offset_local(ssx+i,ssy);
+    U dest_idx = dest.offset_local(dsx+i,dsy,dest_buffer); U src_idx = src.offset_local(ssx+i,ssy,src_buffer);
     memcpy(&d[dest_idx],&s[src_idx],(i+1)*sizeof(T));
   }
 }
@@ -76,7 +76,7 @@ void serialize<uppertri,uppertri>::invoke(const SrcType& src, DestType& dest, ty
   T* s; if (src_buffer==0) s=src.data(); else if (src_buffer==1) s=src.scratch(); else s=src.pad();
   T* d; if (dest_buffer==0) d=dest.data(); else if (dest_buffer==1) d=dest.scratch(); else d=dest.pad();
   for (U i=0; i<rangeX; i++){
-    U dest_idx = dest.offset_local(dsx+i,dsy); U src_idx = src.offset_local(ssx+i,ssy);
+    U dest_idx = dest.offset_local(dsx+i,dsy,dest_buffer); U src_idx = src.offset_local(ssx+i,ssy,src_buffer);
     memcpy(&d[dest_idx],&s[src_idx],(i+1)*sizeof(T));
   }
 }
@@ -90,7 +90,7 @@ void serialize<lowertri,rect>::invoke(const SrcType& src, DestType& dest, typena
   T* s; if (src_buffer==0) s=src.data(); else if (src_buffer==1) s=src.scratch(); else s=src.pad();
   T* d; if (dest_buffer==0) d=dest.data(); else if (dest_buffer==1) d=dest.scratch(); else d=dest.pad();
   for (U i=0; i<rangeX; i++){
-    U dest_idx = dest.offset_local(dsx+i,dsy+i); U src_idx = src.offset_local(ssx+i,ssy+i);
+    U dest_idx = dest.offset_local(dsx+i,dsy+i,dest_buffer); U src_idx = src.offset_local(ssx+i,ssy+i,src_buffer);
     memcpy(&d[dest_idx],&s[src_idx],(rangeY-i)*sizeof(T));
   }
 }
@@ -104,48 +104,7 @@ void serialize<lowertri,lowertri>::invoke(const SrcType& src, DestType& dest, ty
   T* s; if (src_buffer==0) s=src.data(); else if (src_buffer==1) s=src.scratch(); else s=src.pad();
   T* d; if (dest_buffer==0) d=dest.data(); else if (dest_buffer==1) d=dest.scratch(); else d=dest.pad();
   for (U i=0; i<rangeX; i++){
-    U dest_idx = dest.offset_local(dsx+i,dsy+i); U src_idx = src.offset_local(ssx+i,ssy+i);
+    U dest_idx = dest.offset_local(dsx+i,dsy+i,dest_buffer); U src_idx = src.offset_local(ssx+i,ssy+i,src_buffer);
     memcpy(&d[dest_idx],&s[src_idx],(rangeY-i)*sizeof(T));
-  }
-}
-
-
-template<typename SrcType>
-void serialize<uppertri,rect>::invoke(SrcType& src){
-
-  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
-  // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
-  using T = typename SrcType::ScalarType; using U = typename SrcType::DimensionType;
-  U srcNumRows = src.num_rows_local(); U srcNumColumns = src.num_columns_local();
-  T* srcVectorData = src.scratch(); T* destVectorData = src.pad();
-  U counter{1}; U srcOffset{0}; U destOffset{0}; U counter2{srcNumRows};
-  for (U i=0; i<srcNumRows; i++){
-    memcpy(&destVectorData[destOffset], &srcVectorData[srcOffset], counter*sizeof(T));
-    U fillZeros = srcNumRows-counter;
-    fillZerosContig(&destVectorData[destOffset+counter], fillZeros);
-    srcOffset += counter;
-    destOffset += counter2;
-    counter++;
-  }
-}
-
-
-template<typename SrcType>
-void serialize<lowertri,rect>::invoke(SrcType& src){
-
-  // Only written as one way to quiet compiler errors when adding rectangle matrix compatibility with MM3D
-  // But now, I am going to have this call the serialize from UT to square, because thats what this will actually be doing
-  // I tried a simple static_cast, but it didn't work, so now I will just copy code. Ugh! Fix later.
-  using T = typename SrcType::ScalarType; using U = typename SrcType::DimensionType;
-  U srcNumRows = src.num_rows_local(); U srcNumColumns = src.num_columns_local();
-  T* srcVectorData = src.scratch(); T* destVectorData = src.pad();
-  U counter{srcNumRows}; U srcOffset{0}; U destOffset{0};
-  for (U i=0; i<srcNumColumns; i++){
-    fillZerosContig(&destVectorData[destOffset], i);
-    memcpy(&destVectorData[destOffset+i], &srcVectorData[srcOffset], counter*sizeof(T));
-    srcOffset += counter;
-    destOffset += srcNumRows;
-    counter--;
   }
 }

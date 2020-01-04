@@ -47,7 +47,7 @@ public:
   inline DimensionType num_rows_global() const { return this->_globalDimensionY; }
   inline DimensionType num_columns_global() const { return this->_globalDimensionX; }
 
-  inline DimensionType offset_local(DimensionType coordX, DimensionType coordY) const { return _offset(coordX,coordY,this->_dimensionX,this->_dimensionY);}
+  inline DimensionType offset_local(DimensionType coordX, DimensionType coordY, size_t buffer) const { return buffer != 2 ? _offset(coordX,coordY,this->_dimensionX,this->_dimensionY) : rect::_offset(coordX,coordY,this->_dimensionX,this->_dimensionY);}
   inline DimensionType offset_global(DimensionType coordX, DimensionType coordY) const { static_assert(0,"not implemented"); return -1;}//TODO
 
   inline void swap() { ScalarType* ptr = this->data(); this->data() = this->scratch(); this->scratch() = ptr; } 
