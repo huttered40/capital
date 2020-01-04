@@ -23,7 +23,7 @@ int main(int argc, char** argv){
 
   using cholesky_type = typename cholesky::cholinv<policy::cholinv::Serialize,policy::cholinv::SaveIntermediates>;
   size_t process_cube_dim = std::nearbyint(std::ceil(pow(size,1./3.)));
-  size_t rep_factor = process_cube_dim/rep_div; double time_global = 0; double time_local = 0;
+  size_t rep_factor = process_cube_dim/rep_div; double time_global;
   T residual_error_local,residual_error_global; auto mpi_dtype = mpi_type<T>::type;
   { 
     auto SquareTopo = topo::square(MPI_COMM_WORLD,rep_factor,num_chunks);
@@ -39,13 +39,13 @@ int main(int argc, char** argv){
       critter::stop();
   
       if (id>0){
-        time_local=MPI_Wtime();
+        volatile double time_local=MPI_Wtime();
         cholesky_type::factor(A, pack, SquareTopo);
-        time_local=MPI_Wtime()-time_local;
-        MPI_Reduce(&time_local, &time_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+        time_global=MPI_Wtime()-time_local;
+        MPI_Allreduce(MPI_IN_PLACE, &time_global, 1, mpi_dtype, MPI_MAX, MPI_COMM_WORLD);
         if (rank==0){ std::cout << time_global << std::endl; }
         if (id>1){
-          residual_error_local = cholesky::validate<cholesky_type>::invoke(A, pack, SquareTopo);
+          residual_error_local = cholesky::validate<cholesky_type>::residual(A, pack, SquareTopo);
           MPI_Reduce(&residual_error_local, &residual_error_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
           if (rank==0){ std::cout << residual_error_global << std::endl; }
         }
