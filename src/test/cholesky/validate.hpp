@@ -4,7 +4,7 @@ namespace cholesky{
 
 template<typename AlgType>
 template<typename MatrixType, typename ArgType, typename CommType>
-typename MatrixType::ScalarType validate<AlgType>::invoke(const MatrixType& A, ArgType& args, CommType&& CommInfo){
+typename MatrixType::ScalarType validate<AlgType>::residual(const MatrixType& A, ArgType& args, CommType&& CommInfo){
 
   using T = typename MatrixType::ScalarType;
   auto R = AlgType::construct_R(args,CommInfo);

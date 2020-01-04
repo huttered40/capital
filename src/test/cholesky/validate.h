@@ -14,7 +14,7 @@ template<typename AlgType>
 class validate{
 public:
   template<typename MatrixType, typename ArgType, typename CommType>
-  static typename MatrixType::ScalarType invoke(const MatrixType& A, ArgType& args, CommType&& CommInfo);
+  static typename MatrixType::ScalarType residual(const MatrixType& A, ArgType& args, CommType&& CommInfo);
 };
 }
 

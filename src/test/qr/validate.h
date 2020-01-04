@@ -12,18 +12,12 @@ namespace qr{
 template<typename AlgType>
 class validate{
 public:
-  template<typename MatrixAType, typename MatrixQType, typename MatrixRType, typename CommType>
-  static std::pair<typename MatrixAType::ScalarType,typename MatrixAType::ScalarType>
-           invoke(MatrixAType& A, MatrixQType& Q, MatrixRType& R, CommType&& CommInfo);
 
-private:
-  template<typename MatrixType, typename RectCommType, typename SquareCommType>
-  static typename MatrixType::ScalarType
-  orth(MatrixType& Q, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
+  template<typename MatrixType, typename ArgType, typename RectCommType>
+  static typename MatrixType::ScalarType orthogonality(const MatrixType& A, ArgType& args, RectCommType&& RectTopo);
   
-  template<typename MatrixQType, typename MatrixRType, typename MatrixAType, typename RectCommType, typename SquareCommType>
-  static typename MatrixAType::ScalarType
-  residual(MatrixQType& Q, MatrixRType& R, MatrixAType& A, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo);
+  template<typename MatrixType, typename ArgType, typename RectCommType>
+  static typename MatrixType::ScalarType residual(const MatrixType& A, ArgType& args, RectCommType&& RectTopo);
 };
 }
 
