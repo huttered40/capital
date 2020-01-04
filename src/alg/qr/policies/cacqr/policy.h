@@ -10,8 +10,13 @@ class NoSerialize{
 protected:
   using structure = rect;
 
+  template<typename MatrixType, typename BufferType>
+  static MatrixType& buffer(MatrixType& Matrix, BufferType& buffer){
+    return Matrix; 
+  }
+
   template<typename MatrixType, typename BufferType, typename CommType>
-  static void gram(MatrixType& Matrix, BufferType& buffer, CommType&& CommInfo){
+  static void compute_gram(MatrixType& Matrix, BufferType& buffer, CommType&& CommInfo){
     using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
     U localDimensionN = Matrix.num_columns_local();
     MPI_Allreduce(MPI_IN_PLACE, Matrix.data(), localDimensionN*localDimensionN, mpi_type<T>::type, MPI_SUM, CommInfo.world);
@@ -19,38 +24,110 @@ protected:
   }
 
   template<typename MatrixType, typename BufferType>
-  static MatrixType& invoke(MatrixType& Matrix, BufferType& buffer){
+  static void save_R_1d(MatrixType& Matrix, BufferType& buffer){
+    auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
+    serialize<uppertri,uppertri>::invoke(Matrix,buffer,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static typename BufferType::ScalarType* retrieve_intermediate_R_1d(MatrixType& Matrix, BufferType& buffer){
+    return buffer.data();
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static typename MatrixType::ScalarType* retrieve_final_R_1d(MatrixType& Matrix, BufferType& buffer){
+    return Matrix.data();
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static void save_R_3d(MatrixType& Matrix, BufferType& buffer1, BufferType& buffer2){
+    auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
+    serialize<uppertri,uppertri>::invoke(Matrix,buffer2,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static BufferType& retrieve_intermediate_R_3d(MatrixType& Matrix, BufferType& buffer){
+    return buffer;
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static MatrixType& retrieve_final_R_3d(MatrixType& Matrix, BufferType& buffer){
     return Matrix;
   }
 
   template<typename MatrixType, typename BufferType>
-  static void complete(MatrixType& Matrix, BufferType& buffer){}
+  static void complete_1d(MatrixType& Matrix, BufferType& buffer){}
+
+  template<typename MatrixType, typename BufferType>
+  static void complete_3d(MatrixType& Matrix, BufferType& buffer){
+    auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
+    serialize<uppertri,uppertri>::invoke(buffer,Matrix,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
+  }
 };
 
 class Serialize{
 protected:
   using structure = uppertri;
 
+  template<typename MatrixType, typename BufferType>
+  static BufferType& buffer(MatrixType& Matrix, BufferType& buffer){
+    return buffer; 
+  }
+
   template<typename MatrixType, typename BufferType, typename CommType>
-  static void gram(MatrixType& Matrix, BufferType& buffer, CommType&& CommInfo){
+  static void compute_gram(MatrixType& Matrix, BufferType& buffer, CommType&& CommInfo){
     using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType; using Offload = typename MatrixType::OffloadType;
-    U globalDimensionN = Matrix.num_columns_global();
-    serialize<rect,structure>::invoke(Matrix, buffer);
-    MPI_Allreduce(MPI_IN_PLACE, buffer.data(), buffer.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.world);
-    serialize<structure,rect>::invoke(buffer,Matrix);
+    auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
+    serialize<uppertri,uppertri>::invoke(buffer,Matrix,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
+    MPI_Allreduce(MPI_IN_PLACE, Matrix.data(), Matrix.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.world);
+    serialize<uppertri,uppertri>::invoke(Matrix,buffer,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
     return;
   }
 
   template<typename MatrixType, typename BufferType>
-  static BufferType& invoke(MatrixType& Matrix, BufferType& buffer){
-    serialize<rect,structure>::invoke(Matrix, buffer);
+  static void save_R_1d(MatrixType& Matrix, BufferType& buffer){
+    auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
+    serialize<uppertri,uppertri>::invoke(buffer,Matrix,0,num_columns,0,num_rows,0,num_columns,0,num_rows,0,2);
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static typename MatrixType::ScalarType* retrieve_intermediate_R_1d(MatrixType& Matrix, BufferType& buffer){
+    return Matrix.pad();
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static typename MatrixType::ScalarType* retrieve_final_R_1d(MatrixType& Matrix, BufferType& buffer){
+    return buffer.data();
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static void save_R_3d(MatrixType& Matrix, MatrixType& buffer1, BufferType& buffer2){
+    auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
+    serialize<uppertri,uppertri>::invoke(Matrix,buffer1,0,num_columns,0,num_rows,0,num_columns,0,num_rows,0,0);
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static MatrixType& retrieve_intermediate_R_3d(MatrixType& Matrix, BufferType& buffer){
+    return Matrix;
+  }
+
+  template<typename MatrixType, typename BufferType>
+  static MatrixType& retrieve_final_R_3d(MatrixType& Matrix, BufferType& buffer){
     return buffer;
   }
 
   template<typename MatrixType, typename BufferType>
-  static void complete(MatrixType& Matrix, BufferType& buffer){
-    serialize<structure,rect>::invoke(buffer,Matrix);
+  static void complete_1d(MatrixType& Matrix, BufferType& buffer){
+    auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
+    serialize<uppertri,uppertri>::invoke(buffer,Matrix,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
   }
+
+  template<typename MatrixType, typename BufferType>
+  static void complete_3d(MatrixType& Matrix, BufferType& buffer){
+    auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
+    serialize<uppertri,uppertri>::invoke(buffer,Matrix,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
+  }
+
 };
 // ***********************************************************************************************************************************************************************
 
@@ -84,13 +161,13 @@ protected:
 
   template<typename TableType, typename KeyType>
   static inline typename TableType::mapped_type& invoke(TableType& table, KeyType&& key){
-    table[std::forward<KeyType>(key)].fill();
+    table[std::forward<KeyType>(key)]._fill_();
     return table[std::forward<KeyType>(key)];
   }
 
   template<typename MatrixType>
   static void flush(MatrixType& matrix){
-    matrix.destroy();
+    matrix._destroy_();
   }
 };
 // ***********************************************************************************************************************************************************************
