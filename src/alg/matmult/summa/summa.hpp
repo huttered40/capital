@@ -176,8 +176,8 @@ void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
     for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){ MPI_Wait(&column_req[idx],&column_stat[idx]); }
   }
 
-  if (!std::is_same<StructureA,rect>::value){ serialize<StructureA,rect>::invoke(A); A.swap_pad(); }
-  if (!std::is_same<StructureB,rect>::value){ serialize<StructureB,rect>::invoke(B); B.swap_pad(); }
+  if (!std::is_same<StructureA,rect>::value){ serialize<StructureA,rect>::invoke(A,A,0,localDimensionK,0,localDimensionM,0,localDimensionK,0,localDimensionM,1,2); A.swap_pad(); }
+  if (!std::is_same<StructureB,rect>::value){ serialize<StructureB,rect>::invoke(B,B,0,localDimensionN,0,localDimensionK,0,localDimensionN,0,localDimensionK,1,2); B.swap_pad(); }
 }
 
 template<typename MatrixType, typename CommType>
