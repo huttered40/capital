@@ -7,11 +7,10 @@
 #include "./../../matmult/summa/summa.h"
 #include "./../../cholesky/cholinv/cholinv.h"
 #include "./../policies/cacqr/policy.h"
-#include "./../../cholesky/policies/cholinv/policy.h"
 
 namespace qr{
 
-template<class SerializePolicy = policy::cacqr::Serialize,
+template<class SerializePolicy     = policy::cacqr::Serialize,
          class IntermediatesPolicy = policy::cacqr::SaveIntermediates>
 class cacqr : public SerializePolicy, public IntermediatesPolicy{
 public:
@@ -23,7 +22,7 @@ public:
     using DimensionType = DimensionType;
     using alg_type = cacqr<SerializePolicy,IntermediatesPolicy>;
     using cholesky_inverse_type = CholeskyInversionType;
-    info(const info& p) : cholesky_inverse_args(p.cholesky_inverse_args) {}
+    info(const info& p) : num_iter(p.num_iter),cholesky_inverse_args(p.cholesky_inverse_args),Q(p.Q),R(p.R) {}
     info(info&& p) : cholesky_inverse_args(std::move(p.cholesky_inverse_args)) {}
     template<typename CholeskyInversionArgType>
     info(size_t num_iter, CholeskyInversionArgType&& ci_args) : num_iter(num_iter),cholesky_inverse_args(std::forward<CholeskyInversionArgType>(ci_args)) {}

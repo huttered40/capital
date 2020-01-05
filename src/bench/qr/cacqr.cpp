@@ -22,7 +22,7 @@ int main(int argc, char** argv){
   size_t num_iter   = atoi(argv[9]);// number of simulations of the algorithm for performance testing
   size_t id         = atoi(argv[10]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
-  using qr_type = typename qr::cacqr<qr::policy::cacqr::Serialize,qr::policy::cacqr::SaveIntermediates>;
+  using qr_type = qr::cacqr<qr::policy::cacqr::NoSerialize,qr::policy::cacqr::SaveIntermediates>;
   {
     double time_global = 0;
     T residual_error,orthogonality_error; auto mpi_dtype = mpi_type<T>::type;

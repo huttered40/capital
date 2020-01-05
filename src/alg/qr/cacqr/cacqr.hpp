@@ -76,10 +76,11 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::sweep_3d(ArgType& args, CommTyp
   if (isRootRow) { args.Q.swap(); }
   blas::engine::_gemm((isRootRow ? args.Q.data() : args.Q.scratch()), args.Q.data(), buffer.data(), localDimensionN, localDimensionN,
                       localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
-  SP::transfer(args.R,buffer);
-  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : buffer.data()), buffer.data(), buffer.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.z, CommInfo.column);
-  MPI_Bcast(buffer.data(), buffer.num_elems(), mpi_type<T>::type, CommInfo.y, CommInfo.depth);
-  std::remove_reference<ArgType>::type::cholesky_inverse_type::factor(buffer, args.cholesky_inverse_args, std::forward<CommType>(CommInfo));
+  SP::transfer_start(args.R,buffer);
+  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : args.R.data()), args.R.data(), args.R.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.z, CommInfo.column);
+  MPI_Bcast(args.R.data(), args.R.num_elems(), mpi_type<T>::type, CommInfo.y, CommInfo.depth);
+  std::remove_reference<ArgType>::type::cholesky_inverse_type::factor(args.R, args.cholesky_inverse_args, std::forward<CommType>(CommInfo));
+  SP::transfer_end(args.R);
   if (args.cholesky_inverse_args.complete_inv){
     blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
                                     blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
@@ -106,11 +107,12 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::sweep_tune(ArgType& args, RectC
   if (isRootRow) { args.Q.swap(); }
   blas::engine::_gemm((isRootRow ? args.Q.data() : args.Q.scratch()), args.Q.data(), buffer.data(), localDimensionN, localDimensionN,
                       localDimensionM, localDimensionM, localDimensionM, localDimensionN, gemmPack1);
-  SP::transfer(args.R,buffer);
-  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : buffer.data()), buffer.data(), buffer.num_elems(), mpi_type<T>::type, MPI_SUM, RectCommInfo.z, RectCommInfo.column_contig);
-  MPI_Allreduce(MPI_IN_PLACE, buffer.data(), buffer.num_elems(), mpi_type<T>::type,MPI_SUM, RectCommInfo.column_alt);
-  MPI_Bcast(buffer.data(), buffer.num_elems(), mpi_type<T>::type, columnContigRank, RectCommInfo.depth);
-  std::remove_reference<ArgType>::type::cholesky_inverse_type::factor(buffer, args.cholesky_inverse_args, std::forward<SquareCommType>(SquareCommInfo));
+  SP::transfer_start(args.R,buffer);
+  MPI_Reduce((isRootColumn ? MPI_IN_PLACE : args.R.data()), args.R.data(), args.R.num_elems(), mpi_type<T>::type, MPI_SUM, RectCommInfo.z, RectCommInfo.column_contig);
+  MPI_Allreduce(MPI_IN_PLACE, args.R.data(), args.R.num_elems(), mpi_type<T>::type,MPI_SUM, RectCommInfo.column_alt);
+  MPI_Bcast(args.R.data(), args.R.num_elems(), mpi_type<T>::type, columnContigRank, RectCommInfo.depth);
+  std::remove_reference<ArgType>::type::cholesky_inverse_type::factor(args.R, args.cholesky_inverse_args, std::forward<SquareCommType>(SquareCommInfo));
+  SP::transfer_end(args.R);
   if (args.cholesky_inverse_args.complete_inv){
     blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper,
                                     blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
@@ -145,12 +147,15 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::invoke_3d(ArgType& args, CommTy
   if (args.num_iter>1){
     SP::save_R_3d(args.cholesky_inverse_args.R,args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN)));
     sweep_3d(args, std::forward<CommType>(CommInfo));
-    blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
+    blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
+    if (CommInfo.x==0 && CommInfo.y==0 && CommInfo.z==0){
+      args.cholesky_inverse_args.R.print(); std::cout << "\n\n\n";
+    }
+    //if (std::is_same<typename SerializePolicy::structure,rect>::value) { util::remove_triangle(args.cholesky_inverse_args.R, CommInfo.x, CommInfo.y, CommInfo.c, 'U'); }
     matmult::summa::invoke(SP::retrieve_intermediate_R_3d(args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN))),
-                           SP::retrieve_final_R_3d(args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN))),
-                           std::forward<CommType>(CommInfo), trmmPack1);
-    SP::complete_3d(args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN)));
-  } else serialize<uppertri,uppertri>::invoke(args.cholesky_inverse_args.R,args.R,0,localDimensionN,0,localDimensionN,0,localDimensionN,0,localDimensionN);
+                           args.cholesky_inverse_args.R, std::forward<CommType>(CommInfo), trmmPack1);
+  }
+  serialize<uppertri,uppertri>::invoke(args.cholesky_inverse_args.R,args.R,0,localDimensionN,0,localDimensionN,0,localDimensionN,0,localDimensionN);
 }
 
 template<class SerializePolicy, class IntermediatesPolicy>
@@ -174,11 +179,11 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::factor(const MatrixType& A, Arg
       if (args.num_iter>1){
         SP::save_R_3d(args.cholesky_inverse_args.R,args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN)));
         sweep_tune(args, std::forward<CommType>(CommInfo), SquareTopo);
-        blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
+        blas::ArgPack_trmm<T> trmmPack1(blas::Order::AblasColumnMajor, blas::Side::AblasRight, blas::UpLo::AblasUpper, blas::Transpose::AblasNoTrans, blas::Diag::AblasNonUnit, 1.);
         matmult::summa::invoke(SP::retrieve_intermediate_R_3d(args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN))),
-                               SP::retrieve_final_R_3d(args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN))), SquareTopo, trmmPack1);
-        SP::complete_3d(args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN)));
-      } else serialize<uppertri,uppertri>::invoke(args.cholesky_inverse_args.R,args.R,0,localDimensionN,0,localDimensionN,0,localDimensionN,0,localDimensionN);
+                               args.cholesky_inverse_args.R, SquareTopo, trmmPack1);
+      }
+      serialize<uppertri,uppertri>::invoke(args.cholesky_inverse_args.R,args.R,0,localDimensionN,0,localDimensionN,0,localDimensionN,0,localDimensionN);
     }
   }
   IP::flush(args.rect_table1[std::make_pair(globalDimensionN,globalDimensionN)]);

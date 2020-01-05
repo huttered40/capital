@@ -170,13 +170,13 @@ void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::_destroy_()
 
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::_restrict_(DimensionType startX, DimensionType endX, DimensionType startY, DimensionType endY){
-  this->_data_=this->_data; this->_dimensionX_=this->_dimensionX; this->_dimensionY_=this->_dimensionY; this->_numElems_=this->_numElems;
-  this->_data=&this->_data_[offset_local(startX,startY)]; this->_dimensionX=endX-startX; this->_dimensionY=endY-startY; this->_numElems=num_elems(endX-startX,endY-startY);
+  this->_data_=this->_data; this->_scratch_=this->_scratch; this->_dimensionX_=this->_dimensionX; this->_dimensionY_=this->_dimensionY; this->_numElems_=this->_numElems;
+  this->_data=&this->_data_[offset_local(startX,startY)]; this->_scratch=&this->_scratch_[offset_local(startX,startY)]; this->_dimensionX=endX-startX; this->_dimensionY=endY-startY; this->_numElems=num_elems(endX-startX,endY-startY);
 }
 
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::_derestrict_(){
-  this->_data=this->_data_; this->_dimensionX=this->_dimensionX_; this->_dimensionY=this->_dimensionY_; this->_numElems=this->_numElems_;
+  this->_data=this->_data_; this->_scratch=this->_scratch_; this->_dimensionX=this->_dimensionX_; this->_dimensionY=this->_dimensionY_; this->_numElems=this->_numElems_;
 }
 
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>

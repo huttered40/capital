@@ -91,6 +91,7 @@ private:
 
   // Special members for _restrict_ and _destrict_ methods
   ScalarType* _data_;
+  ScalarType* _scratch_;
   DimensionType _numElems_;			// Number of elements in matrix
   DimensionType _dimensionX_;			// Number of columns owned locally
   DimensionType _dimensionY_;			// Number of rows owned locally

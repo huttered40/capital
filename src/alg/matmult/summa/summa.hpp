@@ -68,6 +68,7 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
     (srcPackage.order == blas::Order::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
   }
   // We will follow the standard here: A is always the triangular matrix. B is always the rectangular matrix
+  if (!std::is_same<StructureB,rect>::value){ serialize<StructureB,rect>::invoke(B,B,0,localDimensionN,0,localDimensionN,0,localDimensionN,0,localDimensionN,2,1); }
   collect(B,std::forward<CommType>(CommInfo));
   if (srcPackage.alpha != 0.){
     // Future optimization: Reduce loop length by half since the update will be a symmetric matrix and only half will be used going forward.
@@ -184,7 +185,6 @@ template<typename MatrixType, typename CommType>
 void summa::collect(MatrixType& matrix, CommType&& CommInfo){
 
   using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
-  U numElems = matrix.num_elems();
-  MPI_Allreduce(MPI_IN_PLACE,matrix.scratch(), numElems, mpi_type<T>::type, MPI_SUM, CommInfo.depth);
+  MPI_Allreduce(MPI_IN_PLACE,matrix.scratch(), matrix.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.depth);
 }
 }

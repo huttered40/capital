@@ -37,9 +37,9 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
       if ((globalX<globalNumRows) && (globalY<globalNumColumns)){
         auto info = Lambda(Matrix, RefMatrix, i*localNumRows+j,globalX, globalY);
         error += std::abs(info.first*info.first); control += std::abs(info.second*info.second);
-        /*int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+        int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
         if (info.first >= 1.e-8 && rank==0){std::cout << "current error - " << error << " global index - " << i*localNumRows+j << " local index - (" << i << "," << j << ") global index - ("\
-                                                      << globalX << "," << globalY << ")\n\t\t\tlocal dimensions - (" << localNumColumns << "," << localNumRows << ") global dimensions - (" << globalNumColumns << "," << globalNumRows << ")\n\t\t\t error - " << info.first << " A value - " << info.second << " process grid id - (" << sliceX << "," << sliceY << ")\n";}*/
+                                                      << globalX << "," << globalY << ")\n\t\t\tlocal dimensions - (" << localNumColumns << "," << localNumRows << ") global dimensions - (" << globalNumColumns << "," << globalNumRows << ")\n\t\t\t error - " << info.first << " A value - " << info.second << " process grid id - (" << sliceX << "," << sliceY << ")\n";}
       }
       globalY += sliceDimY;
     }

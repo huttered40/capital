@@ -59,13 +59,10 @@ protected:
   static void complete_1d(MatrixType& Matrix, BufferType& buffer){}
 
   template<typename MatrixType, typename BufferType>
-  static void complete_3d(MatrixType& Matrix, BufferType& buffer){
-    auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
-    serialize<uppertri,uppertri>::invoke(buffer,Matrix,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
-  }
+  static void transfer_start(MatrixType& Matrix, BufferType& buffer){}
 
-  template<typename MatrixType, typename BufferType>
-  static void transfer(MatrixType& Matrix, BufferType& buffer){}
+  template<typename MatrixType>
+  static void transfer_end(MatrixType& Matrix){}
 };
 
 class Serialize{
@@ -126,15 +123,15 @@ protected:
   }
 
   template<typename MatrixType, typename BufferType>
-  static void complete_3d(MatrixType& Matrix, BufferType& buffer){
+  static void transfer_start(MatrixType& Matrix, BufferType& buffer){
+    Matrix.swap();
     auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
-    serialize<uppertri,uppertri>::invoke(buffer,Matrix,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
+    serialize<uppertri,uppertri>::invoke(buffer,Matrix,0,num_columns,0,num_rows,0,num_columns,0,num_rows,0,0);
   }
 
-  template<typename MatrixType, typename BufferType>
-  static void transfer(MatrixType& Matrix, BufferType& buffer){
-    //auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
-    //serialize<uppertri,uppertri>::invoke(buffer,Matrix,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
+  template<typename MatrixType>
+  static void transfer_end(MatrixType& Matrix){
+    Matrix.swap();
   }
 };
 // ***********************************************************************************************************************************************************************
