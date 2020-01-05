@@ -30,6 +30,8 @@ public:
   void _fill_();
   void _register_(DimensionType globalDimensionX, DimensionType globalDimensionY, int64_t globalPgridX, int64_t globalPgridY);
   void _destroy_();
+  void _restrict_(DimensionType startX, DimensionType endX, DimensionType startY, DimensionType endY);
+  void _derestrict_();
 
   // automatically inlined
   // returning an lvalue by virtue of its reference type -- note: this isnt the safest thing, but it provides better speed. 
@@ -86,6 +88,12 @@ private:
   DimensionType _dimensionY;			// Number of rows owned locally
   DimensionType _globalDimensionX;		// Number of columns in global matrix
   DimensionType _globalDimensionY;		// Number of rows in global matrix
+
+  // Special members for _restrict_ and _destrict_ methods
+  ScalarType* _data_;
+  DimensionType _numElems_;			// Number of elements in matrix
+  DimensionType _dimensionX_;			// Number of columns owned locally
+  DimensionType _dimensionY_;			// Number of rows owned locally
 };
 
 #include "matrix.hpp"

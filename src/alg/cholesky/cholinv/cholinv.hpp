@@ -7,12 +7,11 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(const Ma
 
   using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
   using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
-  static_assert(std::is_same<typename MatrixType::StructureType,rect>::value,"cholesky::cholinv requires non-packed matrices\n");
   assert(args.split>0); assert(args.dir == 'U');	// Removed support for 'L'. Necessary future support for this case can be handled via a final transpose.
   U localDimension = A.num_rows_local(); U globalDimension = A.num_rows_global(); U minDimLocal = 1;
   args.R._register_(A.num_columns_global(),A.num_rows_global(),CommInfo.d,CommInfo.d);
   args.Rinv._register_(A.num_columns_global(),A.num_rows_global(),CommInfo.d,CommInfo.d);
-  serialize<rect,typename SP::structure>::invoke(A,args.R,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
+  serialize<typename MatrixType::StructureType,typename SP::structure>::invoke(A,args.R,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
 
   U bcDimLocal = util::get_next_power2(localDimension/(CommInfo.c*CommInfo.d));
   auto bcMult = args.bc_mult_dim;
