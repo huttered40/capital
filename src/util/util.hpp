@@ -54,7 +54,7 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
 
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename ScalarType>
-void util::block_to_cyclic(std::vector<ScalarType>& blockedData, ScalarType* cyclicData, int64_t localDimensionRows, int64_t localDimensionColumns, int64_t sliceDim, char dir){
+void util::block_to_cyclic_triangle(ScalarType* blockedData, ScalarType* cyclicData, int64_t num_elems, int64_t localDimensionRows, int64_t localDimensionColumns, int64_t sliceDim){
 
   int64_t aggregNumRows = localDimensionRows*sliceDim;
   int64_t aggregNumColumns = localDimensionColumns*sliceDim;
@@ -63,7 +63,7 @@ void util::block_to_cyclic(std::vector<ScalarType>& blockedData, ScalarType* cyc
   int64_t numCyclicBlocksPerCol = localDimensionColumns;
   int64_t write_idx=0; int64_t read_idx=0;
 
-  write_idx = 0; int64_t recvDataOffset = blockedData.size()/(sliceDim*sliceDim);
+  write_idx = 0; int64_t recvDataOffset = num_elems/(sliceDim*sliceDim);
   int64_t off1 = 0; int64_t off3 = sliceDim*recvDataOffset;
   // MACRO loop over all cyclic "blocks" (dimensionX direction)
   for (int64_t i=0; i<numCyclicBlocksPerCol; i++){
@@ -92,7 +92,7 @@ void util::block_to_cyclic(std::vector<ScalarType>& blockedData, ScalarType* cyc
 }
 
 template<typename ScalarType>
-void util::block_to_cyclic(ScalarType* blockedData, ScalarType* cyclicData, int64_t localDimensionRows, int64_t localDimensionColumns, int64_t sliceDim){
+void util::block_to_cyclic_rect(ScalarType* blockedData, ScalarType* cyclicData, int64_t localDimensionRows, int64_t localDimensionColumns, int64_t sliceDim){
   int64_t write_idx = 0; int64_t read_idx = 0;
   int64_t readDataOffset = localDimensionRows*localDimensionColumns;
   for (int64_t i=0; i<localDimensionColumns; i++){

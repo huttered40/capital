@@ -179,6 +179,20 @@ template<typename MatrixType, typename CommType>
 void summa::collect(MatrixType& matrix, CommType&& CommInfo){
 
   using T = typename MatrixType::ScalarType;
-  MPI_Allreduce(MPI_IN_PLACE,matrix.scratch(), matrix.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.depth);
+  if (CommInfo.num_chunks == 0){
+    MPI_Allreduce(MPI_IN_PLACE,matrix.scratch(), matrix.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.depth);
+  }
+  else{
+    // initiate collection along depth
+    std::vector<MPI_Request> req(CommInfo.num_chunks); std::vector<MPI_Status> stat(CommInfo.num_chunks);
+    int64_t offset = matrix.num_elems()%CommInfo.num_chunks; int64_t progress=0;
+    for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){
+      MPI_Iallreduce(MPI_IN_PLACE, &matrix.scratch()[progress], idx==(CommInfo.num_chunks-1) ? matrix.num_elems()/CommInfo.num_chunks+offset : matrix.num_elems()/CommInfo.num_chunks,
+                     mpi_type<T>::type, MPI_SUM, CommInfo.depth, &req[idx]);
+      progress += matrix.num_elems()/CommInfo.num_chunks;
+    }
+    // complete
+    for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){ MPI_Wait(&req[idx],&stat[idx]); }
+  }
 }
 }

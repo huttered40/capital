@@ -10,35 +10,16 @@ namespace cholinv{
 
 // ***********************************************************************************************************************************************************************
 /*
-template<class PolicyClass>
-class OverlapGatherPolicyClass{
-protected:
-  template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
-    using T = typename MatrixType::ScalarType;
-    using U = typename MatrixType::DimensionType;
-    U localDimension = Matrix.num_columns_local();
-    MPI_Allgather(Matrix.data(), Matrix.num_elems(), mpi_type<T>::type, &blocked[0], Matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
-    util::block_to_cyclic(blocked, cyclic, localDimension, localDimension, CommInfo.d, 'U');
-    return;
-  }
-};
-
 template<>
 class OverlapGatherPolicyClass<OverlapGather>{
 protected:
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
-    using T = typename MatrixType::ScalarType;
-    using U = typename MatrixType::DimensionType;
-    using Distribution = typename MatrixType::DistributionType;
-    using Offload = typename MatrixType::OffloadType;
+    using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
     U localDimension = Matrix.num_columns_local();
     // initiate distribution of allgather into chunks of local columns, multiples of localDimension
-    std::vector<MPI_Request> req(CommInfo.num_chunks);
-    std::vector<MPI_Status> stat(CommInfo.num_chunks);
-    U offset = localDimension*(localDimension%CommInfo.num_chunks);
-    U progress=0;
+    std::vector<MPI_Request> req(CommInfo.num_chunks); std::vector<MPI_Status> stat(CommInfo.num_chunks);
+    U offset = localDimension*(localDimension%CommInfo.num_chunks); U progress=0;
     for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
       MPI_Iallgather(Matrix.data()+progress, idx==(CommInfo.num_chunks-1) ? localDimension*(localDimension/CommInfo.num_chunks+offset) : localDimension*(localDimension/CommInfo.num_chunks),
                      mpi_type<T>::type, &blocked[progress], idx==(CommInfo.num_chunks-1) ? localDimension*(localDimension/CommInfo.num_chunks+offset) : localDimension*(localDimension/CommInfo.num_chunks),
@@ -53,7 +34,6 @@ protected:
                             idx==(CommInfo.num_chunks-1) ? (localDimension+offset)/CommInfo.num_chunks : localDimension/CommInfo.num_chunks, CommInfo.d);
       progress += (localDimension * (localDimension/CommInfo.num_chunks))*CommInfo.d*CommInfo.d;
     }
-    return;
   }
 };
 */
@@ -66,11 +46,9 @@ protected:
 
   template<typename TriMatrixType, typename SquareMatrixType, typename CommType>
   static void invoke(TriMatrixType& matrix, std::vector<typename TriMatrixType::ScalarType>& blocked, SquareMatrixType& cyclic, CommType&& CommInfo){
-    using T = typename TriMatrixType::ScalarType;
-    auto localDimension = matrix.num_columns_local();
+    using T = typename TriMatrixType::ScalarType; auto localDimension = matrix.num_columns_local();
     MPI_Allgather(matrix.data(), matrix.num_elems(), mpi_type<T>::type, &blocked[0], matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
-    util::block_to_cyclic(blocked, cyclic.data(), localDimension, localDimension, CommInfo.d, 'U');
-    return;
+    util::block_to_cyclic_triangle(&blocked[0], cyclic.data(), blocked.size(), localDimension, localDimension, CommInfo.d);
   }
 };
 
@@ -80,11 +58,9 @@ protected:
 
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& matrix, std::vector<typename MatrixType::ScalarType>& blocked, MatrixType& cyclic, CommType&& CommInfo){
-    using T = typename MatrixType::ScalarType;
-    auto localDimension = matrix.num_columns_local();
+    using T = typename MatrixType::ScalarType; auto localDimension = matrix.num_columns_local();
     MPI_Allgather(matrix.data(), matrix.num_elems(), mpi_type<T>::type, &blocked[0], matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
-    util::block_to_cyclic(&blocked[0], cyclic.data(), localDimension, localDimension, CommInfo.d);
-    return;
+    util::block_to_cyclic_rect(&blocked[0], cyclic.data(), localDimension, localDimension, CommInfo.d);
   }
 };
 // ***********************************************************************************************************************************************************************
@@ -152,11 +128,12 @@ class Pipeline{
 protected:
   template<typename TableType1, typename TableType2, typename TableType3, typename ArgType, typename CommType>
   static void initiate(TableType1& t1, TableType2& t2, TableType3& t3, ArgType& args, CommType&& CommInfo){
+    static_assert(0,"not implemented");
   }
 
   template<typename ArgType, typename CommType>
   static void update_panel(ArgType& args, CommType&& CommInfo){
-    // needs to be some recognition that the top panel does not need updating
+    static_assert(0,"not implemented");
   }
 };
 
