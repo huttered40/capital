@@ -5,7 +5,7 @@
 
 #include "./../../alg.h"
 #include "./../../matmult/summa/summa.h"
-#include "./../policies/caqr/policy.h"
+#include "./policy.h"
 
 namespace qr{
 

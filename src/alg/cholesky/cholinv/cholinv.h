@@ -5,7 +5,7 @@
 
 #include "./../../alg.h"
 #include "./../../matmult/summa/summa.h"
-#include "./../policies/cholinv/policy.h"
+#include "./policy.h"
 
 namespace cholesky{
 template<class SerializePolicy     = policy::cholinv::Serialize,

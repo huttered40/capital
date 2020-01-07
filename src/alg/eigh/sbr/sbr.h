@@ -5,7 +5,7 @@
 
 #include "./../../alg.h"
 #include "./../../matmult/summa/summa.h"
-#include "./../policies/sqr/policy.h"
+#include "./policy.h"
 
 namespace eigh{
 

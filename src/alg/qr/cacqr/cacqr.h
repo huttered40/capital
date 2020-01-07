@@ -6,7 +6,7 @@
 #include "./../../alg.h"
 #include "./../../matmult/summa/summa.h"
 #include "./../../cholesky/cholinv/cholinv.h"
-#include "./../policies/cacqr/policy.h"
+#include "./policy.h"
 
 namespace qr{
 
