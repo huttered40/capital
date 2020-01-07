@@ -11,10 +11,10 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(const Ma
   args.R._register_(A.num_columns_global(),A.num_rows_global(),CommInfo.d,CommInfo.d);
   args.Rinv._register_(A.num_columns_global(),A.num_rows_global(),CommInfo.d,CommInfo.d);
   serialize<typename MatrixType::StructureType,typename SP::structure>::invoke(A,args.R,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
-  U bcDimLocal = util::get_next_power2(localDimension/(CommInfo.c*CommInfo.d));
-  auto bcMult = args.bc_mult_dim;
-  if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal/=2;} else {for (int i=0;i<bcMult; i++) bcDimLocal*=2;}
-  bcDimLocal  = std::max(minDimLocal,bcDimLocal); bcDimLocal  = std::min(localDimension,bcDimLocal); U bcDimension = CommInfo.d*bcDimLocal;
+  U bcDimLocal = CommInfo.c*CommInfo.d; auto bcMult = args.bc_mult_dim;
+  if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal*=2;} else {for (int i=0;i<bcMult; i++) bcDimLocal/=2;}
+  bcDimLocal  = std::max(minDimLocal,bcDimLocal); bcDimLocal  = std::min(localDimension,bcDimLocal);
+  bcDimLocal = util::get_next_power2(localDimension/bcDimLocal); U bcDimension = CommInfo.d*bcDimLocal;
 
   args.localDimension=localDimension; args.trueLocalDimension=localDimension; args.globalDimension=globalDimension; args.trueGlobalDimension=globalDimension; args.bcDimension=bcDimension;
   args.AstartX=0; args.AendX=localDimension; args.AstartY=0; args.AendY=localDimension; args.TIstartX=0; args.TIendX=localDimension; args.TIstartY=0; args.TIendY=localDimension;
