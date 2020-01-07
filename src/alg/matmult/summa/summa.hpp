@@ -58,25 +58,20 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
   if (srcPackage.side == blas::Side::AblasLeft){
     if (isRootRow){ A.swap(); } if (isRootColumn){ B.swap(); }
     distribute(A, B, std::forward<CommType>(CommInfo));
-    blas::engine::_trmm(A.scratch(), B.scratch(), localDimensionM, localDimensionN, localDimensionM,
-    (srcPackage.order == blas::Order::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
+    blas::engine::_trmm(A.scratch(), B.scratch(), localDimensionM, localDimensionN, localDimensionM, localDimensionM, srcPackage);
   }
   else{
     if (isRootRow){ B.swap(); } if (isRootColumn){ A.swap(); }
     distribute(B,A,std::forward<CommType>(CommInfo));
-    blas::engine::_trmm(A.scratch(), B.scratch(), localDimensionM, localDimensionN, localDimensionN,
-    (srcPackage.order == blas::Order::AblasColumnMajor ? localDimensionM : localDimensionN), srcPackage);
+    if (std::is_same<StructureB,uppertri>::value){ B.swap_pad(); util::remove_triangle_local(B,CommInfo.x,CommInfo.y,CommInfo.d,'U'); B.swap_pad(); }
+    if (std::is_same<StructureB,lowertri>::value){ B.swap_pad(); util::remove_triangle_local(B,CommInfo.x,CommInfo.y,CommInfo.d,'L'); B.swap_pad(); }
+    blas::engine::_trmm(A.scratch(), B.scratch(), localDimensionM, localDimensionN, localDimensionN, localDimensionM, srcPackage);
   }
   // We will follow the standard here: A is always the triangular matrix. B is always the rectangular matrix
-  if (!std::is_same<StructureB,rect>::value){ serialize<StructureB,rect>::invoke(B,B,0,localDimensionN,0,localDimensionN,0,localDimensionN,0,localDimensionN,2,1); }
+  if (!std::is_same<StructureB,rect>::value){ B.swap_pad(); serialize<StructureB,StructureB>::invoke(B,B,0,localDimensionN,0,localDimensionN,0,localDimensionN,0,localDimensionN,2,1); }
   collect(B,std::forward<CommType>(CommInfo));
-  if (srcPackage.alpha != 0.){
-    // Future optimization: Reduce loop length by half since the update will be a symmetric matrix and only half will be used going forward.
-    for (U i=0; i<B.num_elems(); i++){ B.data()[i] = srcPackage.alpha*B.data()[i] + B.scratch()[i]; }
-  }
   // Reset before returning
   if (!std::is_same<StructureA,rect>::value){ A.swap_pad(); }
-  if (!std::is_same<StructureB,rect>::value){ B.swap_pad(); }
   if (isRootRow && srcPackage.side == blas::Side::AblasLeft){ A.swap(); }
   B.swap();	// unconditional swap, since B holds output
 }
@@ -176,9 +171,8 @@ void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
     // complete distribution along columns
     for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){ MPI_Wait(&column_req[idx],&column_stat[idx]); }
   }
-
-  if (!std::is_same<StructureA,rect>::value){ serialize<StructureA,rect>::invoke(A,A,0,localDimensionK,0,localDimensionM,0,localDimensionK,0,localDimensionM,1,2); A.swap_pad(); }
-  if (!std::is_same<StructureB,rect>::value){ serialize<StructureB,rect>::invoke(B,B,0,localDimensionN,0,localDimensionK,0,localDimensionN,0,localDimensionK,1,2); B.swap_pad(); }
+  if (!std::is_same<StructureA,rect>::value){ serialize<StructureA,StructureA>::invoke(A,A,0,localDimensionK,0,localDimensionM,0,localDimensionK,0,localDimensionM,1,2); A.swap_pad(); }
+  if (!std::is_same<StructureB,rect>::value){ serialize<StructureB,StructureB>::invoke(B,B,0,localDimensionN,0,localDimensionN,0,localDimensionN,0,localDimensionN,1,2); B.swap_pad(); }
 }
 
 template<typename MatrixType, typename CommType>

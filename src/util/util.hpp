@@ -37,9 +37,9 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
       if ((globalX<globalNumRows) && (globalY<globalNumColumns)){
         auto info = Lambda(Matrix, RefMatrix, i*localNumRows+j,globalX, globalY);
         error += std::abs(info.first*info.first); control += std::abs(info.second*info.second);
-        int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+        /*int rank; MPI_Comm_rank(MPI_COMM_WORLD,&rank);
         if (info.first >= 1.e-8 && rank==0){std::cout << "current error - " << error << " global index - " << i*localNumRows+j << " local index - (" << i << "," << j << ") global index - ("\
-                                                      << globalX << "," << globalY << ")\n\t\t\tlocal dimensions - (" << localNumColumns << "," << localNumRows << ") global dimensions - (" << globalNumColumns << "," << globalNumRows << ")\n\t\t\t error - " << info.first << " A value - " << info.second << " process grid id - (" << sliceX << "," << sliceY << ")\n";}
+                                                      << globalX << "," << globalY << ")\n\t\t\tlocal dimensions - (" << localNumColumns << "," << localNumRows << ") global dimensions - (" << globalNumColumns << "," << globalNumRows << ")\n\t\t\t error - " << info.first << " A value - " << info.second << " process grid id - (" << sliceX << "," << sliceY << ")\n";}*/
       }
       globalY += sliceDimY;
     }
@@ -168,7 +168,8 @@ DimensionType util::get_next_power2(DimensionType localShift){
 
 template<typename MatrixType>
 void util::remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir){
-  using U = typename MatrixType::DimensionType;
+  using U = typename MatrixType::DimensionType; using T = typename MatrixType::ScalarType;
+  T* data = std::is_same<typename MatrixType::StructureType,rect>::value ? matrix.data() : matrix.pad();
 
   U globalDimVert = sliceY; U globalDimHoriz = sliceX;
   U localVert = matrix.num_rows_local();
@@ -177,13 +178,32 @@ void util::remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, i
     globalDimVert = sliceY;    //   reset
     for (U j=0; j<localVert; j++){
       if ((globalDimVert < globalDimHoriz) && (dir == 'L')){
-        matrix.data()[i*localVert + j] = 0;
+        data[i*localVert + j] = 0;
       }
       if ((globalDimVert > globalDimHoriz) && (dir == 'U')){
-        matrix.data()[i*localVert + j] = 0;
+        data[i*localVert + j] = 0;
       }
       globalDimVert += sliceDim;
     }
     globalDimHoriz += sliceDim;
+  }
+}
+
+template<typename MatrixType>
+void util::remove_triangle_local(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir){
+  using U = typename MatrixType::DimensionType; using T = typename MatrixType::ScalarType;
+  T* data = std::is_same<typename MatrixType::StructureType,rect>::value ? matrix.data() : matrix.pad();
+
+  U localVert = matrix.num_rows_local();
+  U localHoriz = matrix.num_columns_local();
+  for (U i=0; i<localHoriz; i++){
+    for (U j=0; j<localVert; j++){
+      if ((j < localHoriz) && (dir == 'L')){
+        data[i*localVert + j] = 0;
+      }
+      if ((j > localHoriz) && (dir == 'U')){
+        data[i*localVert + j] = 0;
+      }
+    }
   }
 }

@@ -39,8 +39,8 @@ protected:
     return Matrix.data();
   }
 
-  template<typename MatrixType, typename BufferType>
-  static void save_R_3d(MatrixType& Matrix, BufferType& buffer1, BufferType& buffer2){
+  template<typename MatrixType, typename BufferType1, typename BufferType2>
+  static void save_R_3d(MatrixType& Matrix, BufferType1& buffer1, BufferType2& buffer2){
     auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
     serialize<uppertri,uppertri>::invoke(Matrix,buffer2,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
   }
@@ -100,8 +100,8 @@ protected:
     return buffer.data();
   }
 
-  template<typename MatrixType, typename BufferType>
-  static void save_R_3d(MatrixType& Matrix, MatrixType& buffer1, BufferType& buffer2){
+  template<typename MatrixType, typename BufferType1, typename BufferType2>
+  static void save_R_3d(MatrixType& Matrix, BufferType1& buffer1, BufferType2& buffer2){
     auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
     serialize<uppertri,uppertri>::invoke(Matrix,buffer1,0,num_columns,0,num_rows,0,num_columns,0,num_rows,0,0);
   }

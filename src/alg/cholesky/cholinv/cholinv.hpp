@@ -5,14 +5,12 @@ template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::factor(const MatrixType& A, ArgType& args, CommType&& CommInfo){
 
-  using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
   using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
   assert(args.split>0); assert(args.dir == 'U');	// Removed support for 'L'. Necessary future support for this case can be handled via a final transpose.
   U localDimension = A.num_rows_local(); U globalDimension = A.num_rows_global(); U minDimLocal = 1;
   args.R._register_(A.num_columns_global(),A.num_rows_global(),CommInfo.d,CommInfo.d);
   args.Rinv._register_(A.num_columns_global(),A.num_rows_global(),CommInfo.d,CommInfo.d);
   serialize<typename MatrixType::StructureType,typename SP::structure>::invoke(A,args.R,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
-
   U bcDimLocal = util::get_next_power2(localDimension/(CommInfo.c*CommInfo.d));
   auto bcMult = args.bc_mult_dim;
   if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal/=2;} else {for (int i=0;i<bcMult; i++) bcDimLocal*=2;}
@@ -50,7 +48,7 @@ template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate(ArgType& args, CommType&& CommInfo){
 
-  using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy; using U = typename ArgType::DimensionType;
+  using U = typename ArgType::DimensionType;
   U split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1);
   if (((args.localDimension*CommInfo.d) <= args.bcDimension) || (split1<args.split)){
     simulate_basecase(args, std::forward<CommType>(CommInfo)); return;
@@ -81,7 +79,7 @@ template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::simulate_basecase(ArgType& args, CommType&& CommInfo){
 
-  using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy; using U = typename ArgType::DimensionType;
+  using U = typename ArgType::DimensionType;
   assert(args.localDimension>0); assert((args.AendX-args.AstartX)==(args.AendY-args.AstartY));
   auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
   IP::init(args.base_case_table, index_pair, nullptr,args.AendX-args.AstartX,args.AendY-args.AstartY,CommInfo.d,CommInfo.d);
@@ -94,7 +92,6 @@ template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::invoke(ArgType& args, CommType&& CommInfo){
 
-  using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
   using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType; using U = typename ArgTypeRR::DimensionType;
   U split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1);
   if (((args.localDimension*CommInfo.d) <= args.bcDimension) || (split1<args.split)){
@@ -145,7 +142,6 @@ template<class SerializePolicy, class IntermediatesPolicy, class OverlapPolicy>
 template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::base_case(ArgType& args, CommType&& CommInfo){
 
-  using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
   using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType; using U = typename ArgTypeRR::DimensionType;
 
   // No matter what path we are on, if we get into the base case, we will do regular Cholesky + Triangular inverse
@@ -158,14 +154,14 @@ void cholinv<SerializePolicy,IntermediatesPolicy,OverlapPolicy>::base_case(ArgTy
   // Fourth: Save the data that each processor owns according to the cyclic rule.
 
   int rankSlice; MPI_Comm_rank(CommInfo.slice, &rankSlice); U aggregDim = (args.AendX-args.AstartX)*CommInfo.d;
-  auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+  U span = (args.AendX!=args.trueLocalDimension ? aggregDim :aggregDim-(args.trueLocalDimension*CommInfo.d-args.trueGlobalDimension)); auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
   serialize<uppertri,uppertri>::invoke(args.R, IP::invoke(args.base_case_table,index_pair), args.AstartX, args.AendX, args.AstartY, args.AendY,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY);
   SP::invoke(IP::invoke(args.base_case_table,index_pair),args.base_case_blocked_table[index_pair],IP::invoke(args.base_case_cyclic_table,index_pair),std::forward<CommType>(CommInfo));
   lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
   lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
-  lapack::engine::_potrf(IP::invoke(args.base_case_cyclic_table,index_pair).data(),aggregDim,aggregDim,potrfArgs);
+  lapack::engine::_potrf(IP::invoke(args.base_case_cyclic_table,index_pair).data(),span,aggregDim,potrfArgs);
   std::memcpy(IP::invoke(args.base_case_cyclic_table,index_pair).scratch(),IP::invoke(args.base_case_cyclic_table,index_pair).data(),sizeof(T)*IP::invoke(args.base_case_cyclic_table,index_pair).num_elems());
-  lapack::engine::_trtri(IP::invoke(args.base_case_cyclic_table,index_pair).scratch(),aggregDim,aggregDim,trtriArgs);
+  lapack::engine::_trtri(IP::invoke(args.base_case_cyclic_table,index_pair).scratch(),span,aggregDim,trtriArgs);
   util::cyclic_to_local(IP::invoke(args.base_case_cyclic_table,index_pair).data(),IP::invoke(args.base_case_cyclic_table,index_pair).scratch(), args.localDimension, args.globalDimension, aggregDim, CommInfo.d,rankSlice);
   serialize<uppertri,uppertri>::invoke(IP::invoke(args.base_case_cyclic_table,index_pair), args.R, 0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.AstartY, args.AendY, args.AstartY, args.AendY);
   IP::invoke(args.base_case_cyclic_table,index_pair).swap();	// puts the inverse buffer into the `data` member before final serialization

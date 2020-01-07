@@ -30,6 +30,9 @@ public:
   template<typename MatrixType>
   static void remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir);
 
+  template<typename MatrixType>
+  static void remove_triangle_local(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir);
+
   template<typename ScalarType, typename DimensionType>
   static void random_fill(ScalarType* A, DimensionType dimensionX, DimensionType dimensionY, DimensionType globalDimensionX, int64_t globalDimensionY, int64_t localPgridDimX,
                           int64_t localPgridDimY, int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key);

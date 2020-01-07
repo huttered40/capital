@@ -50,6 +50,8 @@ public:
   template<typename ArgType, typename CommType>
   static matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> construct_Rinv(ArgType& args, CommType&& CommInfo);
 
+  using SP = SerializePolicy; using IP = IntermediatesPolicy; using OP = OverlapPolicy;
+
 private:
   template<typename ArgType, typename CommType>
   static void invoke(ArgType& args, CommType&& CommInfo);

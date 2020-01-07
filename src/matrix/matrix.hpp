@@ -13,7 +13,7 @@ matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::matrix(Dimension
   this->_globalDimensionX = {globalDimensionX};
   this->_globalDimensionY = {globalDimensionY};
 
-  _assemble(this->_data, this->_scratch, this->_pad, this->_matrix, this->_numElems, this->_dimensionX, this->_dimensionY);
+  _assemble(this->_data, this->_scratch, this->_pad, this->_numElems, this->_dimensionX, this->_dimensionY);
   this->allocated_data=true; this->filled=true;
   return;
 }
@@ -38,12 +38,12 @@ matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::matrix(ScalarTyp
   // Reason: sometimes, I just want to enter in an empty vector that will be filled up in Serializer. Other times, I want to truly
   //   assemble a vector for use somewhere else.
   if ((this->_data == nullptr) || (!valid)){
-    _assemble(this->_data, this->_scratch, this->_pad, this->_matrix, this->_numElems, dimensionX, dimensionY);
+    _assemble(this->_data, this->_scratch, this->_pad, this->_numElems, dimensionX, dimensionY);
     this->allocated_data=true;
   }
   else{
     // No longer supporting cheap copies if pointer is valid, because the algorithm internals take extreme liberties in optimizations
-    _copy(this->_data, this->_scratch, this->_pad, this->_matrix, data, this->_dimensionX, this->_dimensionY);
+    _copy(this->_data, this->_scratch, this->_pad, data, this->_dimensionX, this->_dimensionY);
     this->allocated_data=true;
   }
   this->filled=true;
@@ -63,11 +63,11 @@ matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::matrix(ScalarTyp
   this->_data = data;					// will get overwritten if necessary
 
   if (data != nullptr){
-    _assemble_matrix(this->_data, this->_scratch, this->_pad, this->_matrix, this->_dimensionX, this->_dimensionY);
+    _assemble_matrix(this->_data, this->_scratch, this->_pad, this->_dimensionX, this->_dimensionY);
     this->allocated_data=false;
   }
   else{
-    _assemble(this->_data, this->_scratch, this->_pad, this->_matrix, this->_numElems, this->_dimensionX, this->_dimensionY);
+    _assemble(this->_data, this->_scratch, this->_pad, this->_numElems, this->_dimensionX, this->_dimensionY);
     this->allocated_data=true;
   }
   this->filled=true;
@@ -127,11 +127,11 @@ template<typename ScalarType, typename DimensionType, typename StructurePolicy, 
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::_fill_(){
   if (!this->filled){
     if (this->_data != nullptr){
-      _assemble_matrix(this->_data, this->_scratch, this->_pad, this->_matrix, this->_dimensionX, this->_dimensionY);
+      _assemble_matrix(this->_data, this->_scratch, this->_pad, this->_dimensionX, this->_dimensionY);
       this->allocated_data=false;
     }
     else{
-      _assemble(this->_data, this->_scratch, this->_pad, this->_matrix, this->_numElems, this->_dimensionX, this->_dimensionY);
+      _assemble(this->_data, this->_scratch, this->_pad, this->_numElems, this->_dimensionX, this->_dimensionY);
       this->allocated_data=true;
     }
     this->filled=true;
@@ -186,7 +186,7 @@ void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::copy(const 
   this->_numElems = {rhs._numElems};
   this->_globalDimensionX = {rhs._globalDimensionX};
   this->_globalDimensionY = {rhs._globalDimensionY};
-  _copy(this->_data, this->_scratch, this->_pad, this->_matrix, rhs._data, this->_dimensionX, this->_dimensionY);
+  _copy(this->_data, this->_scratch, this->_pad, rhs._data, this->_dimensionX, this->_dimensionY);
   this->allocated_data=true;
   this->filled=true;
   return;
@@ -202,7 +202,6 @@ void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::mover(matri
   this->_globalDimensionY = {rhs._globalDimensionY};
   // Suck out the matrix member from rhs and stick it in our field.
   // For now, we don't need a Allocator Policy Interface Move() method.
-  this->_matrix = std::move(rhs._matrix);
   this->_data = rhs._data; rhs._data = nullptr;
   this->_scratch = rhs._scratch; rhs._scratch = nullptr;
   this->_pad = rhs._pad; rhs._pad = nullptr;
@@ -214,45 +213,43 @@ void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::mover(matri
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::distribute_random(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key){
   // matrix must be already constructed with memory. Add a check for this later.
-  _distribute_random(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,key);
+  _distribute_random(this->_data,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,key);
 }
 
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::distribute_symmetric(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, int64_t key, bool diagonallyDominant){
   // matrix must be already constructed with memory. Add a check for this later.
-  _distribute_symmetric(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,key,diagonallyDominant);
+  _distribute_symmetric(this->_data,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,key,diagonallyDominant);
 }
 
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::distribute_identity(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY, ScalarType val){
   // matrix must be already constructed with memory. Add a check for this later.
-  _distribute_identity(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,val);
+  _distribute_identity(this->_data,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY,val);
 }
 
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::distribute_debug(int64_t localPgridX, int64_t localPgridY, int64_t globalPgridX, int64_t globalPgridY){
   // matrix must be already constructed with memory. Add a check for this later.
-  _distribute_debug(this->_matrix,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY);
+  _distribute_debug(this->_data,this->_dimensionX,this->_dimensionY,this->_globalDimensionX,this->_globalDimensionY,localPgridX,localPgridY,globalPgridX,globalPgridY);
 }
 
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::print() const{
-  _print(this->_matrix,this->_dimensionX,this->_dimensionY);
+  _print(this->_data,this->_dimensionX,this->_dimensionY);
 }
 
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::print_data() const{
-  _print(this->_matrix,this->_dimensionX,this->_dimensionY);
+  _print(this->_data,this->_dimensionX,this->_dimensionY);
 }
 
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::print_scratch() const{
-  for (int i=0; i<this->_numElems; i++){ std::cout << this->_scratch[i] << std::endl;}
-  std::cout << "\n\n";
+  _print(this->_scratch,this->_dimensionX,this->_dimensionY);
 }
 
 template<typename ScalarType, typename DimensionType, typename StructurePolicy, typename OffloadPolicy>
 void matrix<ScalarType,DimensionType,StructurePolicy,OffloadPolicy>::print_pad() const{
-  for (int i=0; i<this->_dimensionX*this->_dimensionY; i++){ std::cout << this->_pad[i] << std::endl;}
-  std::cout << "\n\n";
+  rect::_print(this->_pad,this->_dimensionX,this->_dimensionY);
 }

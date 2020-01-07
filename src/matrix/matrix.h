@@ -78,7 +78,6 @@ private:
   ScalarType* _data;				// Where the matrix data lives as a contiguous 1d array
   ScalarType* _scratch;				// Extra storage for summa and other computations that require one2all and all2one communications
   ScalarType* _pad;				// Extra storage for uppertri and lowertri structures only used in avoiding extra allocations in summa
-  std::vector<ScalarType*> _matrix;		// Holds offsets into the columns of 1D array of data. So matrix[1] is the pointer to the starting address of the 1st column.
   bool allocated_data;				// Asks if the raw data was allocated by the user or ourselves
   bool filled;					// Tracks whether the matrix instance has been filled with data in the 2-part construction
   bool danger;					// notifies me if default constructor was used.
