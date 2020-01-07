@@ -4,14 +4,12 @@ namespace matmult{
 
 // Invariant: it is assumed that the matrix data is stored in the _data member, and the _scratch member is available for exploiting
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
-void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& CommInfo,
-                   blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage){
+void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& CommInfo, blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage){
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
   using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
-  using StructureA = typename MatrixAType::StructureType;
-  using StructureB = typename MatrixBType::StructureType;
+  using StructureA = typename MatrixAType::StructureType; using StructureB = typename MatrixBType::StructureType;
 
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
@@ -41,14 +39,12 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& Co
 }
   
 template<typename MatrixAType, typename MatrixBType, typename CommType>
-void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
-                   blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage){
+void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo, blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage){
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
   using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
-  using StructureA = typename MatrixAType::StructureType;
-  using StructureB = typename MatrixBType::StructureType;
+  using StructureA = typename MatrixAType::StructureType; using StructureB = typename MatrixBType::StructureType;
 
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
@@ -76,18 +72,26 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo,
   B.swap();	// unconditional swap, since B holds output
 }
 
-template<typename MatrixAType, typename MatrixCType, typename CommType>
-void summa::invoke(MatrixAType& A, MatrixCType& C, CommType&& CommInfo,
-                   blas::ArgPack_syrk<typename MatrixAType::ScalarType>& srcPackage){
+template<typename MatrixSrcType, typename MatrixDestType, typename CommType>
+void summa::invoke(MatrixSrcType& A, MatrixDestType& C, CommType&& CommInfo, blas::ArgPack_syrk<typename MatrixSrcType::ScalarType>& srcPackage){
+  // No choice but to incur the copy cost below.
+  MatrixSrcType B = A; util::transpose(B, std::forward<CommType>(CommInfo));
+  syrk_internal(A,B,C,std::forward<CommType>(CommInfo),srcPackage);
+}
+
+template<typename MatrixSrcType, typename MatrixDestType, typename CommType>
+void summa::invoke(MatrixSrcType& A, MatrixSrcType& B, MatrixDestType& C, CommType&& CommInfo, blas::ArgPack_syrk<typename MatrixSrcType::ScalarType>& srcPackage){
+  util::transpose(B, std::forward<CommType>(CommInfo));
+  syrk_internal(A,B,C,std::forward<CommType>(CommInfo),srcPackage);
+}
+
+template<typename MatrixSrcType, typename MatrixDestType, typename CommType>
+void summa::syrk_internal(MatrixSrcType& A, MatrixSrcType& B, MatrixDestType& C, CommType&& CommInfo, blas::ArgPack_syrk<typename MatrixSrcType::ScalarType>& srcPackage){
   // Note: Internally, this routine uses gemm, not syrk, as its not possible for each processor to perform local MM with symmetric matrices
   //         given the data layout over the processor grid.
 
-  using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
-  using StructureA = typename MatrixAType::StructureType;
-  using StructureC = typename MatrixCType::StructureType;
-
-  // No choice but to incur the copy cost below.
-  MatrixAType B = A; util::transpose(B, std::forward<CommType>(CommInfo));
+  using T = typename MatrixSrcType::ScalarType; using U = typename MatrixSrcType::DimensionType;
+  using StructureA = typename MatrixSrcType::StructureType; using StructureC = typename MatrixDestType::StructureType;
 
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
@@ -132,9 +136,7 @@ template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
 
   using T = typename MatrixAType::ScalarType; using U = typename MatrixAType::DimensionType;
-  using StructureA = typename MatrixAType::StructureType;
-  using StructureB = typename MatrixBType::StructureType;
-  using Offload = typename MatrixAType::OffloadType;
+  using StructureA = typename MatrixAType::StructureType; using StructureB = typename MatrixBType::StructureType;
 
   U localDimensionM = A.num_rows_local(); U localDimensionN = B.num_columns_local();
   U localDimensionK = A.num_columns_local(); U sizeA  = A.num_elems(); U sizeB  = B.num_elems();
@@ -150,10 +152,8 @@ void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
   }
   else{
     // initiate distribution across rows
-    std::vector<MPI_Request> row_req(CommInfo.num_chunks);
-    std::vector<MPI_Request> column_req(CommInfo.num_chunks);
-    std::vector<MPI_Status> row_stat(CommInfo.num_chunks);
-    std::vector<MPI_Status> column_stat(CommInfo.num_chunks);
+    std::vector<MPI_Request> row_req(CommInfo.num_chunks); std::vector<MPI_Request> column_req(CommInfo.num_chunks);
+    std::vector<MPI_Status> row_stat(CommInfo.num_chunks); std::vector<MPI_Status> column_stat(CommInfo.num_chunks);
     int64_t offset = sizeA%CommInfo.num_chunks; int64_t progress=0;
     for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){
       MPI_Ibcast(&A.scratch()[progress], idx==(CommInfo.num_chunks-1) ? sizeA/CommInfo.num_chunks+offset : sizeA/CommInfo.num_chunks,

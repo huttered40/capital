@@ -77,7 +77,7 @@ protected:
 
 class NoSerialize{
 protected:
-  using structure = rect;	// might need 'rect'
+  using structure = rect;
 
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& matrix, std::vector<typename MatrixType::ScalarType>& blocked, MatrixType& cyclic, CommType&& CommInfo){
@@ -133,7 +133,7 @@ protected:
 // ***********************************************************************************************************************************************************************
 
 // ***********************************************************************************************************************************************************************
-class NoOverlap{
+class NoPipeline{
 protected:
   static void invoke_stage1(){
   }
@@ -144,9 +144,7 @@ protected:
   static void invoke_stage4(){
   }
 };
-class OverlapComp{
-};
-class OverlapComm{
+class Pipeline{
 };
 
 };
