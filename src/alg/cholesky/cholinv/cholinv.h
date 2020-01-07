@@ -19,6 +19,7 @@ public:
     using ScalarType = ScalarType;
     using DimensionType = DimensionType;
     using alg_type = cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>;
+    using SP = SerializePolicy; using IP = IntermediatesPolicy; using PP = PipelinePolicy;
     info(const info& p) : complete_inv(p.complete_inv), split(p.split), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     info(info&& p) : complete_inv(p.complete_inv), split(p.split), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     info(DimensionType complete_inv, DimensionType split, DimensionType bc_mult_dim, char dir) : complete_inv(complete_inv), split(split), bc_mult_dim(bc_mult_dim), dir(dir) {}
