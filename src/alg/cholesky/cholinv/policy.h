@@ -67,8 +67,7 @@ protected:
   template<typename TriMatrixType, typename SquareMatrixType, typename CommType>
   static void invoke(TriMatrixType& matrix, std::vector<typename TriMatrixType::ScalarType>& blocked, SquareMatrixType& cyclic, CommType&& CommInfo){
     using T = typename TriMatrixType::ScalarType;
-    using U = typename TriMatrixType::DimensionType;
-    U localDimension = matrix.num_columns_local();
+    auto localDimension = matrix.num_columns_local();
     MPI_Allgather(matrix.data(), matrix.num_elems(), mpi_type<T>::type, &blocked[0], matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
     util::block_to_cyclic(blocked, cyclic.data(), localDimension, localDimension, CommInfo.d, 'U');
     return;
@@ -77,13 +76,12 @@ protected:
 
 class NoSerialize{
 protected:
-  using structure = rect;	// might need 'rect'
+  using structure = rect;
 
   template<typename MatrixType, typename CommType>
   static void invoke(MatrixType& matrix, std::vector<typename MatrixType::ScalarType>& blocked, MatrixType& cyclic, CommType&& CommInfo){
     using T = typename MatrixType::ScalarType;
-    using U = typename MatrixType::DimensionType;
-    U localDimension = matrix.num_columns_local();
+    auto localDimension = matrix.num_columns_local();
     MPI_Allgather(matrix.data(), matrix.num_elems(), mpi_type<T>::type, &blocked[0], matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
     util::block_to_cyclic(&blocked[0], cyclic.data(), localDimension, localDimension, CommInfo.d);
     return;
@@ -133,20 +131,33 @@ protected:
 // ***********************************************************************************************************************************************************************
 
 // ***********************************************************************************************************************************************************************
-class NoOverlap{
+class NoPipeline{
 protected:
-  static void invoke_stage1(){
+  template<typename TableType1, typename TableType2, typename TableType3, typename ArgType, typename CommType>
+  static void initiate(TableType1& t1, TableType2& t2, TableType3& t3, ArgType& args, CommType&& CommInfo){
+    using T = typename ArgType::ScalarType; using ArgTypeRR = typename std::remove_reference<ArgType>::type;
+    auto split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1); auto split2 = args.localDimension-split1;
+    blas::ArgPack_syrk<T> syrkArgs(blas::Order::AblasColumnMajor, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, -1., 1.);
+    serialize<uppertri,uppertri>::invoke(args.R, t1, args.AstartX+split1, args.AendX, args.AstartY+split1, args.AendY,0,split2,0,split2);
+    matmult::summa::invoke(t2, t3, t1, std::forward<CommType>(CommInfo), syrkArgs);
+    serialize<uppertri,uppertri>::invoke(t1, args.R, 0,split2,0,split2,args.AstartX+split1, args.AendX, args.AstartY+split1, args.AendY);
   }
-  static void invoke_stage2(){
-  }
-  static void invoke_stage3(){
-  }
-  static void invoke_stage4(){
+
+  template<typename ArgType, typename CommType>
+  static void update_panel(ArgType& args, CommType&& CommInfo){
+    // needs to be some recognition that the top panel does not need updating
   }
 };
-class OverlapComp{
-};
-class OverlapComm{
+class Pipeline{
+protected:
+  template<typename TableType1, typename TableType2, typename TableType3, typename ArgType, typename CommType>
+  static void initiate(TableType1& t1, TableType2& t2, TableType3& t3, ArgType& args, CommType&& CommInfo){
+  }
+
+  template<typename ArgType, typename CommType>
+  static void update_panel(ArgType& args, CommType&& CommInfo){
+    // needs to be some recognition that the top panel does not need updating
+  }
 };
 
 };

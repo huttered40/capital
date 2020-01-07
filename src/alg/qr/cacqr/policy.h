@@ -17,8 +17,8 @@ protected:
 
   template<typename MatrixType, typename BufferType, typename CommType>
   static void compute_gram(MatrixType& Matrix, BufferType& buffer, CommType&& CommInfo){
-    using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
-    U localDimensionN = Matrix.num_columns_local();
+    using T = typename MatrixType::ScalarType;
+    auto localDimensionN = Matrix.num_columns_local();
     MPI_Allreduce(MPI_IN_PLACE, Matrix.data(), localDimensionN*localDimensionN, mpi_type<T>::type, MPI_SUM, CommInfo.world);
     return;
   }
@@ -76,7 +76,7 @@ protected:
 
   template<typename MatrixType, typename BufferType, typename CommType>
   static void compute_gram(MatrixType& Matrix, BufferType& buffer, CommType&& CommInfo){
-    using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType; using Offload = typename MatrixType::OffloadType;
+    using T = typename MatrixType::ScalarType;
     auto num_rows = Matrix.num_rows_local(); auto num_columns = Matrix.num_columns_local();
     serialize<uppertri,uppertri>::invoke(buffer,Matrix,0,num_columns,0,num_rows,0,num_columns,0,num_rows);
     MPI_Allreduce(MPI_IN_PLACE, Matrix.data(), Matrix.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.world);

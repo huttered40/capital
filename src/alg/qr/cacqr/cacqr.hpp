@@ -5,8 +5,8 @@ namespace qr{
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
 void cacqr<SerializePolicy,IntermediatesPolicy>::sweep_1d(ArgType& args, CommType&& CommInfo){
-  using T = typename ArgType::ScalarType; using U = typename ArgType::DimensionType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
-  U localDimensionM = args.Q.num_rows_local(); U localDimensionN = args.R.num_columns_local(); U globalDimensionN = args.R.num_columns_global();
+  using T = typename ArgType::ScalarType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
+  auto localDimensionM = args.Q.num_rows_local(); auto localDimensionN = args.R.num_columns_local(); auto globalDimensionN = args.R.num_columns_global();
   auto& buffer = SP::buffer(args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN)));
   blas::ArgPack_syrk<T> syrkPack(blas::Order::AblasColumnMajor, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, 1., 0.);
   blas::engine::_syrk(args.Q.data(), buffer.data(), localDimensionN, localDimensionM, localDimensionM, localDimensionN, syrkPack);
@@ -25,9 +25,9 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::sweep_1d(ArgType& args, CommTyp
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
 void cacqr<SerializePolicy,IntermediatesPolicy>::simulate_solve(ArgType& args, CommType&& CommInfo){
-  using U = typename ArgType::DimensionType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
-  U localDimensionN = args.R.num_rows_local(); U localDimensionM = args.Q.num_rows_local();
-  U split1 = (localDimensionN>>args.cholesky_inverse_args.split); split1 = util::get_next_power2(split1); U split2 = localDimensionN-split1;
+  using SP = SerializePolicy; using IP = IntermediatesPolicy;
+  auto localDimensionN = args.R.num_rows_local(); auto localDimensionM = args.Q.num_rows_local();
+  auto split1 = (localDimensionN>>args.cholesky_inverse_args.split); split1 = util::get_next_power2(split1); auto split2 = localDimensionN-split1;
   IP::init(args.rect_table1,std::make_pair(split1,localDimensionM),nullptr,split1,localDimensionM,CommInfo.c,CommInfo.c);
   IP::init(args.rect_table2,std::make_pair(split2,localDimensionM),nullptr,split2,localDimensionM,CommInfo.c,CommInfo.c);
   IP::init(args.rect_table2,std::make_pair(split2,split1),nullptr,split2,split1,CommInfo.c,CommInfo.c);
@@ -38,9 +38,9 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::simulate_solve(ArgType& args, C
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
 void cacqr<SerializePolicy,IntermediatesPolicy>::solve(ArgType& args, CommType&& CommInfo){
-  using T = typename ArgType::ScalarType; using U = typename ArgType::DimensionType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
-  U localDimensionN = args.R.num_rows_local(); U localDimensionM = args.Q.num_rows_local();
-  U split1 = (localDimensionN>>args.cholesky_inverse_args.split); split1 = util::get_next_power2(split1); U split2 = localDimensionN-split1;
+  using T = typename ArgType::ScalarType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
+  auto localDimensionN = args.R.num_rows_local(); auto localDimensionM = args.Q.num_rows_local();
+  auto split1 = (localDimensionN>>args.cholesky_inverse_args.split); split1 = util::get_next_power2(split1); auto split2 = localDimensionN-split1;
   serialize<rect,rect>::invoke(args.Q,IP::invoke(args.rect_table1,std::make_pair(split1,localDimensionM)),0,split1,0,localDimensionM,0,split1,0,localDimensionM);
   serialize<rect,rect>::invoke(args.Q,IP::invoke(args.rect_table2,std::make_pair(split2,localDimensionM)),split1,localDimensionN,0,localDimensionM,0,split2,0,localDimensionM);
   serialize<uppertri,uppertri>::invoke(args.cholesky_inverse_args.Rinv,IP::invoke(args.policy_table,std::make_pair(split1,split1)),0,split1,0,split1,0,split1,0,split1);
@@ -63,10 +63,10 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::solve(ArgType& args, CommType&&
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
 void cacqr<SerializePolicy,IntermediatesPolicy>::sweep_3d(ArgType& args, CommType&& CommInfo){
-  using T = typename ArgType::ScalarType; using U = typename ArgType::DimensionType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
+  using T = typename ArgType::ScalarType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
   // Need to perform the multiple steps to obtain partition of A
-  U localDimensionN = args.Q.num_columns_local(); U localDimensionM = args.Q.num_rows_local();
-  U globalDimensionN = args.Q.num_columns_global(); U globalDimensionM = args.Q.num_rows_global(); U sizeA = args.Q.num_elems();
+  auto localDimensionN = args.Q.num_columns_local(); auto localDimensionM = args.Q.num_rows_local();
+  auto globalDimensionN = args.Q.num_columns_global(); auto globalDimensionM = args.Q.num_rows_global(); auto sizeA = args.Q.num_elems();
   auto& buffer = SP::buffer(args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN)));
   bool isRootRow = ((CommInfo.x == CommInfo.z) ? true : false);
   bool isRootColumn = ((CommInfo.y == CommInfo.z) ? true : false);
@@ -92,12 +92,12 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::sweep_3d(ArgType& args, CommTyp
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename RectCommType, typename SquareCommType>
 void cacqr<SerializePolicy,IntermediatesPolicy>::sweep_tune(ArgType& args, RectCommType&& RectCommInfo, SquareCommType&& SquareCommInfo){
-  using T = typename ArgType::ScalarType; using U = typename ArgType::DimensionType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
+  using T = typename ArgType::ScalarType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
   int columnContigRank; MPI_Comm_rank(RectCommInfo.column_contig, &columnContigRank);
 
   // Need to perform the multiple steps to obtain partition of A
-  U localDimensionM = args.Q.num_rows_local(); U localDimensionN = args.Q.num_columns_local();
-  U globalDimensionN = args.Q.num_columns_global(); U globalDimensionM = args.Q.num_rows_global(); U sizeA = args.Q.num_elems();
+  auto localDimensionM = args.Q.num_rows_local(); auto localDimensionN = args.Q.num_columns_local();
+  auto globalDimensionN = args.Q.num_columns_global(); auto globalDimensionM = args.Q.num_rows_global(); auto sizeA = args.Q.num_elems();
   auto& buffer = SP::buffer(args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN)));
   bool isRootRow = ((RectCommInfo.x == RectCommInfo.z) ? true : false);
   bool isRootColumn = ((columnContigRank == RectCommInfo.z) ? true : false);
@@ -124,8 +124,8 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::sweep_tune(ArgType& args, RectC
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
 void cacqr<SerializePolicy,IntermediatesPolicy>::invoke_1d(ArgType& args, CommType&& CommInfo){
-  using T = typename ArgType::ScalarType; using U = typename ArgType::DimensionType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
-  U globalDimensionN = args.R.num_columns_global(); U localDimensionN = args.R.num_columns_local();
+  using T = typename ArgType::ScalarType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
+  auto globalDimensionN = args.R.num_columns_global(); auto localDimensionN = args.R.num_columns_local();
   sweep_1d(args, std::forward<CommType>(CommInfo));
   if (args.num_iter>1){
     SP::save_R_1d(args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN)));
@@ -141,8 +141,8 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::invoke_1d(ArgType& args, CommTy
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
 void cacqr<SerializePolicy,IntermediatesPolicy>::invoke_3d(ArgType& args, CommType&& CommInfo){
-  using T = typename ArgType::ScalarType; using U = typename ArgType::DimensionType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
-  U globalDimensionN = args.Q.num_columns_global(); U localDimensionN = args.Q.num_columns_local();
+  using T = typename ArgType::ScalarType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
+  auto globalDimensionN = args.Q.num_columns_global(); auto localDimensionN = args.Q.num_columns_local();
   sweep_3d(args, std::forward<CommType>(CommInfo));
   if (args.num_iter>1){
     SP::save_R_3d(args.cholesky_inverse_args.R,args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN)));
@@ -157,9 +157,9 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::invoke_3d(ArgType& args, CommTy
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
 void cacqr<SerializePolicy,IntermediatesPolicy>::factor(const MatrixType& A, ArgType& args, CommType&& CommInfo){
-  using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
+  using T = typename MatrixType::ScalarType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
   static_assert(std::is_same<typename MatrixType::StructureType,rect>::value,"qr::cacqr requires matrices of rect structure");
-  U globalDimensionN = A.num_columns_global(); U globalDimensionM = A.num_rows_global(); U localDimensionN = A.num_columns_local(); U localDimensionM = A.num_rows_local();
+  auto globalDimensionN = A.num_columns_global(); auto globalDimensionM = A.num_rows_global(); auto localDimensionN = A.num_columns_local(); auto localDimensionM = A.num_rows_local();
   args.Q._register_(globalDimensionN,globalDimensionM,CommInfo.c,CommInfo.d);
   args.R._register_(globalDimensionN,globalDimensionN,CommInfo.c,CommInfo.c);
   serialize<rect,rect>::invoke(A,args.Q,0,localDimensionN,0,localDimensionM,0,localDimensionN,0,localDimensionM);

@@ -53,52 +53,52 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
 }
 
 // Note: this method differs from the one below it because blockedData is in packed storage
-template<typename ScalarType, typename DimensionType>
-void util::block_to_cyclic(std::vector<ScalarType>& blockedData, ScalarType* cyclicData, DimensionType localDimensionRows, DimensionType localDimensionColumns, int64_t sliceDim, char dir){
+template<typename ScalarType>
+void util::block_to_cyclic(std::vector<ScalarType>& blockedData, ScalarType* cyclicData, int64_t localDimensionRows, int64_t localDimensionColumns, int64_t sliceDim, char dir){
 
-  DimensionType aggregNumRows = localDimensionRows*sliceDim;
-  DimensionType aggregNumColumns = localDimensionColumns*sliceDim;
-  DimensionType aggregSize = aggregNumRows*aggregNumColumns;
-  DimensionType numCyclicBlocksPerRow = localDimensionRows;
-  DimensionType numCyclicBlocksPerCol = localDimensionColumns;
-  DimensionType write_idx=0; DimensionType read_idx=0;
+  int64_t aggregNumRows = localDimensionRows*sliceDim;
+  int64_t aggregNumColumns = localDimensionColumns*sliceDim;
+  int64_t aggregSize = aggregNumRows*aggregNumColumns;
+  int64_t numCyclicBlocksPerRow = localDimensionRows;
+  int64_t numCyclicBlocksPerCol = localDimensionColumns;
+  int64_t write_idx=0; int64_t read_idx=0;
 
-  write_idx = 0; DimensionType recvDataOffset = blockedData.size()/(sliceDim*sliceDim);
-  DimensionType off1 = 0; DimensionType off3 = sliceDim*recvDataOffset;
+  write_idx = 0; int64_t recvDataOffset = blockedData.size()/(sliceDim*sliceDim);
+  int64_t off1 = 0; int64_t off3 = sliceDim*recvDataOffset;
   // MACRO loop over all cyclic "blocks" (dimensionX direction)
-  for (DimensionType i=0; i<numCyclicBlocksPerCol; i++){
+  for (int64_t i=0; i<numCyclicBlocksPerCol; i++){
     off1 += i;
     // Inner loop over all columns in a cyclic "block"
-    for (DimensionType j=0; j<sliceDim; j++){
-      DimensionType off2 = j*recvDataOffset + off1;
+    for (int64_t j=0; j<sliceDim; j++){
+      int64_t off2 = j*recvDataOffset + off1;
       write_idx = ((i*sliceDim)+j)*aggregNumRows;    //  reset each time
       // Inner loop over all cyclic "blocks"
-      for (DimensionType k=0; k<i; k++){
-        DimensionType off4 = off2;
+      for (int64_t k=0; k<i; k++){
+        int64_t off4 = off2;
         // Inner loop over all elements along columns
-        for (DimensionType z=0; z<sliceDim; z++){
+        for (int64_t z=0; z<sliceDim; z++){
           read_idx = off4 + z*off3 + k;
           cyclicData[write_idx++] = blockedData[read_idx];
         }
       }
       // Special final block
-      DimensionType off4 = off2;
+      int64_t off4 = off2;
       // Inner loop over all elements along columns
-      for (DimensionType z=0; z<=j; z++){
+      for (int64_t z=0; z<=j; z++){
         read_idx = off4 + z*off3 + i; cyclicData[write_idx++] = blockedData[read_idx];
       }
     }
   }
 }
 
-template<typename ScalarType, typename DimensionType>
-void util::block_to_cyclic(ScalarType* blockedData, ScalarType* cyclicData, DimensionType localDimensionRows, DimensionType localDimensionColumns, int64_t sliceDim){
-  DimensionType write_idx = 0; DimensionType read_idx = 0;
-  DimensionType readDataOffset = localDimensionRows*localDimensionColumns;
-  for (DimensionType i=0; i<localDimensionColumns; i++){
-    for (DimensionType j=0; j<sliceDim; j++){
-      for (DimensionType k=0; k<localDimensionRows; k++){
-        for (DimensionType z=0; z<sliceDim; z++){
+template<typename ScalarType>
+void util::block_to_cyclic(ScalarType* blockedData, ScalarType* cyclicData, int64_t localDimensionRows, int64_t localDimensionColumns, int64_t sliceDim){
+  int64_t write_idx = 0; int64_t read_idx = 0;
+  int64_t readDataOffset = localDimensionRows*localDimensionColumns;
+  for (int64_t i=0; i<localDimensionColumns; i++){
+    for (int64_t j=0; j<sliceDim; j++){
+      for (int64_t k=0; k<localDimensionRows; k++){
+        for (int64_t z=0; z<sliceDim; z++){
           read_idx = z*readDataOffset*sliceDim + k + j*readDataOffset + i*localDimensionRows;
           cyclicData[write_idx++] = blockedData[read_idx];
         }
@@ -111,17 +111,17 @@ void util::block_to_cyclic(ScalarType* blockedData, ScalarType* cyclicData, Dime
 //   when we are really only writing to a triangle. So there is a source of optimization here at least in terms of
 //   number of flops, but in terms of memory accesses and cache lines, not sure. Note that with this optimization,
 //   we may need to separate into two different functions
-template<typename ScalarType, typename DimensionType>
-void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, DimensionType localDimension, DimensionType globalDimension, DimensionType bcDimension, int64_t sliceDim, int64_t rankSlice){
+template<typename ScalarType>
+void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, int64_t localDimension, int64_t globalDimension, int64_t bcDimension, int64_t sliceDim, int64_t rankSlice){
 
-  DimensionType writeIndex,readIndexCol,readIndexRow;
-  DimensionType rowOffsetWithinBlock = rankSlice / sliceDim;
-  DimensionType columnOffsetWithinBlock = rankSlice % sliceDim;
+  int64_t writeIndex,readIndexCol,readIndexRow;
+  int64_t rowOffsetWithinBlock = rankSlice / sliceDim;
+  int64_t columnOffsetWithinBlock = rankSlice % sliceDim;
   // MACRO loop over all cyclic "blocks"
-  for (DimensionType i=0; i<localDimension; i++){
+  for (int64_t i=0; i<localDimension; i++){
     // We know which row corresponds to our processor in each cyclic "block"
     // Inner loop over all cyclic "blocks" partitioning up the columns
-    for (DimensionType j=0; j<localDimension; j++){
+    for (int64_t j=0; j<localDimension; j++){
       readIndexCol = i*sliceDim + columnOffsetWithinBlock;
       readIndexRow = j*sliceDim + rowOffsetWithinBlock;
       writeIndex = i*bcDimension+j;
@@ -148,8 +148,7 @@ void util::transpose(MatrixType& mat, CommType&& CommInfo){
     //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
 }
 
-template<typename DimensionType>
-DimensionType util::get_next_power2(DimensionType localShift){
+int64_t util::get_next_power2(int64_t localShift){
 
   if ((localShift & (localShift-1)) != 0){
     // move localShift up to the next power of 2
