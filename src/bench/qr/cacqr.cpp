@@ -24,7 +24,6 @@ int main(int argc, char** argv){
 
   using qr_type = qr::cacqr<qr::policy::cacqr::NoSerialize,qr::policy::cacqr::SaveIntermediates>;
   {
-    double time_global = 0;
     T residual_error,orthogonality_error; auto mpi_dtype = mpi_type<T>::type;
     auto RectTopo = topo::rect(MPI_COMM_WORLD,rep_factor,num_chunks);
     MatrixType A(num_columns,num_rows,RectTopo.c,RectTopo.d);
@@ -34,28 +33,28 @@ int main(int argc, char** argv){
     qr_type::info<T,U,decltype(ci_pack)::alg_type> pack(variant,ci_pack);
 
     for (size_t i=0; i<num_iter; i++){
-      MPI_Barrier(MPI_COMM_WORLD);
-      critter::start();
-      qr_type::factor(A, pack, RectTopo);
-      critter::stop();
-
-      if (id>0){
-        volatile double time_local = MPI_Wtime();
+      if (id==0){
+        MPI_Barrier(MPI_COMM_WORLD);
+        critter::start();
         qr_type::factor(A, pack, RectTopo);
-        time_global = MPI_Wtime() - time_local;
-        MPI_Allreduce(MPI_IN_PLACE,&time_global,1,mpi_dtype,MPI_MAX,MPI_COMM_WORLD);
-        if (rank==0){ std::cout << time_global << std::endl; }
-        if (id > 1){
-          auto residual_local = qr::validate<qr_type>::residual(A,pack,RectTopo);
-          auto orthogonality_local = qr::validate<qr_type>::orthogonality(A,pack,RectTopo);
-          MPI_Reduce(&residual_local,&residual_error,1,mpi_dtype,MPI_MAX,0,MPI_COMM_WORLD);
-          MPI_Reduce(&orthogonality_local,&orthogonality_error,1,mpi_dtype,MPI_MAX,0,MPI_COMM_WORLD);
-          if (rank==0){ std::cout << residual_error << " " << orthogonality_error << std::endl; }
-        }
+        critter::stop();
+      }
+      else if (id==1){
+        MPI_Barrier(MPI_COMM_WORLD);
+        critter::start(false);
+        qr_type::factor(A, pack, RectTopo);
+        critter::stop(false);
+      }
+      else if (id==2){
+        qr_type::factor(A, pack, RectTopo);
+        auto residual_local = qr::validate<qr_type>::residual(A,pack,RectTopo);
+        auto orthogonality_local = qr::validate<qr_type>::orthogonality(A,pack,RectTopo);
+        MPI_Reduce(&residual_local,&residual_error,1,mpi_dtype,MPI_MAX,0,MPI_COMM_WORLD);
+        MPI_Reduce(&orthogonality_local,&orthogonality_error,1,mpi_dtype,MPI_MAX,0,MPI_COMM_WORLD);
+        if (rank==0){ std::cout << residual_error << " " << orthogonality_error << std::endl; }
       }
     }
   }
-
   MPI_Finalize();
   return 0;
 }

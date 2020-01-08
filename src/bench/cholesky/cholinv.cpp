@@ -33,22 +33,23 @@ int main(int argc, char** argv){
     cholesky_type::info<T,U> pack(complete_inv,split,bcMultiplier,dir);
 
     for (size_t i=0; i<num_iter; i++){
-      MPI_Barrier(MPI_COMM_WORLD);
-      critter::start();
-      cholesky_type::factor(A, pack, SquareTopo);
-      critter::stop();
-  
-      if (id>0){
-        volatile double time_local=MPI_Wtime();
+      if (id==0){
+        MPI_Barrier(MPI_COMM_WORLD);
+        critter::start();
         cholesky_type::factor(A, pack, SquareTopo);
-        time_global=MPI_Wtime()-time_local;
-        MPI_Allreduce(MPI_IN_PLACE, &time_global, 1, mpi_dtype, MPI_MAX, MPI_COMM_WORLD);
-        if (rank==0){ std::cout << time_global << std::endl; }
-        if (id>1){
-          residual_error_local = cholesky::validate<cholesky_type>::residual(A, pack, SquareTopo);
-          MPI_Reduce(&residual_error_local, &residual_error_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
-          if (rank==0){ std::cout << residual_error_global << std::endl; }
-        }
+        critter::stop();
+      }
+      else if (id==1){  
+        MPI_Barrier(MPI_COMM_WORLD);
+        critter::start(false);
+        cholesky_type::factor(A, pack, SquareTopo);
+        critter::stop(false);
+      }
+      else if (id==2){
+        cholesky_type::factor(A, pack, SquareTopo);
+        residual_error_local = cholesky::validate<cholesky_type>::residual(A, pack, SquareTopo);
+        MPI_Reduce(&residual_error_local, &residual_error_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+        if (rank==0){ std::cout << residual_error_global << std::endl; }
       }
     }
   }

@@ -16,13 +16,13 @@ int main(int argc, char** argv){
   // size -- total number of processors in the 3D grid
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  U globalMatrixSizeM = atoi(argv[1]);
-  U globalMatrixSizeN = atoi(argv[2]);
-  U globalMatrixSizeK = atoi(argv[3]);
-  U pGridDimensionC   = atoi(argv[4]);
-  size_t num_chunks        = atoi(argv[5]);
-  size_t numIterations     = atoi(argv[6]);
-  size_t id = atoi(argv[7]);	// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+  U globalMatrixSizeM  = atoi(argv[1]);
+  U globalMatrixSizeN  = atoi(argv[2]);
+  U globalMatrixSizeK  = atoi(argv[3]);
+  U pGridDimensionC    = atoi(argv[4]);
+  size_t num_chunks    = atoi(argv[5]);
+  size_t numIterations = atoi(argv[6]);
+  size_t id            = atoi(argv[7]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   auto mpi_dtype = mpi_type<T>::type;
   U pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
@@ -33,28 +33,26 @@ int main(int argc, char** argv){
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,SquareTopo.d,SquareTopo.d);
     MatrixTypeR matC(globalMatrixSizeN,globalMatrixSizeM,SquareTopo.d,SquareTopo.d);
     blas::ArgPack_gemm<T> blasArgs(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., 0.);
-    double iterTimeGlobal;
+    matA.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
+    matB.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
+    matC.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
 
     // Loop for getting a good range of results.
     for (size_t i=0; i<numIterations; i++){
-      // Note: I think these calls below are still ok given the new topology mapping on Blue Waters/Stampede2
-      matA.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c);
-      matB.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
-      matC.distribute_random(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c*(-1));
-      MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
-      critter::start();
-      matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
-      critter::stop();
-
-      if (id>0){
-        double startTime=MPI_Wtime();
+      if (id==0){
+        MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
+        critter::start();
         matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
-        double iterTimeLocal=MPI_Wtime()-startTime;
-        MPI_Reduce(&iterTimeLocal, &iterTimeGlobal, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
+        critter::stop();
+      }
+      else if (id==1){
+        MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
+        critter::start(false);
+        matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
+        critter::stop(false);
       }
     }
   }
-
   MPI_Finalize();
   return 0;
 }
