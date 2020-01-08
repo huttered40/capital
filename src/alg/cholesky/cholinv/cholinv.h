@@ -9,17 +9,16 @@
 
 namespace cholesky{
 template<class SerializePolicy     = policy::cholinv::Serialize,
-         class IntermediatesPolicy = policy::cholinv::SaveIntermediates,
-         class PipelinePolicy       = policy::cholinv::NoPipeline>
-class cholinv : public SerializePolicy, public IntermediatesPolicy, public PipelinePolicy{
+         class IntermediatesPolicy = policy::cholinv::SaveIntermediates>
+class cholinv : public SerializePolicy, public IntermediatesPolicy{
 public:
   template<typename ScalarType, typename DimensionType>
   class info{
   public:
     using ScalarType = ScalarType;
     using DimensionType = DimensionType;
-    using alg_type = cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>;
-    using SP = SerializePolicy; using IP = IntermediatesPolicy; using PP = PipelinePolicy;
+    using alg_type = cholinv<SerializePolicy,IntermediatesPolicy>;
+    using SP = SerializePolicy; using IP = IntermediatesPolicy;
     info(const info& p) : complete_inv(p.complete_inv), split(p.split), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     info(info&& p) : complete_inv(p.complete_inv), split(p.split), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     info(DimensionType complete_inv, DimensionType split, DimensionType bc_mult_dim, char dir) : complete_inv(complete_inv), split(split), bc_mult_dim(bc_mult_dim), dir(dir) {}
@@ -51,7 +50,7 @@ public:
   template<typename ArgType, typename CommType>
   static matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> construct_Rinv(ArgType& args, CommType&& CommInfo);
 
-  using SP = SerializePolicy; using IP = IntermediatesPolicy; using PP = PipelinePolicy;
+  using SP = SerializePolicy; using IP = IntermediatesPolicy;
 
 private:
   template<typename ArgType, typename CommType>

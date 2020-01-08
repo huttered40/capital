@@ -1,9 +1,9 @@
 /* Author: Edward Hutter */
 
 namespace cholesky{
-template<class SerializePolicy, class IntermediatesPolicy, class PipelinePolicy>
+template<class SerializePolicy, class IntermediatesPolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::factor(const MatrixType& A, ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy>::factor(const MatrixType& A, ArgType& args, CommType&& CommInfo){
 
   using T = typename MatrixType::ScalarType;
   assert(args.split>0); assert(args.dir == 'U');	// Removed support for 'L'. Necessary future support for this case can be handled via a final transpose.
@@ -26,18 +26,18 @@ void cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::factor(const M
   invoke(args, std::forward<CommType>(CommInfo));
 }
 
-template<class SerializePolicy, class IntermediatesPolicy, class PipelinePolicy>
+template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
-matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::construct_R(ArgType& args, CommType&& CommInfo){
+matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholinv<SerializePolicy,IntermediatesPolicy>::construct_R(ArgType& args, CommType&& CommInfo){
   auto localDimension = args.R.num_rows_local();
   matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> ret(args.R.num_columns_global(),args.R.num_rows_global(),CommInfo.c, CommInfo.c);
   serialize<typename SerializePolicy::structure,rect>::invoke(args.R, ret,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
   return ret;
 }
 
-template<class SerializePolicy, class IntermediatesPolicy, class PipelinePolicy>
+template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
-matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::construct_Rinv(ArgType& args, CommType&& CommInfo){
+matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholinv<SerializePolicy,IntermediatesPolicy>::construct_Rinv(ArgType& args, CommType&& CommInfo){
   auto localDimension = args.R.num_rows_local();
   matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> ret(args.Rinv.num_columns_global(),args.Rinv.num_rows_global(),CommInfo.c, CommInfo.c);
   serialize<typename SerializePolicy::structure,rect>::invoke(args.Rinv, ret,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
@@ -45,9 +45,9 @@ matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholin
 }
 
 
-template<class SerializePolicy, class IntermediatesPolicy, class PipelinePolicy>
+template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::simulate(ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy>::simulate(ArgType& args, CommType&& CommInfo){
 
   auto split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1);
   if (((args.localDimension*CommInfo.d) <= args.bcDimension) || (split1<args.split)){
@@ -76,9 +76,9 @@ void cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::simulate(ArgTy
   }
 }
 
-template<class SerializePolicy, class IntermediatesPolicy, class PipelinePolicy>
+template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::simulate_basecase(ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy>::simulate_basecase(ArgType& args, CommType&& CommInfo){
 
   assert(args.localDimension>0); assert((args.AendX-args.AstartX)==(args.AendY-args.AstartY));
   auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
@@ -88,9 +88,9 @@ void cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::simulate_basec
   IP::init(args.base_case_cyclic_table, index_pair, nullptr,aggregDim,aggregDim,CommInfo.d,CommInfo.d);
 }
 
-template<class SerializePolicy, class IntermediatesPolicy, class PipelinePolicy>
+template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::invoke(ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy>::invoke(ArgType& args, CommType&& CommInfo){
 
   using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
   auto split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1);
@@ -109,15 +109,15 @@ void cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::invoke(ArgType
   util::transpose(IP::invoke(args.policy_table,std::make_pair(split1,split1)), std::forward<CommType>(CommInfo));
   blas::ArgPack_trmm<T> trmmArgs(blas::Order::AblasColumnMajor, blas::Side::AblasLeft, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, blas::Diag::AblasNonUnit, 1.);
 
-  PP::update_panel(args, std::forward<CommType>(CommInfo));
-
   serialize<rect,rect>::invoke(args.R, IP::invoke(args.rect_table1,std::make_pair(split2,split1)), args.AstartX+split1, args.AendX, args.AstartY, args.AstartY+split1,0,split2,0,split1);
   matmult::summa::invoke(IP::invoke(args.policy_table,std::make_pair(split1,split1)), IP::invoke(args.rect_table1,std::make_pair(split2,split1)), std::forward<CommType>(CommInfo), trmmArgs);
   serialize<rect,rect>::invoke(IP::invoke(args.rect_table1,std::make_pair(split2,split1)), args.R, 0,split2,0,split1,args.AstartX+split1, args.AendX, args.AstartY, args.AstartY+split1);
   serialize<rect,rect>::invoke(IP::invoke(args.rect_table1,std::make_pair(split2,split1)), IP::invoke(args.rect_table2,std::make_pair(split2,split1)),0,split2,0,split1,0,split2,0,split1);
 
-  PP::initiate(IP::invoke(args.policy_table,std::make_pair(split2,split2)), IP::invoke(args.rect_table1,std::make_pair(split2,split1)),
-               IP::invoke(args.rect_table2,std::make_pair(split2,split1)), args, std::forward<CommType>(CommInfo));
+  blas::ArgPack_syrk<T> syrkArgs(blas::Order::AblasColumnMajor, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, -1., 1.);
+  serialize<uppertri,uppertri>::invoke(args.R, IP::invoke(args.policy_table,std::make_pair(split2,split2)), args.AstartX+split1, args.AendX, args.AstartY+split1, args.AendY,0,split2,0,split2);
+  matmult::summa::invoke(IP::invoke(args.rect_table1,std::make_pair(split2,split1)), IP::invoke(args.rect_table2,std::make_pair(split2,split1)), IP::invoke(args.policy_table,std::make_pair(split2,split2)), std::forward<CommType>(CommInfo), syrkArgs);
+  serialize<uppertri,uppertri>::invoke(IP::invoke(args.policy_table,std::make_pair(split2,split2)), args.R, 0,split2,0,split2,args.AstartX+split1, args.AendX, args.AstartY+split1, args.AendY);
 
   save1 = args.localDimension; save2 = args.globalDimension; save3=args.AstartX; save4=args.AstartY; save5=args.TIstartX; save6=args.TIstartY;
   args.localDimension=split2; args.globalDimension=split2*CommInfo.d; args.AstartX=args.AstartX+split1; args.AstartY=args.AstartY+split1; args.TIstartX=args.TIstartX+split1; args.TIstartY=args.TIstartY+split1;
@@ -139,9 +139,9 @@ void cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::invoke(ArgType
 }
 
 
-template<class SerializePolicy, class IntermediatesPolicy, class PipelinePolicy>
+template<class SerializePolicy, class IntermediatesPolicy>
 template<typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy,PipelinePolicy>::base_case(ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy>::base_case(ArgType& args, CommType&& CommInfo){
 
   using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
 

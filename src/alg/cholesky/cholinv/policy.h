@@ -118,23 +118,6 @@ protected:
     matmult::summa::invoke(t2, t3, t1, std::forward<CommType>(CommInfo), syrkArgs);
     serialize<uppertri,uppertri>::invoke(t1, args.R, 0,split2,0,split2,args.AstartX+split1, args.AendX, args.AstartY+split1, args.AendY);
   }
-
-  template<typename ArgType, typename CommType>
-  static void update_panel(ArgType& args, CommType&& CommInfo){
-    // needs to be some recognition that the top panel does not need updating
-  }
-};
-class Pipeline{
-protected:
-  template<typename TableType1, typename TableType2, typename TableType3, typename ArgType, typename CommType>
-  static void initiate(TableType1& t1, TableType2& t2, TableType3& t3, ArgType& args, CommType&& CommInfo){
-    static_assert(0,"not implemented");
-  }
-
-  template<typename ArgType, typename CommType>
-  static void update_panel(ArgType& args, CommType&& CommInfo){
-    static_assert(0,"not implemented");
-  }
 };
 
 };
