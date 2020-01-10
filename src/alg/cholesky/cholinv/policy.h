@@ -5,63 +5,15 @@ namespace cholesky{
 namespace policy{
 namespace cholinv{
 
-// Policy classes for the policy describing whether or not to serialize from symmetric Gram matrix
-//   to triangular matrix before AllReduction.
-
-// ***********************************************************************************************************************************************************************
-/*
-template<>
-class OverlapGatherPolicyClass<OverlapGather>{
-protected:
-  template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& Matrix, std::vector<typename MatrixType::ScalarType>& blocked, typename MatrixType::ScalarType* cyclic, CommType&& CommInfo){
-    using T = typename MatrixType::ScalarType; using U = typename MatrixType::DimensionType;
-    U localDimension = Matrix.num_columns_local();
-    // initiate distribution of allgather into chunks of local columns, multiples of localDimension
-    std::vector<MPI_Request> req(CommInfo.num_chunks); std::vector<MPI_Status> stat(CommInfo.num_chunks);
-    U offset = localDimension*(localDimension%CommInfo.num_chunks); U progress=0;
-    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
-      MPI_Iallgather(Matrix.data()+progress, idx==(CommInfo.num_chunks-1) ? localDimension*(localDimension/CommInfo.num_chunks+offset) : localDimension*(localDimension/CommInfo.num_chunks),
-                     mpi_type<T>::type, &blocked[progress], idx==(CommInfo.num_chunks-1) ? localDimension*(localDimension/CommInfo.num_chunks+offset) : localDimension*(localDimension/CommInfo.num_chunks),
-                     mpi_type<T>::type, CommInfo.slice, &req[idx]);
-      progress += localDimension * (localDimension/CommInfo.num_chunks);
-    }
-    // initiate distribution along columns and complete distribution across rows
-    progress=0;
-    for (size_t idx=0; idx < CommInfo.num_chunks; idx++){
-      MPI_Wait(&req[idx],&stat[idx]);
-      util::block_to_cyclic(&blocked[progress], &cyclic[progress], localDimension,
-                            idx==(CommInfo.num_chunks-1) ? (localDimension+offset)/CommInfo.num_chunks : localDimension/CommInfo.num_chunks, CommInfo.d);
-      progress += (localDimension * (localDimension/CommInfo.num_chunks))*CommInfo.d*CommInfo.d;
-    }
-  }
-};
-*/
-// ***********************************************************************************************************************************************************************
-
 // ***********************************************************************************************************************************************************************
 class Serialize{
 protected:
   using structure = uppertri;
-
-  template<typename TriMatrixType, typename SquareMatrixType, typename CommType>
-  static void invoke(TriMatrixType& matrix, std::vector<typename TriMatrixType::ScalarType>& blocked, SquareMatrixType& cyclic, CommType&& CommInfo){
-    using T = typename TriMatrixType::ScalarType; auto localDimension = matrix.num_columns_local();
-    MPI_Allgather(matrix.data(), matrix.num_elems(), mpi_type<T>::type, &blocked[0], matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
-    util::block_to_cyclic_triangle(&blocked[0], cyclic.data(), blocked.size(), localDimension, localDimension, CommInfo.d);
-  }
 };
 
 class NoSerialize{
 protected:
   using structure = rect;
-
-  template<typename MatrixType, typename CommType>
-  static void invoke(MatrixType& matrix, std::vector<typename MatrixType::ScalarType>& blocked, MatrixType& cyclic, CommType&& CommInfo){
-    using T = typename MatrixType::ScalarType; auto localDimension = matrix.num_columns_local();
-    MPI_Allgather(matrix.data(), matrix.num_elems(), mpi_type<T>::type, &blocked[0], matrix.num_elems(), mpi_type<T>::type, CommInfo.slice);
-    util::block_to_cyclic_rect(&blocked[0], cyclic.data(), localDimension, localDimension, CommInfo.d);
-  }
 };
 // ***********************************************************************************************************************************************************************
 
@@ -107,17 +59,158 @@ protected:
 // ***********************************************************************************************************************************************************************
 
 // ***********************************************************************************************************************************************************************
-class NoPipeline{
+class ReplicateCommComp{
 protected:
-  template<typename TableType1, typename TableType2, typename TableType3, typename ArgType, typename CommType>
-  static void initiate(TableType1& t1, TableType2& t2, TableType3& t3, ArgType& args, CommType&& CommInfo){
-    using T = typename ArgType::ScalarType; using ArgTypeRR = typename std::remove_reference<ArgType>::type;
-    auto split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1); auto split2 = args.localDimension-split1;
-    blas::ArgPack_syrk<T> syrkArgs(blas::Order::AblasColumnMajor, blas::UpLo::AblasUpper, blas::Transpose::AblasTrans, -1., 1.);
-    serialize<uppertri,uppertri>::invoke(args.R, t1, args.AstartX+split1, args.AendX, args.AstartY+split1, args.AendY,0,split2,0,split2);
-    matmult::summa::invoke(t2, t3, t1, std::forward<CommType>(CommInfo), syrkArgs);
-    serialize<uppertri,uppertri>::invoke(t1, args.R, 0,split2,0,split2,args.AstartX+split1, args.AendX, args.AstartY+split1, args.AendY);
+  template<typename ArgType, typename CommType>
+  static void initiate(ArgType& args, CommType&& CommInfo){
+    using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgType::ScalarType;
+    auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d; auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+    auto localDimension = args.base_case_table[index_pair].num_columns_local();
+    serialize<uppertri,uppertri>::invoke(args.R, args.base_case_table[index_pair], args.AstartX, args.AendX, args.AstartY, args.AendY,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY);
+    MPI_Allgather(args.base_case_table[index_pair].data(), args.base_case_table[index_pair].num_elems(), mpi_type<T>::type, &args.base_case_blocked_table[index_pair][0],
+                  args.base_case_table[index_pair].num_elems(), mpi_type<T>::type, CommInfo.slice);
+    if (std::is_same<typename ArgTypeRR::SP,Serialize>::value){
+      util::block_to_cyclic_triangle(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(),
+                                     args.base_case_blocked_table[index_pair].size(), localDimension, localDimension, CommInfo.d);
+    } else{
+      util::block_to_cyclic_rect(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(), localDimension, localDimension, CommInfo.d);
+    }
   }
+
+  template<typename ArgType, typename CommType>
+  static void compute(ArgType& args, CommType&& CommInfo){
+    using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgType::ScalarType;
+    auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d; auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+    auto span = (args.AendX!=args.trueLocalDimension ? aggregDim :aggregDim-(args.trueLocalDimension*CommInfo.d-args.trueGlobalDimension));
+    lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
+    lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
+    lapack::engine::_potrf(args.base_case_cyclic_table[index_pair].data(),span,aggregDim,potrfArgs);
+    std::memcpy(args.base_case_cyclic_table[index_pair].scratch(),args.base_case_cyclic_table[index_pair].data(),sizeof(T)*args.base_case_cyclic_table[index_pair].num_elems());
+    lapack::engine::_trtri(args.base_case_cyclic_table[index_pair].scratch(),span,aggregDim,trtriArgs);
+  }
+
+  template<typename ArgType, typename CommType>
+  static void complete(ArgType& args, CommType&& CommInfo){
+    using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgType::ScalarType;
+    int rankSlice; MPI_Comm_rank(CommInfo.slice, &rankSlice);
+    auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d; auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+    util::cyclic_to_local(args.base_case_cyclic_table[index_pair].data(),args.base_case_cyclic_table[index_pair].scratch(), args.localDimension, args.globalDimension, aggregDim, CommInfo.d,rankSlice);
+    serialize<uppertri,uppertri>::invoke(args.base_case_cyclic_table[index_pair], args.R, 0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.AstartY, args.AendY, args.AstartY, args.AendY);
+    args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
+    serialize<uppertri,uppertri>::invoke(args.base_case_cyclic_table[index_pair], args.Rinv,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
+    args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
+  }
+};
+
+class ReplicateComp{
+protected:
+  template<typename ArgType, typename CommType>
+  static void initiate(ArgType& args, CommType&& CommInfo){
+    using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
+    auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d; auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+    auto localDimension = args.base_case_table[index_pair].num_columns_local();
+    if (CommInfo.z==0){
+      serialize<uppertri,uppertri>::invoke(args.R, args.base_case_table[index_pair], args.AstartX, args.AendX, args.AstartY, args.AendY,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY);
+      MPI_Allgather(args.base_case_table[index_pair].data(), args.base_case_table[index_pair].num_elems(), mpi_type<T>::type, &args.base_case_blocked_table[index_pair][0],
+                    args.base_case_table[index_pair].num_elems(), mpi_type<T>::type, CommInfo.slice);
+      if (std::is_same<typename ArgTypeRR::SP,Serialize>::value){
+        util::block_to_cyclic_triangle(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(),
+                                       args.base_case_blocked_table[index_pair].size(), localDimension, localDimension, CommInfo.d);
+      } else{
+        util::block_to_cyclic_rect(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(), localDimension, localDimension, CommInfo.d);
+      }
+    }
+  }
+
+  template<typename ArgType, typename CommType>
+  static void compute(ArgType&& args, CommType&& CommInfo){
+    using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
+    if (CommInfo.z==0){
+      auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d; auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+      auto span = (args.AendX!=args.trueLocalDimension ? aggregDim :aggregDim-(args.trueLocalDimension*CommInfo.d-args.trueGlobalDimension));
+      lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
+      lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
+      lapack::engine::_potrf(args.base_case_cyclic_table[index_pair].data(),span,aggregDim,potrfArgs);
+      std::memcpy(args.base_case_cyclic_table[index_pair].scratch(),args.base_case_cyclic_table[index_pair].data(),sizeof(T)*args.base_case_cyclic_table[index_pair].num_elems());
+      lapack::engine::_trtri(args.base_case_cyclic_table[index_pair].scratch(),span,aggregDim,trtriArgs);
+    }
+  }
+
+  template<typename ArgType, typename CommType>
+  static void complete(ArgType& args, CommType&& CommInfo){
+    using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
+    int rankSlice; MPI_Comm_rank(CommInfo.slice, &rankSlice);
+    auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d; auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+    MPI_Bcast(args.base_case_cyclic_table[index_pair].data(),aggregDim*aggregDim,mpi_type<T>::type,0,CommInfo.depth);
+    MPI_Bcast(args.base_case_cyclic_table[index_pair].scratch(),aggregDim*aggregDim,mpi_type<T>::type,0,CommInfo.depth);
+    util::cyclic_to_local(args.base_case_cyclic_table[index_pair].data(),args.base_case_cyclic_table[index_pair].scratch(), args.localDimension, args.globalDimension, aggregDim, CommInfo.d,rankSlice);
+    serialize<uppertri,uppertri>::invoke(args.base_case_cyclic_table[index_pair], args.R, 0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.AstartY, args.AendY, args.AstartY, args.AendY);
+    args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
+    serialize<uppertri,uppertri>::invoke(args.base_case_cyclic_table[index_pair], args.Rinv,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
+    args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
+  }
+};
+
+class NoReplication{
+protected:
+/*
+  template<typename ArgType, typename CommType>
+  static void initiate(ArgType& args, CommType&& CommInfo){
+    using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
+    auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d; auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+    auto localDimension = args.base_case_table[index_pair].num_columns_local();
+    if (CommInfo.z==0){
+      serialize<uppertri,uppertri>::invoke(args.R, args.base_case_table[index_pair], args.AstartX, args.AendX, args.AstartY, args.AendY,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY);
+      MPI_Gather(args.base_case_table[index_pair].data(), args.base_case_table[index_pair].num_elems(), mpi_type<T>::type, &args.base_case_blocked_table[index_pair][0],
+                    args.base_case_table[index_pair].num_elems(), mpi_type<T>::type, 0, CommInfo.slice);
+      if (CommInfo.x==0 && CommInfo.y==0){
+        if (std::is_same<typename ArgTypeRR::SP,Serialize>::value){
+          util::block_to_cyclic_triangle(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(),
+                                         args.base_case_blocked_table[index_pair].size(), localDimension, localDimension, CommInfo.d);
+        } else{
+          util::block_to_cyclic_rect(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(), localDimension, localDimension, CommInfo.d);
+        }
+      }
+    }
+  }
+
+  template<typename ArgType, typename CommType>
+  static void compute(ArgType&& args, CommType&& CommInfo){
+    using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
+    if (CommInfo.x==0 && CommInfo.y==0 && CommInfo.z==0){
+      auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d; auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+      auto span = (args.AendX!=args.trueLocalDimension ? aggregDim :aggregDim-(args.trueLocalDimension*CommInfo.d-args.trueGlobalDimension));
+      lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
+      lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
+      lapack::engine::_potrf(args.base_case_cyclic_table[index_pair].data(),span,aggregDim,potrfArgs);
+      std::memcpy(args.base_case_cyclic_table[index_pair].scratch(),args.base_case_cyclic_table[index_pair].data(),sizeof(T)*args.base_case_cyclic_table[index_pair].num_elems());
+      util::cyclic_to_block(
+    }
+    if (CommInfo.z==0){
+      MPI_Iscatter(args.base_case_cyclic_table[index_pair].data(),&args.req);
+    }
+    if (CommInfo.x==0 && CommInfo.y==0 && CommInfo.z==0){
+      lapack::engine::_trtri(args.base_case_cyclic_table[index_pair].scratch(),span,aggregDim,trtriArgs);
+    }
+  }
+
+  template<typename ArgType, typename CommType>
+  static void complete(ArgType& args, CommType&& CommInfo){
+    using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
+    int rankSlice; MPI_Comm_rank(CommInfo.slice, &rankSlice); MPI_Status st;
+    auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d; auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+    MPI_Wait(&args.req, &st);
+    MPI_Ibcast(args.base_case_cyclic_table[index_pair].data(),aggregDim*aggregDim,mpi_type<T>::type,0,CommInfo.depth,&args.req);
+    MPI_Scatter(..);
+    MPI_Wait();
+    MPI_Bcast(args.base_case_cyclic_table[index_pair].scratch(),aggregDim*aggregDim,mpi_type<T>::type,0,CommInfo.depth);
+    
+    ..serialize<uppertri,uppertri>::invoke(args.base_case_cyclic_table[index_pair], args.R, 0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.AstartY, args.AendY, args.AstartY, args.AendY);
+    args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
+    serialize<uppertri,uppertri>::invoke(args.base_case_cyclic_table[index_pair], args.Rinv,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
+    args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
+  }
+*/
 };
 
 };

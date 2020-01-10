@@ -1,9 +1,9 @@
 /* Author: Edward Hutter */
 
 namespace cholesky{
-template<class SerializePolicy, class IntermediatesPolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy>::factor(const MatrixType& A, ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::factor(const MatrixType& A, ArgType& args, CommType&& CommInfo){
 
   using T = typename MatrixType::ScalarType;
   assert(args.split>0); assert(args.dir == 'U');	// Removed support for 'L'. Necessary future support for this case can be handled via a final transpose.
@@ -26,28 +26,27 @@ void cholinv<SerializePolicy,IntermediatesPolicy>::factor(const MatrixType& A, A
   invoke(args, std::forward<CommType>(CommInfo));
 }
 
-template<class SerializePolicy, class IntermediatesPolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
-matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholinv<SerializePolicy,IntermediatesPolicy>::construct_R(ArgType& args, CommType&& CommInfo){
+matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::construct_R(ArgType& args, CommType&& CommInfo){
   auto localDimension = args.R.num_rows_local();
   matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> ret(args.R.num_columns_global(),args.R.num_rows_global(),CommInfo.c, CommInfo.c);
   serialize<typename SerializePolicy::structure,rect>::invoke(args.R, ret,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
   return ret;
 }
 
-template<class SerializePolicy, class IntermediatesPolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
-matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholinv<SerializePolicy,IntermediatesPolicy>::construct_Rinv(ArgType& args, CommType&& CommInfo){
+matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::construct_Rinv(ArgType& args, CommType&& CommInfo){
   auto localDimension = args.R.num_rows_local();
   matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> ret(args.Rinv.num_columns_global(),args.Rinv.num_rows_global(),CommInfo.c, CommInfo.c);
   serialize<typename SerializePolicy::structure,rect>::invoke(args.Rinv, ret,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
   return ret;
 }
 
-
-template<class SerializePolicy, class IntermediatesPolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy>::simulate(ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::simulate(ArgType& args, CommType&& CommInfo){
 
   auto split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1);
   if (((args.localDimension*CommInfo.d) <= args.bcDimension) || (split1<args.split)){
@@ -76,9 +75,9 @@ void cholinv<SerializePolicy,IntermediatesPolicy>::simulate(ArgType& args, CommT
   }
 }
 
-template<class SerializePolicy, class IntermediatesPolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy>::simulate_basecase(ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::simulate_basecase(ArgType& args, CommType&& CommInfo){
 
   assert(args.localDimension>0); assert((args.AendX-args.AstartX)==(args.AendY-args.AstartY));
   auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
@@ -88,9 +87,9 @@ void cholinv<SerializePolicy,IntermediatesPolicy>::simulate_basecase(ArgType& ar
   IP::init(args.base_case_cyclic_table, index_pair, nullptr,aggregDim,aggregDim,CommInfo.d,CommInfo.d);
 }
 
-template<class SerializePolicy, class IntermediatesPolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy>::invoke(ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::invoke(ArgType& args, CommType&& CommInfo){
 
   using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
   auto split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1);
@@ -139,36 +138,15 @@ void cholinv<SerializePolicy,IntermediatesPolicy>::invoke(ArgType& args, CommTyp
 }
 
 
-template<class SerializePolicy, class IntermediatesPolicy>
+template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
-void cholinv<SerializePolicy,IntermediatesPolicy>::base_case(ArgType& args, CommType&& CommInfo){
+void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::base_case(ArgType& args, CommType&& CommInfo){
 
-  using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
-
-  // No matter what path we are on, if we get into the base case, we will do regular Cholesky + Triangular inverse
-  // First: AllGather matrix A so that every processor has the same replicated diagonal square partition of matrix A of dimension bcDimension
-  //          Note that processors only want to communicate with those on their same 2D slice, since the matrices are replicated on every slice
-  //          Note that before the AllGather, we need to serialize the matrix A into the small square matrix
-  // Second: Data will be received in a blocked order due to AllGather semantics, which is not what we want. We need to get back to cyclic again
-  //           This is an ugly process, as it was in the last code.
-  // Third: Once data is in cyclic format, we call call sequential Cholesky Factorization and Triangular Inverse.
-  // Fourth: Save the data that each processor owns according to the cyclic rule.
-
-  int rankSlice; MPI_Comm_rank(CommInfo.slice, &rankSlice); auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d;
-  auto span = (args.AendX!=args.trueLocalDimension ? aggregDim :aggregDim-(args.trueLocalDimension*CommInfo.d-args.trueGlobalDimension)); auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
-  serialize<uppertri,uppertri>::invoke(args.R, IP::invoke(args.base_case_table,index_pair), args.AstartX, args.AendX, args.AstartY, args.AendY,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY);
-  SP::invoke(IP::invoke(args.base_case_table,index_pair),args.base_case_blocked_table[index_pair],IP::invoke(args.base_case_cyclic_table,index_pair),std::forward<CommType>(CommInfo));
-  lapack::ArgPack_potrf potrfArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper);
-  lapack::ArgPack_trtri trtriArgs(lapack::Order::AlapackColumnMajor, lapack::UpLo::AlapackUpper, lapack::Diag::AlapackNonUnit);
-  lapack::engine::_potrf(IP::invoke(args.base_case_cyclic_table,index_pair).data(),span,aggregDim,potrfArgs);
-  std::memcpy(IP::invoke(args.base_case_cyclic_table,index_pair).scratch(),IP::invoke(args.base_case_cyclic_table,index_pair).data(),sizeof(T)*IP::invoke(args.base_case_cyclic_table,index_pair).num_elems());
-  lapack::engine::_trtri(IP::invoke(args.base_case_cyclic_table,index_pair).scratch(),span,aggregDim,trtriArgs);
-  util::cyclic_to_local(IP::invoke(args.base_case_cyclic_table,index_pair).data(),IP::invoke(args.base_case_cyclic_table,index_pair).scratch(), args.localDimension, args.globalDimension, aggregDim, CommInfo.d,rankSlice);
-  serialize<uppertri,uppertri>::invoke(IP::invoke(args.base_case_cyclic_table,index_pair), args.R, 0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.AstartY, args.AendY, args.AstartY, args.AendY);
-  IP::invoke(args.base_case_cyclic_table,index_pair).swap();	// puts the inverse buffer into the `data` member before final serialization
-  serialize<uppertri,uppertri>::invoke(IP::invoke(args.base_case_cyclic_table,index_pair), args.Rinv,0,args.AendX-args.AstartX,0,args.AendY-args.AstartY,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
-  IP::invoke(args.base_case_cyclic_table,index_pair).swap();	// puts the inverse buffer into the `data` member before final serialization
+  auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
+  auto& m1 = IP::invoke(args.base_case_table,index_pair); auto& m2 = IP::invoke(args.base_case_cyclic_table,index_pair); auto& m3 = IP::invoke(args.base_case_cyclic_table,index_pair);
+  BP::initiate(args,std::forward<CommType>(CommInfo));
+  BP::compute(args,std::forward<CommType>(CommInfo));
+  BP::complete(args,std::forward<CommType>(CommInfo));
   IP::flush(args.base_case_table[index_pair]); IP::flush(args.base_case_cyclic_table[index_pair]);
-  return;
 }
 }

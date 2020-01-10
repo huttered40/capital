@@ -21,6 +21,9 @@ public:
   template<typename ScalarType>
   static void cyclic_to_local(ScalarType* storeScalarType, ScalarType* storeScalarTypeI, int64_t localDimension, int64_t globalDimension, int64_t bcDimension, int64_t sliceDim, int64_t rankSlice);
 
+  template<typename ScalarType>
+  static void cyclic_to_block(ScalarType* dest, ScalarType* src, int64_t localDimension, int64_t globalDimension, int64_t bcDimension, int64_t sliceDim);
+
   template<typename MatrixType, typename CommType>
   static void transpose(MatrixType& mat, CommType&& CommInfo);
 

@@ -9,16 +9,17 @@
 
 namespace cholesky{
 template<class SerializePolicy     = policy::cholinv::Serialize,
-         class IntermediatesPolicy = policy::cholinv::SaveIntermediates>
-class cholinv : public SerializePolicy, public IntermediatesPolicy{
+         class IntermediatesPolicy = policy::cholinv::SaveIntermediates,
+         class BaseCasePolicy      = policy::cholinv::ReplicateComp>
+class cholinv : public SerializePolicy, public IntermediatesPolicy, public BaseCasePolicy{
 public:
   template<typename ScalarType, typename DimensionType>
   class info{
   public:
     using ScalarType = ScalarType;
     using DimensionType = DimensionType;
-    using alg_type = cholinv<SerializePolicy,IntermediatesPolicy>;
-    using SP = SerializePolicy; using IP = IntermediatesPolicy;
+    using alg_type = cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>;
+    using SP = SerializePolicy; using IP = IntermediatesPolicy; using BP = BaseCasePolicy;
     info(const info& p) : complete_inv(p.complete_inv), split(p.split), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     info(info&& p) : complete_inv(p.complete_inv), split(p.split), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}
     info(DimensionType complete_inv, DimensionType split, DimensionType bc_mult_dim, char dir) : complete_inv(complete_inv), split(split), bc_mult_dim(bc_mult_dim), dir(dir) {}
@@ -39,6 +40,7 @@ public:
     std::map<std::pair<DimensionType,DimensionType>,matrix<ScalarType,DimensionType,rect>> base_case_cyclic_table;
     DimensionType localDimension,globalDimension,trueLocalDimension,trueGlobalDimension,bcDimension;
     DimensionType AstartX,AendX,AstartY,AendY,TIstartX,TIendX,TIstartY,TIendY;
+    MPI_Request req;
   };
 
   template<typename MatrixType, typename ArgType, typename CommType>
@@ -50,7 +52,7 @@ public:
   template<typename ArgType, typename CommType>
   static matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> construct_Rinv(ArgType& args, CommType&& CommInfo);
 
-  using SP = SerializePolicy; using IP = IntermediatesPolicy;
+  using SP = SerializePolicy; using IP = IntermediatesPolicy; using BP = BaseCasePolicy;
 
 private:
   template<typename ArgType, typename CommType>

@@ -107,10 +107,6 @@ void util::block_to_cyclic_rect(ScalarType* blockedData, ScalarType* cyclicData,
   }
 }
 
-// This method can be called from Lower and Upper with one tweak, but note that currently, we iterate over the entire square,
-//   when we are really only writing to a triangle. So there is a source of optimization here at least in terms of
-//   number of flops, but in terms of memory accesses and cache lines, not sure. Note that with this optimization,
-//   we may need to separate into two different functions
 template<typename ScalarType>
 void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, int64_t localDimension, int64_t globalDimension, int64_t bcDimension, int64_t sliceDim, int64_t rankSlice){
 
@@ -132,6 +128,35 @@ void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, int64_t loca
         storeT[writeIndex] = 0.; storeTI[writeIndex] = 0.;
       }
       writeIndex++;
+    }
+  }
+}
+
+template<typename ScalarType>
+void util::cyclic_to_block(ScalarType* dest, ScalarType* src, int64_t localDimension, int64_t globalDimension, int64_t bcDimension, int64_t sliceDim){
+
+  int64_t writeIndex,readIndexCol,readIndexRow;
+  for (int64_t rank_i=0; rank_i<sliceDim; rank_i++){
+    for (int64_t rank_j=0; rank_j<sliceDim; rank_j++){
+      int64_t rowOffsetWithinBlock = rankSlice / sliceDim;
+      int64_t columnOffsetWithinBlock = rankSlice % sliceDim;
+      writeIndex = (rank_i*sliceDim+rank_j)*localDimension*localDimension;
+      // MACRO loop over all cyclic "blocks"
+      for (int64_t i=0; i<localDimension; i++){
+        // We know which row corresponds to our processor in each cyclic "block"
+        // Inner loop over all cyclic "blocks" partitioning up the columns
+        for (int64_t j=0; j<localDimension; j++){
+          readIndexCol = i*sliceDim + columnOffsetWithinBlock;
+          readIndexRow = j*sliceDim + rowOffsetWithinBlock;
+          //writeIndex = i*bcDimension+j;
+          if (readIndexCol >= readIndexRow){
+            dest[writeIndex] = src[readIndexCol*bcDimension + readIndexRow];
+          } else{
+            dest[writeIndex] = 0.;
+          }
+          writeIndex++;
+        }
+      }
     }
   }
 }
