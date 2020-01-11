@@ -54,65 +54,71 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
 
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename ScalarType>
-void util::block_to_cyclic_triangle(ScalarType* blockedData, ScalarType* cyclicData, int64_t num_elems, int64_t localDimensionRows, int64_t localDimensionColumns, int64_t sliceDim){
-
-  int64_t aggregNumRows = localDimensionRows*sliceDim;
-  int64_t aggregNumColumns = localDimensionColumns*sliceDim;
-  int64_t aggregSize = aggregNumRows*aggregNumColumns;
-  int64_t numCyclicBlocksPerRow = localDimensionRows;
-  int64_t numCyclicBlocksPerCol = localDimensionColumns;
+void util::block_to_cyclic_triangle(ScalarType* blocked, ScalarType* cyclic, int64_t num_elems, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim){
+  // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
+  int64_t num_rows_global = num_rows_local*sliceDim; int64_t num_columns_global = num_columns_local*sliceDim;
   int64_t write_idx=0; int64_t read_idx=0;
 
-  write_idx = 0; int64_t recvDataOffset = num_elems/(sliceDim*sliceDim);
-  int64_t off1 = 0; int64_t off3 = sliceDim*recvDataOffset;
-  // MACRO loop over all cyclic "blocks" (dimensionX direction)
-  for (int64_t i=0; i<numCyclicBlocksPerCol; i++){
+  write_idx = 0; int64_t offset = num_elems/(sliceDim*sliceDim);
+  int64_t off1 = 0; int64_t off3 = sliceDim*offset;
+  for (int64_t i=0; i<num_columns_local; i++){
     off1 += i;
-    // Inner loop over all columns in a cyclic "block"
     for (int64_t j=0; j<sliceDim; j++){
-      int64_t off2 = j*recvDataOffset + off1;
-      write_idx = ((i*sliceDim)+j)*aggregNumRows;    //  reset each time
-      // Inner loop over all cyclic "blocks"
+      int64_t off2 = j*offset + off1;
+      write_idx = ((i*sliceDim)+j)*num_rows_global;    //  reset each time
       for (int64_t k=0; k<i; k++){
         int64_t off4 = off2;
-        // Inner loop over all elements along columns
         for (int64_t z=0; z<sliceDim; z++){
           read_idx = off4 + z*off3 + k;
-          cyclicData[write_idx++] = blockedData[read_idx];
+          cyclic[write_idx++] = blocked[read_idx];
         }
       }
       // Special final block
       int64_t off4 = off2;
       // Inner loop over all elements along columns
       for (int64_t z=0; z<=j; z++){
-        read_idx = off4 + z*off3 + i; cyclicData[write_idx++] = blockedData[read_idx];
+        read_idx = off4 + z*off3 + i; cyclic[write_idx++] = blocked[read_idx];
       }
+    }
+  }
+  // Remove scalars that should be zeros
+  for (int64_t i=0; i<num_columns_global; i++){
+    for (int64_t j=i+1; j<num_rows_global; j++){
+      cyclic[i*num_rows_global+j]=0.;
     }
   }
 }
 
 template<typename ScalarType>
-void util::block_to_cyclic_rect(ScalarType* blockedData, ScalarType* cyclicData, int64_t localDimensionRows, int64_t localDimensionColumns, int64_t sliceDim){
+void util::block_to_cyclic_rect(ScalarType* blocked, ScalarType* cyclic, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim){
+  // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
   int64_t write_idx = 0; int64_t read_idx = 0;
-  int64_t readDataOffset = localDimensionRows*localDimensionColumns;
-  for (int64_t i=0; i<localDimensionColumns; i++){
+  int64_t offset = num_rows_local*num_columns_local;
+  int64_t num_rows_global = num_rows_local*sliceDim; int64_t num_columns_global = num_columns_local*sliceDim;
+  for (int64_t i=0; i<num_columns_local; i++){
     for (int64_t j=0; j<sliceDim; j++){
-      for (int64_t k=0; k<localDimensionRows; k++){
+      for (int64_t k=0; k<num_rows_local; k++){
         for (int64_t z=0; z<sliceDim; z++){
-          read_idx = z*readDataOffset*sliceDim + k + j*readDataOffset + i*localDimensionRows;
-          cyclicData[write_idx++] = blockedData[read_idx];
+          read_idx = z*offset*sliceDim + k + j*offset + i*num_rows_local;
+          cyclic[write_idx++] = blocked[read_idx];
         }
       }
     }
   }
+  // Remove scalars that should be zeros
+  for (int64_t i=0; i<num_columns_global; i++){
+    for (int64_t j=i+1; j<num_rows_global; j++){
+      cyclic[i*num_rows_global+j]=0.;
+    }
+  }
 }
 
 template<typename ScalarType>
-void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, int64_t localDimension, int64_t globalDimension, int64_t bcDimension, int64_t sliceDim, int64_t rankSlice){
+void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, int64_t localDimension, int64_t bcDimension, int64_t sliceDim, int64_t sliceRank){
+  // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
 
   int64_t writeIndex,readIndexCol,readIndexRow;
-  int64_t rowOffsetWithinBlock = rankSlice / sliceDim;
-  int64_t columnOffsetWithinBlock = rankSlice % sliceDim;
+  int64_t rowOffsetWithinBlock = sliceRank / sliceDim; int64_t columnOffsetWithinBlock = sliceRank % sliceDim;
   // MACRO loop over all cyclic "blocks"
   for (int64_t i=0; i<localDimension; i++){
     // We know which row corresponds to our processor in each cyclic "block"
@@ -133,28 +139,46 @@ void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, int64_t loca
 }
 
 template<typename ScalarType>
-void util::cyclic_to_block(ScalarType* dest, ScalarType* src, int64_t localDimension, int64_t globalDimension, int64_t bcDimension, int64_t sliceDim){
+void util::cyclic_to_block_triangle(ScalarType* dest, ScalarType* src, int64_t num_elems, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim){
+  // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
+  int64_t num_rows_global = num_rows_local*sliceDim;
+  int64_t num_columns_global = num_columns_local*sliceDim;
+  int64_t write_idx=0; int64_t read_idx=0;
 
-  int64_t writeIndex,readIndexCol,readIndexRow;
-  for (int64_t rank_i=0; rank_i<sliceDim; rank_i++){
-    for (int64_t rank_j=0; rank_j<sliceDim; rank_j++){
-      int64_t rowOffsetWithinBlock = rankSlice / sliceDim;
-      int64_t columnOffsetWithinBlock = rankSlice % sliceDim;
-      writeIndex = (rank_i*sliceDim+rank_j)*localDimension*localDimension;
-      // MACRO loop over all cyclic "blocks"
-      for (int64_t i=0; i<localDimension; i++){
-        // We know which row corresponds to our processor in each cyclic "block"
-        // Inner loop over all cyclic "blocks" partitioning up the columns
-        for (int64_t j=0; j<localDimension; j++){
-          readIndexCol = i*sliceDim + columnOffsetWithinBlock;
-          readIndexRow = j*sliceDim + rowOffsetWithinBlock;
-          //writeIndex = i*bcDimension+j;
-          if (readIndexCol >= readIndexRow){
-            dest[writeIndex] = src[readIndexCol*bcDimension + readIndexRow];
-          } else{
-            dest[writeIndex] = 0.;
-          }
-          writeIndex++;
+  write_idx = 0; int64_t offset = num_elems/(sliceDim*sliceDim);
+  int64_t off1 = 0; int64_t off3 = sliceDim*offset;
+  for (int64_t i=0; i<num_columns_local; i++){
+    off1 += i;
+    for (int64_t j=0; j<sliceDim; j++){
+      int64_t off2 = j*offset + off1;
+      write_idx = ((i*sliceDim)+j)*num_rows_global;    //  reset each time
+      for (int64_t k=0; k<i; k++){
+        int64_t off4 = off2;
+        for (int64_t z=0; z<sliceDim; z++){
+          read_idx = off4 + z*off3 + k;
+          dest[read_idx] = src[write_idx++]; src[write_idx-1]=0.;
+        }
+      }
+      // Special final block
+      int64_t off4 = off2;
+      // Inner loop over all elements along columns
+      for (int64_t z=0; z<=j; z++){
+        read_idx = off4 + z*off3 + i; dest[read_idx] = src[write_idx++]; src[write_idx-1]=0.;
+      }
+    }
+  }
+}
+
+template<typename ScalarType>
+void util::cyclic_to_block_rect(ScalarType* dest, ScalarType* src, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim){
+  // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
+  int64_t write_idx = 0; int64_t read_idx = 0; int64_t offset = num_rows_local*num_columns_local;
+  for (int64_t i=0; i<num_columns_local; i++){
+    for (int64_t j=0; j<sliceDim; j++){
+      for (int64_t k=0; k<num_rows_local; k++){
+        for (int64_t z=0; z<sliceDim; z++){
+          write_idx = z*offset*sliceDim + k + j*offset + i*num_rows_local;
+          dest[write_idx] = src[read_idx++];
         }
       }
     }
@@ -167,10 +191,10 @@ void util::transpose(MatrixType& mat, CommType&& CommInfo){
   using T = typename MatrixType::ScalarType;
   int64_t SquareFaceSize = CommInfo.c*CommInfo.d;
   int64_t transposePartner = CommInfo.x*SquareFaceSize + CommInfo.y*CommInfo.c + CommInfo.z;
-    MPI_Sendrecv_replace(mat.data(), mat.num_elems(), mpi_type<T>::type, transposePartner, 0, transposePartner, 0, CommInfo.world, MPI_STATUS_IGNORE);
-    // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
-    //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
-    //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
+  MPI_Sendrecv_replace(mat.data(), mat.num_elems(), mpi_type<T>::type, transposePartner, 0, transposePartner, 0, CommInfo.world, MPI_STATUS_IGNORE);
+  // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
+  //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
+  //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
 }
 
 int64_t util::get_next_power2(int64_t localShift){

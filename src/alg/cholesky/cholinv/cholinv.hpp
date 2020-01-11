@@ -10,7 +10,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::factor(const M
   auto localDimension = A.num_rows_local(); auto globalDimension = A.num_rows_global(); typename ArgType::DimensionType minDimLocal = 1;
   args.R._register_(A.num_columns_global(),A.num_rows_global(),CommInfo.d,CommInfo.d);
   args.Rinv._register_(A.num_columns_global(),A.num_rows_global(),CommInfo.d,CommInfo.d);
-  serialize<typename MatrixType::StructureType,typename SP::structure>::invoke(A,args.R,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
+  serialize<uppertri,uppertri>::invoke(A,args.R,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
 
   typename ArgType::DimensionType bcDimLocal = CommInfo.c*CommInfo.d; auto bcMult = args.bc_mult_dim;
   if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal*=2;} else {for (int i=0;i<bcMult; i++) bcDimLocal/=2;}
@@ -80,11 +80,7 @@ template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::simulate_basecase(ArgType& args, CommType&& CommInfo){
 
   assert(args.localDimension>0); assert((args.AendX-args.AstartX)==(args.AendY-args.AstartY));
-  auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
-  IP::init(args.base_case_table, index_pair, nullptr,args.AendX-args.AstartX,args.AendY-args.AstartY,CommInfo.d,CommInfo.d);
-  auto num_elems = args.base_case_table[index_pair].num_elems()*CommInfo.d*CommInfo.d;
-  IP::init(args.base_case_blocked_table,index_pair, num_elems); auto aggregDim = (args.AendX-args.AstartX)*CommInfo.d;
-  IP::init(args.base_case_cyclic_table, index_pair, nullptr,aggregDim,aggregDim,CommInfo.d,CommInfo.d);
+  IP::create_buffers(BP::get_id(),args,std::forward<CommType>(CommInfo));
 }
 
 template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
@@ -143,10 +139,10 @@ template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::base_case(ArgType& args, CommType&& CommInfo){
 
   auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
-  auto& m1 = IP::invoke(args.base_case_table,index_pair); auto& m2 = IP::invoke(args.base_case_cyclic_table,index_pair); auto& m3 = IP::invoke(args.base_case_cyclic_table,index_pair);
+  IP::init_buffers(BP::get_id(),args,std::forward<CommType>(CommInfo));
   BP::initiate(args,std::forward<CommType>(CommInfo));
   BP::compute(args,std::forward<CommType>(CommInfo));
   BP::complete(args,std::forward<CommType>(CommInfo));
-  IP::flush(args.base_case_table[index_pair]); IP::flush(args.base_case_cyclic_table[index_pair]);
+  IP::remove_buffers(BP::get_id(),args,std::forward<CommType>(CommInfo));
 }
 }

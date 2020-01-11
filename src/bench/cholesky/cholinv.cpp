@@ -21,7 +21,7 @@ int main(int argc, char** argv){
   size_t num_iter   = atoi(argv[7]);// number of simulations of the algorithm for performance testing
   size_t id         = atoi(argv[8]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
-  using cholesky_type = typename cholesky::cholinv<policy::cholinv::Serialize,policy::cholinv::SaveIntermediates>;
+  using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
   size_t process_cube_dim = std::nearbyint(std::ceil(pow(size,1./3.)));
   size_t rep_factor = process_cube_dim/rep_div; double time_global;
   T residual_error_local,residual_error_global; auto mpi_dtype = mpi_type<T>::type;
