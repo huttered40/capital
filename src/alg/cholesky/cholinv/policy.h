@@ -50,7 +50,7 @@ protected:
         init(args.base_case_blocked_table,index_pair, num_elems);
       }
     }
-    else if (bc_strategy_id==2){
+    else if (bc_strategy_id>=2){
       if (CommInfo.x==0 && CommInfo.y==0 && CommInfo.z==0){
         init(args.base_case_cyclic_table, index_pair, nullptr,aggregDim,aggregDim,CommInfo.d,CommInfo.d);
         init(args.base_case_blocked_table,index_pair, num_elems);
@@ -71,7 +71,7 @@ protected:
         auto& m2 = invoke(args.base_case_cyclic_table,index_pair);
       }
     }
-    else if (bc_strategy_id==2){
+    else if (bc_strategy_id>=2){
       if (CommInfo.x==0 && CommInfo.y==0 && CommInfo.z==0){
         auto& m2 = invoke(args.base_case_cyclic_table,index_pair); auto& m3 = invoke(args.base_case_cyclic_table,index_pair);
       }
@@ -296,7 +296,6 @@ protected:
           util::cyclic_to_block_triangle(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(),
                                          args.base_case_blocked_table[index_pair].size(), localDimension, localDimension, CommInfo.d);
         } else{
-          assert(args.base_case_blocked_table[index_pair].size() == args.base_case_cyclic_table[index_pair].num_elems());
           util::cyclic_to_block_rect(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(), localDimension, localDimension, CommInfo.d);
         }
         MPI_Scatter(&args.base_case_blocked_table[index_pair][0],args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,args.base_case_table[index_pair].data(),args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,0,CommInfo.slice);
@@ -376,7 +375,6 @@ protected:
           util::cyclic_to_block_triangle(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(),
                                          args.base_case_blocked_table[index_pair].size(), localDimension, localDimension, CommInfo.d);
         } else{
-          assert(args.base_case_blocked_table[index_pair].size() == args.base_case_cyclic_table[index_pair].num_elems());
           util::cyclic_to_block_rect(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(), localDimension, localDimension, CommInfo.d);
         }
         MPI_Iscatter(&args.base_case_blocked_table[index_pair][0],args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,args.base_case_table[index_pair].data(),args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,0,CommInfo.slice, &args.req);
