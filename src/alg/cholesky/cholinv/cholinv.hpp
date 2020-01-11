@@ -15,7 +15,7 @@ void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::factor(const M
   typename ArgType::DimensionType bcDimLocal = CommInfo.c*CommInfo.d; auto bcMult = args.bc_mult_dim;
   if (bcMult<0){ bcMult *= (-1); for (int i=0;i<bcMult; i++) bcDimLocal*=2;} else {for (int i=0;i<bcMult; i++) bcDimLocal/=2;}
   bcDimLocal  = std::max(minDimLocal,bcDimLocal); bcDimLocal  = std::min(localDimension,bcDimLocal);
-  bcDimLocal = util::get_next_power2(localDimension/bcDimLocal); auto bcDimension = CommInfo.d*bcDimLocal;
+  bcDimLocal = localDimension/bcDimLocal; auto bcDimension = CommInfo.d*bcDimLocal;
 
   args.localDimension=localDimension; args.trueLocalDimension=localDimension; args.globalDimension=globalDimension; args.trueGlobalDimension=globalDimension; args.bcDimension=bcDimension;
   args.AstartX=0; args.AendX=localDimension; args.AstartY=0; args.AendY=localDimension; args.TIstartX=0; args.TIendX=localDimension; args.TIstartY=0; args.TIendY=localDimension;
@@ -48,12 +48,12 @@ template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::simulate(ArgType& args, CommType&& CommInfo){
 
-  auto split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1);
+  auto split1 = (args.localDimension>>args.split); split1 = split1;
   if (((args.localDimension*CommInfo.d) <= args.bcDimension) || (split1<args.split)){
     simulate_basecase(args, std::forward<CommType>(CommInfo)); return;
   }
 
-  split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1); auto split2 = args.localDimension-split1;
+  split1 = (args.localDimension>>args.split); split1 = split1; auto split2 = args.localDimension-split1;
   auto save1 = args.localDimension; auto save2 = args.globalDimension; auto save3=args.AendX; auto save4=args.AendY; auto save5=args.TIendX; auto save6=args.TIendY;
   args.localDimension=split1; args.globalDimension=(args.globalDimension>>1); args.AendX=args.AstartX+split1; args.AendY=args.AstartY+split1; args.TIendX=args.TIstartX+split1; args.TIendY=args.TIstartY+split1;
   simulate(args, std::forward<CommType>(CommInfo));
@@ -88,13 +88,13 @@ template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::invoke(ArgType& args, CommType&& CommInfo){
 
   using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
-  auto split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1);
+  auto split1 = (args.localDimension>>args.split); split1 = split1;
   if (((args.localDimension*CommInfo.d) <= args.bcDimension) || (split1<args.split)){
     base_case(args, std::forward<CommType>(CommInfo));
     return;
   }
 
-  split1 = (args.localDimension>>args.split); split1 = util::get_next_power2(split1); auto split2 = args.localDimension-split1;
+  split1 = (args.localDimension>>args.split); split1 = split1; auto split2 = args.localDimension-split1;
   auto save1 = args.localDimension; auto save2 = args.globalDimension; auto save3=args.AendX; auto save4=args.AendY; auto save5=args.TIendX; auto save6=args.TIendY;
   args.localDimension=split1; args.globalDimension=(args.globalDimension>>1); args.AendX=args.AstartX+split1; args.AendY=args.AstartY+split1; args.TIendX=args.TIstartX+split1; args.TIendY=args.TIstartY+split1;
   invoke(args, std::forward<CommType>(CommInfo));
