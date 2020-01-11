@@ -205,7 +205,11 @@ matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cacqr<
 
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
-void cacqr<SerializePolicy,IntermediatesPolicy>::apply_Q(MatrixType& src, ArgType& args,CommType&& CommInfo) { static_assert(0,"not implemented"); }
+void cacqr<SerializePolicy,IntermediatesPolicy>::apply_Q(MatrixType& src, ArgType& args,CommType&& CommInfo){
+  using T = typename MatrixType::ScalarType;
+  blas::ArgPack_gemm<T> gemmPack(blas::Order::AblasColumnMajor, blas::Transpose::AblasNoTrans, blas::Transpose::AblasNoTrans, 1., 0.);
+  auto out = args.Q; matmult::summa::invoke(args.Q,src,out,gemmPack,std::forward<CommType>(CommInfo));
+}
 
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
