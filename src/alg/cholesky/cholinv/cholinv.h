@@ -10,7 +10,7 @@
 namespace cholesky{
 template<class SerializePolicy     = policy::cholinv::Serialize,
          class IntermediatesPolicy = policy::cholinv::SaveIntermediates,
-         class BaseCasePolicy      = policy::cholinv::ReplicateComp>
+         class BaseCasePolicy      = policy::cholinv::NoReplication>
 class cholinv : public SerializePolicy, public IntermediatesPolicy, public BaseCasePolicy{
 public:
   template<typename ScalarType, typename DimensionType>

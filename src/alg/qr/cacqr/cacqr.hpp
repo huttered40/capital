@@ -27,7 +27,7 @@ template<typename ArgType, typename CommType>
 void cacqr<SerializePolicy,IntermediatesPolicy>::simulate_solve(ArgType& args, CommType&& CommInfo){
   using SP = SerializePolicy; using IP = IntermediatesPolicy;
   auto localDimensionN = args.R.num_rows_local(); auto localDimensionM = args.Q.num_rows_local();
-  auto split1 = (localDimensionN>>args.cholesky_inverse_args.split); split1 = util::get_next_power2(split1); auto split2 = localDimensionN-split1;
+  auto split1 = (localDimensionN>>args.cholesky_inverse_args.split); auto split2 = localDimensionN-split1;
   IP::init(args.rect_table1,std::make_pair(split1,localDimensionM),nullptr,split1,localDimensionM,CommInfo.c,CommInfo.c);
   IP::init(args.rect_table2,std::make_pair(split2,localDimensionM),nullptr,split2,localDimensionM,CommInfo.c,CommInfo.c);
   IP::init(args.rect_table2,std::make_pair(split2,split1),nullptr,split2,split1,CommInfo.c,CommInfo.c);
@@ -40,7 +40,7 @@ template<typename ArgType, typename CommType>
 void cacqr<SerializePolicy,IntermediatesPolicy>::solve(ArgType& args, CommType&& CommInfo){
   using T = typename ArgType::ScalarType; using SP = SerializePolicy; using IP = IntermediatesPolicy;
   auto localDimensionN = args.R.num_rows_local(); auto localDimensionM = args.Q.num_rows_local();
-  auto split1 = (localDimensionN>>args.cholesky_inverse_args.split); split1 = util::get_next_power2(split1); auto split2 = localDimensionN-split1;
+  auto split1 = (localDimensionN>>args.cholesky_inverse_args.split); auto split2 = localDimensionN-split1;
   serialize<rect,rect>::invoke(args.Q,IP::invoke(args.rect_table1,std::make_pair(split1,localDimensionM)),0,split1,0,localDimensionM,0,split1,0,localDimensionM);
   serialize<rect,rect>::invoke(args.Q,IP::invoke(args.rect_table2,std::make_pair(split2,localDimensionM)),split1,localDimensionN,0,localDimensionM,0,split2,0,localDimensionM);
   serialize<uppertri,uppertri>::invoke(args.cholesky_inverse_args.Rinv,IP::invoke(args.policy_table,std::make_pair(split1,split1)),0,split1,0,split1,0,split1,0,split1);
