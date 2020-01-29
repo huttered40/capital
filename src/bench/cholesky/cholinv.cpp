@@ -34,25 +34,11 @@ int main(int argc, char** argv){
     cholesky_type::info<T,U> pack(complete_inv,split,bcMultiplier,dir);
 
     for (size_t i=0; i<num_iter; i++){
-      if (id==0){
-        MPI_Barrier(MPI_COMM_WORLD);
-        critter::start(0);
-        cholesky_type::factor(A, pack, SquareTopo);
-        critter::stop(0,factor);
-      }
-      else if (id==1){  
-        MPI_Barrier(MPI_COMM_WORLD);
-        critter::start(1);
-        cholesky_type::factor(A, pack, SquareTopo);
-        critter::stop(1,factor);
-      }
-      else if (id==2){  
-        MPI_Barrier(MPI_COMM_WORLD);
-        critter::start(2);
-        cholesky_type::factor(A, pack, SquareTopo);
-        critter::stop(2,factor);
-      }
-      else if (id==3){
+      MPI_Barrier(MPI_COMM_WORLD);
+      critter::start(id);
+      cholesky_type::factor(A, pack, SquareTopo);
+      critter::stop(id,factor);
+      if (id==3){
         cholesky_type::factor(A, pack, SquareTopo);
         residual_error_local = cholesky::validate<cholesky_type>::residual(A, pack, SquareTopo);
         MPI_Reduce(&residual_error_local, &residual_error_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);

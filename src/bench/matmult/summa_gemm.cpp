@@ -40,24 +40,10 @@ int main(int argc, char** argv){
 
     // Loop for getting a good range of results.
     for (size_t i=0; i<numIterations; i++){
-      if (id==0){
-        MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
-        critter::start(0);
-        matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
-        critter::stop(0,factor);
-      }
-      else if (id==1){
-        MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
-        critter::start(1);
-        matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
-        critter::stop(1,factor);
-      }
-      else if (id==2){
-        MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
-        critter::start(2);
-        matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
-        critter::stop(2,factor);
-      }
+      MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
+      critter::start(id);
+      matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
+      critter::stop(id,factor);
     }
   }
   MPI_Finalize();

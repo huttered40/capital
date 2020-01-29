@@ -34,25 +34,11 @@ int main(int argc, char** argv){
     qr_type::info<T,U,decltype(ci_pack)::alg_type> pack(variant,ci_pack);
 
     for (size_t i=0; i<num_iter; i++){
-      if (id==0){
-        MPI_Barrier(MPI_COMM_WORLD);
-        critter::start(0);
-        qr_type::factor(A, pack, RectTopo);
-        critter::stop(0,factor);
-      }
-      else if (id==1){
-        MPI_Barrier(MPI_COMM_WORLD);
-        critter::start(1);
-        qr_type::factor(A, pack, RectTopo);
-        critter::stop(1,factor);
-      }
-      else if (id==2){
-        MPI_Barrier(MPI_COMM_WORLD);
-        critter::start(2);
-        qr_type::factor(A, pack, RectTopo);
-        critter::stop(2,factor);
-      }
-      else if (id==3){
+      MPI_Barrier(MPI_COMM_WORLD);
+      critter::start(id);
+      qr_type::factor(A, pack, RectTopo);
+      critter::stop(id,factor);
+      if (id==3){
         qr_type::factor(A, pack, RectTopo);
         auto residual_local = qr::validate<qr_type>::residual(A,pack,RectTopo);
         auto orthogonality_local = qr::validate<qr_type>::orthogonality(A,pack,RectTopo);
