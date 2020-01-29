@@ -4,7 +4,7 @@ namespace cholesky{
 template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::factor(const MatrixType& A, ArgType& args, CommType&& CommInfo){
-
+  TAU_START(cholesky::cholinv::factor);
   using T = typename MatrixType::ScalarType;
   assert(args.split>0); assert(args.dir == 'U');	// Removed support for 'L'. Necessary future support for this case can be handled via a final transpose.
   auto localDimension = A.num_rows_local(); auto globalDimension = A.num_rows_global(); typename ArgType::DimensionType minDimLocal = 1;
@@ -24,33 +24,38 @@ void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::factor(const M
   args.localDimension=localDimension; args.trueLocalDimension=localDimension; args.globalDimension=globalDimension; args.trueGlobalDimension=globalDimension; args.bcDimension=bcDimension;
   args.AstartX=0; args.AendX=localDimension; args.AstartY=0; args.AendY=localDimension; args.TIstartX=0; args.TIendX=localDimension; args.TIstartY=0; args.TIendY=localDimension;
   invoke(args, std::forward<CommType>(CommInfo));
+  TAU_STOP(cholesky::cholinv::factor);
 }
 
 template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
 matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::construct_R(ArgType& args, CommType&& CommInfo){
+  TAU_START(cholesky::cholinv::construct_R);
   auto localDimension = args.R.num_rows_local();
   matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> ret(args.R.num_columns_global(),args.R.num_rows_global(),CommInfo.c, CommInfo.c);
   serialize<typename SerializePolicy::structure,rect>::invoke(args.R, ret,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
+  TAU_STOP(cholesky::cholinv::construct_R);
   return ret;
 }
 
 template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
 matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::construct_Rinv(ArgType& args, CommType&& CommInfo){
+  TAU_START(cholesky::cholinv::construct_Rinv);
   auto localDimension = args.R.num_rows_local();
   matrix<typename ArgType::ScalarType,typename ArgType::DimensionType,rect> ret(args.Rinv.num_columns_global(),args.Rinv.num_rows_global(),CommInfo.c, CommInfo.c);
   serialize<typename SerializePolicy::structure,rect>::invoke(args.Rinv, ret,0,localDimension,0,localDimension,0,localDimension,0,localDimension);
+  TAU_STOP(cholesky::cholinv::construct_Rinv);
   return ret;
 }
 
 template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::simulate(ArgType& args, CommType&& CommInfo){
-
+  TAU_START(cholesky::cholinv::simulate);
   auto split1 = (args.localDimension>>args.split); split1 = split1;
   if (((args.localDimension*CommInfo.d) <= args.bcDimension) || (split1<args.split)){
-    simulate_basecase(args, std::forward<CommType>(CommInfo)); return;
+    simulate_basecase(args, std::forward<CommType>(CommInfo)); TAU_STOP(cholesky::cholinv::simulate); return;
   }
 
   split1 = (args.localDimension>>args.split); split1 = split1; auto split2 = args.localDimension-split1;
@@ -73,24 +78,27 @@ void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::simulate(ArgTy
     IP::init(args.policy_table,std::make_pair(split1,split1),nullptr,split1,split1,CommInfo.d,CommInfo.d);
     IP::init(args.policy_table,std::make_pair(split2,split2),nullptr,split2,split2,CommInfo.d,CommInfo.d);
   }
+  TAU_STOP(cholesky::cholinv::simulate);
 }
 
 template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::simulate_basecase(ArgType& args, CommType&& CommInfo){
-
+  TAU_START(cholesky::cholinv::simulate_basecase);
   assert(args.localDimension>0); assert((args.AendX-args.AstartX)==(args.AendY-args.AstartY));
   IP::create_buffers(BP::get_id(),args,std::forward<CommType>(CommInfo));
+  TAU_STOP(cholesky::cholinv::simulate_basecase);
 }
 
 template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::invoke(ArgType& args, CommType&& CommInfo){
-
+  TAU_START(cholesky::cholinv::invoke);
   using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
   auto split1 = (args.localDimension>>args.split); split1 = split1;
   if (((args.localDimension*CommInfo.d) <= args.bcDimension) || (split1<args.split)){
     base_case(args, std::forward<CommType>(CommInfo));
+    TAU_STOP(cholesky::cholinv::invoke);
     return;
   }
 
@@ -131,18 +139,20 @@ void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::invoke(ArgType
   }
   IP::flush(args.rect_table1[std::make_pair(split2,split1)]); IP::flush(args.rect_table2[std::make_pair(split2,split1)]);
   IP::flush(args.policy_table[std::make_pair(split1,split1)]); IP::flush(args.policy_table[std::make_pair(split2,split2)]);
+  TAU_STOP(cholesky::cholinv::invoke);
 }
 
 
 template<class SerializePolicy, class IntermediatesPolicy, class BaseCasePolicy>
 template<typename ArgType, typename CommType>
 void cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>::base_case(ArgType& args, CommType&& CommInfo){
-
+  TAU_START(cholesky::cholinv::base_case);
   auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
   IP::init_buffers(BP::get_id(),args,std::forward<CommType>(CommInfo));
   BP::initiate(args,std::forward<CommType>(CommInfo));
   BP::compute(args,std::forward<CommType>(CommInfo));
   BP::complete(args,std::forward<CommType>(CommInfo));
   IP::remove_buffers(BP::get_id(),args,std::forward<CommType>(CommInfo));
+  TAU_STOP(cholesky::cholinv::base_case);
 }
 }

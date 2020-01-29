@@ -19,9 +19,10 @@ int main(int argc, char** argv){
   U bcMultiplier    = atoi(argv[5]);// base case depth factor in cholinv
   size_t num_chunks = atoi(argv[6]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[7]);// number of simulations of the algorithm for performance testing
-  size_t id         = atoi(argv[8]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+  size_t factor     = atoi(argv[8]);// factor by which to multiply the critter stats internally
+  size_t id         = atoi(argv[9]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
-  using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
+  using cholesky_type = typename cholesky::cholinv<policy::cholinv::Serialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
   size_t process_cube_dim = std::nearbyint(std::ceil(pow(size,1./3.)));
   size_t rep_factor = process_cube_dim/rep_div; double time_global;
   T residual_error_local,residual_error_global; auto mpi_dtype = mpi_type<T>::type;
@@ -35,17 +36,23 @@ int main(int argc, char** argv){
     for (size_t i=0; i<num_iter; i++){
       if (id==0){
         MPI_Barrier(MPI_COMM_WORLD);
-        critter::start();
+        critter::start(0);
         cholesky_type::factor(A, pack, SquareTopo);
-        critter::stop();
+        critter::stop(0,factor);
       }
       else if (id==1){  
         MPI_Barrier(MPI_COMM_WORLD);
-        critter::start(false);
+        critter::start(1);
         cholesky_type::factor(A, pack, SquareTopo);
-        critter::stop(false);
+        critter::stop(1,factor);
       }
-      else if (id==2){
+      else if (id==2){  
+        MPI_Barrier(MPI_COMM_WORLD);
+        critter::start(2);
+        cholesky_type::factor(A, pack, SquareTopo);
+        critter::stop(2,factor);
+      }
+      else if (id==3){
         cholesky_type::factor(A, pack, SquareTopo);
         residual_error_local = cholesky::validate<cholesky_type>::residual(A, pack, SquareTopo);
         MPI_Reduce(&residual_error_local, &residual_error_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);

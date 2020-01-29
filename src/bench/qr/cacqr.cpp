@@ -20,32 +20,39 @@ int main(int argc, char** argv){
   U bcMultiplier    = atoi(argv[7]);// base case depth factor in cholinv
   size_t num_chunks = atoi(argv[8]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[9]);// number of simulations of the algorithm for performance testing
-  size_t id         = atoi(argv[10]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+  size_t factor     = atoi(argv[10]);// factor by which to multiply the critter stats internally
+  size_t id         = atoi(argv[11]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
-  using qr_type = qr::cacqr<qr::policy::cacqr::NoSerialize,qr::policy::cacqr::SaveIntermediates>;
+  using qr_type = qr::cacqr<qr::policy::cacqr::Serialize,qr::policy::cacqr::SaveIntermediates>;
   {
     T residual_error,orthogonality_error; auto mpi_dtype = mpi_type<T>::type;
     auto RectTopo = topo::rect(MPI_COMM_WORLD,rep_factor,num_chunks);
     MatrixType A(num_columns,num_rows,RectTopo.c,RectTopo.d);
     A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
     // Generate algorithmic structure via instantiating packs
-    cholesky::cholinv<>::info<T,U> ci_pack(complete_inv,split,bcMultiplier,'U');
+    cholesky::cholinv<cholesky::policy::cholinv::Serialize,cholesky::policy::cholinv::SaveIntermediates,cholesky::policy::cholinv::NoReplication>::info<T,U> ci_pack(complete_inv,split,bcMultiplier,'U');
     qr_type::info<T,U,decltype(ci_pack)::alg_type> pack(variant,ci_pack);
 
     for (size_t i=0; i<num_iter; i++){
       if (id==0){
         MPI_Barrier(MPI_COMM_WORLD);
-        critter::start();
+        critter::start(0);
         qr_type::factor(A, pack, RectTopo);
-        critter::stop();
+        critter::stop(0,factor);
       }
       else if (id==1){
         MPI_Barrier(MPI_COMM_WORLD);
-        critter::start(false);
+        critter::start(1);
         qr_type::factor(A, pack, RectTopo);
-        critter::stop(false);
+        critter::stop(1,factor);
       }
       else if (id==2){
+        MPI_Barrier(MPI_COMM_WORLD);
+        critter::start(2);
+        qr_type::factor(A, pack, RectTopo);
+        critter::stop(2,factor);
+      }
+      else if (id==3){
         qr_type::factor(A, pack, RectTopo);
         auto residual_local = qr::validate<qr_type>::residual(A,pack,RectTopo);
         auto orthogonality_local = qr::validate<qr_type>::orthogonality(A,pack,RectTopo);

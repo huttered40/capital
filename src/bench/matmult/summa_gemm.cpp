@@ -22,7 +22,8 @@ int main(int argc, char** argv){
   U pGridDimensionC    = atoi(argv[4]);
   size_t num_chunks    = atoi(argv[5]);
   size_t numIterations = atoi(argv[6]);
-  size_t id            = atoi(argv[7]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+  size_t factor        = atoi(argv[7]);// factor by which to multiply the critter stats internally
+  size_t id            = atoi(argv[8]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   auto mpi_dtype = mpi_type<T>::type;
   U pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
@@ -41,15 +42,21 @@ int main(int argc, char** argv){
     for (size_t i=0; i<numIterations; i++){
       if (id==0){
         MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
-        critter::start();
+        critter::start(0);
         matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
-        critter::stop();
+        critter::stop(0,factor);
       }
       else if (id==1){
         MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
-        critter::start(false);
+        critter::start(1);
         matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
-        critter::stop(false);
+        critter::stop(1,factor);
+      }
+      else if (id==2){
+        MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
+        critter::start(2);
+        matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
+        critter::stop(2,factor);
       }
     }
   }
