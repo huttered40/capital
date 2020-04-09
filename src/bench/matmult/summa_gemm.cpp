@@ -41,9 +41,9 @@ int main(int argc, char** argv){
     // Loop for getting a good range of results.
     for (size_t i=0; i<numIterations; i++){
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
-      critter::start(id);
+      if (id != 3) critter::start(id);
       matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
-      critter::stop(id,factor);
+      if (id != 3) critter::stop(id,factor);
     }
   }
   MPI_Finalize();

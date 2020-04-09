@@ -35,9 +35,9 @@ int main(int argc, char** argv){
 
     for (size_t i=0; i<num_iter; i++){
       MPI_Barrier(MPI_COMM_WORLD);
-      critter::start(id);
+      if (id != 3) critter::start(id);
       qr_type::factor(A, pack, RectTopo);
-      critter::stop(id,factor);
+      if (id != 3) critter::stop(id,factor);
       if (id==3){
         qr_type::factor(A, pack, RectTopo);
         auto residual_local = qr::validate<qr_type>::residual(A,pack,RectTopo);

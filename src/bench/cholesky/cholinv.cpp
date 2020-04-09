@@ -35,9 +35,9 @@ int main(int argc, char** argv){
 
     for (size_t i=0; i<num_iter; i++){
       MPI_Barrier(MPI_COMM_WORLD);
-      critter::start(id);
+      if (id != 3) critter::start(id);
       cholesky_type::factor(A, pack, SquareTopo);
-      critter::stop(id,factor);
+      if (id != 3) critter::stop(id,factor);
       if (id==3){
         cholesky_type::factor(A, pack, SquareTopo);
         residual_error_local = cholesky::validate<cholesky_type>::residual(A, pack, SquareTopo);
