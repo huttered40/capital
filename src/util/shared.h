@@ -17,7 +17,7 @@
 #include <cmath>
 #include <string>
 
-#include "../../../critter/src/critter.h"
+#include "critter.h"
 
 // Note: no need to include mpi header file when using critter
 // #include <mpi.h>
