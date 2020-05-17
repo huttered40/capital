@@ -3,14 +3,14 @@
 template<typename ScalarType, typename DimensionType>
 void rect::_assemble(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType& matrixNumElems, DimensionType dimensionX, DimensionType dimensionY){
   matrixNumElems = dimensionX * dimensionY;
-  data = new ScalarType[matrixNumElems];
+  data = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) data[i]=0.;
   _assemble_matrix(data, scratch, pad, dimensionX, dimensionY);
 }
 
 template<typename ScalarType, typename DimensionType>
 void rect::_assemble_matrix(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType dimensionX, DimensionType dimensionY){
   DimensionType matrixNumElems = dimensionX * dimensionY;
-  scratch = new ScalarType[matrixNumElems];
+  scratch = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) scratch[i]=0.;
   pad = nullptr;
 }
 
@@ -130,7 +130,7 @@ void rect::_distribute_random(ScalarType* data, DimensionType dimensionX, Dimens
 template<typename ScalarType, typename DimensionType>
 void uppertri::_assemble(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType& matrixNumElems, DimensionType dimensionX, DimensionType dimensionY){
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
-  data = new ScalarType[matrixNumElems];
+  data = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) data[i]=0.;
   _assemble_matrix(data, scratch, pad, dimensionX, dimensionY);
 }
 
@@ -138,8 +138,8 @@ template<typename ScalarType, typename DimensionType>
 void uppertri::_assemble_matrix(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType dimensionX, DimensionType dimensionY){
   DimensionType nonPackedNumElems = dimensionX*dimensionY;
   DimensionType matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
-  scratch = new ScalarType[matrixNumElems];
-  pad = new ScalarType[nonPackedNumElems];	// we give full non-packed size here to account for need for summa to use nonpacked layout
+  scratch = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) scratch[i]=0.;
+  pad = new ScalarType[nonPackedNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) pad[i]=0.;	// we give full non-packed size here to account for need for summa to use nonpacked layout
 }
 
 template<typename ScalarType, typename DimensionType>
@@ -204,7 +204,7 @@ void uppertri::_distribute_random(ScalarType* data, DimensionType dimensionX, Di
 template<typename ScalarType, typename DimensionType>
 void lowertri::_assemble(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType& matrixNumElems, DimensionType dimensionX, DimensionType dimensionY){
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
-  data = new ScalarType[matrixNumElems];
+  data = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) data[i]=0.;
   _assemble_matrix(data, scratch, pad, dimensionX, dimensionY);
 }
 
@@ -212,8 +212,8 @@ template<typename ScalarType, typename DimensionType>
 void lowertri::_assemble_matrix(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType dimensionX, DimensionType dimensionY){
   DimensionType nonPackedNumElems = dimensionX*dimensionY;
   DimensionType matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
-  scratch = new ScalarType[matrixNumElems];
-  pad = new ScalarType[nonPackedNumElems];	// we give full non-packed size here to account for need for summa to use nonpacked layout
+  scratch = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) scratch[i]=0.;
+  pad = new ScalarType[nonPackedNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) pad[i]=0.;	// we give full non-packed size here to account for need for summa to use nonpacked layout
 }
 
 template<typename ScalarType, typename DimensionType>
@@ -227,7 +227,7 @@ template<typename ScalarType, typename DimensionType>
 void lowertri::_print(const ScalarType* data, DimensionType dimensionX, DimensionType dimensionY){
   for (DimensionType i=0; i<dimensionY; i++){
     for (DimensionType j=0; j<=i; j++){
-      std::cout << data[_offset(j,i-j,dimensionX,dimensionY)] << " ";
+      std::cout << data[_offset(j,i,dimensionX,dimensionY)] << " ";
     }
     std::cout << "\n";
   }
@@ -244,15 +244,16 @@ void lowertri::_distribute_random(ScalarType* data, DimensionType dimensionX, Di
   DimensionType counter{0};
   for (DimensionType i=0; i<padXlen; i++){
     // Special corner case: If a processor's last data on each row is out of bounds of the LT structure, then give a 0 value
-    counter = 0;		// reset
+    counter = i;		// reset
     saveGlobalPosY += (i*globalPgridDimY);
     if (localPgridDimY < localPgridDimX){
       // Set the last position in row
-      data[_offset(i,0,dimensionX,dimensionY)] = 0;
+      data[_offset(i,int64_t(0),dimensionX,dimensionY)] = 0;
       counter++;
       saveGlobalPosY += globalPgridDimY;
     }
-    for (DimensionType j=counter; j<(padYlen-i); j++){
+    for (DimensionType j=counter; j<padYlen; j++){
+      srand48(saveGlobalPosX + globalDimensionY*saveGlobalPosY);
       // Maybe in the future, get rid of this inner if statementand try something else? If statements in inner
       //   nested loops can be very expensive.
       if (saveGlobalPosX == saveGlobalPosY){
@@ -260,14 +261,14 @@ void lowertri::_distribute_random(ScalarType* data, DimensionType dimensionX, Di
         data[_offset(i,j,dimensionX,dimensionY)] = 1.;
       }
       else{
-        data[_offset(i,j,dimensionX,dimensionY)] = drand48();			// Change this later.
+        data[_offset(i,j,dimensionX,dimensionY)] = drand48();
       }
       // check padding
       if (padXlen != dimensionX) { data[_offset(i,dimensionY-i,dimensionX,dimensionY)] = 0; }
       saveGlobalPosY += globalPgridDimY;
     }
     // check padding
-    if (padXlen != dimensionX) { data[_offset(dimensionX-1,0,dimensionX,dimensionY)] = 0; }
+    if (padXlen != dimensionX) { data[_offset(dimensionX-1,int64_t(0),dimensionX,dimensionY)] = 0; }
     saveGlobalPosY = localPgridDimY;			// reset
     saveGlobalPosX += globalPgridDimX;
   }

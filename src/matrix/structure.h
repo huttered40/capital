@@ -56,7 +56,7 @@ public:
   template<typename DimensionType>
   static inline DimensionType _num_elems(DimensionType rangeX, DimensionType rangeY) { return ((rangeX*(rangeX+1))>>1); }
   template<typename DimensionType>
-  static inline DimensionType _offset(DimensionType coordX, DimensionType coordY, DimensionType dimX, DimensionType dimY) { return coordX==0 ? coordY : (coordX*dimY-(coordX-1))+(coordY-coordX); }
+  static inline DimensionType _offset(DimensionType coordX, DimensionType coordY, DimensionType dimX, DimensionType dimY) { return coordX*dimY+coordY-(coordX*(coordX+1)/2); }
   template<typename ScalarType, typename DimensionType>
   static void _print(const ScalarType* data, DimensionType dimensionX, DimensionType dimensionY);
 protected:

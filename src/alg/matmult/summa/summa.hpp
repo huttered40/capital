@@ -5,7 +5,6 @@ namespace matmult{
 // Invariant: it is assumed that the matrix data is stored in the _data member, and the _scratch member is available for exploiting
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
 void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& CommInfo, blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage){
-  TAU_START(matmult::summa::invoke);
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -37,12 +36,10 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& Co
   if (!std::is_same<StructureA,rect>::value){ A.swap_pad(); }
   if (!std::is_same<StructureB,rect>::value){ B.swap_pad(); }
   if (isRootRow){ A.swap(); } if (isRootColumn){ B.swap(); }
-  TAU_STOP(matmult::summa::invoke);
 }
   
 template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo, blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage){
-  TAU_START(matmult::summa::invoke);
 
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
@@ -73,24 +70,19 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo, blas::Ar
   if (!std::is_same<StructureA,rect>::value){ A.swap_pad(); }
   if (isRootRow && srcPackage.side == blas::Side::AblasLeft){ A.swap(); }
   B.swap();	// unconditional swap, since B holds output
-  TAU_STOP(matmult::summa::invoke);
 }
 
 template<typename MatrixSrcType, typename MatrixDestType, typename CommType>
 void summa::invoke(MatrixSrcType& A, MatrixDestType& C, CommType&& CommInfo, blas::ArgPack_syrk<typename MatrixSrcType::ScalarType>& srcPackage){
-  TAU_START(matmult::summa::invoke);
   // No choice but to incur the copy cost below.
   MatrixSrcType B = A; util::transpose(B, std::forward<CommType>(CommInfo));
   syrk_internal(A,B,C,std::forward<CommType>(CommInfo),srcPackage);
-  TAU_STOP(matmult::summa::invoke);
 }
 
 template<typename MatrixSrcType, typename MatrixDestType, typename CommType>
 void summa::invoke(MatrixSrcType& A, MatrixSrcType& B, MatrixDestType& C, CommType&& CommInfo, blas::ArgPack_syrk<typename MatrixSrcType::ScalarType>& srcPackage){
-  TAU_START(matmult::summa::invoke);
   util::transpose(B, std::forward<CommType>(CommInfo));
   syrk_internal(A,B,C,std::forward<CommType>(CommInfo),srcPackage);
-  TAU_STOP(matmult::summa::invoke);
 }
 
 template<typename MatrixSrcType, typename MatrixDestType, typename CommType>
