@@ -20,6 +20,7 @@
 #ifdef CRITTER
 #include "critter.h"
 #else
+#include <mpi.h>
 #define CRITTER_START(ARG)
 #define CRITTER_STOP(ARG)
 #endif
