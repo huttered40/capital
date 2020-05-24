@@ -55,6 +55,9 @@ util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& 
 // Note: this method differs from the one below it because blockedData is in packed storage
 template<typename ScalarType>
 void util::block_to_cyclic_triangle(ScalarType* blocked, ScalarType* cyclic, int64_t num_elems, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim){
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(blk2cyc_tri);
+#endif
   // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
   int64_t num_rows_global = num_rows_local*sliceDim; int64_t num_columns_global = num_columns_local*sliceDim;
   int64_t write_idx=0; int64_t read_idx=0;
@@ -87,10 +90,16 @@ void util::block_to_cyclic_triangle(ScalarType* blocked, ScalarType* cyclic, int
       cyclic[i*num_rows_global+j]=0.;
     }
   }
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(blk2cyc_tri);
+#endif
 }
 
 template<typename ScalarType>
 void util::block_to_cyclic_rect(ScalarType* blocked, ScalarType* cyclic, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim){
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(blk2cyc_rect);
+#endif
   // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
   int64_t write_idx = 0; int64_t read_idx = 0;
   int64_t offset = num_rows_local*num_columns_local;
@@ -111,11 +120,17 @@ void util::block_to_cyclic_rect(ScalarType* blocked, ScalarType* cyclic, int64_t
       cyclic[i*num_rows_global+j]=0.;
     }
   }
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(blk2cyc_rect);
+#endif
 }
 
 template<typename ScalarType>
 void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, int64_t localDimension, int64_t bcDimension, int64_t sliceDim, int64_t sliceRank){
   // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(cyc2loc);
+#endif
 
   int64_t writeIndex,readIndexCol,readIndexRow;
   int64_t rowOffsetWithinBlock = sliceRank / sliceDim; int64_t columnOffsetWithinBlock = sliceRank % sliceDim;
@@ -136,11 +151,17 @@ void util::cyclic_to_local(ScalarType* storeT, ScalarType* storeTI, int64_t loca
       writeIndex++;
     }
   }
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(cyc2loc);
+#endif
 }
 
 template<typename ScalarType>
 void util::cyclic_to_block_triangle(ScalarType* dest, ScalarType* src, int64_t num_elems, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim){
   // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(cyc2blk_tri);
+#endif
   int64_t num_rows_global = num_rows_local*sliceDim;
   int64_t num_columns_global = num_columns_local*sliceDim;
   int64_t write_idx=0; int64_t read_idx=0;
@@ -167,11 +188,17 @@ void util::cyclic_to_block_triangle(ScalarType* dest, ScalarType* src, int64_t n
       }
     }
   }
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(cyc2blk_tri);
+#endif
 }
 
 template<typename ScalarType>
 void util::cyclic_to_block_rect(ScalarType* dest, ScalarType* src, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim){
   // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(cyc2blk_rect);
+#endif
   int64_t write_idx = 0; int64_t read_idx = 0; int64_t offset = num_rows_local*num_columns_local;
   for (int64_t i=0; i<num_columns_local; i++){
     for (int64_t j=0; j<sliceDim; j++){
@@ -183,11 +210,16 @@ void util::cyclic_to_block_rect(ScalarType* dest, ScalarType* src, int64_t num_r
       }
     }
   }
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(cyc2blk_rect);
+#endif
 }
 
 template<typename MatrixType, typename CommType>
 void util::transpose(MatrixType& mat, CommType&& CommInfo){
-
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(transpose);
+#endif
   using T = typename MatrixType::ScalarType;
   int64_t SquareFaceSize = CommInfo.c*CommInfo.d;
   int64_t transposePartner = CommInfo.x*SquareFaceSize + CommInfo.y*CommInfo.c + CommInfo.z;
@@ -195,6 +227,9 @@ void util::transpose(MatrixType& mat, CommType&& CommInfo){
   // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
   //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,
   //       since we need to make sure that we call a MM::multiply routine with the same Structure, or else segfault.
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(transpose);
+#endif
 }
 
 int64_t util::get_next_power2(int64_t localShift){
@@ -216,6 +251,9 @@ int64_t util::get_next_power2(int64_t localShift){
 
 template<typename MatrixType>
 void util::remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir){
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(rem_tri);
+#endif
   using U = typename MatrixType::DimensionType; using T = typename MatrixType::ScalarType;
   T* data = std::is_same<typename MatrixType::StructureType,rect>::value ? matrix.data() : matrix.pad();
 
@@ -235,10 +273,16 @@ void util::remove_triangle(MatrixType& matrix, int64_t sliceX, int64_t sliceY, i
     }
     globalDimHoriz += sliceDim;
   }
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(rem_tri);
+#endif
 }
 
 template<typename MatrixType>
 void util::remove_triangle_local(MatrixType& matrix, int64_t sliceX, int64_t sliceY, int64_t sliceDim, char dir){
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(rem_tri_loc);
+#endif
   using U = typename MatrixType::DimensionType; using T = typename MatrixType::ScalarType;
   T* data = std::is_same<typename MatrixType::StructureType,rect>::value ? matrix.data() : matrix.pad();
 
@@ -254,4 +298,7 @@ void util::remove_triangle_local(MatrixType& matrix, int64_t sliceX, int64_t sli
       }
     }
   }
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(rem_tri_loc);
+#endif
 }

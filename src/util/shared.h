@@ -17,7 +17,12 @@
 #include <cmath>
 #include <string>
 
+#ifdef CRITTER
 #include "critter.h"
+#else
+#define CRITTER_START(ARG)
+#define CRITTER_STOP(ARG)
+#endif
 
 // Note: no need to include mpi header file when using critter
 // #include <mpi.h>

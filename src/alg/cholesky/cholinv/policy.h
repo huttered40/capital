@@ -163,6 +163,9 @@ protected:
 
   template<typename ArgType, typename CommType>
   static void initiate(ArgType& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::RCC::initiate);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgType::ScalarType;
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
     auto localDimension = args.base_case_table[index_pair].num_columns_local();
@@ -175,10 +178,16 @@ protected:
     } else{
       util::block_to_cyclic_rect(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(), localDimension, localDimension, CommInfo.d);
     }
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::RCC::initiate);
+#endif
   }
 
   template<typename ArgType, typename CommType>
   static void compute(ArgType& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::RCC::compute);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgType::ScalarType;
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
     auto span = (args.AendX!=args.trueLocalDimension ? aggregDim :aggregDim-(args.trueLocalDimension*CommInfo.d-args.trueGlobalDimension));
@@ -187,10 +196,16 @@ protected:
     lapack::engine::_potrf(args.base_case_cyclic_table[index_pair].data(),span,aggregDim,potrfArgs);
     std::memcpy(args.base_case_cyclic_table[index_pair].scratch(),args.base_case_cyclic_table[index_pair].data(),sizeof(T)*args.base_case_cyclic_table[index_pair].num_elems());
     lapack::engine::_trtri(args.base_case_cyclic_table[index_pair].scratch(),span,aggregDim,trtriArgs);
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::RCC::compute);
+#endif
   }
 
   template<typename ArgType, typename CommType>
   static void complete(ArgType& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::RCC::complete);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgType::ScalarType;
     int rankSlice; MPI_Comm_rank(CommInfo.slice, &rankSlice);
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
@@ -199,6 +214,9 @@ protected:
     args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
     serialize<uppertri,uppertri>::invoke(args.base_case_cyclic_table[index_pair], args.Rinv,0,index_pair.first,0,index_pair.second,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
     args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::RCC::complete);
+#endif
   }
 };
 
@@ -208,6 +226,9 @@ protected:
 
   template<typename ArgType, typename CommType>
   static void initiate(ArgType& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::RC::initiate);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
     auto localDimension = args.base_case_table[index_pair].num_columns_local();
@@ -222,10 +243,16 @@ protected:
         util::block_to_cyclic_rect(&args.base_case_blocked_table[index_pair][0], args.base_case_cyclic_table[index_pair].data(), localDimension, localDimension, CommInfo.d);
       }
     }
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::RC::initiate);
+#endif
   }
 
   template<typename ArgType, typename CommType>
   static void compute(ArgType&& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::RC::compute);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     if (CommInfo.z==0){
       auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
@@ -236,10 +263,16 @@ protected:
       std::memcpy(args.base_case_cyclic_table[index_pair].scratch(),args.base_case_cyclic_table[index_pair].data(),sizeof(T)*args.base_case_cyclic_table[index_pair].num_elems());
       lapack::engine::_trtri(args.base_case_cyclic_table[index_pair].scratch(),span,aggregDim,trtriArgs);
     }
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::RC::compute);
+#endif
   }
 
   template<typename ArgType, typename CommType>
   static void complete(ArgType& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::RC::complete);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     int rankSlice; MPI_Comm_rank(CommInfo.slice, &rankSlice);
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
@@ -250,6 +283,9 @@ protected:
     args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
     serialize<uppertri,uppertri>::invoke(args.base_case_cyclic_table[index_pair], args.Rinv,0,index_pair.first,0,index_pair.second,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
     args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::RC::complete);
+#endif
   }
 };
 
@@ -259,6 +295,9 @@ protected:
 
   template<typename ArgType, typename CommType>
   static void initiate(ArgType& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::NR::initiate);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
     auto localDimension = args.base_case_table[index_pair].num_columns_local();
@@ -278,10 +317,16 @@ protected:
         MPI_Gather(args.base_case_table[index_pair].data(), args.base_case_table[index_pair].num_elems(), mpi_type<T>::type, nullptr, 0, mpi_type<T>::type, 0, CommInfo.slice);
       }
     }
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::NR::initiate);
+#endif
   }
 
   template<typename ArgType, typename CommType>
   static void compute(ArgType&& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::NR::compute);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
     auto localDimension = args.base_case_table[index_pair].num_columns_local();
@@ -317,10 +362,16 @@ protected:
         MPI_Scatter(nullptr,0,mpi_type<T>::type,args.base_case_table[index_pair].scratch(),args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,0,CommInfo.slice);
       }
     }
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::NR::compute);
+#endif
   }
 
   template<typename ArgType, typename CommType>
   static void complete(ArgType& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::NR::complete);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
     MPI_Bcast(args.base_case_table[index_pair].data(),args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,0,CommInfo.depth);
@@ -329,6 +380,9 @@ protected:
     args.base_case_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
     serialize<uppertri,uppertri>::invoke(args.base_case_table[index_pair], args.Rinv,0,index_pair.first,0,index_pair.second,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
     args.base_case_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::NR::complete);
+#endif
   }
 };
 
@@ -338,6 +392,9 @@ protected:
 
   template<typename ArgType, typename CommType>
   static void initiate(ArgType& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::NRO::initiate);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
     auto localDimension = args.base_case_table[index_pair].num_columns_local();
@@ -357,10 +414,16 @@ protected:
         MPI_Gather(args.base_case_table[index_pair].data(), args.base_case_table[index_pair].num_elems(), mpi_type<T>::type, nullptr, 0, mpi_type<T>::type, 0, CommInfo.slice);
       }
     }
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::NRO::initiate);
+#endif
   }
 
   template<typename ArgType, typename CommType>
   static void compute(ArgType&& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::NRO::compute);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
     auto localDimension = args.base_case_table[index_pair].num_columns_local(); MPI_Status st;
@@ -399,10 +462,16 @@ protected:
       }
     }
     MPI_Bcast(args.base_case_table[index_pair].data(),args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,0,CommInfo.depth);
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::NRO::compute);
+#endif
   }
 
   template<typename ArgType, typename CommType>
   static void complete(ArgType& args, CommType&& CommInfo){
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_START(CI::NRO::complete);
+#endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); MPI_Status st;
     if (CommInfo.z==0){ MPI_Wait(&args.req,&st); }
@@ -411,6 +480,9 @@ protected:
     args.base_case_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
     serialize<uppertri,uppertri>::invoke(args.base_case_table[index_pair], args.Rinv,0,index_pair.first,0,index_pair.second,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
     args.base_case_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
+#ifdef FUNCTION_SYMBOLS
+    CRITTER_STOP(CI::NRO::complete);
+#endif
   }
 };
 

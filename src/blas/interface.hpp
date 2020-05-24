@@ -49,8 +49,14 @@ void engine::_gemm(T* matrixA, T* matrixB, T* matrixC, U m, U n, U k, U lda, U l
   setInfoParameters_gemm(srcPackage, arg1, arg2, arg3);
 
   auto _gemm_ = GetGEMMroutine(BType<T>());
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(gemm);
+#endif
   _gemm_(arg1, arg2, arg3, m, n, k, srcPackage.alpha,
     matrixA, lda, matrixB, ldb, srcPackage.beta, matrixC, ldc);
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(gemm);
+#endif
 }
 
 template<typename T, typename U>
@@ -64,8 +70,14 @@ void engine::_trmm(T* matrixA, T* matrixB, U m, U n, U lda, U ldb, const ArgPack
   setInfoParameters_trmm(srcPackage, arg1, arg2, arg3, arg4, arg5);
 
   auto _trmm_ = GetTRMMroutine(BType<T>());
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(trmm);
+#endif
   _trmm_(arg1, arg2, arg3, arg4, arg5, m, n, srcPackage.alpha, matrixA,
     lda, matrixB, ldb);
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(trmm);
+#endif
 }
 
 template<typename T, typename U>
@@ -77,7 +89,13 @@ void engine::_syrk(T* matrixA, T* matrixC, U n, U k, U lda, U ldc, const ArgPack
   setInfoParameters_syrk(srcPackage, arg1, arg2, arg3);
 
   auto _syrk_ = GetSYRKroutine(BType<T>());
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(syrk);
+#endif
   _syrk_(arg1, arg2, arg3, n, k, srcPackage.alpha, matrixA,
     lda, srcPackage.beta, matrixC, ldc);
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(syrk);
+#endif
 }
 }

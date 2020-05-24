@@ -5,7 +5,9 @@ namespace matmult{
 // Invariant: it is assumed that the matrix data is stored in the _data member, and the _scratch member is available for exploiting
 template<typename MatrixAType, typename MatrixBType, typename MatrixCType, typename CommType>
 void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& CommInfo, blas::ArgPack_gemm<typename MatrixAType::ScalarType>& srcPackage){
-
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_START(Summa::invoke);
+#endif
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
   using T = typename MatrixAType::ScalarType;
@@ -36,11 +38,16 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, MatrixCType& C, CommType&& Co
   if (!std::is_same<StructureA,rect>::value){ A.swap_pad(); }
   if (!std::is_same<StructureB,rect>::value){ B.swap_pad(); }
   if (isRootRow){ A.swap(); } if (isRootColumn){ B.swap(); }
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_STOP(Summa::invoke);
+#endif
 }
   
 template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo, blas::ArgPack_trmm<typename MatrixAType::ScalarType>& srcPackage){
-
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_START(Summa::invoke);
+#endif
   // Use tuples so we don't have to pass multiple things by reference.
   // Also this way, we can take advantage of the new pass-by-value move semantics that are efficient
   using T = typename MatrixAType::ScalarType;
@@ -70,23 +77,41 @@ void summa::invoke(MatrixAType& A, MatrixBType& B, CommType&& CommInfo, blas::Ar
   if (!std::is_same<StructureA,rect>::value){ A.swap_pad(); }
   if (isRootRow && srcPackage.side == blas::Side::AblasLeft){ A.swap(); }
   B.swap();	// unconditional swap, since B holds output
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_STOP(Summa::invoke);
+#endif
 }
 
 template<typename MatrixSrcType, typename MatrixDestType, typename CommType>
 void summa::invoke(MatrixSrcType& A, MatrixDestType& C, CommType&& CommInfo, blas::ArgPack_syrk<typename MatrixSrcType::ScalarType>& srcPackage){
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_START(Summa::invoke);
+#endif
   // No choice but to incur the copy cost below.
   MatrixSrcType B = A; util::transpose(B, std::forward<CommType>(CommInfo));
   syrk_internal(A,B,C,std::forward<CommType>(CommInfo),srcPackage);
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_STOP(Summa::invoke);
+#endif
 }
 
 template<typename MatrixSrcType, typename MatrixDestType, typename CommType>
 void summa::invoke(MatrixSrcType& A, MatrixSrcType& B, MatrixDestType& C, CommType&& CommInfo, blas::ArgPack_syrk<typename MatrixSrcType::ScalarType>& srcPackage){
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_START(Summa::invoke);
+#endif
   util::transpose(B, std::forward<CommType>(CommInfo));
   syrk_internal(A,B,C,std::forward<CommType>(CommInfo),srcPackage);
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_STOP(Summa::invoke);
+#endif
 }
 
 template<typename MatrixSrcType, typename MatrixDestType, typename CommType>
 void summa::syrk_internal(MatrixSrcType& A, MatrixSrcType& B, MatrixDestType& C, CommType&& CommInfo, blas::ArgPack_syrk<typename MatrixSrcType::ScalarType>& srcPackage){
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_START(Summa::syrk_int);
+#endif
   // Note: Internally, this routine uses gemm, not syrk, as its not possible for each processor to perform local MM with symmetric matrices
   //         given the data layout over the processor grid.
 
@@ -130,11 +155,16 @@ void summa::syrk_internal(MatrixSrcType& A, MatrixSrcType& B, MatrixDestType& C,
   // Reset before returning
   if (!std::is_same<StructureA,rect>::value) { A.swap_pad(); }
   if (isRootRow){ A.swap(); }
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_STOP(Summa::syrk_int);
+#endif
 }
 
 template<typename MatrixAType, typename MatrixBType, typename CommType>
 void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
-
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_START(Summa::distribute);
+#endif
   using T = typename MatrixAType::ScalarType;
   using StructureA = typename MatrixAType::StructureType; using StructureB = typename MatrixBType::StructureType;
 
@@ -173,11 +203,16 @@ void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
   }
   if (!std::is_same<StructureA,rect>::value){ serialize<StructureA,StructureA>::invoke(A,A,0,localDimensionK,0,localDimensionM,0,localDimensionK,0,localDimensionM,1,2); A.swap_pad(); }
   if (!std::is_same<StructureB,rect>::value){ serialize<StructureB,StructureB>::invoke(B,B,0,localDimensionN,0,localDimensionN,0,localDimensionN,0,localDimensionN,1,2); B.swap_pad(); }
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_STOP(Summa::distribute);
+#endif
 }
 
 template<typename MatrixType, typename CommType>
 void summa::collect(MatrixType& matrix, CommType&& CommInfo){
-
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_START(Summa::collect);
+#endif
   using T = typename MatrixType::ScalarType;
   if (CommInfo.num_chunks == 0){
     MPI_Allreduce(MPI_IN_PLACE,matrix.scratch(), matrix.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.depth);
@@ -194,5 +229,8 @@ void summa::collect(MatrixType& matrix, CommType&& CommInfo){
     // complete
     for (int64_t idx=0; idx < CommInfo.num_chunks; idx++){ MPI_Wait(&req[idx],&stat[idx]); }
   }
+#ifdef FUNCTION_SYMBOLS
+  CRITTER_STOP(Summa::collect);
+#endif
 }
 }

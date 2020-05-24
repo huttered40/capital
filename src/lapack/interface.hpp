@@ -33,12 +33,18 @@ void engine::_potrf(T* matrixA, int n, int lda, const ArgPack_potrf& srcPackage)
   int arg1; char arg2;
   helper::setInfoParameters_potrf(srcPackage, arg1, arg2);
 
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(potrf);
+#endif
   auto _potrf_ = GetPOTRFroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
   int info;
   _potrf_(&arg2, &n, matrixA, &lda, &info);
 #else
   _potrf_(arg1, arg2, n, matrixA, lda);
+#endif
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(potrf);
 #endif
 }
 
@@ -48,12 +54,18 @@ void engine::_trtri(T* matrixA, int n, int lda, const ArgPack_trtri& srcPackage)
   int arg1; char arg2; char arg3;
   helper::setInfoParameters_trtri(srcPackage, arg1, arg2, arg3);
 
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(trtri);
+#endif
   static auto _trtri_ = GetTRTRIroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
   int info;
   _trtri_(&arg2, &arg3, &n, matrixA, &lda, &info);
 #else
   _trtri_(arg1, arg2, arg3, n, matrixA, lda);
+#endif
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(trtri);
 #endif
 }
 
@@ -63,12 +75,18 @@ void engine::_geqrf(T* matrixA, T* tau, int m, int n, int lda, const ArgPack_geq
   int arg1;
   helper::setInfoParameters_geqrf(srcPackage, arg1);
 
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(geqrf);
+#endif
   auto _geqrf_ = GetGEQRFroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
   int info;
   _geqrf_(&m, &n, matrixA, &lda, tau, &info);
 #else
   _geqrf_(arg1, m, n, matrixA, lda, tau);
+#endif
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(trtri);
 #endif
 }
 
@@ -78,12 +96,18 @@ void engine::_orgqr(T* matrixA, T* tau, int m, int n, int k, int lda, const ArgP
   int arg1;
   helper::setInfoParameters_orgqr(srcPackage, arg1);
 
+#ifdef FUNCTION_SYMBOLS
+CRITTER_START(orgqr);
+#endif
   auto _orgqr_ = GetORGQRroutine(LType<T>());
 #if defined(BGQ) || defined(BLUEWATERS)
   int info;
   _orgqr_(&m, &n, &k, matrixA, &lda, tau, &info);
 #else
   _orgqr_(arg1, m, n, k, matrixA, lda, tau);
+#endif
+#ifdef FUNCTION_SYMBOLS
+CRITTER_STOP(orgqr);
 #endif
 }
 }
