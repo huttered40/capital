@@ -17,17 +17,18 @@ int main(int argc, char** argv){
   bool complete_inv = atoi(argv[3]);// decides whether to complete inverse in cholinv
   U split           = atoi(argv[4]);// split factor in cholinv
   U bcMultiplier    = atoi(argv[5]);// base case depth factor in cholinv
-  size_t num_chunks = atoi(argv[6]);// splits up communication in summa into nonblocking chunks
-  size_t num_iter   = atoi(argv[7]);// number of simulations of the algorithm for performance testing
-  size_t factor     = atoi(argv[8]);// factor by which to multiply the critter stats internally
-  size_t id         = atoi(argv[9]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+  size_t layout     = atoi(argv[6]);// arranges sub-communicator layout
+  size_t num_chunks = atoi(argv[7]);// splits up communication in summa into nonblocking chunks
+  size_t num_iter   = atoi(argv[8]);// number of simulations of the algorithm for performance testing
+  size_t factor     = atoi(argv[9]);// factor by which to multiply the critter stats internally
+  size_t id         = atoi(argv[10]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   using cholesky_type = typename cholesky::cholinv<policy::cholinv::Serialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
   size_t process_cube_dim = std::nearbyint(std::ceil(pow(size,1./3.)));
   size_t rep_factor = process_cube_dim/rep_div; double time_global;
   T residual_error_local,residual_error_global; auto mpi_dtype = mpi_type<T>::type;
   { 
-    auto SquareTopo = topo::square(MPI_COMM_WORLD,rep_factor,num_chunks);
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,rep_factor,layout,num_chunks);
     MatrixType A(num_rows,num_rows, SquareTopo.d, SquareTopo.d);
     A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     // Generate algorithmic structure via instantiating packs

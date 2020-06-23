@@ -18,15 +18,16 @@ int main(int argc, char** argv){
   bool complete_inv = atoi(argv[5]);// decides whether to complete inverse in cholinv
   U split           = atoi(argv[6]);// split factor in cholinv
   U bcMultiplier    = atoi(argv[7]);// base case depth factor in cholinv
-  size_t num_chunks = atoi(argv[8]);// splits up communication in summa into nonblocking chunks
-  size_t num_iter   = atoi(argv[9]);// number of simulations of the algorithm for performance testing
-  size_t factor     = atoi(argv[10]);// factor by which to multiply the critter stats internally
-  size_t id         = atoi(argv[11]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+  size_t layout     = atoi(argv[8]);// arranges sub-communicator layout
+  size_t num_chunks = atoi(argv[9]);// splits up communication in summa into nonblocking chunks
+  size_t num_iter   = atoi(argv[10]);// number of simulations of the algorithm for performance testing
+  size_t factor     = atoi(argv[11]);// factor by which to multiply the critter stats internally
+  size_t id         = atoi(argv[12]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   using qr_type = qr::cacqr<qr::policy::cacqr::Serialize,qr::policy::cacqr::SaveIntermediates>;
   {
     T residual_error,orthogonality_error; auto mpi_dtype = mpi_type<T>::type;
-    auto RectTopo = topo::rect(MPI_COMM_WORLD,rep_factor,num_chunks);
+    auto RectTopo = topo::rect(MPI_COMM_WORLD,rep_factor,layout,num_chunks);
     MatrixType A(num_columns,num_rows,RectTopo.c,RectTopo.d);
     A.distribute_random(RectTopo.x, RectTopo.y, RectTopo.c, RectTopo.d, rank/RectTopo.c);
     // Generate algorithmic structure via instantiating packs

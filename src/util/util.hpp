@@ -221,8 +221,8 @@ void util::transpose(MatrixType& mat, CommType&& CommInfo){
 CRITTER_START(transpose);
 #endif
   using T = typename MatrixType::ScalarType;
-  int64_t SquareFaceSize = CommInfo.c*CommInfo.d;
-  int64_t transposePartner = CommInfo.x*SquareFaceSize + CommInfo.y*CommInfo.c + CommInfo.z;
+  int64_t TopFaceSize = CommInfo.c*CommInfo.d; int64_t FrontFaceSize = CommInfo.d*CommInfo.d;
+  int64_t transposePartner = CommInfo.layout == 0 ? CommInfo.x*TopFaceSize + CommInfo.y*CommInfo.c + CommInfo.z : CommInfo.z*FrontFaceSize + CommInfo.x*CommInfo.c + CommInfo.y;
   MPI_Sendrecv_replace(mat.data(), mat.num_elems(), mpi_type<T>::type, transposePartner, 0, transposePartner, 0, CommInfo.world, MPI_STATUS_IGNORE);
   // Note: the received data that now resides in mat is NOT transposed, and the Matrix structure is LowerTriangular
   //       This necesitates making the "else" processor serialize its data L11^{-1} from a square to a LowerTriangular,

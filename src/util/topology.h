@@ -15,8 +15,9 @@ namespace topo{
 
 class rect{
 public:
-  rect(MPI_Comm comm, size_t c, size_t num_chunks=0){
+  rect(MPI_Comm comm, size_t c, size_t layout = 0, size_t num_chunks=0){
 
+    this->layout = layout;
     this->num_chunks = num_chunks;
     MPI_Comm column;
     int columnRank, cubeRank;
@@ -60,21 +61,23 @@ public:
 
   MPI_Comm world,row,column_contig,column_alt,depth,slice,cube;
   int rank,size;
-  size_t c,d,x,y,z,num_chunks;
+  size_t c,d,x,y,z,layout,num_chunks;
 };
 
 class square{
 public:
-  square(MPI_Comm comm, size_t c, size_t num_chunks=0, bool contig=false){
+  square(MPI_Comm comm, size_t c, size_t layout=0, size_t num_chunks=0){
 
+    this->layout = layout;
     this->num_chunks = num_chunks;
     MPI_Comm_rank(comm, &this->rank);
     MPI_Comm_size(comm, &this->size);
 
     this->c = c;
     this->d = std::nearbyint(std::ceil(pow(this->size/c,1./2.)));
-    size_t TopFaceSize = this->d*this->d;
-    if (!contig){
+    size_t TopFaceSize = this->d*this->c;
+    size_t FrontFaceSize = this->d*this->d;
+    if (layout==0){
       this->z = this->rank%c;
       this->y = this->rank/TopFaceSize;
       this->x = (this->rank%TopFaceSize)/this->c;
@@ -82,7 +85,15 @@ public:
       MPI_Comm_split(comm, this->z, this->rank, &this->slice);
       MPI_Comm_split(this->slice, this->y, this->x, &this->row);
       MPI_Comm_split(this->slice, this->x, this->y, &this->column);
-    } else{
+    } else if (layout == 1){
+      this->y = this->rank%d;
+      this->x = (this->rank%FrontFaceSize)/this->d;
+      this->z = this->rank/FrontFaceSize;
+      MPI_Comm_split(comm, this->y+this->x*this->d, this->rank, &this->depth);
+      MPI_Comm_split(comm, this->z, this->rank, &this->slice);
+      MPI_Comm_split(this->slice, this->y, this->x, &this->row);
+      MPI_Comm_split(this->slice, this->x, this->y, &this->column);
+    } else if (layout == 2){
       int subcube_size = std::min(this->size,64);
       int subcube_slice_size = std::nearbyint(std::ceil(pow(subcube_size,2./3.)));
       int subcube_dim_size = std::nearbyint(std::ceil(pow(subcube_size,1./3.)));
@@ -120,7 +131,7 @@ public:
 
   MPI_Comm world,row,column,slice,depth;
   int rank,size;
-  size_t c,d,x,y,z,num_chunks;
+  size_t c,d,x,y,z,layout,num_chunks;
 };
 }
 

@@ -20,16 +20,17 @@ int main(int argc, char** argv){
   U globalMatrixSizeN  = atoi(argv[2]);
   U globalMatrixSizeK  = atoi(argv[3]);
   U pGridDimensionC    = atoi(argv[4]);
-  size_t num_chunks    = atoi(argv[5]);
-  size_t numIterations = atoi(argv[6]);
-  size_t factor        = atoi(argv[7]);// factor by which to multiply the critter stats internally
-  size_t id            = atoi(argv[8]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
+  size_t layout        = atoi(argv[5]);// arranges sub-communicator layout
+  size_t num_chunks    = atoi(argv[6]);
+  size_t numIterations = atoi(argv[7]);
+  size_t factor        = atoi(argv[8]);// factor by which to multiply the critter stats internally
+  size_t id            = atoi(argv[9]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   auto mpi_dtype = mpi_type<T>::type;
   U pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
   pGridDimensionC = pGridCubeDim/pGridDimensionC;
   {
-    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC,num_chunks);
+    auto SquareTopo = topo::square(MPI_COMM_WORLD,pGridDimensionC,layout,num_chunks);
     MatrixTypeR matA(globalMatrixSizeK,globalMatrixSizeM,SquareTopo.d,SquareTopo.d);
     MatrixTypeR matB(globalMatrixSizeN,globalMatrixSizeK,SquareTopo.d,SquareTopo.d);
     MatrixTypeR matC(globalMatrixSizeN,globalMatrixSizeM,SquareTopo.d,SquareTopo.d);

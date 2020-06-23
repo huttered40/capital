@@ -229,9 +229,9 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::factor(const MatrixType& A, Arg
   if (CommInfo.c == 1){ invoke_1d(args, std::forward<CommType>(CommInfo)); }
   else{
     if (!args.cholesky_inverse_args.complete_inv) simulate_solve(args,std::forward<CommType>(CommInfo));
-    if (CommInfo.c == CommInfo.d){ invoke_3d(args, topo::square(CommInfo.cube,CommInfo.c,CommInfo.num_chunks)); }
+    if (CommInfo.c == CommInfo.d){ invoke_3d(args, topo::square(CommInfo.cube,CommInfo.c,CommInfo.layout,CommInfo.num_chunks)); }
     else{
-      auto SquareTopo = topo::square(CommInfo.cube,CommInfo.c,CommInfo.num_chunks);
+      auto SquareTopo = topo::square(CommInfo.cube,CommInfo.c,CommInfo.layout,CommInfo.num_chunks);
       sweep_tune(args, std::forward<CommType>(CommInfo), SquareTopo);
       if (args.num_iter>1){
         SP::save_R_3d(args.cholesky_inverse_args.R,args.R,IP::invoke(args.rect_table1,std::make_pair(globalDimensionN,globalDimensionN)));
