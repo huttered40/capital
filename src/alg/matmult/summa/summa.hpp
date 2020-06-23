@@ -176,8 +176,20 @@ void summa::distribute(MatrixAType& A, MatrixBType& B, CommType&& CommInfo){
   // Check chunk size. If its 0, then bcast across rows and columns with no overlap
   if (CommInfo.num_chunks == 0){
     // distribute across rows
+#ifdef COLLECTIVE_CONCURRENCY_SOLO
+    if (CommInfo.z==0 && CommInfo.y==0)
+#endif
+#ifdef COLLECTIVE_CONCURRENCY_LAYER
+    if (CommInfo.z==CommInfo.y)
+#endif
     MPI_Bcast(A.scratch(), sizeA, mpi_type<T>::type, CommInfo.z, CommInfo.row);
     // distribute across columns
+#ifdef COLLECTIVE_CONCURRENCY_SOLO
+    if (CommInfo.z==0 && CommInfo.x==0)
+#endif
+#ifdef COLLECTIVE_CONCURRENCY_LAYER
+    if (CommInfo.z==CommInfo.x)
+#endif
     MPI_Bcast(B.scratch(), sizeB, mpi_type<T>::type, CommInfo.z, CommInfo.column);
   }
   else{
@@ -215,6 +227,12 @@ void summa::collect(MatrixType& matrix, CommType&& CommInfo){
 #endif
   using T = typename MatrixType::ScalarType;
   if (CommInfo.num_chunks == 0){
+#ifdef COLLECTIVE_CONCURRENCY_SOLO
+    if (CommInfo.x==0 && CommInfo.y==0)
+#endif
+#ifdef COLLECTIVE_CONCURRENCY_LAYER
+    if (CommInfo.x==CommInfo.y)
+#endif
     MPI_Allreduce(MPI_IN_PLACE,matrix.scratch(), matrix.num_elems(), mpi_type<T>::type, MPI_SUM, CommInfo.depth);
   }
   else{

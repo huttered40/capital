@@ -9,10 +9,12 @@ BIN=$(HOME)/camfs/src/bin/
 ifneq ($(STAMPEDE2),)
   critter_dir=/home1/05608/tg849075/critter
   MACHINE=STAMPEDE2
+  #CCMPI=scorep mpicxx
   CCMPI=mpicxx
   INCLUDES=-I$(critter_dir)/include
-  DEFS=-DCRITTER -DALGORITHMIC_SYMBOLS
+  DEFS=-DCRITTER -DALGORITHMIC_SYMBOLS# -DCOLLECTIVE_CONCURRENCY_SOLO
   CFLAGS=-g -Wall -O3 -std=c++14 -mkl=parallel -xMIC-AVX512 ${DEFS} ${INCLUDES}
+  #CFLAGS=-g -Wall -O3 -std=c++14 -mkl=parallel -xMIC-AVX512 ${INCLUDES}
   LIB_PATH=-L$(critter_dir)/lib
   LIBS=-lcritter
 endif

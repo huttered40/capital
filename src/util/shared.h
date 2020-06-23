@@ -11,11 +11,13 @@
 #include <stdio.h>
 #include <complex>
 #include <vector>
+#include <map>
 #include <algorithm>
 #include <utility>
 #include <tuple>
 #include <cmath>
 #include <string>
+#include <assert.h>
 
 #ifdef CRITTER
 #include "critter.h"

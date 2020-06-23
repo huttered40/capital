@@ -33,9 +33,13 @@ int main(int argc, char** argv){
 
     for (size_t i=0; i<num_iter; i++){
       MPI_Barrier(MPI_COMM_WORLD);
+#ifdef CRITTER
       if (id != 3) critter::start(id);
+#endif
       trtri_type::invoke(A, pack, SquareTopo);
+#ifdef CRITTER
       if (id != 3) critter::stop(id,factor);
+#endif
       if (id==3){
         trtri_type::invoke(A, pack, SquareTopo);
 //        residual_error_local = trtri::validate<trtri_type>::residual(A, pack, SquareTopo);

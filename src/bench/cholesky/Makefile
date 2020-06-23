@@ -6,6 +6,6 @@ $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
 	rm *.o
 $(OBJS1).o: cholinv.cpp $(ALG)cholinv.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -D$(MPITYPE) -o $(OBJS1).o -c cholinv.cpp
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c cholinv.cpp
 clean:
 	-rm -f *.o *.err *.out *.gch $(BIN)$(OBJS1)

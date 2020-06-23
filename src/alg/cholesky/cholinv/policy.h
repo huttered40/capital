@@ -170,6 +170,9 @@ protected:
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
     auto localDimension = args.base_case_table[index_pair].num_columns_local();
     serialize<uppertri,uppertri>::invoke(args.R, args.base_case_table[index_pair], args.AstartX, args.AendX, args.AstartY, args.AendY,0,index_pair.first,0,index_pair.second);
+#ifdef COLLECTIVE_CONCURRENCY_SOLO
+    if (CommInfo.z==0)
+#endif
     MPI_Allgather(args.base_case_table[index_pair].data(), args.base_case_table[index_pair].num_elems(), mpi_type<T>::type, &args.base_case_blocked_table[index_pair][0],
                   args.base_case_table[index_pair].num_elems(), mpi_type<T>::type, CommInfo.slice);
     if (std::is_same<typename ArgTypeRR::SP,Serialize>::value){
@@ -276,8 +279,20 @@ protected:
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     int rankSlice; MPI_Comm_rank(CommInfo.slice, &rankSlice);
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY); auto aggregDim = index_pair.first*CommInfo.d;
-    MPI_Bcast(args.base_case_cyclic_table[index_pair].data(),aggregDim*aggregDim,mpi_type<T>::type,0,CommInfo.depth);
-    MPI_Bcast(args.base_case_cyclic_table[index_pair].scratch(),aggregDim*aggregDim,mpi_type<T>::type,0,CommInfo.depth);
+#ifdef COLLECTIVE_CONCURRENCY_SOLO
+    if (CommInfo.x==0 && CommInfo.y==0){
+#endif
+#ifdef COLLECTIVE_CONCURRENCY_LAYER
+    if (CommInfo.x==CommInfo.y){
+#endif
+      MPI_Bcast(args.base_case_cyclic_table[index_pair].data(),aggregDim*aggregDim,mpi_type<T>::type,0,CommInfo.depth);
+      MPI_Bcast(args.base_case_cyclic_table[index_pair].scratch(),aggregDim*aggregDim,mpi_type<T>::type,0,CommInfo.depth);
+#ifdef COLLECTIVE_CONCURRENCY_SOLO
+    }
+#endif
+#ifdef COLLECTIVE_CONCURRENCY_LAYER
+    }
+#endif
     util::cyclic_to_local(args.base_case_cyclic_table[index_pair].data(),args.base_case_cyclic_table[index_pair].scratch(), args.localDimension, aggregDim, CommInfo.d,rankSlice);
     serialize<uppertri,uppertri>::invoke(args.base_case_cyclic_table[index_pair], args.R, 0,index_pair.first,0,index_pair.second,args.AstartY, args.AendY, args.AstartY, args.AendY);
     args.base_case_cyclic_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
@@ -374,8 +389,20 @@ protected:
 #endif
     using ArgTypeRR = typename std::remove_reference<ArgType>::type; using T = typename ArgTypeRR::ScalarType;
     auto index_pair = std::make_pair(args.AendX-args.AstartX,args.AendY-args.AstartY);
-    MPI_Bcast(args.base_case_table[index_pair].data(),args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,0,CommInfo.depth);
-    MPI_Bcast(args.base_case_table[index_pair].scratch(),args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,0,CommInfo.depth);
+#ifdef COLLECTIVE_CONCURRENCY_SOLO
+    if (CommInfo.x==0 && CommInfo.y==0){
+#endif
+#ifdef COLLECTIVE_CONCURRENCY_LAYER
+    if (CommInfo.x==CommInfo.y){
+#endif
+      MPI_Bcast(args.base_case_table[index_pair].data(),args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,0,CommInfo.depth);
+      MPI_Bcast(args.base_case_table[index_pair].scratch(),args.base_case_table[index_pair].num_elems(),mpi_type<T>::type,0,CommInfo.depth);
+#ifdef COLLECTIVE_CONCURRENCY_SOLO
+    }
+#endif
+#ifdef COLLECTIVE_CONCURRENCY_LAYER
+    }
+#endif
     serialize<uppertri,uppertri>::invoke(args.base_case_table[index_pair], args.R, 0,index_pair.first,0,index_pair.second,args.AstartY, args.AendY, args.AstartY, args.AendY);
     args.base_case_table[index_pair].swap();	// puts the inverse buffer into the `data` member before final serialization
     serialize<uppertri,uppertri>::invoke(args.base_case_table[index_pair], args.Rinv,0,index_pair.first,0,index_pair.second,args.TIstartX, args.TIendX, args.TIstartY, args.TIendY);
