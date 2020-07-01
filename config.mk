@@ -4,7 +4,7 @@ BGQ=$(shell echo $(HOST) |grep 'mira\|cetus')
 THETA=$(shell echo $(HOST) |grep 'theta')
 STAMPEDE2=$(shell echo $(HOST) |grep 'stampede2')
 BLUEWATERS=$(shell echo $(HOST) |grep 'h2o')
-BIN=$(HOME)/camfs/src/bin/
+BIN=$(HOME)/camfs/bin/
 
 ifneq ($(STAMPEDE2),)
   critter_dir=$(HOME)/critter
