@@ -7,7 +7,7 @@ BLUEWATERS=$(shell echo $(HOST) |grep 'h2o')
 BIN=$(HOME)/camfs/src/bin/
 
 ifneq ($(STAMPEDE2),)
-  critter_dir=/home1/05608/tg849075/critter
+  critter_dir=$(HOME)/critter
   MACHINE=STAMPEDE2
   #CCMPI=scorep mpicxx
   CCMPI=mpicxx

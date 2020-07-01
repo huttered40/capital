@@ -1,6 +1,6 @@
 /* Author: Edward Hutter */
 
-#include "../../alg/matmult/summa/summa.h"
+#include "../../src/alg/matmult/summa/summa.h"
 
 using namespace std;
 
@@ -23,8 +23,6 @@ int main(int argc, char** argv){
   size_t layout        = atoi(argv[5]);// arranges sub-communicator layout
   size_t num_chunks    = atoi(argv[6]);
   size_t numIterations = atoi(argv[7]);
-  size_t factor        = atoi(argv[8]);// factor by which to multiply the critter stats internally
-  size_t id            = atoi(argv[9]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   auto mpi_dtype = mpi_type<T>::type;
   U pGridCubeDim = std::nearbyint(std::ceil(pow(size,1./3.)));
@@ -43,11 +41,11 @@ int main(int argc, char** argv){
     for (size_t i=0; i<numIterations; i++){
       MPI_Barrier(MPI_COMM_WORLD);		// make sure each process starts together
 #ifdef CRITTER
-      if (id != 3) critter::start(id);
+      critter::start();
 #endif
       matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
 #ifdef CRITTER
-      if (id != 3) critter::stop(id,factor);
+      critter::stop();
 #endif
     }
   }

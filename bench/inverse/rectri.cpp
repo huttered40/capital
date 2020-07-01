@@ -1,6 +1,6 @@
 /* Author: Edward Hutter */
 
-#include "../../alg/inverse/rectri/rectri.h"
+#include "../../src/alg/inverse/rectri/rectri.h"
 //#include "../../test/inverse/validate.h"
 
 using namespace std;
@@ -17,8 +17,6 @@ int main(int argc, char** argv){
   size_t layout     = atoi(argv[3]);// arranges sub-communicator layout
   size_t num_chunks = atoi(argv[4]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[5]);// number of simulations of the algorithm for performance testing
-  size_t factor     = atoi(argv[6]);// factor by which to multiply the critter stats internally
-  size_t id         = atoi(argv[7]);
 
   using trtri_type = typename inverse::rectri<policy::rectri::NoSerialize,policy::rectri::SaveIntermediates>;
   size_t process_cube_dim = std::nearbyint(std::ceil(pow(size,1./3.)));
@@ -35,18 +33,18 @@ int main(int argc, char** argv){
     for (size_t i=0; i<num_iter; i++){
       MPI_Barrier(MPI_COMM_WORLD);
 #ifdef CRITTER
-      if (id != 3) critter::start(id);
+      critter::start();
 #endif
       trtri_type::invoke(A, pack, SquareTopo);
 #ifdef CRITTER
-      if (id != 3) critter::stop(id,factor);
+      critter::stop();
 #endif
-      if (id==3){
+/*
         trtri_type::invoke(A, pack, SquareTopo);
 //        residual_error_local = trtri::validate<trtri_type>::residual(A, pack, SquareTopo);
         MPI_Reduce(&residual_error_local, &residual_error_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
         if (rank==0){ std::cout << residual_error_global << std::endl; }
-      }
+*/
     }
 
   }

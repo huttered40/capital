@@ -1,6 +1,6 @@
 /* Author: Edward Hutter */
 
-#include "../../alg/qr/cacqr/cacqr.h"
+#include "../../src/alg/qr/cacqr/cacqr.h"
 #include "../../test/qr/validate.h"
 
 using namespace std;
@@ -21,8 +21,6 @@ int main(int argc, char** argv){
   size_t layout     = atoi(argv[8]);// arranges sub-communicator layout
   size_t num_chunks = atoi(argv[9]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[10]);// number of simulations of the algorithm for performance testing
-  size_t factor     = atoi(argv[11]);// factor by which to multiply the critter stats internally
-  size_t id         = atoi(argv[12]);// 0 for critter-only, 1 for critter+production, 2 for critter+production+numerical
 
   using qr_type = qr::cacqr<qr::policy::cacqr::Serialize,qr::policy::cacqr::SaveIntermediates>;
   {
@@ -37,20 +35,20 @@ int main(int argc, char** argv){
     for (size_t i=0; i<num_iter; i++){
       MPI_Barrier(MPI_COMM_WORLD);
 #ifdef CRITTER
-      if (id != 3) critter::start(id);
+      critter::start();
 #endif
       qr_type::factor(A, pack, RectTopo);
 #ifdef CRITTER
-      if (id != 3) critter::stop(id,factor);
+      critter::stop();
 #endif
-      if (id==3){
-        qr_type::factor(A, pack, RectTopo);
-        auto residual_local = qr::validate<qr_type>::residual(A,pack,RectTopo);
-        auto orthogonality_local = qr::validate<qr_type>::orthogonality(A,pack,RectTopo);
-        MPI_Reduce(&residual_local,&residual_error,1,mpi_dtype,MPI_MAX,0,MPI_COMM_WORLD);
-        MPI_Reduce(&orthogonality_local,&orthogonality_error,1,mpi_dtype,MPI_MAX,0,MPI_COMM_WORLD);
-        if (rank==0){ std::cout << residual_error << " " << orthogonality_error << std::endl; }
-      }
+/*
+      qr_type::factor(A, pack, RectTopo);
+      auto residual_local = qr::validate<qr_type>::residual(A,pack,RectTopo);
+      auto orthogonality_local = qr::validate<qr_type>::orthogonality(A,pack,RectTopo);
+      MPI_Reduce(&residual_local,&residual_error,1,mpi_dtype,MPI_MAX,0,MPI_COMM_WORLD);
+      MPI_Reduce(&orthogonality_local,&orthogonality_error,1,mpi_dtype,MPI_MAX,0,MPI_COMM_WORLD);
+      if (rank==0){ std::cout << residual_error << " " << orthogonality_error << std::endl; }
+*/
     }
   }
   MPI_Finalize();

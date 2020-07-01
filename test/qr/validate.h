@@ -3,7 +3,7 @@
 #ifndef QR__VALIDATE_H_
 #define QR__VALIDATE_H_
 
-#include "../../alg/alg.h"
+#include "../../src/alg/alg.h"
 
 // These static methods will take the matrix in question, distributed in some fashion across the processors
 //   and use them to calculate the residual or error.
