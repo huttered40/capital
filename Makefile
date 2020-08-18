@@ -8,7 +8,7 @@ cacqr:
 	make -C./bench/qr/ cacqr
 
 cholinv:
-	make -C./bench/cholesky/ cholinv
+	make -C./bench/cholesky/ all
 
 rectri:
 	make -C./bench/inverse/ rectri

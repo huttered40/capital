@@ -21,9 +21,7 @@ int main(int argc, char** argv){
   size_t num_chunks = atoi(argv[7]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[8]);// number of simulations of the algorithm for performance testing
 
-  using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
-//  using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicationCommComp>;
-//  using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicateComp>;
+  using cholesky_type = typename cholesky::cholinv<policy::cholinv::Serialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
   size_t process_cube_dim = std::nearbyint(std::ceil(pow(size,1./3.)));
   size_t rep_factor = process_cube_dim/rep_div; double time_global;
   T residual_error_local,residual_error_global; auto mpi_dtype = mpi_type<T>::type;
@@ -32,16 +30,69 @@ int main(int argc, char** argv){
     MatrixType A(num_rows,num_rows, SquareTopo.d, SquareTopo.d);
     A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     // Generate algorithmic structure via instantiating packs
-    cholesky_type::info<T,U> pack(complete_inv,split,bcMultiplier,dir);
-    // Warm cache and BLAS/LAPACK/MPI routines
-    cholesky_type::factor(A, pack, SquareTopo);
+    cholesky_type::info<T,U> pack0(complete_inv,split,bcMultiplier,dir);
+    cholesky_type::info<T,U> pack1(complete_inv,split,bcMultiplier+1,dir);
+    cholesky_type::info<T,U> pack2(complete_inv,split,bcMultiplier+2,dir);
+    cholesky_type::info<T,U> pack3(complete_inv,split,bcMultiplier+3,dir);
+    cholesky_type::info<T,U> pack4(complete_inv,split,bcMultiplier+4,dir);
+    cholesky_type::info<T,U> pack5(complete_inv,split,bcMultiplier+5,dir);
 
     for (size_t i=0; i<num_iter; i++){
       MPI_Barrier(MPI_COMM_WORLD);
 #ifdef CRITTER
       critter::start();
 #endif
-      cholesky_type::factor(A, pack, SquareTopo);
+      cholesky_type::factor(A, pack0, SquareTopo);
+#ifdef CRITTER
+      critter::stop();
+#endif
+#ifdef CRITTER
+      critter::start();
+#endif
+      cholesky_type::factor(A, pack0, SquareTopo);
+      cholesky_type::factor(A, pack1, SquareTopo);
+#ifdef CRITTER
+      critter::stop();
+#endif
+#ifdef CRITTER
+      critter::start();
+#endif
+      cholesky_type::factor(A, pack0, SquareTopo);
+      cholesky_type::factor(A, pack1, SquareTopo);
+      cholesky_type::factor(A, pack2, SquareTopo);
+#ifdef CRITTER
+      critter::stop();
+#endif
+#ifdef CRITTER
+      critter::start();
+#endif
+      cholesky_type::factor(A, pack0, SquareTopo);
+      cholesky_type::factor(A, pack1, SquareTopo);
+      cholesky_type::factor(A, pack2, SquareTopo);
+      cholesky_type::factor(A, pack3, SquareTopo);
+#ifdef CRITTER
+      critter::stop();
+#endif
+#ifdef CRITTER
+      critter::start();
+#endif
+      cholesky_type::factor(A, pack0, SquareTopo);
+      cholesky_type::factor(A, pack1, SquareTopo);
+      cholesky_type::factor(A, pack2, SquareTopo);
+      cholesky_type::factor(A, pack3, SquareTopo);
+      cholesky_type::factor(A, pack4, SquareTopo);
+#ifdef CRITTER
+      critter::stop();
+#endif
+#ifdef CRITTER
+      critter::start();
+#endif
+      cholesky_type::factor(A, pack0, SquareTopo);
+      cholesky_type::factor(A, pack1, SquareTopo);
+      cholesky_type::factor(A, pack2, SquareTopo);
+      cholesky_type::factor(A, pack3, SquareTopo);
+      cholesky_type::factor(A, pack4, SquareTopo);
+      cholesky_type::factor(A, pack5, SquareTopo);
 #ifdef CRITTER
       critter::stop();
 #endif

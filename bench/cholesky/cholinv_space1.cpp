@@ -1,5 +1,7 @@
 /* Author: Edward Hutter */
 
+#include <iomanip>
+
 #include "../../src/alg/cholesky/cholinv/cholinv.h"
 #include "../../test/cholesky/validate.h"
 
@@ -21,6 +23,8 @@ int main(int argc, char** argv){
   size_t num_chunks = atoi(argv[7]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[8]);// number of simulations of the algorithm for performance testing
 
+  size_t width = 18;
+
   using cholesky_type0 = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
   using cholesky_type1 = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicateCommComp>;
   using cholesky_type2 = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicateComp>;
@@ -33,358 +37,250 @@ int main(int argc, char** argv){
     A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     // Generate algorithmic structure via instantiating packs
 
-    // First attain the "true" execution times for each variant
-
-    for (size_t i=0; i<num_iter; i++){
-      MPI_Barrier(MPI_COMM_WORLD);
-      volatile double st = MPI_Wtime();
-      for (auto j=0; j<3; j++){
-        for (auto k=0; k<15; k++){
-          if (k==0){
-            cholesky_type0::info<T,U> pack0_0(complete_inv,split,bcMultiplier,dir);
-            critter::start(false,true);
-            cholesky_type0::factor(A, pack0_0, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==1){
-            cholesky_type0::info<T,U> pack1_0(complete_inv,split,bcMultiplier+1,dir);
-            critter::start(false,true);
-            cholesky_type0::factor(A, pack1_0, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==2){
-            cholesky_type0::info<T,U> pack2_0(complete_inv,split,bcMultiplier+2,dir);
-            critter::start(false,true);
-            cholesky_type0::factor(A, pack2_0, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==3){
-            cholesky_type0::info<T,U> pack3_0(complete_inv,split,bcMultiplier+3,dir);
-            critter::start(false,true);
-            cholesky_type0::factor(A, pack3_0, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==4){
-            cholesky_type0::info<T,U> pack4_0(complete_inv,split,bcMultiplier+4,dir);
-            critter::start(false,true);
-            cholesky_type0::factor(A, pack4_0, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==5){
-            cholesky_type1::info<T,U> pack0_1(complete_inv,split,bcMultiplier,dir);
-            critter::start(false,true);
-            cholesky_type1::factor(A, pack0_1, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==6){
-            cholesky_type1::info<T,U> pack1_1(complete_inv,split,bcMultiplier+1,dir);
-            critter::start(false,true);
-            cholesky_type1::factor(A, pack1_1, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==7){
-            cholesky_type1::info<T,U> pack2_1(complete_inv,split,bcMultiplier+2,dir);
-            critter::start(false,true);
-            cholesky_type1::factor(A, pack2_1, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==8){
-            cholesky_type1::info<T,U> pack3_1(complete_inv,split,bcMultiplier+3,dir);
-            critter::start(false,true);
-            cholesky_type1::factor(A, pack3_1, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==9){
-            cholesky_type1::info<T,U> pack4_1(complete_inv,split,bcMultiplier+4,dir);
-            critter::start(false,true);
-            cholesky_type1::factor(A, pack4_1, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==10){
-            cholesky_type2::info<T,U> pack0_2(complete_inv,split,bcMultiplier,dir);
-            critter::start(false,true);
-            cholesky_type2::factor(A, pack0_2, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==11){
-            cholesky_type2::info<T,U> pack1_2(complete_inv,split,bcMultiplier+1,dir);
-            critter::start(false,true);
-            cholesky_type2::factor(A, pack1_2, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==12){
-            cholesky_type2::info<T,U> pack2_2(complete_inv,split,bcMultiplier+2,dir);
-            critter::start(false,true);
-            cholesky_type2::factor(A, pack2_2, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==13){
-            cholesky_type2::info<T,U> pack3_2(complete_inv,split,bcMultiplier+3,dir);
-            critter::start(false,true);
-            cholesky_type2::factor(A, pack3_2, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==14){
-            cholesky_type2::info<T,U> pack4_2(complete_inv,split,bcMultiplier+4,dir);
-            critter::start(false,true);
-            cholesky_type2::factor(A, pack4_2, SquareTopo);
-            critter::stop(false,true,false);
-            if (rank==0) std::cout << "progress stage 1 " << i << " " << j << " " << k << std::endl;
-          }
-        }
-      }
-      st = MPI_Wtime() - st;
-      if (rank==0) std::cout << "wallclock time of stage 1 - " << st << std::endl;
-    }
-
-
-    // Next tune the parameterization space
-
-    for (size_t i=0; i<num_iter; i++){
-      MPI_Barrier(MPI_COMM_WORLD);
-#ifdef CRITTER
-      critter::start(true,false);
-#endif
-      volatile double st = MPI_Wtime();
-      for (auto j=0; j<5; j++){
-        for (auto k=0; k<15; k++){
-          if (k==0){
-            cholesky_type0::info<T,U> pack0_0(complete_inv,split,bcMultiplier,dir);
-            cholesky_type0::factor(A, pack0_0, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==1){
-            cholesky_type0::info<T,U> pack1_0(complete_inv,split,bcMultiplier+1,dir);
-            cholesky_type0::factor(A, pack1_0, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==2){
-            cholesky_type0::info<T,U> pack2_0(complete_inv,split,bcMultiplier+2,dir);
-            cholesky_type0::factor(A, pack2_0, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==3){
-            cholesky_type0::info<T,U> pack3_0(complete_inv,split,bcMultiplier+3,dir);
-            cholesky_type0::factor(A, pack3_0, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==4){
-            cholesky_type0::info<T,U> pack4_0(complete_inv,split,bcMultiplier+4,dir);
-            cholesky_type0::factor(A, pack4_0, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==5){
-            cholesky_type1::info<T,U> pack0_1(complete_inv,split,bcMultiplier,dir);
-            cholesky_type1::factor(A, pack0_1, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==6){
-            cholesky_type1::info<T,U> pack1_1(complete_inv,split,bcMultiplier+1,dir);
-            cholesky_type1::factor(A, pack1_1, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==7){
-            cholesky_type1::info<T,U> pack2_1(complete_inv,split,bcMultiplier+2,dir);
-            cholesky_type1::factor(A, pack2_1, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==8){
-            cholesky_type1::info<T,U> pack3_1(complete_inv,split,bcMultiplier+3,dir);
-            cholesky_type1::factor(A, pack3_1, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==9){
-            cholesky_type1::info<T,U> pack4_1(complete_inv,split,bcMultiplier+4,dir);
-            cholesky_type1::factor(A, pack4_1, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==10){
-            cholesky_type2::info<T,U> pack0_2(complete_inv,split,bcMultiplier,dir);
-            cholesky_type2::factor(A, pack0_2, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==11){
-            cholesky_type2::info<T,U> pack1_2(complete_inv,split,bcMultiplier+1,dir);
-            cholesky_type2::factor(A, pack1_2, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==12){
-            cholesky_type2::info<T,U> pack2_2(complete_inv,split,bcMultiplier+2,dir);
-            cholesky_type2::factor(A, pack2_2, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==13){
-            cholesky_type2::info<T,U> pack3_2(complete_inv,split,bcMultiplier+3,dir);
-            cholesky_type2::factor(A, pack3_2, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==14){
-            cholesky_type2::info<T,U> pack4_2(complete_inv,split,bcMultiplier+4,dir);
-            cholesky_type2::factor(A, pack4_2, SquareTopo);
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank==0) std::cout << "progress stage 2 - " << i << " " << j << " " << k << std::endl;
-          }
-        }
-      }
-      st = MPI_Wtime() - st;
-#ifdef CRITTER
-      critter::stop(true,false);
-#endif
-      if (rank==0) std::cout << "wallclock time for stage 2 (autotuning) - " << st << std::endl;
+    size_t space_dim = 15;
+    vector<double> save_data(num_iter*space_dim*(5+11));	// '5' from the exec times of the 5 stages. '9' from the 9 data members we'd like to print
 /*
-      cholesky_type::factor(A, pack, SquareTopo);
-      residual_error_local = cholesky::validate<cholesky_type>::residual(A, pack, SquareTopo);
-      MPI_Reduce(&residual_error_local, &residual_error_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
-      if (rank==0){ std::cout << residual_error_global << std::endl; }
-*/
-    }
+    // First: attain the "true" execution times for each variant
 
-    // Stage 3: evaluate the estimated execution times using the autotuned parameterization space
-
-    for (size_t i=0; i<num_iter; i++){
-      MPI_Barrier(MPI_COMM_WORLD);
-      volatile double st = MPI_Wtime();
-      for (auto j=0; j<3; j++){
-        for (auto k=0; k<15; k++){
-          if (k==0){
-            cholesky_type0::info<T,U> pack0_0(complete_inv,split,bcMultiplier,dir);
-            critter::start(true,false);
-            cholesky_type0::factor(A, pack0_0, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==1){
-            cholesky_type0::info<T,U> pack1_0(complete_inv,split,bcMultiplier+1,dir);
-            critter::start(true,false);
-            cholesky_type0::factor(A, pack1_0, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==2){
-            cholesky_type0::info<T,U> pack2_0(complete_inv,split,bcMultiplier+2,dir);
-            critter::start(true,false);
-            cholesky_type0::factor(A, pack2_0, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==3){
-            cholesky_type0::info<T,U> pack3_0(complete_inv,split,bcMultiplier+3,dir);
-            critter::start(true,false);
-            cholesky_type0::factor(A, pack3_0, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==4){
-            cholesky_type0::info<T,U> pack4_0(complete_inv,split,bcMultiplier+4,dir);
-            critter::start(true,false);
-            cholesky_type0::factor(A, pack4_0, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==5){
-            cholesky_type1::info<T,U> pack0_1(complete_inv,split,bcMultiplier,dir);
-            critter::start(true,false);
-            cholesky_type1::factor(A, pack0_1, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==6){
-            cholesky_type1::info<T,U> pack1_1(complete_inv,split,bcMultiplier+1,dir);
-            critter::start(true,false);
-            cholesky_type1::factor(A, pack1_1, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==7){
-            cholesky_type1::info<T,U> pack2_1(complete_inv,split,bcMultiplier+2,dir);
-            critter::start(true,false);
-            cholesky_type1::factor(A, pack2_1, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==8){
-            cholesky_type1::info<T,U> pack3_1(complete_inv,split,bcMultiplier+3,dir);
-            critter::start(true,false);
-            cholesky_type1::factor(A, pack3_1, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==9){
-            cholesky_type1::info<T,U> pack4_1(complete_inv,split,bcMultiplier+4,dir);
-            critter::start(true,false);
-            cholesky_type1::factor(A, pack4_1, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==10){
-            cholesky_type2::info<T,U> pack0_2(complete_inv,split,bcMultiplier,dir);
-            critter::start(true,false);
-            cholesky_type2::factor(A, pack0_2, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==11){
-            cholesky_type2::info<T,U> pack1_2(complete_inv,split,bcMultiplier+1,dir);
-            critter::start(true,false);
-            cholesky_type2::factor(A, pack1_2, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==12){
-            cholesky_type2::info<T,U> pack2_2(complete_inv,split,bcMultiplier+2,dir);
-            critter::start(true,false);
-            cholesky_type2::factor(A, pack2_2, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==13){
-            cholesky_type2::info<T,U> pack3_2(complete_inv,split,bcMultiplier+3,dir);
-            critter::start(true,false);
-            cholesky_type2::factor(A, pack3_2, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
-          else if (k==14){
-            cholesky_type2::info<T,U> pack4_2(complete_inv,split,bcMultiplier+4,dir);
-            critter::start(true,false);
-            cholesky_type2::factor(A, pack4_2, SquareTopo);
-            critter::stop(true,false,false);
-            if (rank==0) std::cout << "progress stage 3 - " << i << " " << j << " " << k << std::endl;
-          }
+    MPI_Barrier(MPI_COMM_WORLD);
+    volatile double st0 = MPI_Wtime();
+    for (auto k=0; k<space_dim; k++){
+      if (k/5==0){
+        cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          volatile double _st = MPI_Wtime();
+          cholesky_type0::factor(A,pack,SquareTopo);
+          volatile double _st_ = MPI_Wtime();
+          double total_time = _st_-_st;
+          PMPI_Allreduce(MPI_IN_PLACE,&total_time,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
+          save_data[k*num_iter+i] = total_time;
         }
       }
-      st = MPI_Wtime() - st;
-      if (rank==0) std::cout << "wallclock time of stage 1 - " << st << std::endl;
+      else if (k/5==1){
+        cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          volatile double _st = MPI_Wtime();
+          cholesky_type1::factor(A,pack,SquareTopo);
+          volatile double _st_ = MPI_Wtime();
+          double total_time = _st_-_st;
+          PMPI_Allreduce(MPI_IN_PLACE,&total_time,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
+          save_data[k*num_iter+i] = total_time;
+        }
+      }
+      else if (k/5==2){
+        cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          volatile double _st = MPI_Wtime();
+          cholesky_type2::factor(A,pack,SquareTopo);
+          volatile double _st_ = MPI_Wtime();
+          double total_time = _st_-_st;
+          PMPI_Allreduce(MPI_IN_PLACE,&total_time,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
+          save_data[k*num_iter+i] = total_time;
+        }
+      }
+      if (rank==0) std::cout << "progress stage 0 - " << k << std::endl;
     }
+    st0 = MPI_Wtime() - st0;
+    if (rank==0) std::cout << "wallclock time of stage 0 - " << st0 << std::endl;
 
+    // First: attain the "true" execution times for each variant
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    volatile double st1 = MPI_Wtime();
+    for (auto k=0; k<space_dim; k++){
+      if (k/5==0){
+        cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          critter::start(false,true);
+          cholesky_type0::factor(A,pack,SquareTopo);
+          critter::stop(&save_data[num_iter*space_dim+k*num_iter+i],false,true,false);
+        }
+      }
+      else if (k/5==1){
+        cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          critter::start(false,true);
+          cholesky_type1::factor(A,pack,SquareTopo);
+          critter::stop(&save_data[num_iter*space_dim+k*num_iter+i],false,true,false);
+        }
+      }
+      else if (k/5==2){
+        cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          critter::start(false,true);
+          cholesky_type2::factor(A,pack,SquareTopo);
+          critter::stop(&save_data[num_iter*space_dim+k*num_iter+i],false,true,false);
+        }
+      }
+      if (rank==0) std::cout << "progress stage 1 - " << k << std::endl;
+    }
+    st1 = MPI_Wtime() - st1;
+    if (rank==0) std::cout << "wallclock time of stage 1 - " << st1 << std::endl;
+
+    // Second: attain the execution times without scheduling any intercepted kernels 
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    volatile double st2 = MPI_Wtime();
+    for (auto k=0; k<space_dim; k++){
+      if (k/5==0){
+        cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          critter::start(false,true,false);
+          volatile double _st = MPI_Wtime();
+          cholesky_type0::factor(A,pack,SquareTopo);
+          volatile double _st_ = MPI_Wtime();
+          critter::stop(nullptr,false,true,false);
+          save_data[3*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+        }
+      }
+      else if (k/5==1){
+        cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          critter::start(false,true,false);
+          volatile double _st = MPI_Wtime();
+          cholesky_type1::factor(A,pack,SquareTopo);
+          volatile double _st_ = MPI_Wtime();
+          critter::stop(nullptr,false,true,false);
+          save_data[3*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+        }
+      }
+      else if (k/5==2){
+        cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          critter::start(false,true,false);
+          volatile double _st = MPI_Wtime();
+          cholesky_type2::factor(A,pack,SquareTopo);
+          volatile double _st_ = MPI_Wtime();
+          critter::stop(nullptr,false,true,false);
+          save_data[3*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+        }
+      }
+      if (rank==0) std::cout << "progress stage 2 - " << k << std::endl;
+    }
+    st2 = MPI_Wtime() - st2;
+    if (rank==0) std::cout << "wallclock time of stage 2 - " << st2 << std::endl;
+*/
+    // Third: tune the parameterization space
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    critter::start(true,false);
+    volatile double st3 = MPI_Wtime();
+    for (auto k=0; k<space_dim; k++){
+      if (k/5==0){
+        cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          cholesky_type0::factor(A,pack,SquareTopo);
+          MPI_Barrier(MPI_COMM_WORLD);
+          if (rank==0) std::cout << "in stage 3 - " << k << "\n";
+        }
+      }
+      else if (k/5==1){
+        cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          cholesky_type1::factor(A,pack,SquareTopo);
+          MPI_Barrier(MPI_COMM_WORLD);
+          if (rank==0) std::cout << "in stage 3 - " << k << "\n";
+        }
+      }
+      else if (k/5==2){
+        cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          cholesky_type2::factor(A,pack,SquareTopo);
+          MPI_Barrier(MPI_COMM_WORLD);
+          if (rank==0) std::cout << "in stage 3 - " << k << "\n";
+        }
+      }
+      if (rank==0) std::cout << "progress stage 3 - " << k << std::endl;
+    }
+    st3 = MPI_Wtime() - st3;
+    critter::stop(nullptr,true,false);
+    if (rank==0) std::cout << "wallclock time of stage 3 - " << st3 << std::endl;
+
+    // Stage 4: evaluate the estimated execution times using the autotuned parameterization space
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    volatile double st4 = MPI_Wtime();
+    for (auto k=0; k<space_dim; k++){
+      if (k/5==0){
+        cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          critter::start(true,false,true,true,false);
+          volatile double _st = MPI_Wtime();
+          cholesky_type0::factor(A,pack,SquareTopo);
+          volatile double _st_ = MPI_Wtime();
+          critter::stop(&save_data[5*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+          save_data[4*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+        }
+      }
+      else if (k/5==1){
+        cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          critter::start(true,false,true,true,false);
+          volatile double _st = MPI_Wtime();
+          cholesky_type1::factor(A,pack,SquareTopo);
+          volatile double _st_ = MPI_Wtime();
+          critter::stop(&save_data[5*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+          save_data[4*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+        }
+      }
+      else if (k/5==2){
+        cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        for (size_t i=0; i<num_iter; i++){
+          critter::start(true,false,true,true,false);
+          volatile double _st = MPI_Wtime();
+          cholesky_type2::factor(A,pack,SquareTopo);
+          volatile double _st_ = MPI_Wtime();
+          critter::stop(&save_data[5*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+          save_data[4*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+        }
+      }
+      if (rank==0) std::cout << "progress stage 4 - " << k << std::endl;
+    }
+    st4 = MPI_Wtime() - st4;
+    if (rank==0) std::cout << "wallclock time of stage 4 - " << st4 << std::endl;
+
+    // Print out autotuning data
+    if (rank==0){
+      std::cout << std::left << std::setw(width) << "ID";
+      std::cout << std::left << std::setw(width) << "NoSchedET";
+      std::cout << std::left << std::setw(width) << "ETcrit";
+      std::cout << std::left << std::setw(width) << "ETnocrit";
+      std::cout << std::left << std::setw(width) << "EstET";
+      std::cout << std::left << std::setw(width) << "EstETwOh";
+      std::cout << std::left << std::setw(width) << "EstET_Scomp";
+      std::cout << std::left << std::setw(width) << "EstET_NScomp";
+      std::cout << std::left << std::setw(width) << "EstET_Sflops";
+      std::cout << std::left << std::setw(width) << "EstET_NSflops";
+      std::cout << std::left << std::setw(width) << "EstET_Scomm";
+      std::cout << std::left << std::setw(width) << "EstET_NScomm";
+      std::cout << std::left << std::setw(width) << "EstET_Sbytes";
+      std::cout << std::left << std::setw(width) << "EstET_NSbytes";
+      std::cout << std::left << std::setw(width) << "EstET_Sprops";
+      std::cout << std::left << std::setw(width) << "EstET_Nprops";
+      std::cout << std::endl;
+
+      for (size_t k=0; k<space_dim; k++){
+        for (size_t i=0; i<num_iter; i++){
+          std::cout << std::left << std::setw(width) << k;
+          std::cout << std::left << std::setw(width) << save_data[3*space_dim*num_iter+k*num_iter+i];
+          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+k*num_iter+i];
+          std::cout << std::left << std::setw(width) << save_data[0*space_dim*num_iter+k*num_iter+i];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+0];
+          std::cout << std::left << std::setw(width) << save_data[4*space_dim*num_iter+k*num_iter+i];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+1];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+2];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+3];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+4];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+5];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+6];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+7];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+8];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+9];
+          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+10];
+          std::cout << std::endl;
+        }
+      }
+    }
 
   }
   MPI_Finalize();
