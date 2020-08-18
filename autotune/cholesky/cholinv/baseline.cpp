@@ -2,8 +2,8 @@
 
 #include <iomanip>
 
-#include "../../src/alg/cholesky/cholinv/cholinv.h"
-#include "../../test/cholesky/validate.h"
+#include "../../../src/alg/cholesky/cholinv/cholinv.h"
+#include "../../../test/cholesky/validate.h"
 
 using namespace std;
 
@@ -132,15 +132,15 @@ int main(int argc, char** argv){
     // Print out autotuning data
     if (rank==0){
       std::cout << std::left << std::setw(width) << "ID";
-      std::cout << std::left << std::setw(width) << "ETcrit";
-      std::cout << std::left << std::setw(width) << "ETnocrit";
+      std::cout << std::left << std::setw(width) << "ET";
+      std::cout << std::left << std::setw(width) << "ETcritter";
       std::cout << std::endl;
 
       for (size_t k=0; k<space_dim; k++){
         for (size_t i=0; i<num_iter; i++){
           std::cout << std::left << std::setw(width) << k;
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+k*num_iter+i];
           std::cout << std::left << std::setw(width) << save_data[0*space_dim*num_iter+k*num_iter+i];
+          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+k*num_iter+i];
           std::cout << std::endl;
         }
       }

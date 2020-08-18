@@ -2,8 +2,8 @@
 
 #include <iomanip>
 
-#include "../../src/alg/cholesky/cholinv/cholinv.h"
-#include "../../test/cholesky/validate.h"
+#include "../../../src/alg/cholesky/cholinv/cholinv.h"
+#include "../../../test/cholesky/validate.h"
 
 using namespace std;
 
@@ -57,7 +57,7 @@ int main(int argc, char** argv){
 #ifdef CRITTER
           critter::stop(nullptr,false,true,false);
 #endif
-          save_data[3*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+          save_data[0*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
       else if (k/5==1){
@@ -72,7 +72,7 @@ int main(int argc, char** argv){
 #ifdef CRITTER
           critter::stop(nullptr,false,true,false);
 #endif
-          save_data[3*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+          save_data[0*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
       else if (k/5==2){
@@ -87,13 +87,13 @@ int main(int argc, char** argv){
 #ifdef CRITTER
           critter::stop(nullptr,false,true,false);
 #endif
-          save_data[3*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+          save_data[0*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
-      if (rank==0) std::cout << "progress stage 2 - " << k << std::endl;
+      if (rank==0) std::cout << "progress stage 0 - " << k << std::endl;
     }
     st2 = MPI_Wtime() - st2;
-    if (rank==0) std::cout << "wallclock time of stage 2 - " << st2 << std::endl;
+    if (rank==0) std::cout << "wallclock time of stage 0 - " << st2 << std::endl;
 
     // Stage 2: tune the parameterization space
 
@@ -108,7 +108,7 @@ int main(int argc, char** argv){
         for (size_t i=0; i<num_iter; i++){
           cholesky_type0::factor(A,pack,SquareTopo);
           MPI_Barrier(MPI_COMM_WORLD);
-          if (rank==0) std::cout << "in stage 3 - " << k << "\n";
+          if (rank==0) std::cout << "in stage 1 - " << k << "\n";
         }
       }
       else if (k/5==1){
@@ -116,7 +116,7 @@ int main(int argc, char** argv){
         for (size_t i=0; i<num_iter; i++){
           cholesky_type1::factor(A,pack,SquareTopo);
           MPI_Barrier(MPI_COMM_WORLD);
-          if (rank==0) std::cout << "in stage 3 - " << k << "\n";
+          if (rank==0) std::cout << "in stage 1 - " << k << "\n";
         }
       }
       else if (k/5==2){
@@ -124,16 +124,16 @@ int main(int argc, char** argv){
         for (size_t i=0; i<num_iter; i++){
           cholesky_type2::factor(A,pack,SquareTopo);
           MPI_Barrier(MPI_COMM_WORLD);
-          if (rank==0) std::cout << "in stage 3 - " << k << "\n";
+          if (rank==0) std::cout << "in stage 1 - " << k << "\n";
         }
       }
-      if (rank==0) std::cout << "progress stage 3 - " << k << std::endl;
+      if (rank==0) std::cout << "progress stage 1 - " << k << std::endl;
     }
     st3 = MPI_Wtime() - st3;
 #ifdef CRITTER
     critter::stop(nullptr,true,false);
 #endif
-    if (rank==0) std::cout << "wallclock time of stage 3 - " << st3 << std::endl;
+    if (rank==0) std::cout << "wallclock time of stage 1 - " << st3 << std::endl;
 
     // Stage 3: evaluate the estimated execution times using the autotuned parameterization space
 
@@ -150,9 +150,9 @@ int main(int argc, char** argv){
           cholesky_type0::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
-          critter::stop(&save_data[5*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+          critter::stop(&save_data[2*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
 #endif
-          save_data[4*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+          save_data[1*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
       else if (k/5==1){
@@ -165,9 +165,9 @@ int main(int argc, char** argv){
           cholesky_type1::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
-          critter::stop(&save_data[5*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+          critter::stop(&save_data[2*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
 #endif
-          save_data[4*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+          save_data[1*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
       else if (k/5==2){
@@ -180,24 +180,22 @@ int main(int argc, char** argv){
           cholesky_type2::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
-          critter::stop(&save_data[5*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+          critter::stop(&save_data[2*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
 #endif
-          save_data[4*num_iter*space_dim+k*num_iter+i] = _st_-_st;
+          save_data[1*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
-      if (rank==0) std::cout << "progress stage 4 - " << k << std::endl;
+      if (rank==0) std::cout << "progress stage 2 - " << k << std::endl;
     }
     st4 = MPI_Wtime() - st4;
-    if (rank==0) std::cout << "wallclock time of stage 4 - " << st4 << std::endl;
+    if (rank==0) std::cout << "wallclock time of stage 2 - " << st4 << std::endl;
 
     // Print out autotuning data
     if (rank==0){
       std::cout << std::left << std::setw(width) << "ID";
       std::cout << std::left << std::setw(width) << "NoSchedET";
-      std::cout << std::left << std::setw(width) << "ETcrit";
-      std::cout << std::left << std::setw(width) << "ETnocrit";
+      std::cout << std::left << std::setw(width) << "PostAutoOverhead";
       std::cout << std::left << std::setw(width) << "EstET";
-      std::cout << std::left << std::setw(width) << "EstETwOh";
       std::cout << std::left << std::setw(width) << "EstET_Scomp";
       std::cout << std::left << std::setw(width) << "EstET_NScomp";
       std::cout << std::left << std::setw(width) << "EstET_Sflops";
@@ -213,21 +211,19 @@ int main(int argc, char** argv){
       for (size_t k=0; k<space_dim; k++){
         for (size_t i=0; i<num_iter; i++){
           std::cout << std::left << std::setw(width) << k;
-          std::cout << std::left << std::setw(width) << save_data[3*space_dim*num_iter+k*num_iter+i];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+k*num_iter+i];
           std::cout << std::left << std::setw(width) << save_data[0*space_dim*num_iter+k*num_iter+i];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+0];
-          std::cout << std::left << std::setw(width) << save_data[4*space_dim*num_iter+k*num_iter+i];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+1];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+2];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+3];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+4];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+5];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+6];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+7];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+8];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+9];
-          std::cout << std::left << std::setw(width) << save_data[5*space_dim*num_iter+11*(k*num_iter+i)+10];
+          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+k*num_iter+i];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+0];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+1];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+2];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+3];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+4];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+5];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+6];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+7];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+8];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+9];
+          std::cout << std::left << std::setw(width) << save_data[2*space_dim*num_iter+11*(k*num_iter+i)+10];
           std::cout << std::endl;
         }
       }
