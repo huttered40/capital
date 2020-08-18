@@ -38,86 +38,9 @@ int main(int argc, char** argv){
     // Generate algorithmic structure via instantiating packs
 
     size_t space_dim = 15;
-    vector<double> save_data(num_iter*space_dim*(5+11));	// '5' from the exec times of the 5 stages. '9' from the 9 data members we'd like to print
-/*
-    // First: attain the "true" execution times for each variant
+    vector<double> save_data(num_iter*space_dim*(3+11));	// '5' from the exec times of the 5 stages. '9' from the 9 data members we'd like to print
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    volatile double st0 = MPI_Wtime();
-    for (auto k=0; k<space_dim; k++){
-      if (k/5==0){
-        cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-        for (size_t i=0; i<num_iter; i++){
-          volatile double _st = MPI_Wtime();
-          cholesky_type0::factor(A,pack,SquareTopo);
-          volatile double _st_ = MPI_Wtime();
-          double total_time = _st_-_st;
-          PMPI_Allreduce(MPI_IN_PLACE,&total_time,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
-          save_data[k*num_iter+i] = total_time;
-        }
-      }
-      else if (k/5==1){
-        cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-        for (size_t i=0; i<num_iter; i++){
-          volatile double _st = MPI_Wtime();
-          cholesky_type1::factor(A,pack,SquareTopo);
-          volatile double _st_ = MPI_Wtime();
-          double total_time = _st_-_st;
-          PMPI_Allreduce(MPI_IN_PLACE,&total_time,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
-          save_data[k*num_iter+i] = total_time;
-        }
-      }
-      else if (k/5==2){
-        cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-        for (size_t i=0; i<num_iter; i++){
-          volatile double _st = MPI_Wtime();
-          cholesky_type2::factor(A,pack,SquareTopo);
-          volatile double _st_ = MPI_Wtime();
-          double total_time = _st_-_st;
-          PMPI_Allreduce(MPI_IN_PLACE,&total_time,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
-          save_data[k*num_iter+i] = total_time;
-        }
-      }
-      if (rank==0) std::cout << "progress stage 0 - " << k << std::endl;
-    }
-    st0 = MPI_Wtime() - st0;
-    if (rank==0) std::cout << "wallclock time of stage 0 - " << st0 << std::endl;
-
-    // First: attain the "true" execution times for each variant
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    volatile double st1 = MPI_Wtime();
-    for (auto k=0; k<space_dim; k++){
-      if (k/5==0){
-        cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-        for (size_t i=0; i<num_iter; i++){
-          critter::start(false,true);
-          cholesky_type0::factor(A,pack,SquareTopo);
-          critter::stop(&save_data[num_iter*space_dim+k*num_iter+i],false,true,false);
-        }
-      }
-      else if (k/5==1){
-        cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-        for (size_t i=0; i<num_iter; i++){
-          critter::start(false,true);
-          cholesky_type1::factor(A,pack,SquareTopo);
-          critter::stop(&save_data[num_iter*space_dim+k*num_iter+i],false,true,false);
-        }
-      }
-      else if (k/5==2){
-        cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-        for (size_t i=0; i<num_iter; i++){
-          critter::start(false,true);
-          cholesky_type2::factor(A,pack,SquareTopo);
-          critter::stop(&save_data[num_iter*space_dim+k*num_iter+i],false,true,false);
-        }
-      }
-      if (rank==0) std::cout << "progress stage 1 - " << k << std::endl;
-    }
-    st1 = MPI_Wtime() - st1;
-    if (rank==0) std::cout << "wallclock time of stage 1 - " << st1 << std::endl;
-
-    // Second: attain the execution times without scheduling any intercepted kernels 
+    // Stage 1: attain the execution times without scheduling any intercepted kernels 
 
     MPI_Barrier(MPI_COMM_WORLD);
     volatile double st2 = MPI_Wtime();
@@ -125,33 +48,45 @@ int main(int argc, char** argv){
       if (k/5==0){
         cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
+#ifdef CRITTER
           critter::start(false,true,false);
+#endif
           volatile double _st = MPI_Wtime();
           cholesky_type0::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
+#ifdef CRITTER
           critter::stop(nullptr,false,true,false);
+#endif
           save_data[3*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
       else if (k/5==1){
         cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
+#ifdef CRITTER
           critter::start(false,true,false);
+#endif
           volatile double _st = MPI_Wtime();
           cholesky_type1::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
+#ifdef CRITTER
           critter::stop(nullptr,false,true,false);
+#endif
           save_data[3*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
       else if (k/5==2){
         cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
+#ifdef CRITTER
           critter::start(false,true,false);
+#endif
           volatile double _st = MPI_Wtime();
           cholesky_type2::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
+#ifdef CRITTER
           critter::stop(nullptr,false,true,false);
+#endif
           save_data[3*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
@@ -159,11 +94,13 @@ int main(int argc, char** argv){
     }
     st2 = MPI_Wtime() - st2;
     if (rank==0) std::cout << "wallclock time of stage 2 - " << st2 << std::endl;
-*/
-    // Third: tune the parameterization space
+
+    // Stage 2: tune the parameterization space
 
     MPI_Barrier(MPI_COMM_WORLD);
+#ifdef CRITTER
     critter::start(true,false);
+#endif
     volatile double st3 = MPI_Wtime();
     for (auto k=0; k<space_dim; k++){
       if (k/5==0){
@@ -193,10 +130,12 @@ int main(int argc, char** argv){
       if (rank==0) std::cout << "progress stage 3 - " << k << std::endl;
     }
     st3 = MPI_Wtime() - st3;
+#ifdef CRITTER
     critter::stop(nullptr,true,false);
+#endif
     if (rank==0) std::cout << "wallclock time of stage 3 - " << st3 << std::endl;
 
-    // Stage 4: evaluate the estimated execution times using the autotuned parameterization space
+    // Stage 3: evaluate the estimated execution times using the autotuned parameterization space
 
     MPI_Barrier(MPI_COMM_WORLD);
     volatile double st4 = MPI_Wtime();
@@ -204,33 +143,45 @@ int main(int argc, char** argv){
       if (k/5==0){
         cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
+#ifdef CRITTER
           critter::start(true,false,true,true,false);
+#endif
           volatile double _st = MPI_Wtime();
           cholesky_type0::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
+#ifdef CRITTER
           critter::stop(&save_data[5*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+#endif
           save_data[4*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
       else if (k/5==1){
         cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
+#ifdef CRITTER
           critter::start(true,false,true,true,false);
+#endif
           volatile double _st = MPI_Wtime();
           cholesky_type1::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
+#ifdef CRITTER
           critter::stop(&save_data[5*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+#endif
           save_data[4*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
       else if (k/5==2){
         cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
+#ifdef CRITTER
           critter::start(true,false,true,true,false);
+#endif
           volatile double _st = MPI_Wtime();
           cholesky_type2::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
+#ifdef CRITTER
           critter::stop(&save_data[5*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+#endif
           save_data[4*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
       }
