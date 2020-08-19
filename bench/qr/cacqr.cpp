@@ -40,6 +40,7 @@ int main(int argc, char** argv){
       qr_type::factor(A, pack, RectTopo);
 #ifdef CRITTER
       critter::stop();
+      critter::record();
 #endif
 /*
       qr_type::factor(A, pack, RectTopo);

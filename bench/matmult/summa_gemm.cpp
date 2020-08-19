@@ -46,6 +46,7 @@ int main(int argc, char** argv){
       matmult::summa::invoke(matA, matB, matC, SquareTopo, blasArgs);
 #ifdef CRITTER
       critter::stop();
+      critter::record();
 #endif
     }
   }

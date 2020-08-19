@@ -37,6 +37,10 @@ int main(int argc, char** argv){
     A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     // Generate algorithmic structure via instantiating packs
 
+    // Initial simulations to warm cache, etc.
+    cholesky_type0::info<T,U> pack_init(complete_inv,split,bcMultiplier,dir);
+    cholesky_type0::factor(A,pack_init,SquareTopo);
+
     size_t space_dim = 15;
     vector<double> save_data(num_iter*space_dim*(3+11));	// '5' from the exec times of the 5 stages. '9' from the 9 data members we'd like to print
 
@@ -49,13 +53,15 @@ int main(int argc, char** argv){
         cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
 #ifdef CRITTER
-          critter::start(false,true,false);
+          critter::start(false,false);
 #endif
           volatile double _st = MPI_Wtime();
           cholesky_type0::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
-          critter::stop(nullptr,false,true,false);
+          critter::stop();
+          critter::record();
+          critter::clear();
 #endif
           save_data[0*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
@@ -64,13 +70,15 @@ int main(int argc, char** argv){
         cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
 #ifdef CRITTER
-          critter::start(false,true,false);
+          critter::start(false,false);
 #endif
           volatile double _st = MPI_Wtime();
           cholesky_type1::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
-          critter::stop(nullptr,false,true,false);
+          critter::stop();
+          critter::record();
+          critter::clear();
 #endif
           save_data[0*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
@@ -79,13 +87,15 @@ int main(int argc, char** argv){
         cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
 #ifdef CRITTER
-          critter::start(false,true,false);
+          critter::start(false,false);
 #endif
           volatile double _st = MPI_Wtime();
           cholesky_type2::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
-          critter::stop(nullptr,false,true,false);
+          critter::stop();
+          critter::record();
+          critter::clear();
 #endif
           save_data[0*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
@@ -99,7 +109,7 @@ int main(int argc, char** argv){
 
     MPI_Barrier(MPI_COMM_WORLD);
 #ifdef CRITTER
-    critter::start(true,false);
+    critter::start(true);
 #endif
     volatile double st3 = MPI_Wtime();
     for (auto k=0; k<space_dim; k++){
@@ -131,7 +141,8 @@ int main(int argc, char** argv){
     }
     st3 = MPI_Wtime() - st3;
 #ifdef CRITTER
-    critter::stop(nullptr,true,false);
+    critter::stop();
+    critter::record(nullptr,true);
 #endif
     if (rank==0) std::cout << "wallclock time of stage 1 - " << st3 << std::endl;
 
@@ -144,13 +155,14 @@ int main(int argc, char** argv){
         cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
 #ifdef CRITTER
-          critter::start(true,false,true,true,false);
+          critter::start(true,true,true,false);
 #endif
           volatile double _st = MPI_Wtime();
           cholesky_type0::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
-          critter::stop(&save_data[2*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+          critter::stop();
+          critter::record(&save_data[2*num_iter*space_dim+11*(k*num_iter+i)],false,true);
 #endif
           save_data[1*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
@@ -159,13 +171,14 @@ int main(int argc, char** argv){
         cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
 #ifdef CRITTER
-          critter::start(true,false,true,true,false);
+          critter::start(true,true,true,false);
 #endif
           volatile double _st = MPI_Wtime();
           cholesky_type1::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
-          critter::stop(&save_data[2*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+          critter::stop();
+          critter::record(&save_data[2*num_iter*space_dim+11*(k*num_iter+i)],false,true);
 #endif
           save_data[1*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
@@ -174,13 +187,14 @@ int main(int argc, char** argv){
         cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
 #ifdef CRITTER
-          critter::start(true,false,true,true,false);
+          critter::start(true,true,true,false);
 #endif
           volatile double _st = MPI_Wtime();
           cholesky_type2::factor(A,pack,SquareTopo);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
-          critter::stop(&save_data[2*num_iter*space_dim+11*(k*num_iter+i)],true,false,false,true);
+          critter::stop();
+          critter::record(&save_data[2*num_iter*space_dim+11*(k*num_iter+i)],false,true);
 #endif
           save_data[1*num_iter*space_dim+k*num_iter+i] = _st_-_st;
         }
@@ -196,16 +210,16 @@ int main(int argc, char** argv){
       std::cout << std::left << std::setw(width) << "NoSchedET";
       std::cout << std::left << std::setw(width) << "PostAutoOverhead";
       std::cout << std::left << std::setw(width) << "EstET";
-      std::cout << std::left << std::setw(width) << "EstET_Scomp";
-      std::cout << std::left << std::setw(width) << "EstET_NScomp";
-      std::cout << std::left << std::setw(width) << "EstET_Sflops";
-      std::cout << std::left << std::setw(width) << "EstET_NSflops";
-      std::cout << std::left << std::setw(width) << "EstET_Scomm";
-      std::cout << std::left << std::setw(width) << "EstET_NScomm";
-      std::cout << std::left << std::setw(width) << "EstET_Sbytes";
-      std::cout << std::left << std::setw(width) << "EstET_NSbytes";
-      std::cout << std::left << std::setw(width) << "EstET_Sprops";
-      std::cout << std::left << std::setw(width) << "EstET_Nprops";
+      std::cout << std::left << std::setw(width) << "SchedComp";
+      std::cout << std::left << std::setw(width) << "SkipComp";
+      std::cout << std::left << std::setw(width) << "SchedFlops";
+      std::cout << std::left << std::setw(width) << "SkipFlops";
+      std::cout << std::left << std::setw(width) << "SchedComm";
+      std::cout << std::left << std::setw(width) << "SkipComm";
+      std::cout << std::left << std::setw(width) << "SchedBytes";
+      std::cout << std::left << std::setw(width) << "SkipBytes";
+      std::cout << std::left << std::setw(width) << "SchedProps";
+      std::cout << std::left << std::setw(width) << "SkipProps";
       std::cout << std::endl;
 
       for (size_t k=0; k<space_dim; k++){

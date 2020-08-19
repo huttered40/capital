@@ -44,6 +44,7 @@ int main(int argc, char** argv){
       cholesky_type::factor(A, pack, SquareTopo);
 #ifdef CRITTER
       critter::stop();
+      critter::record();
 #endif
 /*
       cholesky_type::factor(A, pack, SquareTopo);

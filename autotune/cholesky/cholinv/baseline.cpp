@@ -92,11 +92,13 @@ int main(int argc, char** argv){
         cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
 #ifdef CRITTER
-          critter::start(false,true);
+          critter::start(false);
 #endif
           cholesky_type0::factor(A,pack,SquareTopo);
 #ifdef CRITTER
-          critter::stop(&save_data[num_iter*space_dim+k*num_iter+i],false,true,false);
+          critter::stop();
+          critter::record(&save_data[num_iter*space_dim+k*num_iter+i]);
+          critter::clear();
 #endif
         }
       }
@@ -104,11 +106,13 @@ int main(int argc, char** argv){
         cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
 #ifdef CRITTER
-          critter::start(false,true);
+          critter::start(false);
 #endif
           cholesky_type1::factor(A,pack,SquareTopo);
 #ifdef CRITTER
-          critter::stop(&save_data[num_iter*space_dim+k*num_iter+i],false,true,false);
+          critter::stop();
+          critter::record(&save_data[num_iter*space_dim+k*num_iter+i]);
+          critter::clear();
 #endif
         }
       }
@@ -116,11 +120,13 @@ int main(int argc, char** argv){
         cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         for (size_t i=0; i<num_iter; i++){
 #ifdef CRITTER
-          critter::start(false,true);
+          critter::start(false);
 #endif
           cholesky_type2::factor(A,pack,SquareTopo);
 #ifdef CRITTER
-          critter::stop(&save_data[num_iter*space_dim+k*num_iter+i],false,true,false);
+          critter::stop();
+          critter::record(&save_data[num_iter*space_dim+k*num_iter+i]);
+          critter::clear();
 #endif
         }
       }

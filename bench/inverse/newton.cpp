@@ -36,6 +36,7 @@ int main(int argc, char** argv){
     critter::start();
     inverse::newton::invoke(matA, SquareTopo,1e-14,10);
     critter::stop();
+    critter::record();
 
     //matA.DistributeDebug(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d);
     matA.DistributeSymmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);

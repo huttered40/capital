@@ -38,6 +38,7 @@ int main(int argc, char** argv){
       trtri_type::invoke(A, pack, SquareTopo);
 #ifdef CRITTER
       critter::stop();
+      critter::record();
 #endif
 /*
         trtri_type::invoke(A, pack, SquareTopo);
