@@ -23,6 +23,17 @@ int main(int argc, char** argv){
   size_t num_chunks = atoi(argv[7]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[8]);// number of simulations of the algorithm for performance testing
 
+  std::string stream_name;
+  std::ofstream stream,stream_stat;
+  if (std::getenv("CRITTER_VIZ_FILE") != NULL){
+    stream_name = std::getenv("CRITTER_VIZ_FILE");
+  }
+  auto stream_name_stat = stream_name+"_stat.txt";
+  stream_name += ".txt";
+  if (rank==0){
+    stream.open(stream_name.c_str());
+    stream_stat.open(stream_name_stat.c_str());
+  }
   size_t width = 18;
 
   using cholesky_type0 = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
@@ -78,10 +89,10 @@ int main(int argc, char** argv){
           save_data[k*num_iter+i] = total_time;
         }
       }
-      if (rank==0) std::cout << "progress stage 0 - " << k << std::endl;
+      if (rank==0) stream << "progress stage 0 - " << k << std::endl;
     }
     st0 = MPI_Wtime() - st0;
-    if (rank==0) std::cout << "wallclock time of stage 0 - " << st0 << std::endl;
+    if (rank==0) stream << "wallclock time of stage 0 - " << st0 << std::endl;
 
     // First: attain the "true" execution times for each variant
 
@@ -130,28 +141,31 @@ int main(int argc, char** argv){
 #endif
         }
       }
-      if (rank==0) std::cout << "progress stage 1 - " << k << std::endl;
+      if (rank==0) stream << "progress stage 1 - " << k << std::endl;
     }
     st1 = MPI_Wtime() - st1;
-    if (rank==0) std::cout << "wallclock time of stage 1 - " << st1 << std::endl;
+    if (rank==0) stream << "wallclock time of stage 1 - " << st1 << std::endl;
 
     // Print out autotuning data
     if (rank==0){
-      std::cout << std::left << std::setw(width) << "ID";
-      std::cout << std::left << std::setw(width) << "ET";
-      std::cout << std::left << std::setw(width) << "ETcritter";
-      std::cout << std::endl;
+      stream_stat << std::left << std::setw(width) << "ID";
+      stream_stat << std::left << std::setw(width) << "ET";
+      stream_stat << std::left << std::setw(width) << "ETcritter";
+      stream_stat << std::endl;
 
       for (size_t k=0; k<space_dim; k++){
         for (size_t i=0; i<num_iter; i++){
-          std::cout << std::left << std::setw(width) << k;
-          std::cout << std::left << std::setw(width) << save_data[0*space_dim*num_iter+k*num_iter+i];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+k*num_iter+i];
-          std::cout << std::endl;
+          stream_stat << std::left << std::setw(width) << k;
+          stream_stat << std::left << std::setw(width) << save_data[0*space_dim*num_iter+k*num_iter+i];
+          stream_stat << std::left << std::setw(width) << save_data[1*space_dim*num_iter+k*num_iter+i];
+          stream_stat << std::endl;
         }
       }
     }
-
+  }
+  if (rank==0){
+    stream.close();
+    stream_stat.close();
   }
   MPI_Finalize();
   return 0;

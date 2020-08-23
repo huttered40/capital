@@ -23,6 +23,19 @@ int main(int argc, char** argv){
   size_t num_chunks = atoi(argv[7]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[8]);// number of simulations of the algorithm for performance testing
 
+  std::string stream_name;
+  std::ofstream stream,stream_max,stream_vol;
+  if (std::getenv("CRITTER_VIZ_FILE") != NULL){
+    stream_name = std::getenv("CRITTER_VIZ_FILE");
+  }
+  auto stream_name_max = stream_name+"_max.txt";
+  auto stream_name_vol = stream_name+"_vol.txt";
+  stream_name += ".txt";
+  if (rank==0){
+    stream.open(stream_name.c_str());
+    stream_max.open(stream_name_max.c_str());
+    stream_vol.open(stream_name_vol.c_str());
+  }
   size_t width = 18;
 
   using cholesky_type0 = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
@@ -42,7 +55,7 @@ int main(int argc, char** argv){
     cholesky_type0::factor(A,pack_init,SquareTopo);
 
     size_t space_dim = 15;
-    vector<double> save_data(num_iter*space_dim*12);
+    vector<double> save_data(num_iter*space_dim*(1+30));
 
     // Stage 1: autotune each schedule variant individually
 
@@ -57,11 +70,12 @@ int main(int argc, char** argv){
 #endif
           volatile double _st = MPI_Wtime();
           cholesky_type0::factor(A,pack,SquareTopo);
+          MPI_Barrier(MPI_COMM_WORLD);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
           critter::stop();
-          if (i<(num_iter-1)) critter::record(&save_data[1*num_iter*space_dim+11*(k*num_iter+i)],false,true);
-          else                critter::record(&save_data[1*num_iter*space_dim+11*(k*num_iter+i)],true,true);
+          if (i<(num_iter-1)) critter::record(&save_data[1*num_iter*space_dim+30*(k*num_iter+i)],false,true);
+          else                critter::record(&save_data[1*num_iter*space_dim+30*(k*num_iter+i)],true,true);
 #endif
           save_data[k*num_iter+i] = _st_-_st;
         }
@@ -74,11 +88,12 @@ int main(int argc, char** argv){
 #endif
           volatile double _st = MPI_Wtime();
           cholesky_type1::factor(A,pack,SquareTopo);
+          MPI_Barrier(MPI_COMM_WORLD);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
           critter::stop();
-          if (i<(num_iter-1)) critter::record(&save_data[1*num_iter*space_dim+11*(k*num_iter+i)],false,true);
-          else                critter::record(&save_data[1*num_iter*space_dim+11*(k*num_iter+i)],true,true);
+          if (i<(num_iter-1)) critter::record(&save_data[1*num_iter*space_dim+30*(k*num_iter+i)],false,true);
+          else                critter::record(&save_data[1*num_iter*space_dim+30*(k*num_iter+i)],true,true);
 #endif
           save_data[k*num_iter+i] = _st_-_st;
         }
@@ -91,11 +106,12 @@ int main(int argc, char** argv){
 #endif
           volatile double _st = MPI_Wtime();
           cholesky_type2::factor(A,pack,SquareTopo);
+          MPI_Barrier(MPI_COMM_WORLD);
           volatile double _st_ = MPI_Wtime();
 #ifdef CRITTER
           critter::stop();
-          if (i<(num_iter-1)) critter::record(&save_data[1*num_iter*space_dim+11*(k*num_iter+i)],false,true);
-          else                critter::record(&save_data[1*num_iter*space_dim+11*(k*num_iter+i)],true,true);
+          if (i<(num_iter-1)) critter::record(&save_data[1*num_iter*space_dim+30*(k*num_iter+i)],false,true);
+          else                critter::record(&save_data[1*num_iter*space_dim+30*(k*num_iter+i)],true,true);
 #endif
           save_data[k*num_iter+i] = _st_-_st;
         }
@@ -103,48 +119,110 @@ int main(int argc, char** argv){
 #ifdef CRITTER
       critter::clear();
 #endif
-      if (rank==0) std::cout << "progress stage 1 - " << k << std::endl;
+      if (rank==0) stream << "progress stage 1 - " << k << std::endl;
     }
     st4 = MPI_Wtime() - st4;
-    if (rank==0) std::cout << "wallclock time of stage 1 - " << st4 << std::endl;
+    if (rank==0) stream << "wallclock time of stage 1 - " << st4 << std::endl;
 
     // Print out autotuning data
     if (rank==0){
-      std::cout << std::left << std::setw(width) << "ID";
-      std::cout << std::left << std::setw(width) << "AutoOverhead";
-      std::cout << std::left << std::setw(width) << "EstET";
-      std::cout << std::left << std::setw(width) << "SchedComp";
-      std::cout << std::left << std::setw(width) << "SkipComp";
-      std::cout << std::left << std::setw(width) << "SchedFlops";
-      std::cout << std::left << std::setw(width) << "SkipFlops";
-      std::cout << std::left << std::setw(width) << "SchedComm";
-      std::cout << std::left << std::setw(width) << "SkipComm";
-      std::cout << std::left << std::setw(width) << "SchedBytes";
-      std::cout << std::left << std::setw(width) << "SkipBytes";
-      std::cout << std::left << std::setw(width) << "SchedProps";
-      std::cout << std::left << std::setw(width) << "SkipProps";
-      std::cout << std::endl;
+      stream_max << std::left << std::setw(width) << "ID";
+      stream_max << std::left << std::setw(width) << "AutoOverhead";
+      stream_max << std::left << std::setw(width) << "EstET";
+      stream_max << std::left << std::setw(width) << "SchedComm";
+      stream_max << std::left << std::setw(width) << "SkipComm";
+      stream_max << std::left << std::setw(width) << "SchedBytes";
+      stream_max << std::left << std::setw(width) << "SkipBytes";
+      stream_max << std::left << std::setw(width) << "CommTime";
+      stream_max << std::left << std::setw(width) << "SchedComp";
+      stream_max << std::left << std::setw(width) << "SkipComp";
+      stream_max << std::left << std::setw(width) << "SchedFlops";
+      stream_max << std::left << std::setw(width) << "SkipFlops";
+      stream_max << std::left << std::setw(width) << "CompTime";
+      stream_max << std::left << std::setw(width) << "SchedProps";
+      stream_max << std::left << std::setw(width) << "SkipProps";
+      stream_max << std::left << std::setw(width) << "CompOverhead";
+      stream_max << std::left << std::setw(width) << "CommOverhead1";
+      stream_max << std::left << std::setw(width) << "CommOverhead2";
+      stream_max << std::left << std::setw(width) << "CommOverhead3";
+      stream_max << std::left << std::setw(width) << "CommOverhead4";
+      stream_max << std::endl;
+
+      stream_vol << std::left << std::setw(width) << "ID";
+      stream_vol << std::left << std::setw(width) << "AutoOverhead";
+      stream_vol << std::left << std::setw(width) << "EstET";
+      stream_vol << std::left << std::setw(width) << "SchedComm";
+      stream_vol << std::left << std::setw(width) << "SkipComm";
+      stream_vol << std::left << std::setw(width) << "SchedBytes";
+      stream_vol << std::left << std::setw(width) << "SkipBytes";
+      stream_vol << std::left << std::setw(width) << "CommTime";
+      stream_vol << std::left << std::setw(width) << "SchedComp";
+      stream_vol << std::left << std::setw(width) << "SkipComp";
+      stream_vol << std::left << std::setw(width) << "SchedFlops";
+      stream_vol << std::left << std::setw(width) << "SkipFlops";
+      stream_vol << std::left << std::setw(width) << "CompTime";
+      stream_vol << std::left << std::setw(width) << "SchedProps";
+      stream_vol << std::left << std::setw(width) << "SkipProps";
+      stream_vol << std::left << std::setw(width) << "CompOverhead";
+      stream_vol << std::left << std::setw(width) << "CommOverhead1";
+      stream_vol << std::left << std::setw(width) << "CommOverhead2";
+      stream_vol << std::left << std::setw(width) << "CommOverhead3";
+      stream_vol << std::left << std::setw(width) << "CommOverhead4";
+      stream_vol << std::endl;
 
       for (size_t k=0; k<space_dim; k++){
         for (size_t i=0; i<num_iter; i++){
-          std::cout << std::left << std::setw(width) << k;
-          std::cout << std::left << std::setw(width) << save_data[0*space_dim*num_iter+k*num_iter+i];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+0];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+1];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+2];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+3];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+4];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+5];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+6];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+7];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+8];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+9];
-          std::cout << std::left << std::setw(width) << save_data[1*space_dim*num_iter+11*(k*num_iter+i)+10];
-          std::cout << std::endl;
+          stream_max << std::left << std::setw(width) << k;
+          stream_max << std::left << std::setw(width) << save_data[0*space_dim*num_iter+k*num_iter+i];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+0];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+1];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+2];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+3];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+4];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+5];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+6];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+7];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+8];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+9];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+10];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+11];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+12];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+25];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+26];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+27];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+28];
+          stream_max << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+29];
+          stream_max << std::endl;
+
+          stream_vol << std::left << std::setw(width) << k;
+          stream_vol << std::left << std::setw(width) << save_data[0*space_dim*num_iter+k*num_iter+i];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+0];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+13];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+14];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+15];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+16];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+17];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+18];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+19];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+20];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+21];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+22];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+23];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+24];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+25];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+26];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+27];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+28];
+          stream_vol << std::left << std::setw(width) << save_data[1*space_dim*num_iter+30*(k*num_iter+i)+29];
+          stream_vol << std::endl;
         }
       }
     }
-
+  }
+  if (rank==0){
+    stream.close();
+    stream_max.close();
+    stream_vol.close();
   }
   MPI_Finalize();
   return 0;
