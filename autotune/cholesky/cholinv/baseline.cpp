@@ -49,7 +49,7 @@ int main(int argc, char** argv){
     // Generate algorithmic structure via instantiating packs
 
     size_t space_dim = 15;
-    vector<double> save_data(num_iter*space_dim*2);
+    vector<double> save_data(num_iter*space_dim*(1+4));
 
     // First: attain the "true" execution times for each variant
 
@@ -108,7 +108,7 @@ int main(int argc, char** argv){
           cholesky_type0::factor(A,pack,SquareTopo);
 #ifdef CRITTER
           critter::stop();
-          critter::record(&save_data[num_iter*space_dim+k*num_iter+i]);
+          critter::record(&save_data[num_iter*space_dim+4*(k*num_iter+i)]);
           critter::clear();
 #endif
         }
@@ -122,7 +122,7 @@ int main(int argc, char** argv){
           cholesky_type1::factor(A,pack,SquareTopo);
 #ifdef CRITTER
           critter::stop();
-          critter::record(&save_data[num_iter*space_dim+k*num_iter+i]);
+          critter::record(&save_data[num_iter*space_dim+4*(k*num_iter+i)]);
           critter::clear();
 #endif
         }
@@ -136,7 +136,7 @@ int main(int argc, char** argv){
           cholesky_type2::factor(A,pack,SquareTopo);
 #ifdef CRITTER
           critter::stop();
-          critter::record(&save_data[num_iter*space_dim+k*num_iter+i]);
+          critter::record(&save_data[num_iter*space_dim+4*(k*num_iter+i)]);
           critter::clear();
 #endif
         }
@@ -149,15 +149,21 @@ int main(int argc, char** argv){
     // Print out autotuning data
     if (rank==0){
       stream_stat << std::left << std::setw(width) << "ID";
-      stream_stat << std::left << std::setw(width) << "ET";
-      stream_stat << std::left << std::setw(width) << "ETcritter";
+      stream_stat << std::left << std::setw(width) << "TrueExecTime";
+      stream_stat << std::left << std::setw(width) << "ExecTime";
+      stream_stat << std::left << std::setw(width) << "CompTime";
+      stream_stat << std::left << std::setw(width) << "CompKernelTime";
+      stream_stat << std::left << std::setw(width) << "CommKernelTime";
       stream_stat << std::endl;
 
       for (size_t k=0; k<space_dim; k++){
         for (size_t i=0; i<num_iter; i++){
           stream_stat << std::left << std::setw(width) << k;
           stream_stat << std::left << std::setw(width) << save_data[0*space_dim*num_iter+k*num_iter+i];
-          stream_stat << std::left << std::setw(width) << save_data[1*space_dim*num_iter+k*num_iter+i];
+          stream_stat << std::left << std::setw(width) << save_data[1*space_dim*num_iter+4*(k*num_iter+i)+0];
+          stream_stat << std::left << std::setw(width) << save_data[1*space_dim*num_iter+4*(k*num_iter+i)+1];
+          stream_stat << std::left << std::setw(width) << save_data[1*space_dim*num_iter+4*(k*num_iter+i)+2];
+          stream_stat << std::left << std::setw(width) << save_data[1*space_dim*num_iter+4*(k*num_iter+i)+3];
           stream_stat << std::endl;
         }
       }
