@@ -83,12 +83,16 @@ public:
       this->x = (this->rank%TopFaceSize)/this->c;
       MPI_Comm_split(comm, this->rank/this->c, this->rank, &this->depth);
       MPI_Comm_split(comm, this->z, this->rank, &this->slice);
-      MPI_Comm_split(comm, this->rank%TopFaceSize, this->rank, &this->row);
-      MPI_Comm_split(comm, this->rank%this->c + (this->rank/TopFaceSize)*this->c, this->rank, &this->column);
-/*
+      //MPI_Comm_split(comm, this->rank%TopFaceSize, this->rank, &this->row);
+      //MPI_Comm_split(comm, this->rank%this->c + (this->rank/TopFaceSize)*this->c, this->rank, &this->column);
+
+      // debug
+      //MPI_Comm new_slice1; MPI_Comm_split(comm,this->y,this->rank,&new_slice1);
+      //MPI_Comm new_slice2; MPI_Comm_split(comm,this->x,this->rank,&new_slice2);
+
       MPI_Comm_split(this->slice, this->y, this->x, &this->row);
       MPI_Comm_split(this->slice, this->x, this->y, &this->column);
-*/
+
     } else if (layout == 1){
       this->y = this->rank%d;
       this->x = (this->rank%FrontFaceSize)/this->d;
