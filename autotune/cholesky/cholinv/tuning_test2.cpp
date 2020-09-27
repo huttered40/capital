@@ -35,10 +35,6 @@ int main(int argc, char** argv){
     A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
     // Generate algorithmic structure via instantiating packs
 
-    // Initial simulations to warm cache, etc.
-    cholesky_type0::info<T,U> pack_init(complete_inv,split,bcMultiplier,dir);
-    cholesky_type0::factor(A,pack_init,SquareTopo);
-
     size_t space_dim = 15;
     // Stage 1: autotune each schedule variant individually
 
@@ -47,6 +43,7 @@ int main(int argc, char** argv){
     for (auto k=0; k<space_dim; k++){
       if (k/5==0){
         cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        cholesky_type0::factor(A,pack,SquareTopo);// Avoid allocation times
         // First tune the space constrained to a particular variant
         for (size_t i=0; i<num_iter; i++){
           critter::start(true,false);
@@ -65,6 +62,7 @@ int main(int argc, char** argv){
       }
       else if (k/5==1){
         cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        cholesky_type1::factor(A,pack,SquareTopo);// Avoid allocation times
         for (size_t i=0; i<num_iter; i++){
           critter::start(true,false);
           cholesky_type1::factor(A,pack,SquareTopo);
@@ -82,6 +80,7 @@ int main(int argc, char** argv){
       }
       else if (k/5==2){
         cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+        cholesky_type2::factor(A,pack,SquareTopo);// Avoid allocation times
         for (size_t i=0; i<num_iter; i++){
           critter::start(true,false);
           cholesky_type2::factor(A,pack,SquareTopo);
