@@ -1,11 +1,13 @@
 include ../../config.mk
 
 ALG=$(HOME)/camfs/src/alg/cholesky/cholinv/
-OBJS1 = baseline
-OBJS2 = space1
-OBJS3 = space2
+OBJS1 = baseline_variants
+OBJS2 = baseline_search
+OBJS3 = tuning_test0
+OBJS4 = tuning_test1
+OBJS5 = tuning_test2
 
-all: $(OBJS1) $(OBJS2) $(OBJS3)
+all: $(OBJS1) $(OBJS2) $(OBJS3) $(OBJS4) $(OBJS5)
 
 $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)autotune/cholinv_$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
@@ -28,5 +30,19 @@ $(OBJS3): $(OBJS3).o
 $(OBJS3).o: cholinv/$(OBJS3).cpp $(ALG)cholinv.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS3).o -c cholinv/$(OBJS3).cpp
 
+$(OBJS4): $(OBJS4).o
+	$(CCMPI) $(CFLAGS) -o $(BIN)autotune/cholinv_$(OBJS4) $(OBJS4).o $(LIB_PATH) $(LIBS)
+	rm *.o
+
+$(OBJS4).o: cholinv/$(OBJS4).cpp $(ALG)cholinv.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS4).o -c cholinv/$(OBJS4).cpp
+
+$(OBJS5): $(OBJS5).o
+	$(CCMPI) $(CFLAGS) -o $(BIN)autotune/cholinv_$(OBJS5) $(OBJS5).o $(LIB_PATH) $(LIBS)
+	rm *.o
+
+$(OBJS5).o: cholinv/$(OBJS5).cpp $(ALG)cholinv.h
+	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS5).o -c cholinv/$(OBJS5).cpp
+
 clean:
-	-rm -f *.o *.err *.out *.gch $(BIN)autotune/cholinv_$(OBJS1) $(BIN)autotune/cholinv_$(OBJS2) $(BIN)autotune/cholinv_$(OBJS3)
+	-rm -f *.o *.err *.out *.gch $(BIN)autotune/cholinv_$(OBJS1) $(BIN)autotune/cholinv_$(OBJS2) $(BIN)autotune/cholinv_$(OBJS3) $(BIN)autotune/cholinv_$(OBJS4) $(BIN)autotune/cholinv_$(OBJS5)
