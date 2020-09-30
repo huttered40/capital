@@ -37,71 +37,72 @@ int main(int argc, char** argv){
 
     size_t space_dim = 15;
     // Stage 1: autotune each schedule variant individually
-
     PMPI_Barrier(MPI_COMM_WORLD);
     volatile double st4 = MPI_Wtime();
-    for (auto k=0; k<space_dim; k++){
-      if (k/5==0){
-        cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-        cholesky_type0::factor(A,pack,SquareTopo);// Avoid allocation times
-        // First tune the space constrained to a particular variant
-        for (size_t i=0; i<num_iter; i++){
-          critter::start(true,false);
-          cholesky_type0::factor(A,pack,SquareTopo);
-          critter::stop();
-          if (i<(num_iter-1)) critter::record(k,false,true);
-          else                critter::record(k,true,true);
-        }
-        // Then reconstruct the execution times
-	for (size_t i=0; i<num_iter; i++){
-	  critter::start(true,true);
-	  cholesky_type0::factor(A,pack,SquareTopo);
-	  critter::stop();
-	  critter::record(k,false,true);
-        }
+    for (auto k=0; k<5; k++){
+      double overhead_bin = 0;
+      critter::start();
+      cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+      critter::set_mode(0);
+      double overhead_timer = MPI_Wtime();
+      cholesky_type0::factor(A,pack,SquareTopo);// Avoid allocation times
+      overhead_bin += (MPI_Wtime() - overhead_timer);
+      critter::set_mode();
+      // First tune the space constrained to a particular variant
+      for (size_t i=0; i<num_iter; i++){
+        critter::start();
+        cholesky_type0::factor(A,pack,SquareTopo);
+        critter::stop();
+        overhead_timer = MPI_Wtime();
+	critter::record(k,1,0);
+        overhead_bin += (MPI_Wtime() - overhead_timer);
       }
-      else if (k/5==1){
-        cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-        cholesky_type1::factor(A,pack,SquareTopo);// Avoid allocation times
-        for (size_t i=0; i<num_iter; i++){
-          critter::start(true,false);
-          cholesky_type1::factor(A,pack,SquareTopo);
-          critter::stop();
-          if (i<(num_iter-1)) critter::record(k,false,true);
-          else                critter::record(k,true,true);
-        }
-        // Then reconstruct the execution times
-	for (size_t i=0; i<num_iter; i++){
-	  critter::start(true,true);
-	  cholesky_type1::factor(A,pack,SquareTopo);
-	  critter::stop();
-	  critter::record(k,false,true);
-        }
-      }
-      else if (k/5==2){
-        cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-        cholesky_type2::factor(A,pack,SquareTopo);// Avoid allocation times
-        for (size_t i=0; i<num_iter; i++){
-          critter::start(true,false);
-          cholesky_type2::factor(A,pack,SquareTopo);
-          critter::stop();
-          if (i<(num_iter-1)) critter::record(k,false,true);
-          else                critter::record(k,true,true);
-        }
-        // Then reconstruct the execution times
-	for (size_t i=0; i<num_iter; i++){
-	  critter::start(true,true);
-	  cholesky_type2::factor(A,pack,SquareTopo);
-	  critter::stop();
-	  critter::record(k,false,true);
-        }
-      }
+      critter::stop();
+      critter::record(k,0,overhead_bin);
       critter::clear();
-      if (rank==0) std::cout << "progress stage 1 - " << k << std::endl;
     }
-    st4 = MPI_Wtime() - st4;
-    if (rank==0) std::cout << "wallclock time of stage 1 - " << st4 << std::endl;
-
+    for (auto k=5; k<10; k++){
+      double overhead_bin = 0;
+      critter::start();
+      cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+      critter::set_mode(0);
+      double overhead_timer = MPI_Wtime();
+      cholesky_type1::factor(A,pack,SquareTopo);// Avoid allocation times
+      overhead_bin += (MPI_Wtime() - overhead_timer);
+      critter::set_mode();
+      for (size_t i=0; i<num_iter; i++){
+        critter::start();
+        cholesky_type1::factor(A,pack,SquareTopo);
+        critter::stop();
+        overhead_timer = MPI_Wtime();
+	critter::record(k,1,0);
+        overhead_bin += (MPI_Wtime() - overhead_timer);
+      }
+      critter::stop();
+      critter::record(k,0,overhead_bin);
+      critter::clear();
+    }
+    for (auto k=10; k<15; k++){
+      double overhead_bin = 0;
+      critter::start();
+      cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
+      critter::set_mode(0);
+      double overhead_timer = MPI_Wtime();
+      cholesky_type2::factor(A,pack,SquareTopo);// Avoid allocation times
+      overhead_bin += (MPI_Wtime() - overhead_timer);
+      critter::set_mode();
+      for (size_t i=0; i<num_iter; i++){
+        critter::start();
+        cholesky_type2::factor(A,pack,SquareTopo);
+        critter::stop();
+        overhead_timer = MPI_Wtime();
+	critter::record(k,1,0);
+        overhead_bin += (MPI_Wtime() - overhead_timer);
+      }
+      critter::stop();
+      critter::record(k,0,overhead_bin);
+      critter::clear();
+    }
   }
   MPI_Finalize();
   return 0;

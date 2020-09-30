@@ -50,7 +50,6 @@ int main(int argc, char** argv){
         cholesky_type0::factor(A,pack,SquareTopo);// Avoid allocation times
         overhead_bin += (MPI_Wtime() - overhead_timer);
         critter::set_mode();
-        PMPI_Barrier(MPI_COMM_WORLD);
         for (size_t i=0; i<num_iter; i++){
           cholesky_type0::factor(A,pack,SquareTopo);
         }
@@ -62,7 +61,6 @@ int main(int argc, char** argv){
         cholesky_type1::factor(A,pack,SquareTopo);// Avoid allocation times
         overhead_bin += (MPI_Wtime() - overhead_timer);
         critter::set_mode();
-        PMPI_Barrier(MPI_COMM_WORLD);
         for (size_t i=0; i<num_iter; i++){
           cholesky_type1::factor(A,pack,SquareTopo);
         }
@@ -74,7 +72,6 @@ int main(int argc, char** argv){
         cholesky_type2::factor(A,pack,SquareTopo);// Avoid allocation times
         overhead_bin += (MPI_Wtime() - overhead_timer);
         critter::set_mode();
-        PMPI_Barrier(MPI_COMM_WORLD);
         for (size_t i=0; i<num_iter; i++){
           cholesky_type2::factor(A,pack,SquareTopo);
         }
@@ -82,7 +79,7 @@ int main(int argc, char** argv){
     }
     st1 = MPI_Wtime() - st1;
     critter::stop();
-    critter::record(-1,false,false,overhead_bin);
+    critter::record(-1,1,overhead_bin);
     critter::clear();
     if (rank==0) std::cout << "wallclock time of stage 1 - " << st1 << std::endl;
   }
