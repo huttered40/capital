@@ -43,11 +43,17 @@ int main(int argc, char** argv){
       double overhead_bin = 0;
       critter::start();
       cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-      critter::set_mode(0);
       double overhead_timer = MPI_Wtime();
+      critter::set_mode(0);
       cholesky_type0::factor(A,pack,SquareTopo);// Avoid allocation times
-      overhead_bin += (MPI_Wtime() - overhead_timer);
       critter::set_mode();
+      critter::set_mechanism(0);
+      critter::start();
+      cholesky_type0::factor(A,pack,SquareTopo);
+      critter::stop();
+      critter::record(k,1,0);
+      critter::set_mechanism(1);
+      overhead_bin += (MPI_Wtime() - overhead_timer);
       // First tune the space constrained to a particular variant
       for (size_t i=0; i<num_iter; i++){
         critter::start();
@@ -65,11 +71,17 @@ int main(int argc, char** argv){
       double overhead_bin = 0;
       critter::start();
       cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-      critter::set_mode(0);
       double overhead_timer = MPI_Wtime();
+      critter::set_mode(0);
       cholesky_type1::factor(A,pack,SquareTopo);// Avoid allocation times
-      overhead_bin += (MPI_Wtime() - overhead_timer);
       critter::set_mode();
+      critter::set_mechanism(0);
+      critter::start();
+      cholesky_type1::factor(A,pack,SquareTopo);
+      critter::stop();
+      critter::record(k,1,0);
+      critter::set_mechanism(1);
+      overhead_bin += (MPI_Wtime() - overhead_timer);
       for (size_t i=0; i<num_iter; i++){
         critter::start();
         cholesky_type1::factor(A,pack,SquareTopo);
@@ -86,11 +98,17 @@ int main(int argc, char** argv){
       double overhead_bin = 0;
       critter::start();
       cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-      critter::set_mode(0);
       double overhead_timer = MPI_Wtime();
+      critter::set_mode(0);
       cholesky_type2::factor(A,pack,SquareTopo);// Avoid allocation times
-      overhead_bin += (MPI_Wtime() - overhead_timer);
       critter::set_mode();
+      critter::set_mechanism(0);
+      critter::start();
+      cholesky_type2::factor(A,pack,SquareTopo);
+      critter::stop();
+      critter::record(k,1,0);
+      critter::set_mechanism(1);
+      overhead_bin += (MPI_Wtime() - overhead_timer);
       for (size_t i=0; i<num_iter; i++){
         critter::start();
         cholesky_type2::factor(A,pack,SquareTopo);
