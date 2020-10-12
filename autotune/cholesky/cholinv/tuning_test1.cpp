@@ -117,6 +117,9 @@ int main(int argc, char** argv){
           //if (rank==0) std::cout << "in stage 1 - " << k << "\n";
         }
       }
+      double overhead_timer = MPI_Wtime();
+      critter::clear();
+      overhead_bin += (MPI_Wtime() - overhead_timer);
       //if (rank==0) std::cout << "progress stage 1 - " << k << std::endl;
     }
     st3 = MPI_Wtime() - st3;
