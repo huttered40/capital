@@ -4,9 +4,8 @@ ALG=$(HOME)/camfs/src/alg/cholesky/cholinv/
 OBJS1 = baseline_variants
 OBJS2 = baseline_search
 OBJS4 = tuning_test1
-OBJS5 = tuning_test2
 
-all: $(OBJS1) $(OBJS2) $(OBJS4) $(OBJS5)
+all: $(OBJS1) $(OBJS2) $(OBJS4)
 
 $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)autotune/cholinv_$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)
@@ -29,12 +28,5 @@ $(OBJS4): $(OBJS4).o
 $(OBJS4).o: cholinv/$(OBJS4).cpp $(ALG)cholinv.h
 	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS4).o -c cholinv/$(OBJS4).cpp
 
-$(OBJS5): $(OBJS5).o
-	$(CCMPI) $(CFLAGS) -o $(BIN)autotune/cholinv_$(OBJS5) $(OBJS5).o $(LIB_PATH) $(LIBS)
-	rm *.o
-
-$(OBJS5).o: cholinv/$(OBJS5).cpp $(ALG)cholinv.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS5).o -c cholinv/$(OBJS5).cpp
-
 clean:
-	-rm -f *.o *.err *.out *.gch $(BIN)autotune/cholinv_$(OBJS1) $(BIN)autotune/cholinv_$(OBJS2) $(BIN)autotune/cholinv_$(OBJS4) $(BIN)autotune/cholinv_$(OBJS5)
+	-rm -f *.o *.err *.out *.gch $(BIN)autotune/cholinv_$(OBJS1) $(BIN)autotune/cholinv_$(OBJS2) $(BIN)autotune/cholinv_$(OBJS4)

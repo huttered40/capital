@@ -45,7 +45,7 @@ int main(int argc, char** argv){
     for (auto k=0; k<space_dim; k++){
       if (k/5==0){
         cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
-        critter::set_mode(0);
+       critter::set_mode(0);
         double overhead_timer = MPI_Wtime();
         cholesky_type0::factor(A,pack,SquareTopo);// Avoid allocation times
         overhead_bin += (MPI_Wtime() - overhead_timer);
@@ -77,7 +77,7 @@ int main(int argc, char** argv){
         }
       }
     }
-    st1 = MPI_Wtime() - st1;
+    st1 = MPI_Wtime() - st1 - overhead_bin;
     critter::stop();
     critter::record(-1,1,overhead_bin);
     critter::clear();

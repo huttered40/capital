@@ -28,6 +28,10 @@ int main(int argc, char** argv){
     int _tuning_test_ = atoi(std::getenv("CRITTER_AUTOTUNING_TEST"));
     if (_tuning_test_ == 0) schedule_kernels=false;
   } else assert(0);
+  int sample_constraint_mode=0;
+  if (std::getenv("CRITTER_AUTOTUNING_SAMPLE_CONSTRAINT_MODE") != NULL){
+    sample_constraint_mode = atoi(std::getenv("CRITTER_AUTOTUNING_SAMPLE_CONSTRAINT_MODE"));
+  }
 
   using cholesky_type0 = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
   using cholesky_type1 = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicateCommComp>;
@@ -61,6 +65,15 @@ int main(int argc, char** argv){
 	critter::record(k,1,0);
         critter::set_mechanism(1);
         overhead_bin += (MPI_Wtime() - overhead_timer);
+/*
+        if (sample_constraint_mode==1){
+          critter::set_mechanism(2);
+          critter::start();
+          cholesky_type0::factor(A,pack,SquareTopo);
+          critter::stop();
+          critter::set_mechanism(1);
+        }
+*/
         for (size_t i=0; i<num_iter; i++){
           critter::start(schedule_kernels);
           cholesky_type0::factor(A,pack,SquareTopo);
@@ -84,6 +97,15 @@ int main(int argc, char** argv){
 	critter::record(k,1,0);
         critter::set_mechanism(1);
         overhead_bin += (MPI_Wtime() - overhead_timer);
+/*
+        if (sample_constraint_mode==1){
+          critter::set_mechanism(2);
+          critter::start();
+          cholesky_type1::factor(A,pack,SquareTopo);
+          critter::stop();
+          critter::set_mechanism(1);
+        }
+*/
         for (size_t i=0; i<num_iter; i++){
           critter::start(schedule_kernels);
           cholesky_type1::factor(A,pack,SquareTopo);
@@ -107,6 +129,15 @@ int main(int argc, char** argv){
 	critter::record(k,1,0);
         critter::set_mechanism(1);
         overhead_bin += (MPI_Wtime() - overhead_timer);
+/*
+        if (sample_constraint_mode==1){
+          critter::set_mechanism(2);
+          critter::start();
+          cholesky_type2::factor(A,pack,SquareTopo);
+          critter::stop();
+          critter::set_mechanism(1);
+        }
+*/
         for (size_t i=0; i<num_iter; i++){
           critter::start(schedule_kernels);
           cholesky_type2::factor(A,pack,SquareTopo);

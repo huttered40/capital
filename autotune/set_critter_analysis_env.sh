@@ -1,8 +1,9 @@
 #!/bin/bash
 
-export CRITTER_MODE=1
-export CRITTER_TEST=baseline_variants
+export CRITTER_MODE=0
+export CRITTER_TEST=baseline_search
 export CRITTER_MECHANISM=0
+export CRITTER_AUTOTUNING_TEST=cholinv
 #export CRITTER_TRACK_COLLECTIVE=1
 #export CRITTER_TRACK_P2P=1
 #export CRITTER_TRACK_BLAS=0
