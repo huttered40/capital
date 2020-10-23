@@ -77,11 +77,11 @@ int main(int argc, char** argv){
         }
       }
     }
-    st1 = MPI_Wtime() - st1 - overhead_bin;
+    st1 = MPI_Wtime() - st1;
     critter::stop();
     critter::record(-1,1,overhead_bin);
     critter::clear();
-    if (rank==0) std::cout << "wallclock time of stage 1 - " << st1 << std::endl;
+    if (rank==0) std::cout << "wallclock time of stage 1 - " << st1 << " " << st1-overhead_bin << std::endl;
   }
   MPI_Finalize();
   return 0;

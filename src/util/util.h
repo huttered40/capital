@@ -16,7 +16,7 @@ public:
   static void block_to_cyclic_triangle(ScalarType* blocked, ScalarType* cyclic, int64_t num_elems, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim);
 
   template<typename ScalarType>
-  static void block_to_cyclic_rect(ScalarType* blocked, ScalarType* cyclic, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim);
+  static void block_to_cyclic_rect(ScalarType* blocked, ScalarType* cyclic, int num_rows_local, int num_columns_local, int sliceDim);
 
   template<typename ScalarType>
   static void cyclic_to_local(ScalarType* storeScalarType, ScalarType* storeScalarTypeI, int64_t localDimension, int64_t bcDimension, int64_t sliceDim, int64_t sliceRank);

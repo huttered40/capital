@@ -11,6 +11,7 @@ benchmarking:
 	make -C./bench/matmult/ summa_gemm
 autotuning:
 	make -C./autotune/cholesky/ all
+	make -C./autotune/qr/ all
 cacqr:
 	make -C./bench/qr/ cacqr
 cholinv:
