@@ -100,9 +100,9 @@ void util::block_to_cyclic_rect(ScalarType* blocked, ScalarType* cyclic, int num
 #ifdef FUNCTION_SYMBOLS
 CRITTER_START(blk2cyc_rect);
 #endif
+#ifdef CRITTER
   blk_to_cyc_rect(blocked,cyclic,num_rows_local,num_columns_local,sliceDim);
-  // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
-/*
+#else
   int64_t write_idx = 0; int64_t read_idx = 0;
   int64_t offset = num_rows_local*num_columns_local;
   int64_t num_rows_global = num_rows_local*sliceDim; int64_t num_columns_global = num_columns_local*sliceDim;
@@ -122,7 +122,7 @@ CRITTER_START(blk2cyc_rect);
       cyclic[i*num_rows_global+j]=0.;
     }
   }
-*/
+#endif
 #ifdef FUNCTION_SYMBOLS
 CRITTER_STOP(blk2cyc_rect);
 #endif
@@ -197,11 +197,14 @@ CRITTER_STOP(cyc2blk_tri);
 }
 
 template<typename ScalarType>
-void util::cyclic_to_block_rect(ScalarType* dest, ScalarType* src, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim){
+void util::cyclic_to_block_rect(ScalarType* dest, ScalarType* src, int num_rows_local, int num_columns_local, int sliceDim){
   // Note this is used in cholinv and nowhere else, so if used for a different algorithm, need to rethink interface
 #ifdef FUNCTION_SYMBOLS
 CRITTER_START(cyc2blk_rect);
 #endif
+#ifdef CRITTER
+  cyc_to_blk_rect(dest,src,num_rows_local,num_columns_local,sliceDim);
+#else
   int64_t write_idx = 0; int64_t read_idx = 0; int64_t offset = num_rows_local*num_columns_local;
   for (int64_t i=0; i<num_columns_local; i++){
     for (int64_t j=0; j<sliceDim; j++){
@@ -213,6 +216,7 @@ CRITTER_START(cyc2blk_rect);
       }
     }
   }
+#endif
 #ifdef FUNCTION_SYMBOLS
 CRITTER_STOP(cyc2blk_rect);
 #endif

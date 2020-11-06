@@ -2,8 +2,8 @@
 
 export CRITTER_MODE=0
 export CRITTER_TEST=baseline_search
+export CRITTER_SCHEDULE_TAG=cholinv
 export CRITTER_MECHANISM=0
-export CRITTER_AUTOTUNING_TEST=cholinv
 #export CRITTER_TRACK_COLLECTIVE=1
 #export CRITTER_TRACK_P2P=1
 #export CRITTER_TRACK_BLAS=0

@@ -21,11 +21,6 @@ int main(int argc, char** argv){
   size_t num_chunks = atoi(argv[7]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[8]);// number of simulations of the algorithm for performance testing
 
-  bool schedule_kernels=true;
-  if (std::getenv("CRITTER_AUTOTUNING_TEST") != NULL){
-    int _tuning_test_ = atoi(std::getenv("CRITTER_AUTOTUNING_TEST"));
-    if (_tuning_test_ == 0) schedule_kernels=false;
-  } else assert(0);
   int sample_constraint_mode=0;
   if (std::getenv("CRITTER_AUTOTUNING_SAMPLE_CONSTRAINT_MODE") != NULL){
     sample_constraint_mode = atoi(std::getenv("CRITTER_AUTOTUNING_SAMPLE_CONSTRAINT_MODE"));
@@ -46,38 +41,39 @@ int main(int argc, char** argv){
     // Stage 1: tune the parameterization space
     double overhead_bin = 0;
     PMPI_Barrier(MPI_COMM_WORLD);
-    critter::start(schedule_kernels);
+    critter::start();
     volatile double st3 = MPI_Wtime();
     for (auto k=0; k<space_dim; k++){
       if (k/5==0){
         cholesky_type0::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         double overhead_timer = MPI_Wtime();
+        A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
         critter::set_mode(0);
         cholesky_type0::factor(A,pack,SquareTopo);// Avoid allocation times
         critter::set_mode();
         critter::set_mechanism(0);
-        critter::start(schedule_kernels);
+        critter::set_debug(1);
+        critter::start();
         cholesky_type0::factor(A,pack,SquareTopo);
         critter::stop();
 	critter::record(k,1,0);
+        critter::set_debug(0);
         critter::set_mechanism(1);
-        overhead_bin += (MPI_Wtime() - overhead_timer);
-/*
-        if (sample_constraint_mode==1){
+        if (sample_constraint_mode==3){
           critter::set_mechanism(2);
           critter::start();
           cholesky_type0::factor(A,pack,SquareTopo);
           critter::stop();
-          ..critter::record(k,1,0);
           critter::set_mechanism(1);
         }
-*/
+        overhead_bin += (MPI_Wtime() - overhead_timer);
         for (size_t i=0; i<num_iter; i++){
-          critter::start(schedule_kernels);
+          critter::start();
           cholesky_type0::factor(A,pack,SquareTopo);
           critter::stop();
           overhead_timer = MPI_Wtime();
 	  critter::record(k,1,0);
+          critter::record(k,2);
           overhead_bin += (MPI_Wtime() - overhead_timer);
           //if (rank==0) std::cout << "in stage 1 - " << k << "\n";
         }
@@ -85,32 +81,33 @@ int main(int argc, char** argv){
       else if (k/5==1){
         cholesky_type1::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         double overhead_timer = MPI_Wtime();
+        A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
         critter::set_mode(0);
         cholesky_type1::factor(A,pack,SquareTopo);// Avoid allocation times
         critter::set_mode();
         critter::set_mechanism(0);
-        critter::start(schedule_kernels);
+        critter::set_debug(1);
+        critter::start();
         cholesky_type1::factor(A,pack,SquareTopo);
         critter::stop();
 	critter::record(k,1,0);
+        critter::set_debug(0);
         critter::set_mechanism(1);
-        overhead_bin += (MPI_Wtime() - overhead_timer);
-/*
-        if (sample_constraint_mode==1){
+        if (sample_constraint_mode==3){
           critter::set_mechanism(2);
           critter::start();
           cholesky_type1::factor(A,pack,SquareTopo);
           critter::stop();
-          ..critter::record(k,1,0);
           critter::set_mechanism(1);
         }
-*/
+        overhead_bin += (MPI_Wtime() - overhead_timer);
         for (size_t i=0; i<num_iter; i++){
-          critter::start(schedule_kernels);
+          critter::start();
           cholesky_type1::factor(A,pack,SquareTopo);
           critter::stop();
           overhead_timer = MPI_Wtime();
 	  critter::record(k,1,0);
+          critter::record(k,2);
           overhead_bin += (MPI_Wtime() - overhead_timer);
           //if (rank==0) std::cout << "in stage 1 - " << k << "\n";
         }
@@ -118,38 +115,41 @@ int main(int argc, char** argv){
       else if (k/5==2){
         cholesky_type2::info<T,U> pack(complete_inv,split,bcMultiplier+k%5,dir);
         double overhead_timer = MPI_Wtime();
+        A.distribute_symmetric(SquareTopo.x, SquareTopo.y, SquareTopo.d, SquareTopo.d, rank/SquareTopo.c,true);
         critter::set_mode(0);
         cholesky_type2::factor(A,pack,SquareTopo);// Avoid allocation times
         critter::set_mode();
         critter::set_mechanism(0);
-        critter::start(schedule_kernels);
+        critter::set_debug(1);
+        critter::start();
         cholesky_type2::factor(A,pack,SquareTopo);
         critter::stop();
 	critter::record(k,1,0);
+        critter::set_debug(0);
         critter::set_mechanism(1);
-        overhead_bin += (MPI_Wtime() - overhead_timer);
-/*
-        if (sample_constraint_mode==1){
+        if (sample_constraint_mode==3){
           critter::set_mechanism(2);
+          critter::set_debug(1);
           critter::start();
           cholesky_type2::factor(A,pack,SquareTopo);
           critter::stop();
-          ..critter::record(k,1,0);
+          critter::set_debug(0);
           critter::set_mechanism(1);
         }
-*/
+        overhead_bin += (MPI_Wtime() - overhead_timer);
         for (size_t i=0; i<num_iter; i++){
-          critter::start(schedule_kernels);
+          critter::start();
           cholesky_type2::factor(A,pack,SquareTopo);
           critter::stop();
           overhead_timer = MPI_Wtime();
 	  critter::record(k,1,0);
+          critter::record(k,2);
           overhead_bin += (MPI_Wtime() - overhead_timer);
           //if (rank==0) std::cout << "in stage 1 - " << k << "\n";
         }
       }
       double overhead_timer = MPI_Wtime();
-      critter::record(k,2);
+      //critter::record(k,2);
       critter::clear();
       overhead_bin += (MPI_Wtime() - overhead_timer);
       //if (rank==0) std::cout << "progress stage 1 - " << k << std::endl;

@@ -25,7 +25,7 @@ public:
   static void cyclic_to_block_triangle(ScalarType* dest, ScalarType* src, int64_t num_elems, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim);
 
   template<typename ScalarType>
-  static void cyclic_to_block_rect(ScalarType* dest, ScalarType* src, int64_t num_rows_local, int64_t num_columns_local, int64_t sliceDim);
+  static void cyclic_to_block_rect(ScalarType* dest, ScalarType* src, int num_rows_local, int num_columns_local, int sliceDim);
 
   template<typename MatrixType, typename CommType>
   static void transpose(MatrixType& mat, CommType&& CommInfo);

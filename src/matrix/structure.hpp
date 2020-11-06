@@ -3,14 +3,16 @@
 template<typename ScalarType, typename DimensionType>
 void rect::_assemble(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType& matrixNumElems, DimensionType dimensionX, DimensionType dimensionY){
   matrixNumElems = dimensionX * dimensionY;
-  data = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) data[i]=0.;
+  data = new ScalarType[matrixNumElems];
+  std::memset(data,0,matrixNumElems*sizeof(ScalarType));
   _assemble_matrix(data, scratch, pad, dimensionX, dimensionY);
 }
 
 template<typename ScalarType, typename DimensionType>
 void rect::_assemble_matrix(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType dimensionX, DimensionType dimensionY){
   DimensionType matrixNumElems = dimensionX * dimensionY;
-  scratch = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) scratch[i]=0.;
+  scratch = new ScalarType[matrixNumElems];
+  std::memset(scratch,0,matrixNumElems*sizeof(ScalarType));
   pad = nullptr;
 }
 
@@ -130,7 +132,8 @@ void rect::_distribute_random(ScalarType* data, DimensionType dimensionX, Dimens
 template<typename ScalarType, typename DimensionType>
 void uppertri::_assemble(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType& matrixNumElems, DimensionType dimensionX, DimensionType dimensionY){
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
-  data = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) data[i]=0.;
+  data = new ScalarType[matrixNumElems];
+  std::memset(data,0,matrixNumElems*sizeof(ScalarType));
   _assemble_matrix(data, scratch, pad, dimensionX, dimensionY);
 }
 
@@ -138,8 +141,10 @@ template<typename ScalarType, typename DimensionType>
 void uppertri::_assemble_matrix(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType dimensionX, DimensionType dimensionY){
   DimensionType nonPackedNumElems = dimensionX*dimensionY;
   DimensionType matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
-  scratch = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) scratch[i]=0.;
-  pad = new ScalarType[nonPackedNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) pad[i]=0.;	// we give full non-packed size here to account for need for summa to use nonpacked layout
+  scratch = new ScalarType[matrixNumElems];
+  std::memset(scratch,0,matrixNumElems*sizeof(ScalarType));
+  pad = new ScalarType[nonPackedNumElems];
+  std::memset(pad,0,matrixNumElems*sizeof(ScalarType));
 }
 
 template<typename ScalarType, typename DimensionType>
@@ -204,7 +209,8 @@ void uppertri::_distribute_random(ScalarType* data, DimensionType dimensionX, Di
 template<typename ScalarType, typename DimensionType>
 void lowertri::_assemble(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType& matrixNumElems, DimensionType dimensionX, DimensionType dimensionY){
   matrixNumElems = ((dimensionY*(dimensionY+1))>>1);
-  data = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) data[i]=0.;
+  data = new ScalarType[matrixNumElems];
+  std::memset(data,0,matrixNumElems*sizeof(ScalarType));
   _assemble_matrix(data, scratch, pad, dimensionX, dimensionY);
 }
 
@@ -212,8 +218,10 @@ template<typename ScalarType, typename DimensionType>
 void lowertri::_assemble_matrix(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType dimensionX, DimensionType dimensionY){
   DimensionType nonPackedNumElems = dimensionX*dimensionY;
   DimensionType matrixNumElems = ((dimensionY*(dimensionY+1))>>1);		// dimensionX == dimensionY
-  scratch = new ScalarType[matrixNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) scratch[i]=0.;
-  pad = new ScalarType[nonPackedNumElems]; for (DimensionType i=0; i<matrixNumElems; i++) pad[i]=0.;	// we give full non-packed size here to account for need for summa to use nonpacked layout
+  scratch = new ScalarType[matrixNumElems];
+  std::memset(scratch,0,matrixNumElems*sizeof(ScalarType));
+  pad = new ScalarType[nonPackedNumElems];
+  std::memset(pad,0,matrixNumElems*sizeof(ScalarType));
 }
 
 template<typename ScalarType, typename DimensionType>

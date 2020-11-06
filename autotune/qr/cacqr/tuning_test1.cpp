@@ -22,11 +22,6 @@ int main(int argc, char** argv){
   size_t num_chunks = atoi(argv[9]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[10]);// number of simulations of the algorithm for performance testing
 
-  bool schedule_kernels=true;
-  if (std::getenv("CRITTER_AUTOTUNING_TEST") != NULL){
-    int _tuning_test_ = atoi(std::getenv("CRITTER_AUTOTUNING_TEST"));
-    if (_tuning_test_ == 0) schedule_kernels=false;
-  } else assert(0);
   int sample_constraint_mode=0;
   if (std::getenv("CRITTER_AUTOTUNING_SAMPLE_CONSTRAINT_MODE") != NULL){
     sample_constraint_mode = atoi(std::getenv("CRITTER_AUTOTUNING_SAMPLE_CONSTRAINT_MODE"));
@@ -52,7 +47,7 @@ int main(int argc, char** argv){
     // Stage 1: tune the parameterization space
     double overhead_bin = 0;
     PMPI_Barrier(MPI_COMM_WORLD);
-    critter::start(schedule_kernels);
+    critter::start();
     volatile double st3 = MPI_Wtime();
     for (auto k=0; k<space_dim; k++){
       if (k/5==0){
@@ -63,24 +58,23 @@ int main(int argc, char** argv){
         qr_type::factor(A1, pack, RectTopo1);
         critter::set_mode();
         critter::set_mechanism(0);
-        critter::start(schedule_kernels);
+        critter::start();
         qr_type::factor(A1, pack, RectTopo1);
         critter::stop();
 	critter::record(k,1,0);
         critter::set_mechanism(1);
-        overhead_bin += (MPI_Wtime() - overhead_timer);
-/*
-        if (sample_constraint_mode==1){
+        if (sample_constraint_mode==3){
           critter::set_mechanism(2);
+          critter::set_debug(1);
           critter::start();
           qr_type::factor(A1, pack, RectTopo1);
           critter::stop();
-          ..critter::record(k,1,0);
+          critter::set_debug(0);
           critter::set_mechanism(1);
         }
-*/
+        overhead_bin += (MPI_Wtime() - overhead_timer);
         for (size_t i=0; i<num_iter; i++){
-          critter::start(schedule_kernels);
+          critter::start();
           qr_type::factor(A1, pack, RectTopo1);
           critter::stop();
           overhead_timer = MPI_Wtime();
@@ -97,24 +91,23 @@ int main(int argc, char** argv){
         qr_type::factor(A2, pack, RectTopo2);
         critter::set_mode();
         critter::set_mechanism(0);
-        critter::start(schedule_kernels);
+        critter::start();
         qr_type::factor(A2, pack, RectTopo2);
         critter::stop();
 	critter::record(k,1,0);
         critter::set_mechanism(1);
-        overhead_bin += (MPI_Wtime() - overhead_timer);
-/*
-        if (sample_constraint_mode==1){
+        if (sample_constraint_mode==3){
           critter::set_mechanism(2);
+          critter::set_debug(1);
           critter::start();
           qr_type::factor(A2, pack, RectTopo2);
           critter::stop();
-          ..critter::record(k,1,0);
+          critter::set_debug(0);
           critter::set_mechanism(1);
         }
-*/
+        overhead_bin += (MPI_Wtime() - overhead_timer);
         for (size_t i=0; i<num_iter; i++){
-          critter::start(schedule_kernels);
+          critter::start();
           qr_type::factor(A2, pack, RectTopo2);
           critter::stop();
           overhead_timer = MPI_Wtime();
@@ -131,24 +124,23 @@ int main(int argc, char** argv){
         qr_type::factor(A3, pack, RectTopo3);
         critter::set_mode();
         critter::set_mechanism(0);
-        critter::start(schedule_kernels);
+        critter::start();
         qr_type::factor(A3, pack, RectTopo3);
         critter::stop();
 	critter::record(k,1,0);
         critter::set_mechanism(1);
-        overhead_bin += (MPI_Wtime() - overhead_timer);
-/*
-        if (sample_constraint_mode==1){
+        if (sample_constraint_mode==3){
           critter::set_mechanism(2);
+          critter::set_debug(1);
           critter::start();
           qr_type::factor(A3, pack, RectTopo3);
           critter::stop();
-          ..critter::record(k,1,0);
+          critter::set_debug(0);
           critter::set_mechanism(1);
         }
-*/
+        overhead_bin += (MPI_Wtime() - overhead_timer);
         for (size_t i=0; i<num_iter; i++){
-          critter::start(schedule_kernels);
+          critter::start();
           qr_type::factor(A3, pack, RectTopo3);
           critter::stop();
           overhead_timer = MPI_Wtime();

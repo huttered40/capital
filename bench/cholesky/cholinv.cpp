@@ -40,11 +40,16 @@ int main(int argc, char** argv){
       MPI_Barrier(MPI_COMM_WORLD);
 #ifdef CRITTER
       critter::start();
+#else
+      double start_time = MPI_Wtime();
 #endif
       cholesky_type::factor(A, pack, SquareTopo);
 #ifdef CRITTER
       critter::stop();
       critter::record();
+#else
+      double total_time = MPI_Wtime()-start_time;
+      if (rank==0) std::cout << "total time - " << total_time << std::endl;
 #endif
 /*
       cholesky_type::factor(A, pack, SquareTopo);
