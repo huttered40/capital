@@ -40,27 +40,26 @@ void helper::setInfoParameters_syrk(const ArgPack_syrk<T>& srcPackage,
   destArg3 = (srcPackage.transposeA == Transpose::AblasTrans ? CblasTrans : CblasNoTrans);
 }
 
-template<typename T, typename U>
-void engine::_gemm(T* matrixA, T* matrixB, T* matrixC, U m, U n, U k, U lda, U ldb, U ldc, const ArgPack_gemm<T>& srcPackage){
+template<>
+void engine::_gemm(double* matrixA, double* matrixB, double* matrixC, int64_t m, int64_t n, int64_t k, int64_t lda, int64_t ldb, int64_t ldc, const ArgPack_gemm<double>& srcPackage){
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_TRANSPOSE arg2;
   CBLAS_TRANSPOSE arg3;
   setInfoParameters_gemm(srcPackage, arg1, arg2, arg3);
 
-  auto _gemm_ = GetGEMMroutine(BType<T>());
 #ifdef FUNCTION_SYMBOLS
 CRITTER_START(gemm);
 #endif
-  _gemm_(arg1, arg2, arg3, m, n, k, srcPackage.alpha,
+  cblas_dgemm(arg1, arg2, arg3, m, n, k, srcPackage.alpha,
     matrixA, lda, matrixB, ldb, srcPackage.beta, matrixC, ldc);
 #ifdef FUNCTION_SYMBOLS
 CRITTER_STOP(gemm);
 #endif
 }
 
-template<typename T, typename U>
-void engine::_trmm(T* matrixA, T* matrixB, U m, U n, U lda, U ldb, const ArgPack_trmm<T>& srcPackage){
+template<>
+void engine::_trmm(double* matrixA, double* matrixB, int64_t m, int64_t n, int64_t lda, int64_t ldb, const ArgPack_trmm<double>& srcPackage){
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_SIDE arg2;
@@ -69,30 +68,28 @@ void engine::_trmm(T* matrixA, T* matrixB, U m, U n, U lda, U ldb, const ArgPack
   CBLAS_DIAG arg5;
   setInfoParameters_trmm(srcPackage, arg1, arg2, arg3, arg4, arg5);
 
-  auto _trmm_ = GetTRMMroutine(BType<T>());
 #ifdef FUNCTION_SYMBOLS
 CRITTER_START(trmm);
 #endif
-  _trmm_(arg1, arg2, arg3, arg4, arg5, m, n, srcPackage.alpha, matrixA,
+  cblas_dtrmm(arg1, arg2, arg3, arg4, arg5, m, n, srcPackage.alpha, matrixA,
     lda, matrixB, ldb);
 #ifdef FUNCTION_SYMBOLS
 CRITTER_STOP(trmm);
 #endif
 }
 
-template<typename T, typename U>
-void engine::_syrk(T* matrixA, T* matrixC, U n, U k, U lda, U ldc, const ArgPack_syrk<T>& srcPackage){
+template<>
+void engine::_syrk(double* matrixA, double* matrixC, int64_t n, int64_t k, int64_t lda, int64_t ldc, const ArgPack_syrk<double>& srcPackage){
   // First, unpack the info parameter
   CBLAS_ORDER arg1;
   CBLAS_UPLO arg2;
   CBLAS_TRANSPOSE arg3;
   setInfoParameters_syrk(srcPackage, arg1, arg2, arg3);
 
-  auto _syrk_ = GetSYRKroutine(BType<T>());
 #ifdef FUNCTION_SYMBOLS
 CRITTER_START(syrk);
 #endif
-  _syrk_(arg1, arg2, arg3, n, k, srcPackage.alpha, matrixA,
+  cblas_dsyrk(arg1, arg2, arg3, n, k, srcPackage.alpha, matrixA,
     lda, srcPackage.beta, matrixC, ldc);
 #ifdef FUNCTION_SYMBOLS
 CRITTER_STOP(syrk);

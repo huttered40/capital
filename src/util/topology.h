@@ -131,10 +131,10 @@ public:
 
   }
   ~square(){
-//    MPI_Comm_free(&this->row);
-//    MPI_Comm_free(&this->column);
-//    MPI_Comm_free(&this->slice);
-//    MPI_Comm_free(&this->depth);
+    MPI_Comm_free(&this->row);
+    MPI_Comm_free(&this->column);
+    MPI_Comm_free(&this->slice);
+    MPI_Comm_free(&this->depth);
   }
 
   MPI_Comm world,row,column,slice,depth;

@@ -9,7 +9,7 @@ benchmarking:
 	make -C./bench/qr/ cacqr
 	make -C./bench/inverse/ rectri
 	make -C./bench/matmult/ summa_gemm
-autotuning:
+tune:
 	make -C./autotune/cholesky/ all
 	make -C./autotune/qr/ all
 cacqr:

@@ -18,11 +18,19 @@
 #include <cmath>
 #include <string>
 #include <assert.h>
+#include <complex>
+
+#include <mpi.h>
+#include "mkl.h"
 
 #ifdef CRITTER
 #include "critter.h"
 #else
-#include <mpi.h>
+#ifdef PORTER
+#include <cblas.h>
+#include "/home/hutter2/hutter2/external/BLAS/OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
+#endif
+
 #define CRITTER_START(ARG)
 #define CRITTER_STOP(ARG)
 #endif

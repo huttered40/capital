@@ -27,8 +27,8 @@ void helper::setInfoParameters_orgqr(const ArgPack_orgqr& srcPackage,
   destArg1 = (srcPackage.order == Order::AlapackRowMajor ? LAPACK_ROW_MAJOR : LAPACK_COL_MAJOR);
 }
 
-template<typename T>
-void engine::_potrf(T* matrixA, int n, int lda, const ArgPack_potrf& srcPackage){
+template<>
+void engine::_potrf(double* matrixA, int n, int lda, const ArgPack_potrf& srcPackage){
   // First, unpack the info parameter
   int arg1; char arg2;
   helper::setInfoParameters_potrf(srcPackage, arg1, arg2);
@@ -36,20 +36,14 @@ void engine::_potrf(T* matrixA, int n, int lda, const ArgPack_potrf& srcPackage)
 #ifdef FUNCTION_SYMBOLS
 CRITTER_START(potrf);
 #endif
-  auto _potrf_ = GetPOTRFroutine(LType<T>());
-#if defined(BGQ) || defined(BLUEWATERS)
-  int info;
-  _potrf_(&arg2, &n, matrixA, &lda, &info);
-#else
-  _potrf_(arg1, arg2, n, matrixA, lda);
-#endif
+  LAPACKE_dpotrf(arg1, arg2, n, matrixA, lda);
 #ifdef FUNCTION_SYMBOLS
 CRITTER_STOP(potrf);
 #endif
 }
 
-template<typename T>
-void engine::_trtri(T* matrixA, int n, int lda, const ArgPack_trtri& srcPackage){
+template<>
+void engine::_trtri(double* matrixA, int n, int lda, const ArgPack_trtri& srcPackage){
   // First, unpack the info parameter
   int arg1; char arg2; char arg3;
   helper::setInfoParameters_trtri(srcPackage, arg1, arg2, arg3);
@@ -57,20 +51,14 @@ void engine::_trtri(T* matrixA, int n, int lda, const ArgPack_trtri& srcPackage)
 #ifdef FUNCTION_SYMBOLS
 CRITTER_START(trtri);
 #endif
-  static auto _trtri_ = GetTRTRIroutine(LType<T>());
-#if defined(BGQ) || defined(BLUEWATERS)
-  int info;
-  _trtri_(&arg2, &arg3, &n, matrixA, &lda, &info);
-#else
-  _trtri_(arg1, arg2, arg3, n, matrixA, lda);
-#endif
+  LAPACKE_dtrtri(arg1, arg2, arg3, n, matrixA, lda);
 #ifdef FUNCTION_SYMBOLS
 CRITTER_STOP(trtri);
 #endif
 }
 
-template<typename T>
-void engine::_geqrf(T* matrixA, T* tau, int m, int n, int lda, const ArgPack_geqrf& srcPackage){
+template<>
+void engine::_geqrf(double* matrixA, double* tau, int m, int n, int lda, const ArgPack_geqrf& srcPackage){
   // First, unpack the info parameter
   int arg1;
   helper::setInfoParameters_geqrf(srcPackage, arg1);
@@ -78,20 +66,14 @@ void engine::_geqrf(T* matrixA, T* tau, int m, int n, int lda, const ArgPack_geq
 #ifdef FUNCTION_SYMBOLS
 CRITTER_START(geqrf);
 #endif
-  auto _geqrf_ = GetGEQRFroutine(LType<T>());
-#if defined(BGQ) || defined(BLUEWATERS)
-  int info;
-  _geqrf_(&m, &n, matrixA, &lda, tau, &info);
-#else
-  _geqrf_(arg1, m, n, matrixA, lda, tau);
-#endif
+  LAPACKE_dgeqrf(arg1, m, n, matrixA, lda, tau);
 #ifdef FUNCTION_SYMBOLS
 CRITTER_STOP(trtri);
 #endif
 }
 
-template<typename T>
-void engine::_orgqr(T* matrixA, T* tau, int m, int n, int k, int lda, const ArgPack_orgqr& srcPackage){
+template<>
+void engine::_orgqr(double* matrixA, double* tau, int m, int n, int k, int lda, const ArgPack_orgqr& srcPackage){
   // First, unpack the info parameter
   int arg1;
   helper::setInfoParameters_orgqr(srcPackage, arg1);
@@ -99,13 +81,7 @@ void engine::_orgqr(T* matrixA, T* tau, int m, int n, int k, int lda, const ArgP
 #ifdef FUNCTION_SYMBOLS
 CRITTER_START(orgqr);
 #endif
-  auto _orgqr_ = GetORGQRroutine(LType<T>());
-#if defined(BGQ) || defined(BLUEWATERS)
-  int info;
-  _orgqr_(&m, &n, &k, matrixA, &lda, tau, &info);
-#else
-  _orgqr_(arg1, m, n, k, matrixA, lda, tau);
-#endif
+  LAPACKE_dorgqr(arg1, m, n, k, matrixA, lda, tau);
 #ifdef FUNCTION_SYMBOLS
 CRITTER_STOP(orgqr);
 #endif
