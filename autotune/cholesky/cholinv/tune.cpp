@@ -21,7 +21,7 @@ class launch{
 public:
   template<typename MatrixType, typename CommType>
   static void invoke_decomposition_compare(MatrixType& M, CommType& topo, std::vector<int>& resets, char dir, bool complete_inv, int split,
-                                           int bcMultiplier, int configuration_id, double& overhead_bin){
+                                           int bcMultiplier){
     using T = double; using U = int64_t; using MatrixType = matrix<T,U,rect>; using namespace cholesky;
     double overhead_timer = MPI_Wtime();
     typename alg_type::info<T,U> pack(complete_inv,split,bcMultiplier,dir);
@@ -80,7 +80,7 @@ public:
   }
   template<typename MatrixType, typename CommType>
   static void invoke_discretization_compare(MatrixType& M, CommType& topo, std::vector<int>& resets, char dir, bool complete_inv, int split,
-                                            int bcMultiplier, int configuration_id, double& overhead_bin){
+                                            int bcMultiplier){
     using T = double; using U = int64_t; using MatrixType = matrix<T,U,rect>; using namespace cholesky;
     double overhead_timer = MPI_Wtime();
     typename alg_type::info<T,U> pack(complete_inv,split,bcMultiplier,dir);
@@ -167,8 +167,8 @@ int main(int argc, char** argv){
     _sample_constraint_mode_ = atoi(std::getenv("CRITTER_AUTOTUNING_SAMPLE_CONSTRAINT_MODE"));
   }
   _reset_mode_=0;
-  if (std::getenv("RESET_MODE") != NULL){
-    _reset_mode_ = atoi(std::getenv("RESET_MODE"));
+  if (std::getenv("CRITTER_RESET_DISTRIBUTION") != NULL){
+    _reset_mode_ = atoi(std::getenv("CRITTER_RESET_DISTRIBUTION"));
   }
   std::string stream_name_cp_times = "";
   std::string stream_name_cp_costs = "";
@@ -216,18 +216,18 @@ int main(int argc, char** argv){
     critter::start();
     double total_time = MPI_Wtime();
     for (auto k=0; k<space_dim; k++){
-      if (compare) launch<cholesky_type0>::invoke_decomposition_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k,configuration_id,overhead_bin);
-      else         launch<cholesky_type0>::invoke_discretization_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k,configuration_id,overhead_bin);
+      if (compare) launch<cholesky_type0>::invoke_decomposition_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
+      else         launch<cholesky_type0>::invoke_discretization_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
       configuration_id++;
     }
     for (auto k=0; k<space_dim; k++){
-      if (compare) launch<cholesky_type1>::invoke_decomposition_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k,configuration_id,overhead_bin);
-      else         launch<cholesky_type1>::invoke_discretization_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k,configuration_id,overhead_bin);
+      if (compare) launch<cholesky_type1>::invoke_decomposition_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
+      else         launch<cholesky_type1>::invoke_discretization_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
       configuration_id++;
     }
     for (auto k=0; k<space_dim; k++){
-      if (compare) launch<cholesky_type2>::invoke_decomposition_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k,configuration_id,overhead_bin);
-      else         launch<cholesky_type2>::invoke_discretization_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k,configuration_id,overhead_bin);
+      if (compare) launch<cholesky_type2>::invoke_decomposition_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
+      else         launch<cholesky_type2>::invoke_discretization_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
       configuration_id++;
     }
     total_time = MPI_Wtime() - total_time;

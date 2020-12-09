@@ -170,8 +170,8 @@ int main(int argc, char** argv){
     _sample_constraint_mode_ = atoi(std::getenv("CRITTER_AUTOTUNING_SAMPLE_CONSTRAINT_MODE"));
   }
   _reset_mode_=0;
-  if (std::getenv("RESET_MODE") != NULL){
-    _reset_mode_ = atoi(std::getenv("RESET_MODE"));
+  if (std::getenv("CRITTER_RESET_DISTRIBUTION") != NULL){
+    _reset_mode_ = atoi(std::getenv("CRITTER_RESET_DISTRIBUTION"));
   }
   std::string stream_name_cp_times = "";
   std::string stream_name_cp_costs = "";

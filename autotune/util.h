@@ -20,10 +20,10 @@ void write_cp_times_header(std::ofstream& st, int compare){
 }
 void write_cp_costs_header(std::ofstream& st, int compare){
   st << std::left << std::setw(15) << "Config";
-  st << std::left << std::setw(15) << "Decomp-synch";
-  st << std::left << std::setw(15) << "Decomp-comm";
-  st << std::left << std::setw(15) << "Decomp-synch";
-  st << std::left << std::setw(15) << "Decomp-comm";
+  st << std::left << std::setw(15) << "Decomp-BSPcomm";
+  st << std::left << std::setw(15) << "Decomp-ABcomm";
+  st << std::left << std::setw(15) << "Decomp-BSPsynch";
+  st << std::left << std::setw(15) << "Decomp-ABsynch";
   st << std::left << std::setw(15) << "Decomp-comp";
   st << std::endl;
 }
