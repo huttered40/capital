@@ -26,17 +26,13 @@
 #ifdef CRITTER
 #include "critter.h"
 #else
-#ifdef PORTER
-#include <cblas.h>
-#include "/home/hutter2/hutter2/external/BLAS/OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
-#endif
-
+//#ifdef PORTER
+//#include <cblas.h>
+//#include "/home/hutter2/hutter2/external/BLAS/OpenBLAS/lapack-netlib/LAPACKE/include/lapacke.h"
+//#endif
 #define CRITTER_START(ARG)
 #define CRITTER_STOP(ARG)
 #endif
-
-// Note: no need to include mpi header file when using critter
-// #include <mpi.h>
 
 template<typename ScalarType>
 class mpi_type;

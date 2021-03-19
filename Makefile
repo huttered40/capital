@@ -1,8 +1,6 @@
 all:
-	make -C./autotune/cholesky/ all
 	make -C./bench/qr/ cacqr
 	make -C./bench/cholesky/ cholinv
-	make -C./bench/inverse/ rectri
 	make -C./bench/matmult/ summa_gemm
 benchmarking:
 	make -C./bench/cholesky/ cholinv

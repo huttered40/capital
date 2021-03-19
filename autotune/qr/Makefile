@@ -10,7 +10,7 @@ $(OBJS1): $(OBJS1).o
 	rm *.o
 
 $(OBJS1).o: cacqr/$(OBJS1).cpp $(ALG)cacqr.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c cacqr/$(OBJS1).cpp
+	$(CCMPI) $(CFLAGS) -o $(OBJS1).o -c cacqr/$(OBJS1).cpp
 
 clean:
 	-rm -f *.o *.err *.out *.gch $(BIN)autotune/cacqr_$(OBJS1)

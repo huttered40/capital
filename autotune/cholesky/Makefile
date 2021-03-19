@@ -10,7 +10,7 @@ $(OBJS1): $(OBJS1).o
 	rm *.o
 
 $(OBJS1).o: cholinv/$(OBJS1).cpp $(ALG)cholinv.h
-	$(CCMPI) $(CFLAGS) -D$(MACHINE) -o $(OBJS1).o -c cholinv/$(OBJS1).cpp
+	$(CCMPI) $(CFLAGS) -o $(OBJS1).o -c cholinv/$(OBJS1).cpp
 
 clean:
 	-rm -f *.o *.err *.out *.gch $(BIN)autotune/cholinv_$(OBJS1)

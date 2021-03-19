@@ -28,9 +28,9 @@ int main(int argc, char** argv){
   critter::init(symbols);
 #endif
 
-  using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
-//  using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicationCommComp>;
-//  using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicateComp>;
+  using cholesky_type = typename cholesky::cholinv<policy::cholinv::Serialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
+//  using cholesky_type = typename cholesky::cholinv<policy::cholinv::Serialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicationCommComp>;
+//  using cholesky_type = typename cholesky::cholinv<policy::cholinv::Serialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicateComp>;
   size_t process_cube_dim = std::nearbyint(std::ceil(pow(size,1./3.)));
   size_t rep_factor = process_cube_dim/rep_div;
   T residual_error_local,residual_error_global; auto mpi_dtype = mpi_type<T>::type;
@@ -58,7 +58,7 @@ int main(int argc, char** argv){
       auto total_time = MPI_Wtime()-start_time;
       if (rank==0) std::cout << "total time - " << total_time << std::endl;
 #endif
-/*
+/* For calculating error. No longer relevant.
       cholesky_type::factor(A, pack, SquareTopo);
       residual_error_local = cholesky::validate<cholesky_type>::residual(A, pack, SquareTopo);
       MPI_Reduce(&residual_error_local, &residual_error_global, 1, mpi_dtype, MPI_MAX, 0, MPI_COMM_WORLD);
