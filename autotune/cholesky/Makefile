@@ -1,6 +1,6 @@
 include ../../config.mk
 
-ALG=$(HOME)/camfs/src/alg/cholesky/cholinv/
+ALG=$(HOME)/capital/src/alg/cholesky/cholinv/
 OBJS1 = tune
 
 all: $(OBJS1)

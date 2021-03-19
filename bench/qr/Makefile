@@ -1,6 +1,6 @@
 include ../../config.mk
 
-ALG=$(HOME)/camfs/src/alg/qr/cacqr/
+ALG=$(HOME)/capital/src/alg/qr/cacqr/
 OBJS1 = cacqr
 $(OBJS1): $(OBJS1).o
 	$(CCMPI) $(CFLAGS) -o $(BIN)bench/$(OBJS1) $(OBJS1).o $(LIB_PATH) $(LIBS)

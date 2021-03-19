@@ -1,6 +1,6 @@
 include ../../config.mk
 
-ALG=$(HOME)/camfs/src/alg/qr/cacqr/
+ALG=$(HOME)/capital/src/alg/qr/cacqr/
 OBJS1 = tune
 
 all: $(OBJS1)
