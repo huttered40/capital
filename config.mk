@@ -13,7 +13,7 @@ ifneq ($(STAMPEDE2),)
   CCMPI=mpicxx
   #CCMPI=ampicxx
   INCLUDES=-I$(critter_dir)/include
-  DEFS=-DMKL -DCRITTER -DFUNCTION_SYMBOLS
+  DEFS=-DMKL -DCRITTER -DALGORITHMIC_SYMBOLS
   #DEFS=-DMKL
   CFLAGS=-g -Wall -O3 -std=c++14 -mkl=parallel -xMIC-AVX512 ${DEFS} ${INCLUDES}
   LIB_PATH=-L$(critter_dir)/lib

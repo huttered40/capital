@@ -9,7 +9,7 @@
 
 using namespace std;
 
-int _rank_,_size_,_provided_,_sample_constraint_mode_,_reset_mode_;
+int _rank_,_size_,_provided_,_sample_constraint_mode_,_reset_mode_,_num_reference_iter_;
 size_t num_iter,compare,configuration_id;
 double total_reference_time;
 double total_time;
@@ -23,33 +23,27 @@ public:
   static void invoke_decomposition_compare(MatrixType& M, CommType& topo, std::vector<int>& resets, char dir, bool complete_inv, int split,
                                            int bcMultiplier){
     using T = double; using U = int64_t; using MatrixType = matrix<T,U,rect>; using namespace cholesky;
-    double overhead_timer = MPI_Wtime();
+    auto overhead_timer = MPI_Wtime();
     typename alg_type::info<T,U> pack(complete_inv,split,bcMultiplier,dir);
+    critter::set_mechanism(0);
+    std::vector<float> decomp_cp_info(critter::get_critical_path_costs());
+    std::vector<float> decomp_pp_info(critter::get_max_per_process_costs());
+    std::vector<float> decomp_vol_info(critter::get_volumetric_costs());
+    critter::set_mechanism(1);
     M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
     critter::set_mode(0);
     alg_type::factor(M,pack,topo);// Avoid allocation times
-    double reference_time = MPI_Wtime();
+    auto reference_time = MPI_Wtime();
     alg_type::factor(M,pack,topo);// Avoid allocation times
     reference_time = MPI_Wtime() - reference_time;
     PMPI_Allreduce(MPI_IN_PLACE,&reference_time,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
     total_reference_time += reference_time;
     critter::set_mode();
-    critter::set_mechanism(0);
-    critter::set_debug(1);
-    M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
-    critter::start();
-    alg_type::factor(M,pack,topo);
-    critter::stop();
-    critter::record(configuration_id,1,0);
-    std::vector<double> decomp_cp_info(critter::get_critical_path_costs()); critter::get_critical_path_costs(&decomp_cp_info[0]);
-    std::vector<double> decomp_pp_info(critter::get_max_per_process_costs()); critter::get_max_per_process_costs(&decomp_pp_info[0]);
-    std::vector<double> decomp_vol_info(critter::get_volumetric_costs()); critter::get_volumetric_costs(&decomp_vol_info[0]);
-    write_cross_info(cross_stream_times,cross_stream_costs,compare,configuration_id,decomp_cp_info,decomp_pp_info,decomp_vol_info);
-    critter::set_debug(0);
-    critter::set_mechanism(1);
-    M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
     overhead_bin += (MPI_Wtime() - overhead_timer);
     if (_sample_constraint_mode_==3){
+      overhead_timer = MPI_Wtime();
+      M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
+      overhead_bin += (MPI_Wtime() - overhead_timer);
       critter::set_mechanism(2);
       critter::start();
       alg_type::factor(M,pack,topo);
@@ -58,7 +52,22 @@ public:
     }
     for (size_t i=0; i<num_iter; i++){
       overhead_timer = MPI_Wtime();
-      M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
+      if (i < _num_reference_iter_){
+        critter::set_mechanism(0);
+        critter::set_debug(1);
+        M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
+        critter::start();
+        alg_type::factor(M,pack,topo);
+        critter::stop();
+        critter::record(configuration_id,1,0);
+        critter::get_critical_path_costs(&decomp_cp_info[0]);
+        critter::get_max_per_process_costs(&decomp_pp_info[0]);
+        critter::get_volumetric_costs(&decomp_vol_info[0]);
+        write_cross_info(cross_stream_times,cross_stream_costs,compare,configuration_id,decomp_cp_info,decomp_pp_info,decomp_vol_info);
+        critter::set_debug(0);
+        critter::set_mechanism(1);
+      }
+      M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);// reset for ensuing autotuning iteration
       overhead_bin += (MPI_Wtime() - overhead_timer);
       critter::start();
       alg_type::factor(M,pack,topo);
@@ -66,15 +75,15 @@ public:
       overhead_timer = MPI_Wtime();
       critter::record(configuration_id,1,0);
       critter::record(configuration_id,2);
-      std::vector<double> disc_cp_info(critter::get_critical_path_costs()); critter::get_critical_path_costs(&disc_cp_info[0]);
-      std::vector<double> disc_pp_info(critter::get_max_per_process_costs()); critter::get_max_per_process_costs(&disc_pp_info[0]);
-      std::vector<double> disc_vol_info(critter::get_volumetric_costs()); critter::get_volumetric_costs(&disc_vol_info[0]);
+      critter::record(configuration_id,3,0);
+      std::vector<float> disc_cp_info(critter::get_critical_path_costs()); critter::get_critical_path_costs(&disc_cp_info[0]);
+      std::vector<float> disc_pp_info(critter::get_max_per_process_costs()); critter::get_max_per_process_costs(&disc_pp_info[0]);
+      std::vector<float> disc_vol_info(critter::get_volumetric_costs()); critter::get_volumetric_costs(&disc_vol_info[0]);
       write_cp_info(cp_stream_times,cp_stream_costs,compare,configuration_id,reference_time, decomp_cp_info,disc_cp_info);
       overhead_bin += (MPI_Wtime() - overhead_timer);
     }
     overhead_timer = MPI_Wtime();
-    critter::record(configuration_id,3,0);
-    if (_reset_mode_==0) critter::clear();
+    if (_reset_mode_==1) critter::clear();
     else critter::clear(0,resets.size(), &resets[0]);
     overhead_bin += (MPI_Wtime() - overhead_timer);
   }
@@ -82,29 +91,25 @@ public:
   static void invoke_discretization_compare(MatrixType& M, CommType& topo, std::vector<int>& resets, char dir, bool complete_inv, int split,
                                             int bcMultiplier){
     using T = double; using U = int64_t; using MatrixType = matrix<T,U,rect>; using namespace cholesky;
-    double overhead_timer = MPI_Wtime();
+    auto overhead_timer = MPI_Wtime();
     typename alg_type::info<T,U> pack(complete_inv,split,bcMultiplier,dir);
-    M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
+    std::vector<float> decomp_cp_info(critter::get_critical_path_costs());
+    std::vector<float> decomp_pp_info(critter::get_max_per_process_costs());
+    std::vector<float> decomp_vol_info(critter::get_volumetric_costs());
     critter::set_mode(0);
-    alg_type::factor(M,pack,topo);// Avoid allocation times
-    double reference_time = MPI_Wtime();
+    M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
+    auto reference_time = MPI_Wtime();
     alg_type::factor(M,pack,topo);// Avoid allocation times
     reference_time = MPI_Wtime() - reference_time;
     PMPI_Allreduce(MPI_IN_PLACE,&reference_time,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
     total_reference_time += reference_time;
+    if (_rank_ == 0) std::cout << "past initial non-critter iter\n";
     critter::set_mode();
-    critter::set_debug(1);
-    M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
-    critter::start();
-    alg_type::factor(M,pack,topo);
-    critter::stop();
-    std::vector<double> decomp_cp_info(critter::get_critical_path_costs()); critter::get_critical_path_costs(&decomp_cp_info[0]);
-    std::vector<double> decomp_pp_info(critter::get_max_per_process_costs()); critter::get_max_per_process_costs(&decomp_pp_info[0]);
-    std::vector<double> decomp_vol_info(critter::get_volumetric_costs()); critter::get_volumetric_costs(&decomp_vol_info[0]);
-    critter::set_debug(0);
-    M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
     overhead_bin += (MPI_Wtime() - overhead_timer);
     if (_sample_constraint_mode_==3){
+      overhead_timer = MPI_Wtime();
+      M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
+      overhead_bin += (MPI_Wtime() - overhead_timer);
       critter::set_mechanism(2);
       critter::start();
       alg_type::factor(M,pack,topo);
@@ -113,22 +118,34 @@ public:
     }
     for (size_t i=0; i<num_iter; i++){
       overhead_timer = MPI_Wtime();
-      M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
+      if (i < _num_reference_iter_){
+        critter::set_debug(1);
+        M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);
+        critter::start();
+        alg_type::factor(M,pack,topo);
+        critter::stop();
+        critter::get_critical_path_costs(&decomp_cp_info[0]);
+        critter::get_max_per_process_costs(&decomp_pp_info[0]);
+        critter::get_volumetric_costs(&decomp_vol_info[0]);
+        critter::set_debug(0);
+      }
+      if (_rank_ == 0) std::cout << "past initial critter full-exec iter\n";
+      M.distribute_symmetric(topo.x, topo.y, topo.d, topo.d, _rank_/topo.c,true);// reset for ensuing autotuning iteration
       overhead_bin += (MPI_Wtime() - overhead_timer);
       critter::start();
       alg_type::factor(M,pack,topo);
       critter::stop();
       overhead_timer = MPI_Wtime();
       critter::record(configuration_id,1,0);
-      std::vector<double> disc_cp_info(critter::get_critical_path_costs()); critter::get_critical_path_costs(&disc_cp_info[0]);
-      std::vector<double> disc_pp_info(critter::get_max_per_process_costs()); critter::get_max_per_process_costs(&disc_pp_info[0]);
-      std::vector<double> disc_vol_info(critter::get_volumetric_costs()); critter::get_volumetric_costs(&disc_vol_info[0]);
+      critter::record(configuration_id,3,0);
+      std::vector<float> disc_cp_info(critter::get_critical_path_costs()); critter::get_critical_path_costs(&disc_cp_info[0]);
+      std::vector<float> disc_pp_info(critter::get_max_per_process_costs()); critter::get_max_per_process_costs(&disc_pp_info[0]);
+      std::vector<float> disc_vol_info(critter::get_volumetric_costs()); critter::get_volumetric_costs(&disc_vol_info[0]);
       write_cp_info(cp_stream_times,cp_stream_costs,compare,configuration_id,reference_time, decomp_cp_info,disc_cp_info);
       overhead_bin += (MPI_Wtime() - overhead_timer);
     }
     overhead_timer = MPI_Wtime();
-    critter::record(configuration_id,3,0);
-    if (_reset_mode_==0) critter::clear();
+    if (_reset_mode_==1) critter::clear();
     else critter::clear(0,resets.size(), &resets[0]);
     overhead_bin += (MPI_Wtime() - overhead_timer);
   }
@@ -162,13 +179,17 @@ int main(int argc, char** argv){
   size_t rep_factor = process_cube_dim/rep_div;
 
   // Set two tuning environment variables
-  _sample_constraint_mode_=0;
-  if (std::getenv("CRITTER_AUTOTUNING_SAMPLE_CONSTRAINT_MODE") != NULL){
-    _sample_constraint_mode_ = atoi(std::getenv("CRITTER_AUTOTUNING_SAMPLE_CONSTRAINT_MODE"));
+  _num_reference_iter_=0;
+  if (std::getenv("NUM_REFERENCE_ITER") != NULL){
+    _num_reference_iter_ = atoi(std::getenv("NUM_REFERENCE_ITER"));
   }
-  _reset_mode_=0;
-  if (std::getenv("CRITTER_RESET_DISTRIBUTION") != NULL){
-    _reset_mode_ = atoi(std::getenv("CRITTER_RESET_DISTRIBUTION"));
+  _sample_constraint_mode_=0;
+  if (std::getenv("CRITTER_SAMPLE_CONSTRAINT_MODE") != NULL){
+    _sample_constraint_mode_ = atoi(std::getenv("CRITTER_SAMPLE_CONSTRAINT_MODE"));
+  }
+  _reset_mode_=1;
+  if (std::getenv("CRITTER_RESET_KERNEL_DISTRIBUTION") != NULL){
+    _reset_mode_ = atoi(std::getenv("CRITTER_RESET_KERNEL_DISTRIBUTION"));
   }
   std::string stream_name_cp_times = "";
   std::string stream_name_cp_costs = "";
@@ -214,15 +235,15 @@ int main(int argc, char** argv){
     total_time = MPI_Wtime();
     PMPI_Barrier(MPI_COMM_WORLD);
     critter::start();
-    double total_time = MPI_Wtime();
-    for (auto k=0; k<space_dim; k++){
-      if (compare) launch<cholesky_type0>::invoke_decomposition_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
-      else         launch<cholesky_type0>::invoke_discretization_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
-      configuration_id++;
-    }
+    auto total_time = MPI_Wtime();
     for (auto k=0; k<space_dim; k++){
       if (compare) launch<cholesky_type1>::invoke_decomposition_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
       else         launch<cholesky_type1>::invoke_discretization_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
+      configuration_id++;
+    }
+    for (auto k=0; k<space_dim; k++){
+      if (compare) launch<cholesky_type0>::invoke_decomposition_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
+      else         launch<cholesky_type0>::invoke_discretization_compare(A,SquareTopo,reset_routines,dir,complete_inv,split,bcMultiplier+k);
       configuration_id++;
     }
     for (auto k=0; k<space_dim; k++){

@@ -21,11 +21,18 @@ int main(int argc, char** argv){
   size_t num_chunks = atoi(argv[7]);// splits up communication in summa into nonblocking chunks
   size_t num_iter   = atoi(argv[8]);// number of simulations of the algorithm for performance testing
 
+#ifdef CRITTER
+  std::vector<std::string> symbols = {
+					"CI::factor","CI::factor_diag","CI::trsm","CI::tmu"
+                                     };
+  critter::init(symbols);
+#endif
+
   using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::NoReplication>;
 //  using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicationCommComp>;
 //  using cholesky_type = typename cholesky::cholinv<policy::cholinv::NoSerialize,policy::cholinv::SaveIntermediates,policy::cholinv::ReplicateComp>;
   size_t process_cube_dim = std::nearbyint(std::ceil(pow(size,1./3.)));
-  size_t rep_factor = process_cube_dim/rep_div; double time_global;
+  size_t rep_factor = process_cube_dim/rep_div;
   T residual_error_local,residual_error_global; auto mpi_dtype = mpi_type<T>::type;
   { 
     auto SquareTopo = topo::square(MPI_COMM_WORLD,rep_factor,layout,num_chunks);
@@ -41,14 +48,14 @@ int main(int argc, char** argv){
 #ifdef CRITTER
       critter::start();
 #else
-      double start_time = MPI_Wtime();
+      auto start_time = MPI_Wtime();
 #endif
       cholesky_type::factor(A, pack, SquareTopo);
 #ifdef CRITTER
       critter::stop();
       critter::record();
 #else
-      double total_time = MPI_Wtime()-start_time;
+      auto total_time = MPI_Wtime()-start_time;
       if (rank==0) std::cout << "total time - " << total_time << std::endl;
 #endif
 /*

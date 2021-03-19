@@ -48,25 +48,21 @@ void write_cross_times_header(std::ofstream& st, int compare){
 }
 void write_cross_costs_header(std::ofstream& st, int compare){
   st << std::left << std::setw(15) << "Config";
-  st << std::left << std::setw(15) << "cp-synch";
-  st << std::left << std::setw(15) << "pp-synch";
-  st << std::left << std::setw(15) << "vol-synch";
   st << std::left << std::setw(15) << "cp-comm";
   st << std::left << std::setw(15) << "pp-comm";
   st << std::left << std::setw(15) << "vol-comm";
   st << std::left << std::setw(15) << "cp-synch";
   st << std::left << std::setw(15) << "pp-synch";
   st << std::left << std::setw(15) << "vol-synch";
-  st << std::left << std::setw(15) << "cp-comm";
-  st << std::left << std::setw(15) << "pp-comm";
-  st << std::left << std::setw(15) << "vol-comm";
   st << std::left << std::setw(15) << "cp-comp";
   st << std::left << std::setw(15) << "pp-comp";
   st << std::left << std::setw(15) << "vol-comp";
   st << std::endl;
 }
 
-void write_cross_info(std::ofstream& st1, std::ofstream& st2, int compare, int configuration_id, std::vector<double>& cp, std::vector<double>& pp, std::vector<double>& vol){
+void write_cross_info(std::ofstream& st1, std::ofstream& st2, int compare,
+                      int configuration_id, std::vector<float>& cp,
+                      std::vector<float>& pp, std::vector<float>& vol){
   st1 << std::left << std::setw(15) << configuration_id;
   st1 << std::left << std::setw(15) << cp[cp.size()-1];
   st1 << std::left << std::setw(15) << pp[pp.size()-1];
@@ -95,15 +91,11 @@ void write_cross_info(std::ofstream& st1, std::ofstream& st2, int compare, int c
   st2 << std::left << std::setw(15) << cp[2];
   st2 << std::left << std::setw(15) << pp[2];
   st2 << std::left << std::setw(15) << vol[2];
-  st2 << std::left << std::setw(15) << cp[3];
-  st2 << std::left << std::setw(15) << pp[3];
-  st2 << std::left << std::setw(15) << vol[3];
-  st2 << std::left << std::setw(15) << cp[4];
-  st2 << std::left << std::setw(15) << pp[4];
-  st2 << std::left << std::setw(15) << vol[4];
   st2 << std::endl;
 }
-void write_cp_info(std::ofstream& st1, std::ofstream& st2, int compare, int configuration_id, double exec_time, std::vector<double>& decomp_cp_info, std::vector<double>& disc_cp_info){
+void write_cp_info(std::ofstream& st1, std::ofstream& st2, int compare,
+                   int configuration_id, float exec_time,
+                   std::vector<float>& decomp_cp_info, std::vector<float>& disc_cp_info){
   st1 << std::left << std::setw(15) << configuration_id;
   st1 << std::left << std::setw(15) << exec_time;
   st1 << std::left << std::setw(15) << decomp_cp_info[decomp_cp_info.size()-1];
