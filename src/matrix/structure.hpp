@@ -171,6 +171,7 @@ void uppertri::_print(const ScalarType* data, DimensionType dimensionX, Dimensio
   }
 }
 
+/*
 template<typename ScalarType, typename DimensionType>
 void uppertri::_distribute_random(ScalarType* data, DimensionType dimensionX, DimensionType dimensionY, DimensionType globalDimensionX, DimensionType globalDimensionY, int64_t localPgridDimX, int64_t localPgridDimY,
                                   int64_t globalPgridDimX, int64_t globalPgridDimY, int64_t key){
@@ -204,7 +205,7 @@ void uppertri::_distribute_random(ScalarType* data, DimensionType dimensionX, Di
   }
   return;
 }
-
+*/
 
 template<typename ScalarType, typename DimensionType>
 void lowertri::_assemble(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, DimensionType& matrixNumElems, DimensionType dimensionX, DimensionType dimensionY){
@@ -224,12 +225,14 @@ void lowertri::_assemble_matrix(ScalarType*& data, ScalarType*& scratch, ScalarT
   std::memset(pad,0,matrixNumElems*sizeof(ScalarType));
 }
 
+/*
 template<typename ScalarType, typename DimensionType>
 void lowertri::_copy(ScalarType*& data, ScalarType*& scratch, ScalarType*& pad, ScalarType* const & source, DimensionType dimensionX, DimensionType dimensionY){
   DimensionType numElems = 0;
   _assemble(data, scratch, pad, numElems, dimensionX, dimensionY);
   std::memcpy(&data[0], &source[0], numElems*sizeof(T));
 }
+*/
 
 template<typename ScalarType, typename DimensionType>
 void lowertri::_print(const ScalarType* data, DimensionType dimensionX, DimensionType dimensionY){

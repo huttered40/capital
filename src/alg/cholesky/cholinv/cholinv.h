@@ -13,11 +13,11 @@ template<class SerializePolicy     = policy::cholinv::Serialize,
          class BaseCasePolicy      = policy::cholinv::NoReplication>
 class cholinv : public SerializePolicy, public IntermediatesPolicy, public BaseCasePolicy{
 public:
-  template<typename ScalarType, typename DimensionType>
+  template<typename ScalarT, typename DimensionT>
   class info{
   public:
-    using ScalarType = ScalarType;
-    using DimensionType = DimensionType;
+    using ScalarType = ScalarT;
+    using DimensionType = DimensionT;
     using alg_type = cholinv<SerializePolicy,IntermediatesPolicy,BaseCasePolicy>;
     using SP = SerializePolicy; using IP = IntermediatesPolicy; using BP = BaseCasePolicy;
     info(const info& p) : complete_inv(p.complete_inv), split(p.split), bc_mult_dim(p.bc_mult_dim), dir(p.dir) {}

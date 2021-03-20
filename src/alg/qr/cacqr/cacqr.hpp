@@ -281,6 +281,6 @@ void cacqr<SerializePolicy,IntermediatesPolicy>::apply_Q(MatrixType& src, ArgTyp
 
 template<class SerializePolicy, class IntermediatesPolicy>
 template<typename MatrixType, typename ArgType, typename CommType>
-void cacqr<SerializePolicy,IntermediatesPolicy>::apply_QT(MatrixType& src, ArgType& args,CommType&& CommInfo) { static_assert(0,"not implemented"); }
+void cacqr<SerializePolicy,IntermediatesPolicy>::apply_QT(MatrixType& src, ArgType& args,CommType&& CommInfo) { assert(0) && "not implemented"; }
 
 }
