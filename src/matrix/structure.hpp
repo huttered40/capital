@@ -191,7 +191,7 @@ void uppertri::_distribute_random(ScalarType* data, DimensionType dimensionX, Di
     }
     // Special corner case: If a processor's first data on each row is out of bounds of the DimensionTypeT structure, then give a 0 value
     if (localPgridDimY > localPgridDimX){
-      matrix[_offset(i,endIter-1,dimensionX,dimensionY)] = 0;			// reset this to 0 instead of whatever was set in the last iteration of the loop above.
+      data[_offset(i,endIter-1,dimensionX,dimensionY)] = 0;			// reset this to 0 instead of whatever was set in the last iteration of the loop above.
     }
     counter++;
     saveGlobalPosition += (globalPgridDimX*globalDimensionY);
@@ -199,7 +199,7 @@ void uppertri::_distribute_random(ScalarType* data, DimensionType dimensionX, Di
   if (padXlen != dimensionX){
     // fill in the last column with zeros
     for (DimensionType j=0; j<padYlen; j++){
-      matrix[_offset(dimensionX-1,j,dimensionX,dimensionY)] = 0;
+      data[_offset(dimensionX-1,j,dimensionX,dimensionY)] = 0;
     }
   }
   return;
