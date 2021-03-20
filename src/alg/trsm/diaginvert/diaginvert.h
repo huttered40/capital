@@ -13,11 +13,11 @@ template<class SerializePolicy      = policy::tsqr::Serialize,
          class IntermediatesPolicy  = policy::tsqr::SaveIntermediates>
 class diaginvert : public SerializePolicy, public IntermediatesPolicy{
 public:
-  template<typename ScalarType, typename DimensionType>
+  template<typename ScalarT, typename DimensionT>
   class info{
   public:
-    using ScalarType = ScalarType;
-    using DimensionType = DimensionType;
+    using ScalarType = ScalarT;
+    using DimensionType = DimensionT;
     using alg_type = diaginvert<SerializePolicy,IntermediatesPolicy>;
     info(const info& p) : {}
     info(info&& p) : {}

@@ -12,11 +12,11 @@ template<class SerializePolicy     = policy::rectri::Serialize,
          class IntermediatesPolicy = policy::rectri::SaveIntermediates>
 class rectri : public SerializePolicy, public IntermediatesPolicy{
 public:
-  template<typename ScalarType, typename DimensionType>
+  template<typename ScalarT, typename DimensionT>
   class info{
   public:
-    using ScalarType = ScalarType;
-    using DimensionType = DimensionType;
+    using ScalarType = ScalarT;
+    using DimensionType = DimensionT;
     using alg_type = rectri<SerializePolicy,IntermediatesPolicy>;
     using SP = SerializePolicy; using IP = IntermediatesPolicy;
     info(const info& p) : dir(p.dir) {}

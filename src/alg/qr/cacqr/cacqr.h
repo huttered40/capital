@@ -15,11 +15,11 @@ template<class SerializePolicy     = policy::cacqr::Serialize,
 class cacqr : public SerializePolicy, public IntermediatesPolicy{
 public:
   // cacqr is parameterized only by its cholesky-inverse factorization algorithm
-  template<typename ScalarType, typename DimensionType, typename CholeskyInversionType>
+  template<typename ScalarT, typename DimensionT, typename CholeskyInversionType>
   class info{
   public:
-    using ScalarType = ScalarType;
-    using DimensionType = DimensionType;
+    using ScalarType = ScalarT;
+    using DimensionType = DimensionT;
     using alg_type = cacqr<SerializePolicy,IntermediatesPolicy>;
     using cholesky_inverse_type = CholeskyInversionType;
     info(const info& p) : num_iter(p.num_iter),cholesky_inverse_args(p.cholesky_inverse_args),Q(p.Q),R(p.R) {}

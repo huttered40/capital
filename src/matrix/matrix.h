@@ -6,12 +6,12 @@
 // Local includes -- the policy classes
 #include "structure.h"
 
-template<typename ScalarType = double, typename DimensionType = int64_t, typename StructurePolicy = rect, typename OffloadPolicy = OffloadEachGemm>
+template<typename ScalarT = double, typename DimensionT = int64_t, typename StructurePolicy = rect, typename OffloadPolicy = OffloadEachGemm>
 class matrix : public StructurePolicy{
 public:
   // Type traits (some inherited from matrixBase)
-  using ScalarType = ScalarType;
-  using DimensionType = DimensionType;
+  using ScalarType = ScalarT;
+  using DimensionType = DimensionT;
   using StructureType = StructurePolicy;
   using OffloadType = OffloadPolicy;
 
@@ -50,7 +50,7 @@ public:
   inline DimensionType num_columns_global() const { return this->_globalDimensionX; }
 
   inline DimensionType offset_local(DimensionType coordX, DimensionType coordY, size_t buffer=0) const { return buffer != 2 ? _offset(coordX,coordY,this->_dimensionX,this->_dimensionY) : rect::_offset(coordX,coordY,this->_dimensionX,this->_dimensionY);}
-  inline DimensionType offset_global(DimensionType coordX, DimensionType coordY) const { static_assert(0,"not implemented"); return -1;}//TODO
+inline DimensionType offset_global(DimensionType coordX, DimensionType coordY) const { assert(0) && "not implemented"; return -1;}//TODO
 
   inline void swap() { ScalarType* ptr = this->data(); this->data() = this->scratch(); this->scratch() = ptr; } 
   inline void swap_pad() { ScalarType* ptr = this->scratch(); this->scratch() = this->pad(); this->pad() = ptr; } 

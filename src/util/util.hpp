@@ -1,5 +1,5 @@
 /* Author: Edward Hutter */
-
+/*
 template<typename MatrixType, typename CommType>
 typename MatrixType::ScalarType util::get_identity_residual(MatrixType& Matrix, CommType&& CommInfo, MPI_Comm comm){
   // Should be offloaded to Matrix definition, which knows how best to iterate over matrix?
@@ -21,7 +21,7 @@ typename MatrixType::ScalarType util::get_identity_residual(MatrixType& Matrix, 
   MPI_Allreduce(MPI_IN_PLACE,&res,1,mpi_type<T>::type, MPI_SUM, comm);
   return res;
 }
-
+*/
 template<typename MatrixType, typename RefMatrixType, typename LambdaType>
 typename MatrixType::ScalarType
 util::residual_local(MatrixType& Matrix, RefMatrixType& RefMatrix, LambdaType&& Lambda, MPI_Comm slice, int64_t sliceX, int64_t sliceY, int64_t sliceDimX, int64_t sliceDimY){
